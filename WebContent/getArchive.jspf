@@ -1,0 +1,20 @@
+<%@page language="java" import="edu.stanford.muse.webapp.*"%>
+<%@page language="java" import="edu.stanford.muse.index.*"%>
+<%
+// if archive not in session, nothing can be done
+Archive archive = JSPHelper.getArchive(session);
+if (archive == null)
+{
+	// try and load it from the default dir.
+		// if (request.getParameter("cacheDir") != null)
+	JSPHelper.log.info ("No archive in session, trying to load default archive");
+	archive = SimpleSessions.prepareAndLoadDefaultArchive(request); // if we don't have an archive and are running in desktop mode, try to load archive from given cachedir or from the default dir
+	JSPHelper.log.info ("Default archive = " + archive);
+	if (archive == null)
+	{
+		JSPHelper.log.info ("No default archive!");
+		out.println ("<html><body>Sorry, you do not have an archive in the session, and there is no default archive in the HOME/.muse folder. Please go to email sources and import some email to start an archive.</body></html>");
+		return;
+	}
+}
+%>

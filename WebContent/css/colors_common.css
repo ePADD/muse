@@ -1,0 +1,290 @@
+@CHARSET "UTF-8";
+
+body {
+    /*background-color: #F0F0F0;*/
+}
+.login-method-text, .db-hint {
+    color: black;
+}
+.panel .login-method-text, .panel .db-hint, .info {
+    color: white;
+}
+hr {
+	color: rgba(255,255,255,0.2); /* rgb(140,112,112);#EF8A62;*/
+	background-color: rgba(255,255,255,0.2); /* rgb(140,112,112);#EF8A62;*/
+	shade: noshade;
+	border-style:solid none none none;
+	/* amazing the extent one has to go to make <hr> look good! */
+}
+
+.help hr {
+	color: rgba(0,0,0,0.2); /* rgb(140,112,112);#EF8A62;*/
+	background-color: rgba(0,0,0,0.2); /* rgb(140,112,112);#EF8A62;*/
+	shade: noshade;
+	border-style:solid none none none;
+	/* amazing the extent one has to go to make <hr> look good! */
+}
+
+.footer {
+    color: black;
+    font-size: 80%;
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-top: 10px;
+}
+.footer a {
+    color: black;
+}
+.footer a:hover {
+    color: black;
+}
+.input-field {
+    background-color: #C0C0C0;
+}
+input[type="text"], input[type="password"] {
+    background-color: #FFFFFF;
+    border-radius: 4px 4px 4px 4px;
+}
+.helpcue {
+    background-color: #CCCCCC;
+    padding: 1px 3px;
+}
+.prompt {
+    color: #EEEEEE;
+}
+.login-error-message {
+	background-color:white;
+    color: #A02060;
+}
+
+.hilited-person {
+    background-color: yellow;
+}
+.hilited-group { 
+	background-color: lightgray; 
+    border-color: yellow;
+    border-style: dashed;
+	border-width: 2px; 
+}
+.groupname {
+    color: black;
+}
+#jog_contents a:visited {
+	background-color: white;
+    color: #4040C0;
+}
+.col-header {
+    color: white;
+}
+.tagcloud-name a {
+	color:rgba(127,127,127,0.5);
+	text-decoration: none;
+}
+
+table.message {
+	color:#000000;
+}
+
+.noTNattachmentText {
+    color: #000000;
+}
+.noTNattachmentText:hover {
+    color: #fff;
+}
+
+.showMessageFilter {
+	background-color:black;
+    color: white;
+}
+#status {
+    background-color: rgba(240, 240, 240, 0.9);
+}
+.progress_bar {
+    background-color: green;
+}
+
+/*
+.error {
+    background-color: #C10C06;
+    color: #C1BEA2;
+}
+.error a {
+    color: white;
+}
+.error a:visited {
+    color: white;
+}
+*/
+ul.thumbnails li {
+    border-color: #101080;
+}
+ul.thumbnails li a.hover img {
+    border-color: #101080;
+}
+*::-moz-selection {
+    background-color: yellow;
+    color: #000000;
+}
+.colorClass-1 {
+  color: #808080;
+}
+
+.colorClass0 {
+    color: #1F77B4;
+}
+
+.colorClass1 {
+    color: #AEC7E8;
+}
+
+.colorClass2 {
+    color: #FF7F0E;
+}
+
+.colorClass3 {
+    color: #FFBB78;
+}
+
+.colorClass4 {
+    color: #2CA02C;
+}
+
+.colorClass5 {
+    color: #17BECF;
+}
+
+.colorClass6 {
+    color: #D62728;
+}
+
+.colorClass7 {
+    color: #FF9896;
+}
+
+.colorClass8 {
+    color: #9467BD;
+}
+
+.colorClass9 {
+    color: #C5B0D5;
+}
+
+.colorClass10 {
+    color: #8C564B;
+}
+
+.colorClass11 {
+    color: #C49C94;
+}
+
+.colorClass12 {
+    color: #E377C2;
+}
+
+.colorClass13 {
+    color: #F7B6D2;
+}
+
+.colorClass14 {
+    color: #7F7F7F;
+}
+
+.colorClass15 {
+    color: #C7C7C7;
+}
+
+.colorClass16 {
+    color: #BCBD22;
+}
+
+.colorClass17 {
+    color: #DBDB8D;
+}
+.colorClass18 {
+    color: #17BECF;
+}
+.colorClass19 {
+    color: #9EDAE5;
+}
+
+.bcolorClass-1 {
+  background-color: #808080;
+}
+
+.bcolorClass0 {
+    background-color: #1F77B4;
+}
+
+.bcolorClass1 {
+    background-color: #AEC7E8;
+}
+
+.bcolorClass2 {
+    background-color: #FF7F0E;
+}
+
+.bcolorClass3 {
+    background-color: #FFBB78;
+}
+
+.bcolorClass4 {
+    background-color: #2CA02C;
+}
+
+.bcolorClass5 {
+    background-color: #17BECF;
+}
+
+.bcolorClass6 {
+    background-color: #D62728;
+}
+
+.bcolorClass7 {
+    background-color: #FF9896;
+}
+
+.bcolorClass8 {
+    background-color: #9467BD;
+}
+
+.bcolorClass9 {
+    background-color: #C5B0D5;
+}
+
+.bcolorClass10 {
+    background-color: #8C564B;
+}
+
+.bcolorClass11 {
+    background-color: #C49C94;
+}
+
+.bcolorClass12 {
+    background-color: #E377C2;
+}
+
+.bcolorClass13 {
+    background-color: #F7B6D2;
+}
+
+.bcolorClass14 {
+    background-color: #7F7F7F;
+}
+
+.bcolorClass15 {
+    background-color: #C7C7C7;
+}
+
+.bcolorClass16 {
+    background-color: #BCBD22;
+}
+
+.bcolorClass17 {
+    background-color: #DBDB8D;
+}
+.bcolorClass18 {
+    background-color: #17BECF;
+}
+.bcolorClass19 {
+    background-color: #9EDAE5;
+}

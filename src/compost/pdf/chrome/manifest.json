@@ -1,0 +1,18 @@
+{
+  "name": "uriloader@pdf.js",
+  "version": "0.1",
+  "description": "Read PDF Document",
+  "permissions": [
+    "webRequest", "webRequestBlocking",
+    "http://*/*.*",
+    "file:///*/*.*"
+  ],
+  "background_page": "pdfHandler.html",
+  "content_scripts": [
+    {
+      "matches": ["http://*/*.*","file:///*/*.*"],
+      "js" : ["jquery-1.7.1.js","contentscript.js","jquery.tools.min.js","jquery.easing.1.3.js","jquery.highlight-3.js"]
+      
+    }
+  ]
+}

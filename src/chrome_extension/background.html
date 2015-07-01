@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+   <link rel='stylesheet' href='http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.0/themes/cupertino/jquery-ui.css'>
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.js'></script>
+    <script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.js'></script>
+    <script src='strophe.js'></script>
+    <script src='flXHR.js'></script>
+    <script src='strophe.flxhr.js'></script>
+    <script>
+      
+   
+
+
+var url_list = new Array();
+var url_count=0;
+
+
+    
+	  // Search request
+      function fetchResults(callback, q, url) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+			  var data = JSON.parse(xhr.responseText);
+              callback(data);
+            } else {
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      };
+
+
+
+      function fetch_html_Results(callback, q, url) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+		var data = eval("(" + xhr.responseText + ")");
+                chrome.extension.getBackgroundPage().console.log("here");
+                console.log("data is " + data);
+                 localStorage.muse_json = JSON.stringify(data);
+                callback(data);
+            } else {
+              console.log("data  from server is null");
+              var data = JSON.parse(localStorage.muse_json);
+              if(typeof(data)!="undefined"&&data!=null)
+              {
+			console.log("using cached data");
+                        callback(data);
+
+		}
+              chrome.extension.getBackgroundPage().console.log("data is null");
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      };
+
+
+      
+      function fetch_muse_Results(callback, q, url) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+			  var data =  xhr.responseText ;
+              callback(data);
+            } else {
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      };
+
+       
+     function fetch_CSE_Results(callback, q, url) {
+       // var url = "http://www.google.com/cse?museemail&q="+encodeURIComponent(q);
+         //http://www.google.com/cse?cx=011739819409582045080%3Amuseemail&ie=UTF-8&q=jav
+       // var url = "http://www.google.com/cse?cx=011739819409582045080%3Amailengine&ie=UTF-8&q="+ encodeURIComponent(q);
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+			  var data =  xhr.responseText ;
+              console.log("caaaaaalllllingggggg");
+              callback(data);
+            } else {
+               console.log("caaaaaalllllingggggg nulll");
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      };
+
+      
+
+
+     
+
+	
+
+
+
+  
+
+
+      function onRequest(request, sender, callback) {
+		// TODO: should we encode q to have a proper URI?
+		switch (request.action)
+		{
+			case 'fetchPreferences':
+				callback({favorite_size:localStorage.search_sidebar_size, favorite_services:localStorage.search_sidebar_services, favorite_videos:localStorage.search_sidebar_videos});
+              		break;
+			case 'fetchDictionary':
+				fetchResults(callback, request.q, "http://lookup.max99x.com/"+ request.q);
+				break;
+			case 'fetchWikipedia':
+				fetchResults(callback, request.q, "http://search.yahooapis.com/WebSearchService/V1/webSearch?appid=GoogleSearchSidebar&site=en.wikipedia.org&query="+ request.q +"&results=1&output=json");
+				break;
+			case 'fetchFlickr':
+				fetchResults(callback, request.q, "http://api.flickr.com/services/rest?method=flickr.photos.search&api_key=33db8eb821f12753b480df732f0e3b11&text=" + request.q + "&sort=relevance&per_page=14&format=json&nojsoncallback=1");
+				break;
+			case 'fetchYouTube':
+				fetchResults(callback, request.q, "http://gdata.youtube.com/feeds/videos?max-results=10&alt=json&vq=" + request.q);
+				break;
+                        case 'fetchMuse':
+				fetch_html_Results(callback, request.q, "http://localhost:9099/muse/ajax/getGroupsAndAddressBookJson.jsp" );
+				break;
+                        case 'fetchMuseresults':
+                                fetch_muse_Results(callback, request.q, "http://www.google.com/search?q=" + encodeURIComponent(request.q) );
+				break;
+                        case 'fetchpenalty':
+                                var data = JSON.parse(localStorage.muse_penalty_json);
+                                callback(data);
+				break;
+                        case 'synchpenalty':
+                                localStorage.muse_penalty_json = JSON.stringify(request.q);
+                                callback();
+				break;
+                        case 'fetchbookmarks':
+                                ///generate_search_engine();
+				//fetchBookmarks(callback);
+				break;
+                        case 'fetchcustomemail':
+                                console.log("in fetch email in background");
+                                //generate_search_engine();
+                                var url = "http://www.google.com/cse?cx=011739819409582045080%3Amailengine&ie=UTF-8&q="+ encodeURIComponent(request.q);
+                                fetch_CSE_Results( callback ,request.q , url);
+				//fetchBookmarks(callback);
+				break;
+                        case 'fetchcustomtwitter':
+                                //generate_search_engine();
+                                console.log("in fetch twitter in background");
+                                var url = "http://www.google.com/cse?cx=011739819409582045080%3Atestengine&ie=UTF-8&q="+ encodeURIComponent(request.q);
+                                fetch_CSE_Results( callback ,request.q , url);
+				//fetchBookmarks(callback);
+				break;
+                        case 'refreshcustom':
+                                generate_search_engine();
+				//fetchBookmarks(callback);
+				break;
+
+
+			default:
+				// None
+		}
+      };
+      
+      // Wire up the listener.
+      chrome.extension.onRequest.addListener(onRequest);
+
+
+    </script>
+  </body>
+</html>

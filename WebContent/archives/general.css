@@ -1,0 +1,81 @@
+.title {
+	color: #D80000;
+	font-size: 22px;
+	/* removing, looks ugly. -sgh text-shadow: -3px 2px 2px rgba(84, 82, 82, 0.5); */
+	font-family:Arial, Helvetica, sans-serif;
+	font-weight:bold;
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+.site-wrapper {
+    background: url('images/bg-site-wrapper.png') repeat-x scroll 0 0 transparent;
+    padding: 15px 0;
+}
+#wrapper {
+    /* background: url("http://librarypreview.stanford.edu/sites/all/themes/sulair_framework/images/bg-wrapper.png") repeat-x scroll 0 0 #FFFFFF; */
+    background: url('images/bg-wrapper.png') repeat-x scroll 0 0 #FFFFFF;
+    border-radius: 3px 3px 3px 3px;
+    border-top: 1px solid #FFFFFF;
+    box-shadow: 0 2px 2px #7E766C;
+    margin: 0 auto;
+    position: relative;
+    width: 1200px;
+    z-index: 1;
+}
+#wrapper-inner {
+    padding: 8px 20px;
+}
+.clearfix:after {
+    clear: both;
+    content: ".";
+    display: block;
+    height: 0;
+    visibility: hidden;
+}
+.breadscrumb
+{
+	font-size: 85%;
+}
+#collection-table{
+	float:right;
+	text-align:right;
+}
+#header {
+    margin: 0;
+    padding: 0 0 -3px;
+    position: relative;
+}
+body {
+    line-height: 1;
+	color: #3F3C30;
+}
+#header #logo {
+    float: left;
+    margin-left: -3px;
+	margin-top: 8px;
+}
+#navigation{
+	float: right;
+	margin-top: 8px;
+	
+}
+ul li {
+    display: inline;
+	font-weight:bold;
+}
+p.copyright{
+	text-align: center;
+}
+
+.white-box
+{
+/* 	width: 540px; */
+	margin: auto;
+	padding: 15px;
+/* 	padding-bottom: 8px; */
+	background-color: #FFFFFF;
+	border-style: solid;
+ 	border-width: 1px;
+	position: relative;
+	vertical-align:basline;
+}

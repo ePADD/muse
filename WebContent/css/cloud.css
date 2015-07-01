@@ -1,0 +1,87 @@
+
+textarea {
+    margin:0px auto;
+}
+
+div {
+  /* overflow:hidden; */
+  margin:0px auto;
+}
+
+span {
+/*  font-weight:bold;
+  font-size: 24px; */
+  margin:0px;
+  padding:0px;
+}
+
+.textField {
+	padding:10px;
+    background-color:lightblue;
+}
+
+img {
+    vertical-align:bottom;
+}
+
+.tagcloud-list {
+/*  border: 1px solid #c0c0c0; */
+  font-size: 100%;
+  font-weight: normal;
+  margin-top: 10px;
+  margin-left:8px;
+  margin0-right: 8px;
+  padding: 4px;
+  background-color:#eee; /* white; */
+  line-height:1.0em;
+/* font-family: Arial, sans-self;
+// background-color:#F0E68C; */
+}
+
+.monthly-card {
+	width:300px;
+	max-width:350px;
+	height: 400px;
+	border:0px;
+	border-style:hidden;
+	vertical-align:top;
+	margin:5px;
+/*	background-image: url('http://www.ejeliot.com/samples/equal-height-columns/images/example-2.gif') top left repeat-y repeat-y; */
+}
+
+.card-row {
+	background-image: url(http://www.ejeliot.com/samples/equal-height-columns/images/example-2.gif) top left repeat-y repeat-y;
+}
+
+.tagcloud-name {
+	font-size: 16pt;
+  margin-left:10px;
+  -moz-border-radius-topleft:10px;
+  -moz-border-radius-topright:10px;
+  -webkit-border-top-left-radius:10px;
+  -webkit-border-top-right-radius:10px;
+  -border-radius-topleft:10px;
+  -border-radius-topright:10px;
+  padding: 0px;
+  font-variant:small-caps;
+}
+
+.tagcloud-base {
+  font-size: 24px;
+  display: inline;
+  margin-left:8px;
+  margin-right:4px;
+}
+
+.tagcloud-anchor {
+  text-decoration: none;
+}
+
+
+td {
+	border-width: 0px;
+}
+
+ul.tagcloud-list {
+	margin-top: 0px; /* want tags area to start right below month name */
+}

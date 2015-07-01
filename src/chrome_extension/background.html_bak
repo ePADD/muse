@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+   <link rel='stylesheet' href='http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.0/themes/cupertino/jquery-ui.css'>
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.js'></script>
+    <script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.js'></script>
+    <script src='strophe.js'></script>
+    <script src='flXHR.js'></script>
+    <script src='strophe.flxhr.js'></script>
+    <script>
+      
+    
+
+var url_list = new Array();
+var url_count=0;
+
+function addBookmark(bookmark) {
+	
+  	if (bookmark.url && bookmark.url.length) {
+    		url_list[url_count++]=fnGetDomain(bookmark.url);
+    		
+  	} 
+	
+}
+
+
+
+
+function addBookmarks(bookmarks) {
+
+ 
+  	bookmarks.forEach(function(bookmark) {
+    		addBookmark(bookmark);
+    		if (bookmark.children)
+      			addBookmarks(bookmark.children);
+  		});
+}
+
+var twitter_url_array=new Array();
+var twitter_url_counter=0;
+
+function fnGetDomain(url) {
+   	console.log("url is"+ url);
+    
+	try
+	{
+   		console.log("domain name is:"+ url.match(/:\/\/(.[^/]+)/)[1]);
+   		return url.match(/:\/\/(.[^/]+)/)[1];
+	}
+	catch(e)
+	{
+  		return url;
+	}
+}
+
+
+
+function populateCSE()
+{
+
+  //var url = "http://www.google.com/coop/api/default/cse/musecse99";
+ // alert("in populate engine");
+	for(var i=0;i<twitter_url_array.length;i++)
+	{
+  		var url = "http://www.google.com/cse/api/default/annotations/";
+		request = new XMLHttpRequest();
+		request.open("POST", url, true);
+	  	request.setRequestHeader("Content-type", "text/xml");
+  		//authtoken.replace(/^\s+|\s+$/g,"");
+  
+  		request.setRequestHeader("Authorization", "GoogleLogin auth=DQAAAIYAAAB87obj0E9cvWZtm1iDAmJB0KOBzd0T61yPuc0rLLzC4hK9OAZIkCui0dwIgPerPjeZPWTeyLrmgh_3vbPzvPkWXjzR_MGwjGyiEroKWQB7NIehdyc955VMEklcbqIg1uiAE7nBZxtqWqrLmfh52OndLFQ4PyaGHQJdJO3qqBfDZHIb6N43xg-U0tXEq2_LU1Q");
+  		//var param = "<Batch> <Add>  <Annotations> <Annotation about=\"http://"+ fnGetDomain(twitter_url_array[i])+ "/*\">" ;
+                var param = "<Batch> <Add>  <Annotations> <Annotation about=\"http://"+ fnGetDomain(twitter_url_array[i])+ "/*\">" ;
+                param = param + "<Label name=\"_cse_museemail\"/> </Annotation> </Annotations> </Add></Batch>";
+  		var params = encodeURI(param);
+  		request.onreadystatechange = function() {//Call a function when the state changes.
+			if( request.readyState == 4 &&  request.status == 200) {
+                            // alert( request.responseText);
+                		
+                
+         		}
+         
+   		}
+		request.send(param);  
+	}
+    	        
+}
+	 
+
+
+function parseURLs(response)
+{
+ 
+	var list = JSON.parse(response);
+        for (var x=0;x<list.length;x++)
+        {
+		if(typeof(list[x].url)!="undefined"&&list[x].url!=null&&list[x].times>1)
+		{
+        		console.log("parser url:"+list[x].url);
+	                var domain= fnGetDomain(list[x].url);
+                        if(typeof(domain)!="undefined"&&domain!=null)
+			{
+				if(twitter_url_array.indexOf(domain)<0)
+				{
+					twitter_url_array[twitter_url_counter++]=domain;
+				}
+			}	
+  			mytxt = list[x].url.replace(/\\/g,""); 
+                        var url="http://url-expander.appspot.com/expand.jsp?url=" + encodeURIComponent(mytxt);
+                        request = new XMLHttpRequest();
+  			request.open("GET", url, true);
+  			request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	  	  	request.onreadystatechange = function() {//Call a function when the state changes.
+			if( request.readyState == 4 &&  request.status == 200) {
+                           	var newurl= request.responseText;
+                                if(typeof(newurl)!="undefined"&&newurl!=null)
+				{
+					var domain= fnGetDomain(newurl);
+                       			if(typeof(domain)!="undefined"&&domain!=null)
+					{
+						if(twitter_url_array.indexOf(domain)<0)
+						{
+							twitter_url_array[twitter_url_counter++]=domain;
+						}
+					}
+				}	
+								
+                	}
+                        
+			request.send(null);
+			
+		}
+                
+                  
+   	}
+        setTimeout('populateCSE()',2000);
+       
+
+}
+
+function fetch_email_Results() {
+        
+	var url = "http://localhost:9099/muse/ajax/getLinksAsJson.jsp";
+	request = new XMLHttpRequest();
+  	request.open("GET", url, true);
+  	request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  	
+  	request.onreadystatechange = function() {//Call a function when the state changes.
+		if( request.readyState == 4 &&  request.status == 200) {
+			parseURLs(request.responseText);
+                }
+   	}
+        request.send(null); 
+}
+
+
+function buildCSE(authtoken)
+{
+  
+  var url = "http://www.google.com/cse/api/default/cse/museemail";
+  request = new XMLHttpRequest();
+  request.open("POST", url, true);
+  request.setRequestHeader("Content-type", "text/xml");
+  authtoken.replace(/^\s+|\s+$/g,"");
+  
+  request.setRequestHeader("Authorization", "GoogleLogin auth=DQAAAIYAAAB87obj0E9cvWZtm1iDAmJB0KOBzd0T61yPuc0rLLzC4hK9OAZIkCui0dwIgPerPjeZPWTeyLrmgh_3vbPzvPkWXjzR_MGwjGyiEroKWQB7NIehdyc955VMEklcbqIg1uiAE7nBZxtqWqrLmfh52OndLFQ4PyaGHQJdJO3qqBfDZHIb6N43xg-U0tXEq2_LU1Q");
+ 
+var param = '<CustomSearchEngine language="en" > <Title>museemail</Title><Description>Custom Search</Description><Context>  <BackgroundLabels>    <Label name="_cse_museemail" mode="FILTER"/></BackgroundLabels> </Context></CustomSearchEngine>';
+  var params = encodeURI(param);
+  request.onreadystatechange = function() {//Call a function when the state changes.
+	if( request.readyState == 4 &&  request.status == 200) {
+                console.log(request.responseText);		
+		//alert( request.responseText);
+                fetch_email_Results();
+                
+         }
+         
+   }
+    request.send(param);          
+
+
+
+}
+	 
+
+function Authenticate()
+{
+  var url = "https://www.google.com/accounts/ClientLogin";
+  request = new XMLHttpRequest();
+  request.open("POST", url, true);
+  request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  var params = "accountType=HOSTED_OR_GOOGLE&Email=musetestlogin&Passwd=whowonthelottery&service=cprose&source=muse.chrome.extension";
+  request.onreadystatechange = function() {//Call a function when the state changes.
+	if( request.readyState == 4 &&  request.status == 200) {
+		//alert( request.responseText);
+                var response=request.responseText;
+                console.log("auth string is:"+ response);
+                var authtemp=response.split("Auth");
+                var key = authtemp[1].split("=");
+                var authtoken=key[1];
+                console.log("auth token is:"+ authtoken);
+                buildCSE(authtoken);
+
+	}
+   }
+    request.send(params);
+            
+}
+
+
+
+function generate_search_engine() {
+
+  
+   Authenticate();
+   
+};
+
+
+    
+	  // Search request
+      function fetchResults(callback, q, url) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+			  var data = JSON.parse(xhr.responseText);
+              callback(data);
+            } else {
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      }
+
+
+
+      function fetch_html_Results(callback, q, url) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+		var data = eval("(" + xhr.responseText + ")");
+                chrome.extension.getBackgroundPage().console.log("here");
+                console.log("data is " + data);
+                 localStorage.muse_json = JSON.stringify(data);
+                callback(data);
+            } else {
+              console.log("data  from server is null");
+              var data = JSON.parse(localStorage.muse_json);
+              if(typeof(data)!="undefined"&&data!=null)
+              {
+			console.log("using cached data");
+                        callback(data);
+
+		}
+              chrome.extension.getBackgroundPage().console.log("data is null");
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      }
+
+
+      
+      function fetch_muse_Results(callback, q, url) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+			  var data =  xhr.responseText ;
+              callback(data);
+            } else {
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      };
+
+       
+     function fetch_CSE_Results(callback, q, url) {
+       
+        var url = "http://www.google.com/cse?cx=011739819409582045080%3Amuseemail&ie=UTF-8&q="+ encodeURIComponent(q);
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function(data) {
+          if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+			  var data =  xhr.responseText ;
+              callback(data);
+            } else {
+              callback(null);
+            }
+          }
+        }
+        xhr.open('GET', url, true);
+        xhr.send();
+      }
+
+
+     
+
+function fetchBookmarks(callback) {
+  setup_xmpp() ;
+  chrome.bookmarks.getTree(function(children) {
+    console.log(children);
+    callback(children);
+  });
+}
+	
+
+
+ 
+  
+
+
+      function onRequest(request, sender, callback) {
+		// TODO: should we encode q to have a proper URI?
+		switch (request.action)
+		{
+			case 'fetchPreferences':
+				callback({favorite_size:localStorage.search_sidebar_size, favorite_services:localStorage.search_sidebar_services, favorite_videos:localStorage.search_sidebar_videos});
+              		break;
+			case 'fetchDictionary':
+				fetchResults(callback, request.q, "http://lookup.max99x.com/"+ request.q);
+				break;
+			case 'fetchWikipedia':
+				fetchResults(callback, request.q, "http://search.yahooapis.com/WebSearchService/V1/webSearch?appid=GoogleSearchSidebar&site=en.wikipedia.org&query="+ request.q +"&results=1&output=json");
+				break;
+			case 'fetchFlickr':
+				fetchResults(callback, request.q, "http://api.flickr.com/services/rest?method=flickr.photos.search&api_key=33db8eb821f12753b480df732f0e3b11&text=" + request.q + "&sort=relevance&per_page=14&format=json&nojsoncallback=1");
+				break;
+			case 'fetchYouTube':
+				fetchResults(callback, request.q, "http://gdata.youtube.com/feeds/videos?max-results=10&alt=json&vq=" + request.q);
+				break;
+                        case 'fetchMuse':
+				fetch_html_Results(callback, request.q, "http://localhost:9099/muse/ajax/getGroupsAndAddressBookJson.jsp" );
+				break;
+                        case 'fetchMuseresults':
+                                fetch_muse_Results(callback, request.q, "http://www.google.com/search?q=" + encodeURIComponent(request.q) );
+				break;
+                        case 'fetchpenalty':
+                                var data = JSON.parse(localStorage.muse_penalty_json);
+                                callback(data);
+				break;
+                        case 'synchpenalty':
+                                localStorage.muse_penalty_json = JSON.stringify(request.q);
+                                callback();
+				break;
+                        case 'fetchbookmarks':
+                                ///generate_search_engine();
+				//fetchBookmarks(callback);
+				break;
+                        case 'fetchcustom':
+                                generate_search_engine();
+                                fetch_CSE_Results(callback, request.q,"http://www.google.com/search?q=" + encodeURIComponent(request.q));
+				//fetchBookmarks(callback);
+				break;
+                        case 'refreshcustom':
+                                generate_search_engine();
+				//fetchBookmarks(callback);
+				break;
+
+
+			default:
+				// None
+		}
+      }
+      
+      // Wire up the listener.
+      chrome.extension.onRequest.addListener(onRequest);
+
+
+    </script>
+  </body>
+</html>

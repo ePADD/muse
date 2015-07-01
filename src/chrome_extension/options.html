@@ -1,0 +1,166 @@
+<html>
+<head>
+<title>Google Search Sidebar - Options</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+<script src="jquery.min.js"></script>
+<script type="text/javascript">
+
+// Saves options to localStorage.
+function save_options() {
+
+  // Size
+  localStorage.search_sidebar_size = $("#size").val();
+
+  // Services
+  var favServices = '{"services" : [';
+  $("input[type='checkbox']").each(function(index) {
+	if (index > 0) favServices += ','; 
+	favServices += '{"name":"' + $(this).attr("name") + '", "description":"' + $(this).val() + '", "enabled":"' + $(this).attr("checked") + '"}';
+  });
+  favServices += ']}';
+  localStorage.search_sidebar_services = favServices;
+  
+  // YouTube
+  localStorage.search_sidebar_videos = $("#videos").val();
+  
+  // Update status to let user know options were saved.
+  var status = document.getElementById("status");
+  status.innerHTML = "Options Saved.";
+  setTimeout(function() {
+    status.innerHTML = "";
+  }, 1500);
+}
+
+// Restores options to saved value from localStorage.
+function restore_options() {
+
+  // Size
+  var favSize = localStorage.search_sidebar_size;
+  if (!favSize) {
+    favSize = "medium";
+  }
+  var select = document.getElementById("size");
+  for (var i = 0; i < select.children.length; i++) {
+    var child = select.children[i];
+    if (child.value == favSize) {
+      child.selected = "true";
+      break;
+    }
+  }
+  
+  // Services
+  var favServicesString = localStorage.search_sidebar_services;
+  var favServices;
+  if (favServicesString) {
+	favServices = jQuery.parseJSON(favServicesString);
+  } else {
+	favServices = {"services" : [
+			{"name":"dictionary","description":"Wiktionary","enabled":"true"},
+			{"name":"wikipedia","description":"Wikipedia","enabled":"true"},
+			{"name":"flickr","description":"Flickr","enabled":"true"},
+			{"name":"youtube","description":"YouTube","enabled":"true"}	
+		]
+	};
+  }
+  var services = document.getElementById("services");
+  for (i in favServices.services) {
+	var service = document.createElement("div");
+	service.id = favServices.services[i].name;
+	services.appendChild(service);
+	var checked = "";
+	if (favServices.services[i].enabled == "true") checked="checked";
+	jQuery("#" + service.id).append("&nbsp;&nbsp;&nbsp; <a href='#' class='up'><img src='up.png' alt='Up'/></a> <a href='#' class='down'><img src='down.png' alt='Down'></a> &nbsp;&nbsp;&nbsp; <input type='checkbox' name='" + favServices.services[i].name + "' value='" + favServices.services[i].description + "' " + checked + ">" + favServices.services[i].description + "</input>");
+  }
+  $(".up,.down").click(function(){
+	var row = $(this).parents("div:first");
+	if ($(this).is(".up")) {
+		row.insertBefore(row.prev());
+	} else {
+		row.insertAfter(row.next());
+	}
+  });
+  
+  // YouTube
+  var favVideos = localStorage.search_sidebar_videos;
+  if (!favVideos) {
+    favVideos = "4";
+  }
+  var select = document.getElementById("videos");
+  for (var i = 0; i < select.children.length; i++) {
+    var child = select.children[i];
+    if (child.value == favVideos) {
+      child.selected = "true";
+      break;
+    }
+  }
+
+}
+
+</script>
+
+</head>
+
+<body onload="restore_options()">
+
+<div id="header"><h1>Google Search Sidebar Options</h1></div>
+
+<div class="section-header first">Size</div>
+
+<p>
+	Size of the sidebar on the right side of your Google search results:
+	<select id="size">
+	 <option value="small">Small (240px)</option>
+	 <option value="medium">Medium (400px)</option>
+	 <option value="large">Large (560px)</option>
+	</select>
+</p>
+
+<div class="section-header">Services</div>
+
+<p>Services enabled in the sidebar and their position:</p>
+<div id="services"></div>
+
+<div class="section-header">YouTube</div>
+
+<p>
+	Maximum number of videos:
+	<select id="videos">
+		<option value="4">4</option>
+		<option value="5">5</option>
+		<option value="6">6</option>
+		<option value="7">7</option>
+		<option value="8">8</option>
+		<option value="9">9</option>
+		<option value="10">10</option>
+	</select>
+</p>
+
+<div id="footer">
+	<button id="save-button" style="font-weight:bold" onclick="save_options()">Save</button>&nbsp;<span id="status"></span>
+</div>
+
+<div class="section-header">Feedback</div>
+<p>
+	For any issue, question, idea, request for enhancements, please add a comment on the extension's <a href="https://chrome.google.com/extensions/detail/jbhiigbgcmeeknmajflllpcllcccheeb">page</a> or drop me a note via <a href="http://twitter.com/wiigwag">Twitter</a>.
+</p>
+<p>
+	And if you like this extension, please don't be shy and tell the world!
+</p>
+<p>
+	<a href="http://twitter.com/share" class="twitter-share-button" data-url="https://chrome.google.com/extensions/detail/jbhiigbgcmeeknmajflllpcllcccheeb" data-text="Using the Google Search Sidebar extension for Chrome" data-count="none" data-via="wiigwag">Tweet</a><script type="text/javascript" src="http://platform.twitter.com/widgets.js"></script>
+</p>
+<p>
+	<a name="fb_share" type="button_count" share_url="https://chrome.google.com/extensions/detail/jbhiigbgcmeeknmajflllpcllcccheeb" href="http://www.facebook.com/sharer.php">Share</a><script src="http://static.ak.fbcdn.net/connect.php/js/FB.Share" type="text/javascript"></script>
+</p>
+<p>
+	<a title="Post to Google Buzz" class="google-buzz-button" href="http://www.google.com/buzz/post" data-button-style="small-button" data-url="https://chrome.google.com/extensions/detail/jbhiigbgcmeeknmajflllpcllcccheeb"></a>
+	<script type="text/javascript" src="http://www.google.com/buzz/api/button.js"></script>
+</p>
+<p>	
+	<a href="http://digg.com/submit?url=https%3A//chrome.google.com/extensions/detail/jbhiigbgcmeeknmajflllpcllcccheeb&amp;title=Google%20Search%20Sidebar%20extension%20for%20Chrome">
+		<img src="http://about.digg.com/files/badge/icons/32x32-digg-guy_0.png" width="32" height="32" alt="Digg!" />
+	</a>
+</p>
+
+</body>
+</html>

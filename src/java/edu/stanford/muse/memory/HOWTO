@@ -1,0 +1,15 @@
+Howto run the memory study
+
+mount home dir with ecryptfs
+
+run the deploy script
+PAYMENT=
+encpw= (password encryption)
+
+Results will go to ~/results
+Set up the codes.txt file with 7 digit codes, as many codes as you have.
+Make sure users file is clear and there are no other directories.
+
+cd ~/results
+java -Dencpw= edu.stanford.muse.util.CryptoUtils users
+java -Dencpw= edu.stanford.muse.util.CryptoUtils */results.final

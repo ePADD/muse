@@ -1,0 +1,42 @@
+
+Several graphics are originally created by Cindy Chan.
+
+AJAX spinners:
+http://mentalized.net/activity-indicators/
+page says these images are "released into the public domain"
+
+FIREFOX ICONS:
+/Applications/Firefox.app/Contents/MacOS/omni.jar!chrome/toolkit/skin/classic/{global,mozapps}
+    72	1:15	jar tvf omni.jar
+    73	1:15	cp omni.jar
+search.png from firefox distribution (MPL 1.1)
+for icons from other Firefox themes, go to <profile_dir>/extensions/<long number>*.xpi (unzip this to get a chrome.jar for the theme)
+
+ECLIPSE ICONS:
+expandall.jpg, restore.gif taken from eclipse
+(Zip linked off http://blog.cypal-solutions.com/2008/02/eclipse-icons.html)
+
+Masks of tragedy and comedy retrieved: dec 5 '10
+http://media.photobucket.com/image/drama%20masks/ichigoinakart/mask.gif?o=25
+
+Keep calm and muse on, poster generated may 27 '11 from 
+http://www.keepcalm-o-matic.co.uk/createPoster.aspx
+
+Thumbs up/down images, ice-hockey background and Muse home page background - based on
+modifications of images from psdgraphics.com.
+
+Gears icon, Help icon: psdgraphics.com
+comment-icon: http://www.smashingmagazine.com/2011/12/29/freebie-free-vector-web-icons-91-icons/
+
+Star icons (like.png, currently not used)
+taken from http://iconexpo.com/2008/12/free-8color-star-icons/
+retrieved aug 27 2010 GPL v3 
+
+Filter icon under LGPL:
+http://icons.iconarchive.com/icons/oxygen-icons.org/oxygen/256/Actions-view-filter-icon.png
+
+Surface page:
+mail icon CC3 http://www.iconarchive.com/show/blue-jeans-social-media-icons-by-mysitemyway/mail-icon.html
+LI and FB icons taken from respective press rooms
+
+intro.js from usablica.github.io under the MIT license.

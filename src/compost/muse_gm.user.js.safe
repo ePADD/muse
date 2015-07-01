@@ -1,0 +1,943 @@
+//==UserScript==
+//@name muse_gm
+//@exclude  http://localhost*
+//@exclude  http://www.google.com/*
+//@exclude  http://*.google.com/*
+//==/UserScript==
+
+GM_log ('starting up highlighter');
+
+var clonepersonalized=new Array();
+var counter= new Array();
+
+var menuitems= new Array();
+var elementlist= new Array();
+
+var hidden_flag=false;
+var $iframeholder;
+
+var hiddenhits;
+var nonhiddenhits;
+var UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+var n_hilights = 0;
+function randomFromTo(from, to){
+       return Math.floor(Math.random() * (to - from + 1) + from);
+    }
+
+function console_log(msg) {
+
+	if (unsafeWindow.console)
+		// if(typeof(unsafeWindow.console)!="undefined"||typeof(unsafeWindow.console.log)!="undefined")
+		unsafeWindow.console.log(msg);
+
+}
+
+// fills in 'arr', an array of text nodes, arr can be passed in as null by external caller.
+// also fills in a null for div, header, li endings if insert_delimiters is true 
+// caller should watch out for nulls in arr
+function addTextNodes(node, arr, insert_delimiters) {
+	// do not use jquery inside this method, it may not have been loaded!
+	
+	if (!arr)
+		arr = new Array();
+	if (node.nodeType == 7 || node.nodeType == 2) // comment node, attribute node
+		return;
+	
+	var whitespace = /^\s*$/;
+//	if (node.id == 'musecontent')
+//	return; // we don't want to highlight our own nodes!
+	if (node.className == 'muse-details')
+		return; // we don't want to highlight our own nodes!
+	if (typeof node.tagName !== 'undefined')
+		if (node.tagName.toUpperCase() == 'SCRIPT' || node.tagName.toUpperCase() == 'NOSCRIPT')
+			return; // don't look inside scripts, and even noscripts
+
+	if (node.nodeType == 3 && !whitespace.test(node.nodeValue))
+		arr.push(node);
+	else 
+	{
+		for (var i = 0, len = node.childNodes.length; i < len; ++i)
+			addTextNodes(node.childNodes[i], arr, insert_delimiters);
+
+		if (insert_delimiters && typeof node.tagName !== 'undefined')
+		{
+			if (arr && arr.length > 0 && arr[arr.length-1] != null)
+			{
+				var lastText = arr[arr.length-1].data;
+
+				// see if the lastText ends with a sentence delimiter
+				if ('!?.'.indexOf(lastText[lastText.length-1]) < 0)
+				{
+					var tag = node.tagName.toUpperCase();
+					if (tag == 'H1' || tag == 'H2' || tag == 'H3' || tag == 'H4' || tag == 'H5' || tag == 'H6' || tag == 'DIV' || tag == 'P' || tag == 'LI')
+					{
+						// GM_log ('Pushing a stop after tag ' + tag);
+						arr.push(null);
+					}
+				}
+			}
+		}
+	}
+	return arr;
+}
+
+function inject_styles()
+{
+	styles =  '.info-navbar {padding-top: 3px; position: fixed; top: 0pt; right:10px;z-index:10000;}';
+	styles += '.info-navbar a span{-moz-border-radius: 4px; background-color: #0C3569; opacity: 0.9;}';
+	// background-image: -moz-repeating-linear-gradient(left center , rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 6%, rgba(255, 255, 255, 0.1) 7.5%), -moz-repeating-linear-gradient(left center , transparent 0%, transparent 4%, rgba(0, 0, 0, 0.03) 4.5%), -moz-repeating-linear-gradient(left center , rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 1.2%, rgba(255, 255, 255, 0.15) 2.2%), -moz-linear-gradient(-90deg, #C6C6C6 0%, #E5E5E5 47%, #C6C6C6 53%, #B2B2B2 100%);
+	styles += ".info-navbar a span {color:white;font-size:14pt; padding: 5px 5px 5px 5px; text-decoration:none;}";
+	styles += ".info-navbar a span:hover {color:green; text-decoration:none;}";
+
+	/*styles += '#musecontentparent { text-align:left; background: none repeat scroll 0 0 #0C3569; opacity: 0.8; overflow:auto; box-shadow: 0 0 20px #000000; padding-top: 7px 10px; position: fixed; top: 51px; right:10px; width: 200px;height:250px;z-index:10000; color: white;font-size:10px;background-image:url("http://mobisocial.stanford.edu/musemonkey/callout111.png");background-repeat:no-repeat; }';	
+	styles += '#musecontent { position:relative; line-height: 1.5em; margin:30px; margin-top:10px; width:160px; overflow:auto; font-size:14px; padding-left:5px; z-index:10000; color: #eee;}';*/
+	
+	styles += '#musecontentparent {position: fixed; bottom: 0;left: 0;right: 0;z-index: 1000;width: 100%;background-color: #34769a;border-top: 1px solid #fff;}';
+	
+	styles += '#musecontent { background-image: url("http://mobisocial.stanford.edu/musemonkey/bar_bg.png");float: left;text-align: center;height: 49px;width:100%}';
+	styles += '#musecontent li {display: inline;padding: 0 3px;}';
+
+    
+	/* generic container (i.e. div) for floating buttons */
+	styles += '.clear { overflow: hidden;  width: 100%; }';
+
+    styles += "a.button { background: transparent url('http://mobisocial.stanford.edu/musemonkey/bg_button_a.gif') no-repeat scroll top right; color: #444; display: block; float: left;font: normal 12px arial, sans-serif; height: 24px; margin-right: 6px; padding-right: 18px; text-decoration: none;}";
+    styles += "a.button { background: transparent url('http://mobisocial.stanford.edu/musemonkey/bg_button_a.gif') no-repeat scroll top right; color: #444; display: block; float: left;font: normal 12px arial, sans-serif; height: 24px; margin-right: 6px; padding-right: 18px; text-decoration: none;}";
+
+	styles += "a.button:active {background-position: bottom right;color: #000;outline: none; }";
+
+	styles += "a.button:active span {background-position: bottom left;padding: 6px 0 4px 18px; } ";
+
+	styles += '.highlight { background-color: yellow; color: black; }';
+	styles += '.NER-name { border: 1px red dotted; }';
+	
+
+	    styles +='.black_overlay{display: none; position: absolute; top: 0%;left: 0%; width: 100%; height: 100%; background-color: black; z-index:501; -moz-opacity: 0.8; opacity:.80; filter: alpha(opacity=80);}';
+
+	   styles+= '.white_content { display: none; position: absolute; top: 7.5%; width: 95%; height: 75%;z-index:901; padding: 16px; border: 10px solid black; background-color: white;overflow: auto;}';
+
+	   styles+= '.musified {margin: 5px;padding: 5px;background: #D8D5D2; font-size: 11px;line-height: 1.4em;float: left;-webkit-border-radius: 5px;-moz-border-radius: 5px;border-radius: 5px; max-width:40%;}';
+	   
+	   styles+= '.musified_story {margin: 5px;padding: 5px;background: #D8D5D2; font-size: 11px;line-height: 1.4em;float: left;-webkit-border-radius: 5px;-moz-border-radius: 5px;border-radius: 5px; max-width:40%;}';
+   
+   
+
+ styles+= '.customstyle1          { background: #F00; background: hsl(   0, 100%, 50%); }';
+   styles+= '.customstyle2          { background: #F80; background: hsl(  36, 100%, 50%); }';
+   styles+= '.customstyle3          { background: #FF0; background: hsl(  72, 100%, 50%); }';
+   styles+= '.customstyle4          { background: #0F0; background: hsl( 108, 100%, 50%); }';
+   styles+= '.customstyle5          { background: #0F8; background: hsl( 144, 100%, 50%); }';
+   styles+= '.customstyle6          { background: #0FF; background: hsl( 180, 100%, 50%); }';
+   styles+= '.customstyle7          { background: #08F; background: hsl( 216, 100%, 50%); }';
+   styles+= '.customstyle8          { background: #00F; background: hsl( 252, 100%, 50%); }';
+   styles+= '.customstyle9          { background: #F0F; background: hsl( 288, 100%, 50%); }';
+   styles+= '.customstyle10         { background: #F08; background: hsl( 324, 100%, 50%); }';
+	GM_addStyle(styles);
+}
+
+
+function select_menuitems($jelm)
+{
+//	GM_log("number of anchor tags:"+ $('a',$jelm).length);
+        try{
+		//GM_log(" select_contentNodes");
+		/*if($jelm[0].nodeType!=1)
+			select_contentNodes($jelm.parent());*/
+		
+		if($jelm[0].nodeType==1)
+		{
+			var offset = $jelm.offset();
+			if((($jelm.height() < 200 && $jelm.width()< 1000)||($jelm.height() < 1000 && $jelm.width()< 200))&& offset.left<300 && offset.top<600)
+			{
+				$jelm_parent=$jelm.parent();
+				
+				
+				//GM_log("number of anchor tags:"+ $jelm[0].getElementsByTagName('a').length);
+				if($_('a',$jelm).length<=25 && $_('a',$jelm).length > 6)
+				{
+				       //&& offset.left<600 && offset.top<600
+					GM_log($jelm.html());
+					
+					menuitems.push($jelm);	
+				}
+				if($_('a',$jelm).length>50)
+				{
+					$jelm.children().each(function(i) { 
+	    					select_menuitems($_(this));
+					});
+				}	
+			}
+			else
+			{
+				$jelm.children().each(function(i) { 
+	    				select_menuitems($_(this));
+				});
+			}
+			
+			
+		}
+		else
+		{
+			$jelm.children().each(function(i) { 
+	    				select_menuitems($_(this));
+			});
+		}
+		
+	
+        }
+        catch(err)
+	{
+		GM_log("error**************"+err);
+	}	
+}
+
+//Add jQuery
+var inject_jquery = function()
+{
+	(function() {	
+		function GM_wait() {
+			if (typeof unsafeWindow.jQuery == 'undefined') {
+				window.setTimeout(GM_wait, 100);
+			} else {
+				// $ = unsafeWindow.jQuery.noConflict(true);
+				GM_log ('jquery loaded');
+				$_ = $ = unsafeWindow.jQuery.noConflict(false);
+				//if ($("#hidden_content").length > 0))
+				//	return;
+				select_menuitems($('body'));
+                //		select_hidden_content();
+                		
+                $('checkbox').click(function() {
+    				//$("#txtAge").toggle(this.checked);
+    				alert("checked");
+				});
+
+				window.setTimeout(main,3500);
+			}
+		}
+
+		GM_log ("checking for jq...");
+
+		if (typeof unsafeWindow.jQuery == 'undefined') {
+			// we are injecting, so noConflict needed
+			no_conflict_needed = true;
+			GM_log ("injecting jq");
+			var GM_Head = document.getElementsByTagName('head')[0]
+			|| document.documentElement, GM_JQ = document
+			.createElement('script');
+
+			GM_JQ.src = 'http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js';
+			GM_JQ.type = 'text/javascript';
+			GM_JQ.async = true;
+
+			GM_Head.insertBefore(GM_JQ, GM_Head.firstChild);
+			GM_log ("done injecting jq");
+		}
+		GM_log ("waiting for jquery to show up");
+		GM_wait();
+	})();
+};
+
+
+
+function select_hidden_content()
+{
+        hidden_flag=true;
+	var responses_received = 0;
+	//var responses_expected = $("ul.primary li").length;
+	
+        var $hidden_content = $_('<div id="hidden_content" />');
+	$_('body').append($hidden_content);
+	
+	 $iframeholder = $_('<div id="iframeholder"/>');
+	//$_('body').append($iframeholder);
+	
+	
+	for(var l=0;l<menuitems.length;l++)
+	{
+		$jelm=menuitems[l];
+		$_('a',$jelm).each(function(index,pele) { 
+		     GM_log( $_(this).attr("href"));
+
+		     var hidden_url= $_(this).attr("href");
+		    // alert(hidden_url);
+		     try
+		     {
+		     	
+		     		$_.get( $_(this).attr("href"), {}, function(html) {
+		    	 
+		    	  		 //alert($_(html).children("div").length);
+		    	  		
+				    	 var $content = $_('<div style="display:none"/>');
+					 
+					  
+					 
+					  $_(html).children().each(function(i) { 
+					  
+					  	$iframeholder.append($_(this));
+					  	
+	    				
+					 });
+					 
+					
+		
+		    		});
+		    	}
+		    	
+		    	catch(err)
+		     	{
+		     		GM_log("errrr"+err);
+		     	}
+	    		
+	    	});
+	    	
+	    }
+
+}
+
+
+
+//Main function
+var muse_response; // global var
+
+
+function init()
+{
+	inject_styles(); // inject styles even if no hits... we want to show red boxes around recognized names
+	inject_jquery();
+	
+}
+
+function main(evt) {
+
+	if (evt != null && evt.clientY > 50)
+		return;
+
+	// wipe these out if they already existed
+	var p = document.getElementById('musecontentparent');
+	if (p != null)
+		p.parentNode.removeChild(p);
+	p = document.getElementsByClassName('muse-details');
+	if (p != null && p.length > 0)
+		p[0].parentNode.removeChild(p[0]);
+//	$('#musecontentparent').hide('');
+//	$('.muse-details').html('');
+//	$('.muse-details').hide();
+//	window.document.body.addEventListener("beforePrint", main, false);
+
+	if (window.top == window.self) // don't run in iframes window
+	{
+		//var muse_url = "http://localhost:9099/muse/ajax/leadsAsJson.jsp?" + "refText=" + encodeURI(document.URL);
+		var muse_url = "http://localhost:9099/muse/ajax/leadsAsJson.jsp";
+		GM_log ("sending xhr for " + muse_url);
+		var textNodesOnPage = addTextNodes(document.body, null, true);
+		GM_log ("text nodes = xhr for " + muse_url);
+		var textOnPage = '';
+		var newtextOnPage = '';
+		for (var i = 0; i < textNodesOnPage.length; i++)
+		{
+			if (textNodesOnPage[i] == null)
+				textOnPage += '. ';
+			else
+				textOnPage += ' ' + textNodesOnPage[i].data;
+		}
+		
+
+		
+		textOnPage = textOnPage.replace (/&/g, ' '); // replace ampersands, they interrupt the refText param!
+		textOnPage = textOnPage.replace (/  /g, ' '); // rationalize spaces
+		GM_log ('text on page = ' + textOnPage);
+		var encoded_page = encodeURI(textOnPage);
+		var encoded_url=encodeURI(document.URL);	
+//		GM_log ('encoded page = ' + encoded_page);
+
+		GM_xmlhttpRequest({
+				method : "POST",
+				url : muse_url,
+				data: 'refText=' + encoded_page +"&refURL="+encoded_url, 
+				headers: { "Content-Type": "application/x-www-form-urlencoded"},
+				onload :  function(response) {
+					GM_log ('received muse response');
+					
+					muse_response=response;
+					doIt();
+				},
+				onerror :  function(response) {
+				    var $newdiv1 = $_('<div id="musecontentparent"/>');
+				    var $newdivchild = $_('<div id="musecontent"/>');
+				    $newdiv1.append($newdivchild);
+			        $_('body').append($newdiv1);
+			        $_("#musecontent").html ('Muse is off');
+			        $_("#musecontent").fadeIn('slow');
+			        $_("#musecontentparent").fadeIn('slow');
+				}				
+			});
+		
+		if (hidden_flag==true)
+		{
+			
+			var hiddentextNodesOnPage = addTextNodes($iframeholder[0], null, true);
+			
+			for (var i = 0; i < hiddentextNodesOnPage.length; i++)
+			{
+				if (hiddentextNodesOnPage[i] == null)
+					newtextOnPage += '. ';
+				else
+					newtextOnPage += ' ' + hiddentextNodesOnPage[i].data;
+					
+			}
+			newtextOnPage = textOnPage.replace (/&/g, ' '); // replace ampersands, they interrupt the refText param!
+			newtextOnPage = textOnPage.replace (/  /g, ' '); // rationalize spaces
+			//GM_log ('text on page = ' + textOnPage);
+			var newencoded_page = encodeURI(newtextOnPage);	
+//		GM_log ('encoded page = ' + encoded_page);
+			GM_xmlhttpRequest({
+				method : "POST",
+				url : muse_url,
+				data: ('refText=' + newencoded_page), 
+				headers: { "Content-Type": "application/x-www-form-urlencoded"},
+				onload :  function(response) {
+					GM_log ('received muse response');
+					hiddenhits = eval('(' + response.responseText + ')');
+					if (typeof hiddenhits.results == 'undefined') 
+						GM_log('error: ' + hiddenhits.error);
+					else
+					{	//alert(hits.results.length);
+						var textNodes = addTextNodes($iframeholder[0], null, false);
+						//alert (textNodes.length + ' text nodes on page');
+	
+						for (var x = 0; x < textNodes.length; x++)
+							if (textNodes[x] != null)
+							{
+								try{
+			
+									decorateTextNode(textNodes[x],false);
+								}
+								catch(err)
+								{
+									GM_log("&&&"+err);
+								}
+							}
+					
+					}
+				}
+				
+			});
+			
+		
+		}
+	}
+}
+
+function inject_prettyphoto()
+{
+	var GM_Head = document.getElementsByTagName('head')[0]
+	|| document.documentElement;
+	var GM_JQPP = document.createElement('script');
+	GM_JQPP.src = 'http://mobisocial.stanford.edu/musemonkey/jquery.prettyPhoto.js';
+	GM_JQPP.type = 'text/javascript';
+	GM_JQPP.async = true;
+	GM_Head.insertBefore(GM_JQPP, GM_Head.lastChild);
+	var myStylesLocation = 'http://mobisocial.stanford.edu/musemonkey/prettyPhoto.css';
+	$_('<link rel="stylesheet" type="text/css" href="' + myStylesLocation
+			+ '" >').appendTo("head");           
+}
+
+function inject_layout()
+{
+	var GM_Head = document.getElementsByTagName('head')[0]
+	|| document.documentElement;
+	var GM_JQMS = document.createElement('script');
+	GM_JQMS.src = 'http://mobisocial.stanford.edu/musemonkey/jquery.masonry.min.js';
+	GM_JQMS.type = 'text/javascript';
+	GM_JQMS.async = false;
+	GM_Head.insertBefore(GM_JQMS, GM_Head.lastChild);
+	       
+}
+
+var div_counter=0;
+function start_layout_rendering()
+{
+        GM_log("layout rendering length"+clonepersonalized.length);
+         $_('#personalized_content').show();
+        $_('#personalized_content').prepend( clonepersonalized[div_counter] ).masonry( 'reload' );
+        div_counter++;
+        if(div_counter<clonepersonalized.length)
+        	setTimeout(start_layout_rendering,500);
+
+	
+}
+
+var storycounter=0;
+//start personalization
+function start_personalization()
+{
+	if (typeof $_.fn.masonry == 'undefined')
+	{
+
+		setTimeout (start_personalization, 100);
+	}
+	else
+	{
+		if (typeof $_.fn.masonry != 'undefined')
+			GM_log("ok!");
+
+		var $white_content = $_('<div id="light" class="white_content"/>');
+		$_('body').append($white_content);
+
+                if($_('#personalized_content').length == 0)
+                {
+		var $personal_content = $_('<div id="personalized_content"/>');
+		$_('#light').append($personal_content);
+                }
+
+
+
+		var $fade = $_('<div id="fade" class="black_overlay"/>');
+		$_('body').append($fade);
+
+	
+
+		$_('#personalized_content').masonry({
+			// options
+			itemSelector : '.musified',
+			columnWidth : 100,
+			isAnimated: true,
+			animationOptions: {
+				duration: 750,
+				easing: 'linear',
+				queue: false
+			}
+		});
+
+		$_('#personalized_content').hide();
+
+		$_('<a id="personalized" href="light">hide me!</a>').appendTo($_('body')); 
+
+		//$('#personalized').prettyPhoto();
+
+		$_('#personalized').hide();
+
+
+		$_("body").prepend("<div id='button_personalized'> <a id='personalizeddummy' class='button' href='#'><span>Personalize</span></a>  <div>");
+
+		// $('#personalized').prettyPhoto();
+		$_('#button_personalized').click(function(){
+
+			//alert(clonepersonalized.length);
+			//$('#personalized').click();
+			$_('#light').show();
+			document.getElementById('personalized_content').style.display='block';
+                        $_('#personalized_content').show();
+			$_('#fade').show();
+			$_("#toolbar").hide();
+			setTimeout(start_layout_rendering,2000);
+
+
+		});
+
+
+		var parent_div;
+		var j;
+		$_.each(elementlist,function(i, obj){
+			//obj.addClass('musified');
+
+			var border = 'none';
+			count=$_('.highlight', obj).length;
+			if (count == 1)
+				border = '1px dotted red';
+			else if (count == 2)
+				border = '1px dashed red';
+			else if (count == 3)
+				border = '1px  dashed red';
+			ellse if (count > 3)
+				border = '2px solid dashed red';
+			
+			if(count==0 && $_(this).parent().attr("id")=="hidden_content")
+				$_(this).hide();
+			else
+			{
+			        counter[storycounter]=count;
+			    if($_(this).attr("id")!="musecontent"&&$_(this).parent().parent().attr("id")!="musecontent")
+					$_(this).css("border", border);
+				if($_(this).parent().attr("id")=="hidden_content")
+					$_(this).addClass('musified');	
+				GM_log("counter is :"+ counter[storycounter]);
+				clonepersonalized[storycounter]=$_(this).clone();
+				clonepersonalized[storycounter].addClass('musified');
+
+		                stylerandom=randomFromTo(1,10);
+				randomclass='customstyle'+ stylerandom;
+		                clonepersonalized[storycounter].addClass(randomclass);
+				clonepersonalized[storycounter].css('float','left');
+			}
+			//GM_log(
+			storycounter++;
+			j++;
+			
+
+		});
+
+		GM_log(".story :" + clonepersonalized.length);
+		// alert(clonepersonalized.length);
+		for(var l=0;l<clonepersonalized.length;l++)
+		{
+			for(var m=l+1;m<clonepersonalized.length;m++)
+			{
+				if(counter[l]>counter[m])
+				{
+					var temp=counter[l];
+					counter[l]=counter[m];
+					counter[m]=temp;
+
+					var temp1=clonepersonalized[l];
+					clonepersonalized[l]=clonepersonalized[m];
+					clonepersonalized[m]=temp1;
+				}
+			}
+		}
+	}
+}
+
+
+function ellipsize(s, maxChars)
+{
+	if (s == null)
+		return null;
+
+	if (maxChars < 4)
+		return (s.substring(0, maxChars));
+
+	if (s.length > maxChars)
+		return s.substring(0, maxChars-3) + "...";
+	else
+		return s;
+}
+
+
+// start pretty photo, but wait for it to be come available first
+	function start_prettyphoto()
+	{
+		if (typeof $_.prettyPhoto == 'undefined')
+			setTimeout (start_prettyphoto, 100);
+		else
+			$_('.highlight').prettyPhoto({theme: 'dark_rounded', opacity: "0.3"});
+	}
+
+// highlight contents
+	function decorateTextNode(node,nonhiddencontent) {
+		// node has to be a text node
+
+		// ignore whitespace
+		if (/^\s*$/.test(node.nodeValue))
+			return;
+
+		var newNodes = new Array(); // nodes we might create when we split this node
+	    var nodeText = node.data.toUpperCase();
+	    
+	    // sort results so that longer phrases are before shorter ones. 
+	    // ensures that superstrings are hilited in preference to substrings
+	    // e.g. Texas Rangers should be before Texas, so the whole phrase gets hilited
+	   // var hit_results = hits.results;
+	  //  hit_results.sort (function(a, b) { return b.text.length - a.text.length;});
+
+		 if(nonhiddencontent==true)
+		 	hits=nonhiddenhits;
+		 else
+		 	hits=hiddenhits;
+	    // check if this node contains any hits
+	    for (var hit = 0; hit < hits.results.length; hit++)
+	    {
+	        var pat = hits.results[hit].text.toUpperCase();
+	        if (node.parentNode.className == 'NER-name' || node.parentNode.className == 'highlight')
+	        	continue;
+
+	        var pos = nodeText.indexOf(pat);
+	        if (pos < 0)
+	            continue; // not found
+
+	        // skip if prev or next letters are alpha's, we want only complete words
+	        var prev_letter = '.', next_letter = '.'; // any non-alpha
+	        if (pos > 0)
+	            prev_letter = nodeText.charAt(pos-1);
+	        if (pos + pat.length < nodeText.length)
+	            next_letter = nodeText.charAt(pos + pat.length);
+	        if (UPPERCASE.indexOf(prev_letter) >= 0 || UPPERCASE.indexOf(next_letter) >= 0)
+	            continue;
+	        
+		    // ok, we have a proper name in this node
+		    n_hilights++;
+		    
+		    // create a <a> node for it
+	        var link = document.createElement('a');
+	        
+	        // assign it highlight or NER-highlight based on whether it was a real hit or not
+	        if (hits.results[hit].nMessages > 0)
+	        {
+	        	var id = pat.replace(/ /g, '_') + "_inline";
+                var ref =  '#' + id;
+		        link.setAttribute('href', ref);
+//		        link.setAttribute('onclick', 'javascript:window.xxx(\'' + ref + '\')');
+		        link.setAttribute('title', hits.results[hit].timesOnPage + ' time' + (hits.results[hit].timesOnPage>1?'s':'') + ' on page, ' + hits.results[hit].nMessages + ' hit' + (hits.results[hit].nMessages>1?'s':'') + ' for term: ' + hits.results[hit].text); // set it otherwise "undefined" shows up in bottom left corner
+		        link.setAttribute('alt', 'ALT');
+		        link.className = 'highlight';
+	        }
+	        else
+		        link.className = 'NER-name'; // not a real hit, for debug only
+	        
+	        // twiddle the nodes
+	    //    GM_log ('nodeText = ' + nodeText + ' pos = ' + pos + ' pat = ' + pat  + ' ' + nodeText.charAt(pos) + ' node = ' + node + ' parent = ' + node.parentNode);
+	        if (pos > 0)
+	        {
+	        	// hit not at the beginning. 
+	        	 // update nodeText to the portion before the hit
+	        	var originalNodeLength = nodeText.length;
+	        	middlebit = node.splitText(pos);
+	        	endNode = middlebit.splitText(pat.length);
+		        var middleclone = middlebit.cloneNode(true);
+		        link.appendChild(middleclone);
+		        nodeText = node.data.toUpperCase();
+		        middlebit.parentNode.replaceChild(link, middlebit);
+	        	// add endNode to newnodes if it has any content, we'll process it later
+		        if (pos + pat.length < originalNodeLength)
+		        {
+		        	GM_log ('pushing end node ' + endNode.nodeValue);
+		        	newNodes.push(endNode);
+		        }
+		        
+		        if(nonhiddencontent==true)
+		        {
+		          	jparent=$_(node);
+		        	GM_log(node);
+				    while(jparent[0].nodeType!=1)
+				    	jparent=jparent.parent();
+				    if(! jparent.is(":visible"))
+				    {
+				    	jparent=jparent.clone();
+				    	$_("#hidden_content").append(jparent);
+				    	jparent.show();
+				    }
+				    elementlist.push(jparent);
+				 }
+				 else				
+		        {
+		          	jparent=$_(node,$iframeholder);
+		        	GM_log(node);
+				    while(jparent[0].nodeType!=1&&jparent.text().length<300)
+				    	jparent=jparent.parent();
+				    if(! jparent.is(":visible"))
+				    {
+				    	jparent=jparent.clone();
+				    	$_("#hidden_content").append(jparent);
+				    	jparent.show();
+				    }
+				    elementlist.push(jparent);
+				 }
+				 
+	        }
+	        else
+	        {
+	        	// hit at the beginning. nodeText = remaining portion after this hit.
+	        	middlebit = node;
+	        	node = middlebit.splitText(pat.length);
+		        var middleclone = middlebit.cloneNode(true);
+		        link.appendChild(middleclone);
+		        middlebit.parentNode.replaceChild(link, middlebit);
+		        nodeText = node.data.toUpperCase();
+		       // var parentel= middlebit.parentNode;
+		        if(nonhiddencontent==true)
+		        {
+		          	jparent=$_(node);
+		        	GM_log(node);
+				    while(jparent[0].nodeType!=1)
+				    	jparent=jparent.parent();
+				    if(! jparent.is(":visible"))
+				    {
+				    	jparent=jparent.clone();
+				    	$_("#hidden_content").append(jparent);
+				    	jparent.show();
+				    }
+				    elementlist.push(jparent);
+				 }
+				else				
+		        {
+		          	jparent=$_(node,$iframeholder);
+		        	GM_log(node);
+				    while(jparent[0].nodeType!=1&&jparent.text().length<300)
+				    	jparent=jparent.parent();
+				    if(! jparent.is(":visible"))
+				    {
+				    	jparent=jparent.clone();
+				    	$_("#hidden_content").append(jparent);
+				    	jparent.show();
+				    }
+				    elementlist.push(jparent);
+				 }
+		        
+	        }
+	      //  GM_log ('nodes twiddled, Node text is now: ' + node.data);
+	    }
+	    
+	    if (newNodes.length > 0)
+	    	GM_log (newNodes.length + " new nodes after decoration done");
+	    // this node done, handle any news nodes created on the way
+	    for (var x = 0; x < newNodes.length; x++)
+	    	decorateTextNode(newNodes[x],nonhiddencontent);
+  }
+
+
+//term rating url
+
+function logIt(value)
+{
+	//alert(value);
+	var scoring_url = "http://localhost:9099/muse/ajax/uploadrating.jsp";
+	
+    var encoded_url=encodeURI(document.URL);	
+    var terms_checked=0;
+    for (var i = 0; i < $(".musecheckbox").length; i++) {
+       
+        if ($('#checkbox'+ i).is(':checked'))
+        	terms_checked++;
+        
+	
+	}
+	GM_xmlhttpRequest({
+				method : "POST",
+				url : scoring_url,
+				data: 'term=' + value +"&url="+encoded_url+"&termcount="+terms_checked+"&totalcount="+$(".musecheckbox").length, 
+				headers: { "Content-Type": "application/x-www-form-urlencoded"},
+				onload :  function(response) {
+					
+				},
+				onerror: function(response) {
+				    var $newdiv1 = $_('<div id="musecontentparent"/>');
+				    var $newdivchild = $_('<div id="musecontent"/>');
+				    $newdiv1.append($newdivchild);
+			        $_('body').append($newdiv1);
+			        $_("#musecontent").html ('Muse is off');
+			        $_("#musecontent").fadeIn('slow');
+			        $_("#musecontentparent").fadeIn('slow');
+				}				
+			});
+}
+
+
+function doIt()
+{
+   // alert("ok");
+	nonhiddenhits = eval('(' + muse_response.responseText + ')');
+	var hits=nonhiddenhits;
+	if (typeof hits.results == 'undefined') {
+		GM_log('error: ' + hits.error);
+		return; // do nothing
+	}
+
+	GM_log (hits.results.length + ' names on page');
+	
+
+    // populate the sidediv and insert messages into the page
+    var $newdiv1 = $_('<div id="musecontentparent"/>');
+    var $newdivchild = $_('<div id="musecontent"/>');
+    $newdiv1.append($newdivchild);
+    var n_hits = 0;
+    var sideDiv = '<ul>';
+    for (var i = 0; i < hits.results.length; i++) {
+        if (hits.results[i].nMessages == 0)
+            continue;
+        n_hits++;
+        //onclick="showHideText(this,'myText')"
+        sideDiv += '<li> <input type="checkbox" id="checkbox'+ i+ '" class="musecheckbox" value="'+ hits.results[i].text +'">&nbsp;'+ hits.results[i].text + ' (' + hits.results[i].timesOnPage + ';' + hits.results[i].nMessages + ')</li>';
+
+        // insert the message popup into the page
+        var text = hits.results[i].text.toUpperCase();
+        var id = text.replace(/ /g, "_") + "_inline";
+        var $div = $_('<div class="muse-details" style="align:left" id="' + id + '"/>');
+        var $child = $_('<div alt="alt"/>');
+        $div.append($child);
+        $_('body').append($div);
+        $div.hide();
+        var popup = '';
+        for ( var m = 0; m < hits.results[i].messages.length && m < 6; m++) {
+        	var mesg = hits.results[i].messages[m];
+        	var plus_mesg = (mesg.to.length <= 1) ? '': ' (+' + (mesg.to.length-1) + ')';
+            var title = (typeof mesg.contents != 'undefined') ? mesg.contents : '';
+            title = title.replace(/"/g, "&quot;");
+            title = title.replace(/\n/g, " ");
+            popup += "<p title=\"" + title + "\">" + mesg.date + " | "
+            	   + "From: " + ((mesg.from.length > 0) ? mesg.from[0].email : '???')
+            	   + " | To: " + ((mesg.to.length > 0) ? mesg.to[0].email + plus_mesg : '???')
+                   + "<br/>Subject: " + ellipsize(hits.results[i].messages[m].subject, 46);
+            	   + "</p>";
+        }
+        popup += '<p><a href="' + hits.results[i].url + '" target="_">View ' + hits.results[i].nMessages + ' message' + (hits.results[i].nMessages > 1 ? 's':'') + '</a><hr/>';
+        $child.html(popup);
+    }
+
+    GM_log (n_hits + " names on pages hit");
+    // show sidediv and context button and inject prettyphoto and css only if there are actual hits
+    if (n_hits > 0) {
+    	inject_prettyphoto();
+		inject_layout();
+
+    	$_("body").prepend('<div class="info-navbar"> <a id="refresh_button" href="#"><span>Refresh</span></a> <a id="context_button" href="#"><span>Hide</span></a></div>');
+    	$_('#context_button').click(function(evt) {
+    		if ($_('#musecontentparent').is(':visible')) {
+    			$_('#musecontentparent').fadeOut();
+    			$_('#context_button span').html('Show');
+    		} else {
+    			$_('#musecontentparent').fadeIn();
+    			$_('#context_button span').html('Hide');    			
+    		}
+    	}); 
+    	
+        $_('body').append($newdiv1);
+
+    	var b = document.getElementById('refresh_button');
+    	b.addEventListener("click", main, true);
+    	
+        $_("#musecontent").hide();
+        sideDiv += '</ul>'
+        $_("#musecontent").html(sideDiv);
+        $_("#musecontent").fadeIn('slow');
+    }
+
+    for (var i = 0; i < hits.results.length; i++) {
+       
+       try{
+		    btn = document.getElementById('checkbox'+ i);
+		    if(typeof(btn)!="undefined"&&btn!=null)
+				btn.addEventListener("click", function(){logIt(this.value)}, false);
+		}
+		catch(err)
+		{
+		}
+	}
+	//var n_hilights = 0;
+	
+	var textNodes = addTextNodes($_('body')[0], null, false);
+	GM_log (textNodes.length + ' text nodes on page');
+	
+	for (var x = 0; x < textNodes.length; x++)
+		if (textNodes[x] != null)
+		{
+			try{
+			
+				decorateTextNode(textNodes[x],true);
+			}
+			catch(err)
+			{
+				alert(err)
+			}
+		}
+	GM_log (n_hilights + " names hilited");
+	start_prettyphoto();
+	
+	// GM_log ( " calling personalization");
+	// start_personalization();
+
+	
+};
+
+//call hideen content fect here first
+init();

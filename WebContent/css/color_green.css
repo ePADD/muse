@@ -1,0 +1,98 @@
+/* skin: */
+@import url(colors_common.css);
+
+/* kuler compl. colors: #DFFEC8, #4D653B, #92B27A, #623165, #AF7AB2 
+*/
+
+body {
+/*	background-image: -moz-linear-gradient(#ffbb56, #cfab46); 
+	background-image: -webkit-linear-gradient(#FFBB56, #cfab46); */ /* #f0f0f0; */ /* #ffffcc; */ 
+}
+
+h1 { color: #333333; }
+
+h2 { color: #4D653B; }
+
+.panel, .page, .comment, .noTNattachmentText:hover, .hilitedTerm:hover, .selected-facet, .facet:hover, .info, .bundle-select {
+	background-color: #92B27A; /* rgb(201,101,72); /* #87CEFA;*/
+	background-image: -webkit-linear-gradient(#92B27A, #82A26A); /* grow slightly darker going downwards */
+}
+	
+.shadow {
+	-moz-box-shadow: 2px 2px 3px #4D653B;
+	-webkit-box-shadow: 2px 2px 3px #4D653B;
+	box-shadow: 2px 2px 3px #4D653B;
+}
+
+.panel, select { border-color: #4D653B; } 
+#groupsarea .db-hint, .cardspage .db-hint, .browsepage .db-hint {
+	color: black; /* this has to be separately done because groups editor/cards page/newbrowse are on a white background */
+}
+	
+.login-method-box-centered, .login-method-box, .login-method-text {
+	background-color: #92B27A;
+	color: white;
+}
+	
+input[type=text]::-moz-selection, input[type=password]::-moz-selection  { background-color: #92B27A; color: white; }
+input[type=text]::selection { background-color: #92B27A; color: white; }
+	
+.selected-folder {
+	color: white;
+	/* text-shadow: 0 0 0.2em #87F, 0 0 0.2em #87F, 0 0 0.2em #87F */
+}
+	
+.panel-header, .tools-button, .comment, .info-header  {
+	color: #623165; 
+}
+	
+.topnav li a, .topnav li a:visited, .clickableLink {
+	color: black;
+}
+
+.login-method-box-centered .clickableLink, .login-method-box .clickableLink {
+	color: white;		
+}
+	
+table.docheader {
+	border-color: #92B27A;
+}
+	
+.facet:hover, .noTNattachmentText:hover, .hilitedTerm:hover, .selected-facet {
+    border-bottom: 1px solid #4D653B;
+    color: #000000;
+    text-decoration:none;
+}
+
+.facet-count {
+	color: gray;	/* slightly washed out counts */
+}
+
+.hilitedTerm {
+	background-color: lightyellow;
+    border-bottom: 1px solid #92B27A;
+    color: #000000;
+}
+
+table.docheader {
+	border-color: #92B27A;
+}
+
+ul.thumbnails li {
+	border-color: #101080;
+}
+
+ul.thumbnails li a.hover img {
+	border-color: #101080;
+}
+
+.metal {
+/*	http://lab.simurai.com/css/metal/ */
+	padding: 20px
+border-radius: .5em;
+background-image: -webkit-repeating-linear-gradient(left, hsla(0,0%,100%,0) 0%, hsla(0,0%,100%,0) 6%, hsla(0,0%,100%, .1) 7.5%),	 -webkit-repeating-linear-gradient(left, hsla(0,0%, 0%,0) 0%, hsla(0,0%, 0%,0) 4%, hsla(0,0%, 0%,.03) 4.5%),	 -webkit-repeating-linear-gradient(left, hsla(0,0%,100%,0) 0%, hsla(0,0%,100%,0) 1.2%, hsla(0,0%,100%,.15) 2.2%), -webkit-linear-gradient(-90deg, hsl(0,0%,78%) 0%, hsl(0,0%,90%) 47%, hsl(0,0%,78%) 53%, hsl(0,0%,70%)100%);
+}
+
+.teaser { 
+	color: green;
+}

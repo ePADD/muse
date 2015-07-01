@@ -1,0 +1,126 @@
+.element-invisible 
+{
+    clip: rect(1px, 1px, 1px, 1px);
+    position: absolute !important;
+}
+nav.breadscrumb
+{
+	float: left;
+}
+#info-column
+{
+/* 	width: 730px; */
+/* 	float: left; */
+	border-style: groove;
+	border-radius: 15px;
+	margin-top: 10px;
+	margin-bottom: 20px;
+	background-color: #CFDCE7;
+    overflow-x: hidden;
+	padding-bottom: 30px;
+}
+#search-box
+{
+	border-style: groove;
+	border-radius: 16px;
+	background-color: white;
+/* 	width: 100%; */
+	margin-bottom: 10px;
+}
+#search-text
+{
+	width: 80%;
+	border-style: none;
+}
+.action-section
+{
+	margin-bottom: 40px;
+}
+#selectedrow td 
+{
+    background: none repeat scroll 0 0 #C6D5E1;
+}
+#left-column
+{
+	vertical-align: top;
+}
+.main
+{
+	text-align: justify;
+	padding-top: 5px;
+	padding-bottom: 100px;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+.info-title
+{
+	margin-left: 35px;
+	margin-top: 10px;
+	margin-bottom: 10px
+}
+.info-box
+{
+/* 	width: 540px; */
+	margin: auto;
+	padding: 15px;
+	padding-bottom: 8px;
+/* 	background-color: #FFFFFF; */
+/* 	border-style: groove; */
+/* 	border-radius: 15px; */
+	position: relative;
+}
+.collection-item
+{
+	margin-bottom: 8px;
+	overflow: hidden;
+	width: 97%;
+}
+#collection-info-table td
+{
+	padding-bottom: 10px;
+}
+.collection-heading
+{
+/* 	float: left; */
+/* 	width: 160px; */
+	font-weight: bold;
+	vertical-align: top;
+}
+.collection-description
+{
+/* 	float: left; */
+/* 	width: 480px; */
+	text-align: justify;
+}
+#tabbar-wrapper
+{
+	width: 350px;
+	float: right;
+	border-style: groove;
+	border-radius: 15px;
+	margin-top: 10px;
+	margin-bottom: 20px;
+	background-color: #CFDCE7;
+    overflow-x: hidden;
+	padding: 10px;
+}
+.radio-button
+{
+	margin-top: 10px;
+	margin-left: 10px;
+}
+
+/* word cloud */
+
+.cloud {
+  float: left;
+  padding-right: 20px;
+  padding-bottom: 6px;
+  /* margin: 5px 5px 5px 5px; */
+  /* line-height: 30px; */
+  /* line-height: 1em; */
+  display: inline-block;
+  vertical-align: baseline;
+  font-weight: bold;
+  color: #003366;
+}

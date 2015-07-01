@@ -1,0 +1,20 @@
+@CHARSET "UTF-8";
+@import url(muse.css);
+.panel {
+    background-color: #dca9d4;
+}
+
+.graded {
+	/* generated from http://www.colorzilla.com/gradient-editor/ */
+background: #dca9d4; /* Old browsers */
+background: -moz-radial-gradient(center, ellipse cover,  #dca9d4 0%, #e8c6e3 100%); /* FF3.6+ */
+background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,#dca9d4), color-stop(100%,#e8c6e3)); /* Chrome,Safari4+ */
+background: -webkit-radial-gradient(center, ellipse cover,  #dca9d4 0%,#e8c6e3 100%); /* Chrome10+,Safari5.1+ */
+background: -o-radial-gradient(center, ellipse cover,  #dca9d4 0%,#e8c6e3 100%); /* Opera 12+ */
+background: -ms-radial-gradient(center, ellipse cover,  #dca9d4 0%,#e8c6e3 100%); /* IE10+ */
+background: radial-gradient(ellipse at center,  #dca9d4 0%,#f5e6f3 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#dca9d4', endColorstr='#e8c6e3',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+}
+.tools-button { background-color: #222;}
+
+h1 { font-style: italic; }

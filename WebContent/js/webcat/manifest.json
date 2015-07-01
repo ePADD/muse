@@ -1,0 +1,15 @@
+{
+  "name": "WebCat",
+  "version": "0.9.3",
+  "description": "WebCat Extension for Rapid Browsing",
+  "permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*/*","http://*/*"],
+      "js" : ["jquery.js","jog_plugin.js","webcat.js"]
+    }
+  ]
+}

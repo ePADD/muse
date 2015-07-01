@@ -1,0 +1,49 @@
+#searchresult-area .info-title {
+	width: 100%;
+	text-align: center;
+	margin-top: 8px;
+	margin-bottom: 15px;
+}
+
+#searchresult-area .navigation {
+	float: right;
+	margin-right: 20px;
+	margin-top: 8px;
+}
+
+#searchresult-info {
+	width: 96%;
+	align: middle;
+	margin: auto;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	background-color: #FFFFFF;
+	border-style: groove;
+	border-radius: 15px;
+	position: relative;
+}
+
+#searchresult-area {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	background-color: #CFDCE7;
+	border-style: groove;
+	border-radius: 15px;
+	position: relative;
+}
+
+#searchresult-tabs {
+	width: 140px;
+	float: left;
+}
+
+.clear {
+	clear: both;
+}
+
+h2 {
+	text-transform: none;
+}

@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app id="muse" version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+	<display-name>
+	Muse email analysis program</display-name>
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+		<welcome-file>index.htm</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+		<welcome-file>default.html</welcome-file>
+		<welcome-file>default.htm</welcome-file>
+		<welcome-file>default.jsp</welcome-file>
+	</welcome-file-list>
+
+  <!-- @FOR_JETTY_ONLY - This conflicts with Tomcat when run on Eclipse.
+  <servlet>
+	<servlet-name>default</servlet-name>
+	<servlet-class>org.mortbay.jetty.servlet.DefaultServlet</servlet-class>
+	<init-param>
+		<param-name>dirAllowed</param-name>
+		<param-value>false</param-value>
+	</init-param>
+  </servlet>
+    == @FOR_JETTY_ONLY -->
+
+<!-- 
+  <servlet>
+    <servlet-name>callback</servlet-name>
+    <servlet-class>edu.stanford.muse.slant.TwitterCallbackServlet
+        </servlet-class>
+  </servlet>
+  
+  <servlet>
+    <servlet-name>logout</servlet-name>
+    <servlet-class>edu.stanford.muse.slant.LogoutServlet
+        </servlet-class>
+  </servlet>  
+
+  <servlet>
+    <servlet-name>post</servlet-name>
+    <servlet-class>edu.stanford.muse.slant.PostServlet
+        </servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+    <servlet-name>callback</servlet-name>
+    <url-pattern>/search/callback</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>logout</servlet-name>
+    <url-pattern>/search/logout</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>post</servlet-name>
+    <url-pattern>/post</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>callback</servlet-name>
+    <url-pattern>/callback</url-pattern>
+  </servlet-mapping>
+ 
+  <servlet-mapping>
+    <servlet-name>logout</servlet-name>
+    <url-pattern>/logout</url-pattern>
+  </servlet-mapping>
+-->
+ 
+	<servlet>
+		<servlet-name>info</servlet-name>
+		<jsp-file>/info.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>info</servlet-name>
+	    <url-pattern>/info</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>index</servlet-name>
+		<jsp-file>/index.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>index</servlet-name>
+	    <url-pattern>/index</url-pattern>
+	</servlet-mapping>
+    
+	<servlet>
+		<servlet-name>folders</servlet-name>
+		<jsp-file>/folders.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>folders</servlet-name>
+	    <url-pattern>/folders</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>feedback</servlet-name>
+		<jsp-file>/feedback.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>feedback</servlet-name>
+	    <url-pattern>/feedback</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>debug</servlet-name>
+		<jsp-file>/debug.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>debug</servlet-name>
+	    <url-pattern>/debug</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>browse</servlet-name>
+		<jsp-file>/newBrowse.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>browse</servlet-name>
+	    <url-pattern>/browse</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>clearCache</servlet-name>
+		<jsp-file>/ajax/clearCache.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>clearCache</servlet-name>
+	    <url-pattern>/clearCache</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>saveMessages</servlet-name>
+		<jsp-file>/saveMessages.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>saveMessages</servlet-name>
+	    <url-pattern>/saveMessages</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>crossword</servlet-name>
+		<jsp-file>/xword.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>crossword</servlet-name>
+	    <url-pattern>/crossword</url-pattern>
+	</servlet-mapping>
+	
+  	<servlet>
+		<servlet-name>screen</servlet-name>
+		<jsp-file>/screen.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>screen</servlet-name>
+	    <url-pattern>/screen</url-pattern>
+	</servlet-mapping>
+  		
+  	<servlet>
+		<servlet-name>screenpass</servlet-name>
+		<jsp-file>/memorystudy/screenpass.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>screenpass</servlet-name>
+	    <url-pattern>/memorystudy/screenpass</url-pattern>
+	</servlet-mapping>
+  		
+  	<servlet>
+		<servlet-name>question</servlet-name>
+		<jsp-file>/memorystudy/question.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>question</servlet-name>
+	    <url-pattern>/memorystudy/question</url-pattern>
+	</servlet-mapping>
+
+  	<servlet>
+		<servlet-name>example</servlet-name>
+		<jsp-file>/memorystudy/example.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>example</servlet-name>
+	    <url-pattern>/memorystudy/example</url-pattern>
+	</servlet-mapping>
+
+  	<servlet>
+		<servlet-name>examplehandler</servlet-name>
+		<jsp-file>/memorystudy/examplehandler.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>examplehandler</servlet-name>
+	    <url-pattern>/memorystudy/examplehandler</url-pattern>
+	</servlet-mapping>
+  	  	
+  	<servlet>
+		<servlet-name>answers</servlet-name>
+		<jsp-file>/memorystudy/answers.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>answers</servlet-name>
+	    <url-pattern>/memorystudy/answers</url-pattern>
+	</servlet-mapping>
+
+  	<servlet>
+		<servlet-name>answerCheck</servlet-name>
+		<jsp-file>/memorystudy/answerCheck.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>answerCheck</servlet-name>
+	    <url-pattern>/memorystudy/answerCheck</url-pattern>
+	</servlet-mapping>
+  	
+  	<servlet>
+		<servlet-name>checkEligible</servlet-name>
+		<jsp-file>/memorystudy/checkEligible.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>checkEligible</servlet-name>
+	    <url-pattern>/memorystudy/checkEligible</url-pattern>
+	</servlet-mapping>
+	
+  	 <servlet>
+		<servlet-name>consentForm</servlet-name>
+		<jsp-file>/memorystudy/consentform.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>consentForm</servlet-name>
+	    <url-pattern>/memorystudy/consentForm</url-pattern>
+	</servlet-mapping>
+ 
+  	 <servlet>
+		<servlet-name>finish</servlet-name>
+		<jsp-file>/memorystudy/finish.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>finish</servlet-name>
+	    <url-pattern>/memorystudy/finish</url-pattern>
+	</servlet-mapping>
+  
+	<servlet>
+		<servlet-name>cards</servlet-name>
+		<jsp-file>/cards.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>cards</servlet-name>
+	    <url-pattern>/cards</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>groups</servlet-name>
+		<jsp-file>/showGroups.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>groups</servlet-name>
+	    <url-pattern>/groups</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>search-query</servlet-name>
+		<jsp-file>/search-query.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>search-query</servlet-name>
+		<url-pattern>/search-query</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>editLexicon</servlet-name>
+		<jsp-file>/editLexicon.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>editLexicon</servlet-name>
+	    <url-pattern>/editLexicon</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>charts</servlet-name>
+		<jsp-file>/charts.jsp</jsp-file>
+  	</servlet>
+  	
+  	<servlet-mapping>
+	  	<servlet-name>charts</servlet-name>
+	    <url-pattern>/people</url-pattern>
+	</servlet-mapping>
+	
+  	<servlet-mapping>
+	  	<servlet-name>charts</servlet-name>
+	    <url-pattern>/charts</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>links</servlet-name>
+		<jsp-file>/browseLinks.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>links</servlet-name>
+	    <url-pattern>/links</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>attachments</servlet-name>
+		<jsp-file>/browseAttachments.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>attachments</servlet-name>
+	    <url-pattern>/attachments</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>stackedGraph</servlet-name>
+		<jsp-file>/stackedGraph.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>stackedGraph</servlet-name>
+	    <url-pattern>/stackedGraph</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>archivist-tools</servlet-name>
+		<jsp-file>/archivist-tools.jsp</jsp-file>
+  	</servlet>
+ 
+  	<servlet-mapping>
+	  	<servlet-name>archivist-tools</servlet-name>
+	    <url-pattern>/archivist-tools</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>reflectText</servlet-name>
+		<jsp-file>/reflectText.jsp</jsp-file>
+  	</servlet>
+ 
+  	<servlet-mapping>
+	  	<servlet-name>reflectText</servlet-name>
+	    <url-pattern>/reflectText</url-pattern>
+	</servlet-mapping>
+    
+    <servlet>
+		<servlet-name>lens</servlet-name>
+		<jsp-file>/lens.jsp</jsp-file>
+  	</servlet>
+ 
+  	<servlet-mapping>
+	  	<servlet-name>lens</servlet-name>
+	    <url-pattern>/lens</url-pattern>
+	</servlet-mapping>
+    
+    <servlet>
+		<servlet-name>leads</servlet-name>
+		<jsp-file>/leads.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>leads</servlet-name>
+	    <url-pattern>/leads</url-pattern>
+	</servlet-mapping>
+    
+    <servlet>
+		<servlet-name>help</servlet-name>
+		<jsp-file>/help.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>help</servlet-name>
+	    <url-pattern>/help</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>settings</servlet-name>
+		<jsp-file>/settings.jsp</jsp-file>
+	</servlet>
+	
+	<servlet-mapping>
+		<servlet-name>settings</servlet-name>
+		<url-pattern>/settings</url-pattern>
+	</servlet-mapping>
+	
+
+	<servlet>
+		<servlet-name>edit-correspondents</servlet-name>
+		<jsp-file>/editAddressBook.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>edit-correspondents</servlet-name>
+		<url-pattern>/edit-correspondents</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>verifyEmailSetup</servlet-name>
+		<jsp-file>/verifyEmailSetup.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>verifyEmailSetup</servlet-name>
+		<url-pattern>/verifyEmailSetup</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>status</servlet-name>
+		<jsp-file>/ajax/getStatus.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>status</servlet-name>
+		<url-pattern>/status</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>error</servlet-name>
+		<jsp-file>/error.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>error</servlet-name>
+		<url-pattern>/error</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>dataReport</servlet-name>
+		<jsp-file>/dataReport.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>dataReport</servlet-name>
+		<url-pattern>/dataReport</url-pattern>
+	</servlet-mapping>
+	
+	
+	<servlet>
+		<servlet-name>types</servlet-name>
+		<jsp-file>/types.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>types</servlet-name>
+		<url-pattern>/types</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>graph</servlet-name>
+		<jsp-file>/graph.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>graph</servlet-name>
+		<url-pattern>/graph</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>archives-info</servlet-name>
+		<jsp-file>/archives/InfoPage.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>archives-info</servlet-name>
+	    <url-pattern>/archives/info</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>archives-index</servlet-name>
+		<jsp-file>/archives/index.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>archives-index</servlet-name>
+	    <url-pattern>/archives/</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>archives-search</servlet-name>
+		<jsp-file>/archives/Search.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>archives-search</servlet-name>
+	    <url-pattern>/archives/search</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>archives-browse-by-category</servlet-name>
+		<jsp-file>/archives/Lexicon.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>archives-browse-by-category</servlet-name>
+	    <url-pattern>/archives/category</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>archives-browse-by-monthly-terms</servlet-name>
+		<jsp-file>/archives/Cards.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>archives-browse-by-monthly-terms</servlet-name>
+	    <url-pattern>/archives/cards</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>archives-browse-by-correspondents</servlet-name>
+		<jsp-file>/archives/Correspondents.jsp</jsp-file>
+  	</servlet>
+  	<servlet-mapping>
+	  	<servlet-name>archives-browse-by-correspondents</servlet-name>
+	    <url-pattern>/archives/correspondents</url-pattern>
+	</servlet-mapping>
+
+	<!-- 
+   <servlet>
+    <servlet-name>LIsignin</servlet-name>
+    <servlet-class>edu.stanford.surface.LISigninServlet
+        </servlet-class>
+  </servlet>
+  <servlet-mapping>
+		<servlet-name>LIsignin</servlet-name>
+		<url-pattern>/surface/LIsignin</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+    <servlet-name>LIcallback</servlet-name>
+    <servlet-class>edu.stanford.surface.LICallbackServlet
+        </servlet-class>
+  </servlet>
+    <servlet-mapping>
+		<servlet-name>LIcallback</servlet-name>
+		<url-pattern>/surface/LIcallback</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+    <servlet-name>LIlogout</servlet-name>
+    <servlet-class>edu.stanford.surface.LogoutServlet
+        </servlet-class>
+  </servlet>
+  <servlet>
+    <servlet-name>LIpost</servlet-name>
+    <servlet-class>edu.stanford.surface.PostServlet
+        </servlet-class>
+  </servlet>
+  
+   -->
+   
+<error-page>
+  <exception-type>java.lang.Exception</exception-type>
+  <location>/error</location>
+</error-page>
+
+<error-page>
+  <exception-type>java.lang.Error</exception-type>
+  <location>/error.jsp</location>
+</error-page>
+
+<error-page>
+  <error-code>500</error-code>
+  <location>/error.jsp</location>
+</error-page>
+
+</web-app>

@@ -1,0 +1,761 @@
+@import "skin_default.css";
+
+img {
+	border-width: 0px
+}
+
+/*
+* {
+  -webkit-transition: all 0.9s ease;
+  -moz-transition:    all 0.2s ease;
+  -ms-transition:     all 0.9s ease;
+  -o-transition:      all 0.9s ease;
+}
+*/
+
+.rounded {
+	-moz-border-radius: 0.25em;
+	-webkit-border-radius: 0.25em;
+	border-radius: 0.25em;
+}
+
+
+.circular {
+	-moz-border-radius: 50%;
+    border-radius: 50%;
+}
+
+button { font-size: 10pt} /* check on other platforms, but the default button size looks ugly on mac */
+
+.shadow {
+	-moz-box-shadow: 2px 2px 3px #000;
+	-webkit-box-shadow: 2px 2px 3px #000;
+	box-shadow: 2px 2px 3px #000;
+	/* For IE 8 */
+	-ms-filter: "progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#000000')";
+	/* For IE 5.5 - 7 */
+	filter: progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#000000');
+}
+
+.modal { /* from jq tools */
+		display:none;
+		width:350px;
+		padding:15px;
+		text-align:left;
+		border:2px solid #333;
+		z-index: 99;
+	
+		opacity:0.95;
+		-moz-border-radius:6px;
+		-webkit-border-radius:6px;
+		-moz-box-shadow: 0 0 50px #ccc;
+		-webkit-box-shadow: 0 0 50px #ccc;
+}
+	
+input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+    border: 2px solid #74C0CF;
+}
+
+ol, ul, dl {
+	list-style: none outside none; /* no bullets */
+	margin: 0;
+	padding: 0;
+}
+
+a.no-underline {text-decoration:none}
+
+.no-bullets {
+	list-style: none outside none;
+}
+
+/**** login ****/
+div.simple-login {
+   /* left: 50%;
+    margin-left: -300px;*/
+    margin-top: 50px;
+    position: relative;
+    width: auto;
+}
+
+div.simple-login-half-column1 {
+    padding: 0px;
+    text-align: left;
+	/*margin-top:50px;*/
+   width: 400px;
+  /* position: fixed;*/
+  margin-left: -480px;
+  margin-top:30px;
+  color: #FFFFFF;
+}
+.login-method-title {
+	display:inline;
+}
+
+.login-method-text {
+	padding:5px;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+	margin-bottom:20px;
+}
+
+.login-method-icon {
+	position: relative;
+	left: -28px;
+	top: -28px;
+}
+
+.muse-overlay{
+	display: none; 
+	position: absolute; 
+	top: 0%;
+	left: 0%; 
+	width: 100%;
+	height: 100%; 
+	background-color: black; 
+	z-index:999; 
+	-moz-opacity: 0.75;
+	 opacity:.60; 
+	 filter: alpha(opacity=60);
+}
+
+.db-hint {
+	/*float: right;
+	margin-right: 100px;*/
+}
+
+
+.tagline {
+	padding-left:20px;
+	margin-top:-10px;	
+}
+
+.fixed-width {
+	max-width: 1200px;
+	margin: auto;
+	background-color:#ddd;
+	background-size: 7px 7px;
+	background-image:-webkit-linear-gradient(0deg, rgba(255, 255, 255, .2) 50%, transparent 50%, transparent);
+}
+
+.browsepage {
+	width:1200px; /* this should be the same as the fixed-width above. without this, the message area goes below the facets panel */
+}
+
+.tools-button {
+    font-size:18px;
+/*    background-color:rgb(23,190,207); */ /* #40c040; */
+    color:black;
+	border: 3px solid rgba(255, 255, 255, 0.0); /* 0.0 so it allots space but is not visible unless hover */
+	-moz-border-radius: 10px;
+    -webkit-border-radius:10px;
+    border-radius:10px;
+    font-variant: small-caps;
+    background-color: rgb(213,114,77);
+}
+.login-method-box {
+    border-radius: 4px 4px 4px 4px;
+    display: inline;
+    float: left; 
+ 	margin-bottom: 80px; /*10*/
+    margin-left: 20px;
+    padding-bottom: 25px;
+    padding-top: 10px;	
+    width: 320px;
+}
+
+.login-method-box-centered {
+    float: right;
+    margin-bottom: 10px;
+	margin-left: 300px;
+    padding-bottom: 25px;
+    padding-top: 25px;
+    width: 300px;
+}
+
+.footer {
+    font-size: 80%;
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-top: 10px;
+}
+
+.bold-heading {
+	color: gray;
+    font-size: 36px;
+}
+
+.diary {
+	padding: 10px;
+}
+
+.top-banner {
+/*	padding: 2px; no need for this */
+}
+
+.folderEntry {
+	min-width: 15em;
+	width: 15em;
+	max-width: 15em;
+	margin: 1px;
+}
+
+
+.foldersTable {
+	min-width: 60em; /* based on 4 * folderEntry */
+	width: 60em;
+	max-width: 60em;
+}
+
+/*
+button {
+	font-size: 17px;
+}
+*/
+
+.hilited-button {
+	border: 0;
+	padding: 5px;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+}
+
+.noborder {
+	border-width: 0px;
+	border-style: none;
+}
+
+/************* protovis *****************/
+.protovizcontacts {
+	border-width: 1px 1px 1px 1px;
+	border-spacing: 0px;
+	border-style: solid solid solid solid;
+	border-color: #D0D0D0;
+	background-color: white;
+}
+
+.protovis-text {
+	color: black;
+}
+
+.protovis-summary {
+	border-width: 1px;
+	border-style: solid;
+	border-color: #FAF0E6;
+	padding: 1px;
+	background-color:  #FAF0E6;
+	-moz-border-radius: 0px;
+}
+
+.protovizcontacts td {
+	border-width: 1px;
+	padding: 1px;
+	border-style: solid;
+	border-color: #d0d0d0;
+	background-color: rgb(250, 240, 230);
+	-moz-border-radius: 0px;
+}
+/************* end protovis *****************/
+
+.faded {
+	opacity: 0.5;
+	filter: alpha(opacity = 50);
+}
+
+.nonfaded {
+	opacity: 1.0;
+}
+
+.folders-div {
+	min-height:100px;
+}
+
+.welcome-div {
+	min-height: 100px;
+	text-align:center;
+}
+
+.filters-div,.panel {
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+	padding: 5px;
+}
+
+.panel-header {
+	text-align: left;
+	font-size: x-large;
+	-moz-border-radius: 4px 4px 0px 0px;
+	-webkit-border-radius: 4px 4px 0px 0px;
+	border-radius: 4px 4px 0px 0px;
+}
+
+ol.tools li {
+	align:center;
+}
+
+ol.tools li div {
+	display:inline;
+}
+
+.tools-button {
+	padding: 5px;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+}
+
+.db-filters-div {
+	border-width: 1px;
+}
+
+.muted {
+	color: gray;
+}
+
+.searchbox {
+	font-size: 17px;
+}
+
+.jog_text {
+	font-size: 20pt;
+}
+
+.showMessageFilter {
+	font-size: 12pt;
+}
+
+.sectionName {
+	text-align: center;
+	font-size: 16pt;
+}
+
+
+.hidden {
+	display: none;
+}
+
+.shown {
+	display: block;
+}
+
+.growl {
+	font-size:12pt;
+	font-family: "Myriad Pro", Courier, Arial, sans-serif;
+}
+
+.status {
+	padding: 10px;
+	position: absolute;
+	border-collapse: separate;
+	border-spacing: 5px;
+	filter: alpha(opacity = 90);
+	opacity: 0.9;
+	-khtml-opacity: 0.9;
+	opacity: 0.9;
+	box-shadow: 0 0 20px #777777; 
+	padding-top: 7px;
+	color: #000000
+}
+
+.bold-heading {
+	font-size: 36pt;
+	color: #C0C0C0;
+}
+
+/********* info page ********/
+.infocolumn {
+	float:left;
+	width:225px;
+	margin-left:10px;
+	margin-right:10px;
+}
+
+.infocolumn-header {
+	font-size:150%;
+}
+
+
+/******** messages **********/
+div.message {
+	min-width: 800px;
+	min-height: 400px;
+}
+
+.pageHeader {
+	height:40px;
+	/* margin:0px; */
+}
+
+.browse_contents {
+	/* nothing special right now */
+	min-height:1000px;
+	height:1000px;
+	min-width: 1000px;
+	max-width: 1000px;
+	width:1000px;
+}
+
+.browse_contents a {
+	color:black; /* override the white */
+}
+
+.end-of-browse-contents-line {
+	color: white;
+	border-style: solid;
+}
+
+.message {
+	margin: 8px 10px;
+	width: 100%;
+}
+
+.message a {
+	color: #0000EE
+}
+
+.docheader { /* padding:8px 10px; */
+	padding: 10px;
+	margin-bottom: 10px;
+	border-width: 0px 0px 1px 0px;
+	border-style: solid;
+	width: 98%; 	
+}
+
+div.muse-doc { 
+	padding-top: 0px;
+	margin-left: 20px;
+	margin-right: 20px;
+	font-size: 10pt; /* 12px; */
+	/* font-family: Courier, Arial, sans-serif; */
+	font-family: "Myriad Pro", Courier, Arial, sans-serif;
+	font-size: 15px;
+	line-height: 1.6em;
+/*	min-height: 1200px; */
+
+	/* insert word break to handle long unbroken words longer than a line: see http://blog.kenneth.io/blog/2012/03/04/word-wrapping-hypernation-using-css	 */
+	-ms-word-break: break-all;
+	word-break: break-all;
+	-webkit-hyphens: auto;
+    -moz-hyphens: auto;
+    hyphens: auto;
+}
+
+/******** attachments **********/
+div.attachments {
+	padding: 20px;
+}
+
+ul.thumbnails {
+	display: inline;
+}
+
+ul.thumbnails li {
+	float: left;
+	margin: 0 2px 2px 0;
+	padding: 0;
+	display: inline;
+}
+
+ul.thumbnails img {
+	padding: 3px;
+	display: block;
+}
+
+div.attachments img {
+	border: 2px solid #F3EFEF;
+	padding: 3px;
+}
+
+.weblink-date {
+	padding: 2px;
+	margin: 2px;
+	color: white;
+	text-decoration: none;
+}
+
+.noTNattachment a {
+	padding-left:10px; padding-right:10px;padding-top: 5px; padding-bottom: 5px;
+    text-decoration:none;
+}
+
+/* groups stuff */
+
+td.groups {
+	padding: 10px 20px 10px 0px;
+	vertical-align: top;
+}
+
+ul.personList {
+	font-size: 14px;
+	text-align:left;
+}
+
+.groupsheader {
+	font-size: 14px;
+}
+
+li.person {
+	padding: 1px;
+	text-align:left;
+}
+
+li.group-header {
+	padding: 1px 1px 3px 1px;
+	text-align:left;
+	width:100px;min-height:18px;margin:1px;height:18px;top:12px;left:7px;
+	margin-bottom: 10px;
+}
+
+.group {
+	margin: 20px;
+}
+
+.multigroup {
+  border: 1px solid #c0c0c0;
+  margin-top: 0px;
+  margin-left:8px;
+  margin-right:8px;
+  padding: 8px;
+  -moz-border-radius:4px;
+  -webkit-border-radius:4px;
+  -border-radius:4px;
+  -moz-box-shadow: 1px 0 rgba(255, 255, 255, 0.5) inset, 0 -2px 0 rgba(0, 0, 0, 0.1) inset, 0 1px 0 rgba(0, 0, 0, 0.1);
+  -webkit-box-shadow: 1px 0 rgba(255, 255, 255, 0.5) inset, 0 -2px 0 rgba(0, 0, 0, 0.1) inset, 0 1px 0 rgba(0, 0, 0, 0.1);
+   box-shadow: 1px 0 rgba(255, 255, 255, 0.5) inset, 0 -2px 0 rgba(0, 0, 0, 0.1) inset, 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.individualgroup {
+  margin-top: 0px;
+  margin-left:8px;
+  margin-right:8px;
+  padding-top: 8px;
+}
+
+.menuitem { width:100%; cursor:pointer; cursor:hand; white-space:nowrap; }
+
+.menuitem img {	padding: 0px; border: none; }
+
+.groupsmenu {
+	padding:2px;
+/*	border-style: solid;
+	border-width: 1px; */
+}
+
+.personmenu {
+	padding:1px;
+}
+
+ul.personList {
+	min-width:170px;
+}
+
+.groupname {
+	padding: 2px;
+}
+
+.hilited-group-name {
+	font-weight: bold;
+}
+
+.hilitedTerm {
+    text-decoration:none;
+}
+
+.unhilited-group-name {
+}
+
+.bookmarklet {
+	padding-left: 2px;
+	padding-right: 2px;
+	color: #FFFFFF;
+	background-color: #606060;
+	-moz-border-radius: 8px;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	text-decoration: none;
+}
+
+/* from http://scottgale.com/blog/css-vertical-text/2010/03/01/, currently not used */
+.vertical-text {
+	color: #333;
+	border: 0px solid red;
+	writing-mode: tb-rl;
+	-webkit-transform: rotate(270deg);
+	-moz-transform: rotate(270deg);
+	-o-transform: rotate(270deg);
+	white-space: nowrap;
+	display: block;
+	bottom: 0;
+	width: 100px;
+	height: 40px;
+	/*	font-family: ÔTrebuchet MSÕ, Helvetica, sans-serif; */
+	font-size: 24px;
+	font-weight: normal;
+	/*	text-shadow: 0px 0px 1px #333; */
+}
+
+/* comment and comment note placement is delicate, they should be updated together */
+.comment-div { min-width:190px; min-height:190px;}
+.comment {
+	font-size:120%;
+	padding: 0px 10px 0px 10px;
+	font-family:'Comic Sans MS', cursive;
+	position:absolute;
+	right:0px;
+	top:20px;
+	border-style: none;
+	width:190px;
+	height:190px;
+	border-color: white;
+	background-image: url('../images/rules-bg.png');
+	line-height: 31px;
+	padding-top: 7px;
+	z-index: 50;
+}
+
+.comment:focus {
+  border: 2px solid white;
+}
+
+/* #allCards div { */
+/*   margin:0px auto; */
+/* } */
+
+#cardYearSelect {
+	font-size: 18px;
+	vertical-align: middle;
+	height: 25px;
+	padding: 0px;
+	margin: auto;
+}
+
+.cardYearTable {
+	border-collapse: collapse;
+}
+
+.cardYearArrow {
+	vertical-align: middle;
+	width: 24px;
+}
+
+textarea {
+    margin:0px auto;
+}
+
+.textField {
+	padding:10px;
+    background-color:lightblue;
+}
+
+.cardmenu img {
+    vertical-align:bottom;
+}
+
+.tagcloud-list {
+/*  border: 1px solid #c0c0c0; */
+  font-size: 100%;
+  font-weight: normal;
+  margin-top: 10px;
+  margin-left:8px;
+  margin-right: 8px;
+  padding: 4px;
+  background-color:#EEEEEE; /* white; */
+  line-height:1.0em;
+/* font-family: Arial, sans-self;
+// background-color:#F0E68C; */
+}
+
+.monthly-card {
+	max-width:270px;
+	min-width:270px;	
+	border: 0px;
+	border-style:hidden;
+	vertical-align:top;
+	margin:5px;
+/*	background-image: url('http://www.ejeliot.com/samples/equal-height-columns/images/example-2.gif') top left repeat-y repeat-y; */
+}
+
+.monthly-terms {
+	line-height:20px;
+	margin-top: 2px;
+	background-image:url('../images/rules-bg.png'); /* ../ because its relative to css directory */
+	background-repeat:repeat-x repeat-y;
+	background-position:0px -3px;
+	background-size: 1px 20px;
+}
+
+.monthly-card-box {
+	margin: 2px;
+	padding: 2px;
+	text-align: left;
+	border-right: 1px solid rgba(127,127,127,0.5);
+}
+
+.card-row {
+	background-image: url(http://www.ejeliot.com/samples/equal-height-columns/images/example-2.gif) top left repeat-y repeat-y;
+}
+
+.tagcloud-name {
+  font-size: 14pt;
+  margin-left:10px;
+  -moz-border-radius-topleft:10px;
+  -moz-border-radius-topright:10px;
+  -webkit-border-top-left-radius:10px;
+  -webkit-border-top-right-radius:10px;
+  -border-radius-topleft:10px;
+  -border-radius-topright:10px;
+  padding: 0px;
+  font-variant:small-caps;
+}
+
+.tagcloud-name2 {
+  font-size: 12pt;
+  padding-top: 2pt;
+  margin-right: 10px;
+  float: right;
+}
+
+.tagcloud-base {
+  font-size: 12pt;
+  display: inline;
+  margin-left:8px;
+  margin-right:4px;
+}
+
+.tagcloud-anchor {
+  text-decoration: none;
+}
+
+
+#allCards td {
+	border-width: 0px;
+}
+
+ul.tagcloud-list {
+	margin-top: 0px; /* want tags area to start right below month name */
+}
+
+img.attch {
+	width: 200px;
+}
+
+img.attch.highlight {
+	border-color: yellow;
+}
+
+.login-fields input {
+	font-size: 16px;
+}
+/* borrowed from bootstrap */
+.caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  vertical-align: top;
+  border-top: 4px solid #000000;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  content: "";
+}

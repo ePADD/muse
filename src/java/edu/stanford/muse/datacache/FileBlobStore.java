@@ -1,0 +1,395 @@
+/*
+ Copyright (C) 2012 The Stanford MobiSocial Laboratory
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+package edu.stanford.muse.datacache;
+
+import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
+
+public class FileBlobStore extends BlobStore implements Serializable {
+
+private static Log log = LogFactory.getLog(FileBlobStore.class);
+private final static long serialVersionUID = 1L;
+
+private String dir; // base dir where this data store keeps it files
+private static final String META_DATA_FILENAME = ".MetaData"; // filename where meta data is kept
+
+private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
+
+//remove final later if we want this to be user configurable
+//pdfbox sometimes crashes the VM mysteriously on Macs
+final static boolean NO_CONVERT_PDFS = System.getProperty("pdf.thumbnails") == null;
+
+/** @param dir directory where this store keeps its data */
+public FileBlobStore(String dir) throws IOException
+{
+    log.info("Opening file repository in " + dir);
+    this.dir = dir;
+    File dir_file = new File(dir);
+    if (!dir_file.exists())
+        dir_file.mkdirs();
+    else
+    {
+        // could also lock the dir to make sure no other data store object uses this dir inadvertently
+        File f = new File(this.dir + File.separatorChar + META_DATA_FILENAME);
+        if (f.exists())
+        {
+            unpack();
+            log.info("File repository in " + dir + " has " + uniqueBlobs.size() + " entries");
+        }
+    }
+}
+
+/** use with care! */
+public void setDir(String dir) { this.dir = dir; }
+
+/** copies the selected blobs to a new file blobstore at the given path */
+public FileBlobStore createCopy(String path, Collection<Blob> blobs) throws IOException
+{
+ 	FileBlobStore fbs = new FileBlobStore(path); // no owner field
+	for (Blob b: blobs)
+	{
+		try {
+			// path can be something like E:\/Users/xyz
+			// get_URL(b) can return something like file:E:\/Users\hangal\ePADD archive of hangal@gmail.com\blobs
+		    String urlString = get_URL(b); // .replaceAll("\\\\", "/");
+		    // urlString can be something like file:E://Users/hangal/ePADD archive of hangal@gmail.com/blobs
+		    // very importantly, the E:/Users/... needs to be made E://
+	//	    urlString = urlString.replaceAll(":/", "://"); // 
+			URL url = new URL(urlString); // replaceAll expects a regex, so it needs to get a \\, so we need to write \\\\ !
+			fbs.add(b, url.openStream()); // get_URL returns things with \ sometimes
+            /* this code is causing trouble, so drop these views. openstreams are not serializable, dunno why they are kept with the views
+			for (String view: getViews(b))
+				fbs.addView(b, view, new URL(getViewURL(b, view)).openStream());
+				*/
+		} catch (Exception e) {
+				Util.print_exception(e, log);
+		}
+	}
+	fbs.pack();
+	return fbs;
+}
+
+/** directory where this store keeps it data */
+public String getDir() { return dir; }
+
+private synchronized void unpack() throws IOException
+{
+	String f = this.dir + File.separatorChar + META_DATA_FILENAME;
+    try {  ObjectInputStream ois = new ObjectInputStream (new FileInputStream (f)); super.unpack_from_stream(ois); ois.close();}
+    catch (ClassNotFoundException cnfe) {
+    	log.warn ("Unable to read existing metadata file for blobstore: " + f + "\nDeleting it...");
+    	boolean b = new File(f).delete();
+    	log.warn ("delete succeeded:" + b);
+    }
+}
+
+@Override
+public synchronized void pack() throws IOException
+{
+	// write to a tmp file first, then rename -- we don't want to trash the if there is a disk full or disk error or something....
+	String f = this.dir + File.separatorChar + META_DATA_FILENAME;
+	String tmp = f + ".tmp";
+    ObjectOutputStream oos = new ObjectOutputStream (new FileOutputStream (tmp));
+    super.pack_to_stream(oos);
+    oos.close();
+   
+    File F = new File(f);
+    if (F.exists())
+    {
+	    boolean b = F.delete();
+	    if (!b)
+	    	log.warn ("Failed to delete blobs metadata file");
+    }
+
+    boolean success = new File(tmp).renameTo(new File(f));
+    if (!success)
+    	log.warn ("Metadata rename failed... packing may be incomplete!");
+
+    log.info("packed datastore: " + this);  	
+}
+
+/** full filename for data */
+public String full_filename(Blob b)
+{
+    if  (urlMap.get(b) != null)
+        return b.filename;
+    else
+    {
+    	int x = index(b);
+    	if (x == -1)
+    		return null;
+        return x + "." + b.filename;
+    }
+}
+
+/** full filename for an arbitrary file associated with d */
+public String full_filename(Blob b, String fname)
+{
+    if  (urlMap.get(b) != null)
+        return fname;
+    else
+        return index(b) + "." + fname;
+}
+
+/** add a new piece of data with content copied from is.
+    if owner is not set on the data, we will set it to this data store's owner.
+    computes content hash and sets it.
+    will close the stream when done.
+    Performance critical!
+    returns # of bytes in inputstream
+*/
+public long add(Blob blob, InputStream is) throws IOException
+{
+	long nBytes = -1;
+    synchronized (this)
+    {
+        if (this.contains (blob))
+        {
+            log.info ("Item is already present: " + blob);
+            return nBytes;
+        }
+
+        super.add(blob);
+        Util.ASSERT (this.contains(blob));
+    }
+
+    // release the lock here because we dont want a long op like reading the object's stream
+    // and storing the file to be serialized across threads.
+
+    // copy the stream, if it throws IOException, then we cancel the item
+    try {
+        DigestInputStream din = new DigestInputStream(is, MessageDigest.getInstance("SHA-1"));
+        log.info(" adding file to blob store = " + Util.blurKeepingExtension(full_filename(blob)));
+        nBytes = Util.copy_stream_to_file(din, dir + File.separatorChar + full_filename(blob));
+//        byte b[] = din.getMessageDigest().digest();
+//        blob.setContentHash(b);
+ //       blob.setContentHashString(Util.byteArrayToHexString(b));
+    } catch (IOException ioe) {
+        // we couldn't copy the stream to the data store, so undo everything
+        super.remove(blob);
+        Util.ASSERT (!this.contains(blob));
+        throw ioe;
+    } catch (NoSuchAlgorithmException nsae) {
+        // we couldn't copy the stream to the data store, so undo everything
+        super.remove(blob);
+        Util.ASSERT (!this.contains(blob));
+        throw new RuntimeException(nsae);
+    }
+
+    Util.ASSERT (this.contains(blob));
+
+    // packing needs to be done more efficiently (batch mode or incremental)
+    if ((uniqueBlobs.size() % 100) == 0)
+    	pack();
+    	
+    return nBytes;
+}
+
+public void add (Blob b, URL u)
+{
+    synchronized (this)
+    {
+        if (this.contains (b))
+        {
+            log.info ("Item is already present: " + b);
+            return;
+        }
+
+        super.add(b);
+        Util.ASSERT (this.contains(b));
+    }
+}
+
+/** add a view to the primary data with the given key. the data is stored with the given filename in the store */
+public synchronized void addView(Blob primary_data, String filename, String view, InputStream is) throws IOException
+{
+    // for file data store, the object stored for the View is the file name
+    super.addView(primary_data, view, filename);
+    Util.copy_stream_to_file(is, dir + File.separatorChar + full_filename(primary_data, filename));
+}
+
+public InputStream getInputStream (Blob b) throws FileNotFoundException, IOException
+{
+    URL u = urlMap.get(b);
+    if (u == null)
+        return new FileInputStream (dir + File.separatorChar + full_filename(b));
+    else
+        return u.openStream();
+}
+
+private String get_cache_URL (String filename) { 
+	String nullURL = "file://null";
+	if (filename == null)
+		return nullURL;
+	try {
+		// important: this can be tricky, esp. on windows (and has led to bugs), so rely on the platform's toURI.toURL()
+		// e.g. see http://stackoverflow.com/questions/9942033/java-urlfile-doesnt-work-on-windows-xp
+		return new File(dir + File.separator + filename).toURI().toURL().toString();
+	} catch (MalformedURLException e) {
+		// TODO Auto-generated catch block
+		Util.print_exception(e, log);
+		log.warn ("ERROR trying to get URL for filename: " + filename + "  under " + dir);
+		return nullURL;
+	} 
+}
+
+@Override
+public String get_URL (Blob b)
+{
+    URL u = urlMap.get(b);
+    if (u != null)
+        return u.toString();
+    else
+        return get_cache_URL(full_filename(b));
+}
+
+@Override
+public String getRelativeURL (Blob b)
+{
+    URL u = urlMap.get(b);
+    if (u != null)
+        return u.toString();
+    else
+        return full_filename(b);
+}
+
+@Override
+public String getViewURL (Blob b, String key)
+{
+    String filename = (String) getView(b, key);
+    if (filename == null)
+    	return null;
+    else
+    	return get_cache_URL (full_filename(b, filename));
+}
+
+@Override
+public byte[] getDataBytes(Blob b) throws IOException
+{
+    URL u = urlMap.get(b);
+    if (u == null)
+    {
+        String filename = dir + File.separatorChar + full_filename(b);
+        return Util.getBytesFromFile(filename);
+    }
+    else
+    {
+        return Util.getBytesFromStream(u.openStream());
+    }
+}
+
+@Override
+public byte[] getViewData(Blob b, String key) throws IOException
+{
+    String filename = (String) getView(b, key);
+    return Util.getBytesFromFile (dir + File.separatorChar + full_filename(b, filename));
+}
+
+/** generates thumbnail for the given image and adds it as a "tn" supplement */
+public void generate_thumbnail(Blob b) throws IOException
+{
+	if (this.hasView(b, "tn"))
+	{
+		log.info("Already have thumbnail for blob " + b);
+		return;
+	}
+
+    String filename = "tn." + b.filename;
+    String tmp_filename = TMP_DIR + File.separatorChar + filename;
+    String tnFilename = null;
+    boolean noThumb = false;
+	String MOGRIFY = "/opt/local/bin/mogrify";
+	if (Util.is_image_filename (b.filename) && new File(MOGRIFY).exists())
+	{
+	    // mogrify will update tmp_filename in place, creating a thumbnail
+		tnFilename = tmp_filename;
+	    createBlobCopy(b, tmp_filename);
+		try {
+			Util.run_command(new String[] {MOGRIFY, "-geometry", "160x120", tmp_filename});
+		} catch (Exception e) {
+    		log.warn("mogrify failed: " + e.getMessage() + "\n" + Util.stackTrace(e));
+    		noThumb = true;
+    	}
+    }
+    else if (!NO_CONVERT_PDFS && Util.is_pdf_filename(b.filename))
+    {
+//    	tnFilename = tmp_filename + ".jpg";
+//    	// [0] converts only page 0
+//    	// only works on mac, after port install imagemagick
+//    	Util.run_command(new String[] {"/opt/local/bin/convert", tmp_filename + "[0]", tnFilename});
+//    	Util.run_command(new String[] {"/opt/local/bin/mogrify", "-geometry", "160x120", tnFilename});
+    	try {
+    		 // pdfToImage will create x1.png from x.pdf
+    		tnFilename = tmp_filename.substring (0, tmp_filename.length()-".pdf".length()); // strip the ".pdf"
+    		tnFilename += "1.png";
+    		String[] args = new String[] {"-imageType", "png", "-startPage", "1", "-endPage", "1", tmp_filename};
+    		org.apache.pdfbox.PDFToImage.main(args);
+    		log.info("Saving PDF thumbnail to " + tnFilename);
+    		filename = filename + ".png"; // make sure the suffix for the thumbnail is named with a .png suffix in the cache
+    	} catch (Throwable e) {
+    		// make sure to catch Throwable and not just Exception because the PDF can throw a
+    		// java.lang.NoClassDefFoundError: org/bouncycastle/jce/provider/BouncyCastleProvider for password protected PDFs
+    		log.warn("PDF to image got exception: " + e.getMessage() + "\n" + Util.stackTrace(e));
+    		tnFilename = null;
+    		noThumb = true;
+    	}
+    }
+    else
+    {
+    	noThumb = true;
+    	// log.info ("No thumbnail for attachment file named: " + b.filename);
+    }
+
+	if (!noThumb)
+	{
+	    // add thumbnail to data store
+		if (tnFilename != null)
+			this.addView(b, filename, "tn", new FileInputStream(tnFilename));
+
+		log.info ("Generating thumbnail for data with tn filename: " + tnFilename);
+
+	    // best effort to delete the intermediate files, dont worry too much if we fail.
+	    if (! new File(tmp_filename).delete())
+	    	log.warn ("REAL WARNING: Unable to delete file: " + tmp_filename);
+	    if (tnFilename != null && !(tmp_filename == tnFilename) && !new File(tnFilename).delete())
+	    	log.warn ("REAL WARNING: Unable to delete file: " + tnFilename);
+	}
+}
+
+private String createBlobCopy(Blob b, String tmp_filename) throws IOException {
+	// create a copy of the image first in tmp_filename
+    InputStream is = null;
+	String url = this.get_URL(b);
+	url = url.replace("%", "%25");
+
+    try {
+    	is = new URL(url).openStream();
+    } catch (MalformedURLException me) { Util.report_exception_and_rethrow(me, log); }
+
+    Util.copy_stream_to_file(is, tmp_filename);
+	return url;
+}
+
+}

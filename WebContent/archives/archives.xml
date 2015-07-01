@@ -1,0 +1,39 @@
+<archives>
+
+  <item>
+    <name>TEST_CHECKMUSE</name>
+    <number>EC000</number>
+    <description>Gmail archive of checkmuse</description>
+  </item>
+
+  <item>
+    <name>kegan_inbox</name>
+    <number>EC222</number>
+    <description>Email archive of Elena Kagan</description>
+  </item>
+
+  <item>
+    <name>Steve Jobs Email Archive</name>
+    <number>EC001</number>
+    <description>Email archive of Steve Jobs</description>
+  </item>
+  
+  <item>
+    <name>Bill Gates Email Archive</name>
+    <number>EC002</number>
+    <description>Email archive of Bill Gates</description>
+  </item>
+  
+  <item>
+    <name>Robert Creeley Email Archive</name>
+    <number>EC009</number>
+    <description>Email archive of Rebert Creeley</description>
+  </item>
+  
+  <item>
+    <name>Barack Obama Email Archive</name>
+    <number>EC244</number>
+    <description>Email archive of Barack Obama</description>
+  </item>
+  
+</archives>

@@ -1,0 +1,87 @@
+/* skin: */
+
+body { margin: 1% 5% 1% 5%; background-color: #ffffff; font-size:11px; font-family: "lucida grande",tahoma,verdana,arial,sans-serif; text-align: justify; font-size:11px; }
+h1 { font-variant: small-caps; color: #333333; }
+
+.selected-folder { background-color: #FFFFCC;}
+.diary {
+	font-family:Chalkboard;
+	background-image: url('../images/parchment.png');
+}
+
+.top-banner{
+	background-color: #F2BABB;
+}
+
+.db-filters-div, .panel {
+	background-color: #ffffff;
+	border-color:#c0c0c0;
+}
+
+.panel-header {
+	background-color: #1F242A; /* #404040; #666fff; #007fff; // #0571B0; */
+	color:#ffffff;
+}
+
+.tools-button {
+	font-size:14px;
+	background-color: #194E84; /* #4682B4; #f0f0f0; #404050; */
+	color:#ffffff; /* #000000; /* #ffffff; */
+	font-variant: small-caps;
+}
+.hilited-button {
+	font-size:14px;
+	background-color: #ffffff; /* #666fff; */
+	color: #194E84; /* #4682B4;  #ffffff; */
+	font-variant: small-caps;
+}
+
+.db-login-field {
+background-color: #c0c0c0;
+font-size:17px;
+}
+
+.searchbox {
+	background-color: #c0c0c0;
+}
+
+hr {
+	color: #EF8A62;
+}
+
+.db-hint {
+color: gray;
+}
+
+.showMessageFilter {
+	color:white;
+	background-color:black;
+	opacity:0.5
+}
+
+#status {
+	border: medium solid red;
+	background-color: #e0e0e0; // #F0E68C;
+}
+
+table.browse_contents {
+	border:1px solid #D4D4D4;
+	background-image:url('../images/parchment-light.png');
+}
+table.message {
+	color:#000000;
+}
+ul.thumbnails li {
+border-color: #101080;
+}
+ul.thumbnails img {
+border: 2px solid #f3efef;
+}
+ul.thumbnails li a.hover img {
+border-color: #101080;
+}
+#jog_contents a:visited {
+	background-color: white;
+	color: #4040c0;
+}
+/* nice bright orange we can use somewhere; #ffd700 */

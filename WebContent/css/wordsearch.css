@@ -1,0 +1,32 @@
+@CHARSET "UTF-8";
+body{font-family:"Myriad Pro", "Trebuchet MS", Verdana, Geneva, Arial, sans-serif}
+.box {position:relative;display:inline;padding:6px 10px 0px 10px;
+font-size:20px;
+font-family:courier;
+margin:0px;
+border: 1px solid rgba(0,0,0,0.4);
+-webkit-print-color-adjust:exact;
+height:30px;
+width:30px;
+text-transform:uppercase;}
+/* .box{font-size: 20px; line-height:30px; padding: 10px 10px 0px 10px} */
+/*.box {position:relative;display:inline;padding:10px 10px 0px 10px; font-size:20px; font-family:courier;margin:0px;border: 1px solid black;
+text-transform:uppercase;
+}*/
+.friend_filled{background-color:pink;!important}
+.letter,.empty,.stop {color:royalBlue;}
+.wrongletter {color:red;}
+.empty_letter {color:white;}
+.empty-hilited-box { color:yellow; background-color: yellow;} /* note: has to be after empty_letter! */
+.hilited-box { background-color: yellow;}
+
+.filledClueNum {color:royalblue;}
+.clue {display:inline;float:left;width:270px;margin-left:6px;}
+.clues-column { float:left;width:300px;
+	font-size:9pt;
+	margin-right:30px;margin-top:-15px;
+	line-height:20px;}
+.clue-header { font-size:12pt;text-transform:uppercase;font-weight:bold;margin-left:27px;}
+.endRow { clear:both;}
+.small_cluenum-in-box {position:absolute;left:1px;top:1px;z-index:200;color:black;font-size:5px;line-height:5px;}
+.small_clueNum {display:inline;width:10px;float:left;text-align:right;font-weight:bold;margin-right;10px;}

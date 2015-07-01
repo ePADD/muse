@@ -1,0 +1,303 @@
+/* skin: */
+/* @import url(color_green.css); */
+@import "color_default.css";
+body {
+	font-family: "Myriad Pro", "Trebuchet MS", Calibri, Verdana, Geneva, Arial, sans-serif;
+	line-height: 1.6em;
+    margin: 1% 5%;
+    text-align: left;
+}
+
+a {
+	color: black;
+}
+
+.panel a {
+	color: lightgray; 
+}
+
+.help h2 { color: black; }
+
+#actual_cards .db-hint a, .groups-list a {
+	color: black; 
+}
+
+h1 {
+	font-variant: small-caps;
+}
+
+h2 {
+    font-family: "Gill Sans","Gill Sans MT",Arial,sans-serif; /* Calibri doesn't look too good on windows, gill sans not available */
+    font-size: 20px;
+    font-weight: normal;
+    letter-spacing: 0.05em;
+    margin-bottom: 0;
+    margin-top: 0;
+    padding-bottom: 0;
+    padding-top: 10px;
+    text-transform: uppercase;
+}
+
+h3 {
+    font-family: "Gill Sans","Gill Sans MT",Calibri,Arial,sans-serif;
+    font-size: 20px;
+    font-weight: normal;
+    letter-spacing: 0.05em;
+    margin-bottom: 0;
+    margin-top: 10px;
+    padding-bottom: 0;
+}
+
+ol.topnav li {
+	display: inline;
+	/* border-right: 2px none #blue; */
+}
+
+.topnav .nav-item {
+	padding:5px;
+	margin-left:10px;
+	border-style:solid;
+	border-color: rgba(0,0,0,0.0); /* transparent */
+	border-radius:3px;
+	border-width: 1px;
+}
+
+.topnav .nav-item:hover {
+	border-color:black;
+	background-color: rgba(192,192,192,0.5); 
+	-webkit-transition-property: background-color, border-color;
+	-webkit-transition-duration: 250ms,250ms;
+	-moz-transition-property: background-color, border-color;
+	-moz-transition-duration: 250ms,250ms;
+	transition-duration: 250ms,250ms;
+	transition-property: background-color, border-color;
+}
+
+ol.topnav li a {
+	text-decoration: none;
+}
+
+ol.topnav li a:hover {
+	text-decoration: underline;
+}
+	
+ol.topnav li.last {
+    border-right: medium none;
+}
+
+.clickableLink {
+    display: inline;
+    font-family: Calibri,Arial,sans-serif;
+	font-size: 10pt;
+    padding: 0 5px;
+	text-decoration:none;
+	text-transform:uppercase;
+}
+
+.clickableLink:hover {
+	text-decoration:underline;	
+}
+
+.page, .cardspage, .folderspage {
+	padding-left: 2%;
+	padding-right: 2%;
+}
+
+.pageFrame {
+	padding-left: 50px;
+	padding-right: 50px;
+}
+
+
+.account {
+	border-style: none;
+	border-width: 1px;
+}
+
+.toolbox-advanced {
+	padding-top:10px;
+}
+
+.tagcloud-base:hover {
+	text-decoration: underline;
+}
+
+.diary {
+    background-image: url("../images/parchment.png");
+	font-family:Chalkboard;
+}
+
+.login-error-message {
+	margin-bottom: 10px;
+    padding: 0 5px 5px 2px;
+	text-align:left;
+	width:16em; /* probably needs rework */
+}
+
+#groups_legend {
+	font-size: 12px;
+}
+
+.top-banner {
+}
+.panel {
+    border-radius: 10px 10px 10px 10px;
+    /*border-style: solid;*/
+	border-width: 3px;
+	width: 1200px; /* must ensure width otherwise floats will appear ugly on a narrow screen */
+}
+select {
+    border-radius: 5px 5px 5px 5px;
+	border-style: solid;
+	border-width: 1px;
+}
+.panel-header {
+    font-family: "Gill Sans",Calibri,Arial,sans-serif;
+}
+
+#settings_dropdown {
+	right: 15px; left: auto;
+}
+
+.dropdown-menu {
+	margin: 0px; 
+	text-align:left;
+	display: none;
+	position: absolute;
+	line-height:25px;
+	background-color:black;
+	border: 1px solid gray;
+	padding-left: 10px; padding-right: 10px;
+/* 	left: 0px; right: auto; */
+	right: 15px;	top: 15px; left: auto;
+	z-index: 99;
+}
+
+.tools-button {
+    border: 3px solid rgba(0, 0, 0, 0.01);
+    font-family: Calibri,Arial,sans-serif;
+	font-size:14px;
+	text-decoration: none; 
+    text-transform: uppercase;
+}
+
+.tools-button:hover {
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    -webkit-transition-property: border;
+	-webkit-transition-duration: 250ms,250ms;
+	-moz-transition-property: border;
+	-moz-transition-duration: 250ms,250ms;
+	transition-property: border;
+	transition-duration: 250ms,250ms;
+}
+
+.question {
+	color: royalblue;
+	font-style: italic;
+    font-weight: normal;
+}
+
+.input-field {
+	width: 200px;
+	padding: 5px;
+}
+
+.db-hint {
+	font-size: 10pt;
+    font-style: italic;
+}
+
+.showMessageFilter {
+    opacity: 0.5;
+}
+
+#status {
+	border-color: white;
+	border-style: solid;
+	border-width: 5px;
+}
+
+#status a, #status a:hover {
+	color: #0000EE;
+}
+
+.browse_message_area {
+  /*  background-image: url("../images/parchment-light.png"); */
+    background-color: white; /* #f8f8ff; */
+	border:1px solid #D4D4D4;
+	margin-bottom: 10px;
+}
+
+.browse-menu {
+	border-style:solid;
+	border-color: rgba(0,0,0,0.0); /* transparent */
+	border-radius:3px;
+	border-width: 1px;
+}
+
+.browse-menu:hover {
+	background-color: rgba(192,192,192,0.5); 
+	border-color:black;
+	-webkit-transition-property: background-color, border;
+	-webkit-transition-duration: 250ms,250ms;
+	-moz-transition-property: background-color, border;
+	-moz-transition-duration: 250ms,250ms;
+	transition-property: background-color, border;
+	transition-duration: 250ms,250ms;
+	
+}
+
+ul.thumbnails img {
+	border: 2px solid #F3EFEF;
+}
+
+ul.thumbnails li a.hover img {
+}
+
+div.facets {
+	background-color:#CCCCCC;
+    font-size: 12px;
+	padding-left:5px;
+}
+
+.facet {
+    padding: 2px;
+    line-height:1.6em;
+}
+
+#filter-div {
+	text-align:left;
+	background-color:white;
+	color:black;
+	padding:0px 10px 0px 10px; 
+	overflow:auto;
+	border:1px solid rgba(16,16,16,0.2); 
+	height:300px; 
+	width:330px;
+	font-size:12px;
+	position:fixed;
+	left;0px;top:0px;
+	background-color:white;
+	z-index:10000;
+	line-height:1.6em;
+}
+
+/* icons on the info page, 15px wide so that 6 of them can fit on a line */
+.info-icon-container {
+	float:left;
+	position:relative;
+	height:150px;
+	width:150px;
+}
+
+.info-icon-container img {
+	position:relative;
+	width:100px;
+}
+
+.info-icons {
+	width:900px; /* 150px x 6 */
+	margin:auto;
+}
+
+/* nice bright orange we can use somewhere; #ffd700 */

@@ -1,0 +1,68 @@
+/* skin: */
+@import url(colors_common.css);
+
+/* 3 colors: #e4bc74 (panel), #C96548 (brick), #8C7070 (violet)
+*/
+
+h1 { color: #333333; }
+
+h2 { color: #C96548; }
+
+.panel, .page, .comment, .noTNattachmentText:hover, .hilitedTerm:hover, .selected-facet, .facet:hover, .info, .bundle-select {
+	background-color: #e4bc74; /* rgb(201,101,72); /* #87CEFA;*/
+	background-image: -webkit-linear-gradient(#e4bc74, #d4ac64); /* grow slightly darker going downwards */
+}
+
+.panel, select { border-color: #8C7070; } 
+
+.shadow {
+	-moz-box-shadow: 2px 2px 3px #C96548;
+	-webkit-box-shadow: 2px 2px 3px #C96548;
+	box-shadow: 2px 2px 3px #C96548;
+}
+
+#groupsarea .db-hint, .cardspage .db-hint, .browsepage .db-hint {
+	color: black; /* this has to be separately done because groups editor/cards page/newbrowse are on a white background */
+}
+	
+.login-method-box-centered, .login-method-box, .login-method-text {
+	background-color: #e4bc74;
+	color: white;
+}
+	
+.selected-folder {
+	color: white;
+	/* text-shadow: 0 0 0.2em #87F, 0 0 0.2em #87F, 0 0 0.2em #87F */
+}
+
+.panel-header, .topnav li a, .topnav li a:visited, .clickableLink, .tools-button, .comment, .info-header  {
+	color: #8C7070; 
+}
+	
+.login-method-box-centered .clickableLink, .login-method-box .clickableLink {
+	color: white;		
+}
+	
+table.docheader {
+	border-color: #e4bc74;
+}
+	
+.facet:hover, .noTNattachmentText:hover, .hilitedTerm:hover, .selected-facet {
+    border-bottom: 1px solid #C96548;
+    color: #000000;
+    text-decoration:none;
+}
+
+.facet-count {
+	color: gray;	/* slightly washed out counts */
+}
+
+.hilitedTerm {
+	background-color: lightyellow;
+    border-bottom: 1px solid #e4bc74;
+    color: #000000;
+}
+
+table.docheader {
+	border-color: #e4bc74;
+}

@@ -1,0 +1,173 @@
+html, body, h1, form, fieldset, legend, ol, li {
+	margin: 0;
+	padding: 0;
+	}
+p.bold{font-weight:bold;}
+body {
+	background-image: url('../images/tweed_muse.png');
+	color: white;
+	font-family: "Futura", "Trebuchet MS", sans-serif;
+	font-size: 13pt;
+	padding: 20px;
+	}
+
+h1 {
+		font-size: 28px;
+		margin-bottom: 20px;
+		}
+	/*This form is a variant of design by Inayaili de León, a web designer and blogger, writing a tutorial about HTML5 forms here: http://24ways.org/2009/have-a-field-day-with-html5-forms/*/	
+	form#eligibility {
+		background: #00A3CC;
+		-moz-border-radius: 5px;
+		-webkit-border-radius: 5px;
+		-khtml-border-radius: 5px;
+		margin-left:auto;
+		margin-right:auto;
+		border-radius: 5px;
+		counter-reset: fieldsets;
+		padding: 20px;
+		width: 50%;
+		}	
+		form#eligibility fieldset {
+			border: none;
+			margin-bottom: 10px;
+			}
+		
+		form#eligibility fieldset:last-of-type {
+			margin-bottom: 0;
+			}
+			
+			form#eligibility legend {
+				color:#EDF6FF;
+				font-size: 16px;
+				font-weight: bold;
+				padding-bottom: 10px;
+				}
+				
+				form#eligibility > fieldset > legend:before {
+					content: "Part " counter(fieldsets) ": ";
+					counter-increment: fieldsets;
+					}
+				
+				form#eligibility fieldset fieldset legend {
+					color: #ffffff;
+					font-size: 13pt;
+					font-weight: normal;
+					padding-bottom: 0;
+					}
+			
+			form#eligibility ol li {
+				background: #818F81;
+				background: rgba(240,210,190,.3);
+				border-color: #000000;
+				border-color: rgba(255,218,193,.6);
+				border-style: solid;
+				border-width: 2px;
+				-moz-border-radius: 5px;
+				-webkit-border-radius: 5px;
+				-khtml-border-radius: 5px;
+				border-radius: 5px;
+				line-height: 30px;
+				list-style: none;
+				padding: 5px 10px;
+				margin-bottom: 2px;
+				}
+							
+				form#eligibility ol ol li {
+					background: none;
+					border: none;
+					float: left;
+					}
+				form#eligibility ol li consenttext{
+					color: #ffffff;
+				}
+			form#eligibility label {
+				float: left;
+				font-size: 12px;
+				width: 110px;
+				}
+				form#eligibility fieldset fieldset label:hover {
+					cursor: pointer;
+					}
+				
+			form#eligibility input:not([type=radio]),
+			form#eligibility textarea {
+				border: none;
+				-moz-border-radius: 3px;
+				-webkit-border-radius: 3px;
+				-khtml-border-radius: 3px;
+				border-radius: 3px;
+				font: italic 13px Georgia, "Times New Roman", Times, serif;
+				outline: none;
+				padding: 5px;
+				width: 200px;
+				}
+					
+				form#eligibility input:not([type=submit]):focus,
+				form#eligibility textarea:focus {
+					background: #eaeaea;
+					outline: none;
+    				border-color: #9ecaed;
+    				box-shadow: 0 0 20px #85FF85;
+					}
+					
+				form#eligibility input[type=radio] {
+					float: left;
+					margin-right :10px
+					}
+			form#eligibility button {
+				background: #484848;
+				border: none;
+				-moz-border-radius: 20px;
+				-webkit-border-radius: 20px;
+				-khtml-border-radius: 20px;
+				border-radius: 20px;
+				color: #ffffff;
+				display: block;
+				font: 18px Georgia, "Times New Roman", Times, serif;
+				letter-spacing: 1px;
+				margin: auto;
+				padding: 7px 25px;
+				text-shadow: 0 1px 1px #000000;
+				text-transform: uppercase;
+				}
+					
+				form#eligibility button:hover {
+					background: #33aa33;
+					cursor: pointer;
+					}
+				form#eligibility button:active{
+					background: #33aa33;
+				}
+.box{
+	position: absolute;
+	left:20%;
+	top:20%;
+	width: 60%;
+	height: auto;
+	display: block;
+	margin-left:auto;
+	margin-right:auto;
+	margin-top:auto;
+	margin-bottom:auto;
+	border-style: solid;
+	border-width:5px;
+	border-color:#63AF96;
+	border-radius: 3px;
+	padding-top:10px;
+	padding-bottom:10px;
+	padding-left:10px;
+	padding-right:10px;
+	z-index:15;
+	background: #ffffff;
+	text-align: left;
+}
+.title{
+	color:#ffffff;
+	text-align:center;
+	font-family: "Myriad Pro", Courier, Arial, sans-serif;
+	font-variant: small-caps;
+}
+.center{
+	text-align:center;
+}

@@ -1,0 +1,44 @@
+@CHARSET "UTF-8";
+body{font-family:"Myriad Pro", "Trebuchet MS", Verdana, Geneva, Arial, sans-serif}
+.box {position:relative;display:inline-block;
+font-family:courier;
+margin:0px;
+border: 1px solid rgba(0,0,0,0.4);
+-webkit-print-color-adjust:exact;
+height:30px;
+width:30px;
+padding:0px 2px 0px 2px;
+text-transform:uppercase;}
+
+/* .box{font-size: 20px; line-height:30px; padding: 10px 10px 0px 10px} */
+/*.box {position:relative;display:inline;padding:10px 10px 0px 10px; font-size:20px; font-family:courier;margin:0px;border: 1px solid black;
+text-transform:uppercase;
+}*/
+.empty {background-color:#111; color: #111}
+.stop {background-color:#444;color: #444}
+.friend_filled{background-color:pink;!important}
+.letter {color:royalBlue;}
+.wrongletter {color:red;}
+.empty_letter {color:white;}
+.hilited-box { color:royalBlue; background-color: yellow;}
+.hilited-box-with-focus { color:royalBlue; background-color: #9acd32; /* yellow green */)}
+.hilited-clue { background-color: #ffff80; border: solid 1px rgba(16,16,16,0.2);}
+.clueDiv { margin:2px, 0px, 2px, 0px;}
+.cluenum-in-box {position:absolute;left:1px;top:1px;z-index:200;color:black;font-size:10px;line-height:10px;}
+.letter-in-box {position:absolute;left:12px;top:3px;z-index:200;font-size:20px;}
+.clueNum {display:inline;width:20px;float:left;text-align:right;font-weight:bold;margin-right;20px;}
+.filledClueNum {color:royalblue;}
+.clue {display:inline;float:left;width:270px;margin-left:6px;}
+.clues-column { float:left;width:300px;
+	font-size:11pt;
+	margin-right:30px;margin-top:-15px;
+	line-height:20px;}
+.clue-header { font-size:12pt;text-transform:uppercase;font-weight:bold;margin-left:27px;}
+.endRow { clear:both;}
+.small_cluenum-in-box {position:absolute;left:1px;top:1px;z-index:200;color:black;font-size:5px;line-height:5px;}
+.small_clueNum {display:inline;width:10px;float:left;text-align:right;font-weight:bold;margin-right;10px;}
+.clues-column-print { line-height:40px; width: 500px; float:left}
+.clueDiv-print {font-size: 24px}
+.clue-print { margin-left:12px; width:450px}
+.empty-print {background-color:#777; color: #777}
+		

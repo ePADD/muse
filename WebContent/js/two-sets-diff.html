@@ -1,0 +1,50 @@
+
+  Quicksand
+
+Reorder and filter items with a nice shuffling animation.
+
+Examples <../docs-and-demos.html#examples>
+
+
+    Two different sets of HTML
+
+Apples to oranges <#dummy>
+
+  * Blood orange
+  * Persian orange
+  * Valencia orange
+
+  * Blood orange
+  * Persian orange
+  * Valencia orange
+
+
+    JavaScript
+
+|$(function() {
+  $('.button').click(function(e) {
+    $('#source').quicksand( $('#destination li') );
+    e.preventDefault();
+  })
+});|
+
+
+    HTML
+
+|<p><a class="button" href="#dummy">Apples to oranges</a></p>
+
+<ul id="source">
+  <li data-id="anto">Antonovka</li>
+  <li data-id="jonat">Jonathan</li>
+  <li data-id="mac">McIntosh</li>
+</ul>
+
+<ul id="destination" style="display: none">
+  <li data-id="blood">Blood orange</li>
+  <li data-id="pers">Persian orange</li>
+  <li data-id="valen">Valencia orange</li>
+</ul>|
+
+Powered by jQuery <http://jquery.com> – Made by agilope
+<http://agilope.com> Design by @riddle <http://twitter.com/riddle>
+

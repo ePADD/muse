@@ -1,0 +1,47 @@
+<!-- build file for a version of muse.jar with pre-compiled jsp's. for analysis tools only, not for real use! -->
+<project name="Webapp Precompilation" default="precompiled-jar" basedir="."> 
+
+  <property name="tomcat.home" value="/Users/hangal/apache-tomcat-7.0.14"/>
+  <property name="webapp.path" value="WebContent"/>
+  <property name="webinf.lib.dir" location="WebContent/WEB-INF/lib" />
+  <property name="tomcat.home" location="/Users/hangal/apache-tomcat-7.0.14"/>
+  <import file="${tomcat.home}/bin/catalina-tasks.xml"/>
+  <import file="build.xml"/>
+  
+  <target name="jspc"> 
+    <jasper 
+             validateXml="false" 
+             uriroot="${webapp.path}" 
+             webXmlFragment="${webapp.path}/WEB-INF/generated_web.xml" 
+             outputDir="src/java" /> 
+  </target>
+
+  <target name="cleanup">
+    <delete dir="src/java/org/apache/jsp"/>
+    <delete dir="build/classes/org/apache/jsp"/>
+  </target>
+
+	<path id="lib.path">
+		<fileset dir="${lib.dir}" includes="*.jar" />
+		<fileset dir="${webinf.lib.dir}" includes="*.jar" />
+		<fileset dir="${tomcat.home}/lib" includes="*.jar" />
+	</path>
+
+	<target name="build" depends="init,resources" description="compile the source ">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<mkdir dir="${build.classes.dir}" />
+		<javac destdir="${build.classes.dir}" classpathref="lib.path" debug="${debug}" target="1.5">
+			<src location="${src.java.dir}" />
+		</javac>
+	</target>
+
+	<target name="jar" depends="build" description="generate the distribution">
+		<mkdir dir="${build.jar.dir}" />
+		<jar jarfile="precompiled.jar" basedir="${build.dir}/classes" 
+             includes="org/apache/jsp/**/*"/>
+	</target>
+
+  <target name="precompiled-jar" depends="jspc,build,jar,cleanup">
+  </target>
+
+</project>

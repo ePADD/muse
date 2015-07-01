@@ -1,0 +1,1306 @@
+//==UserScript==
+//@name muse-lens
+//@exclude  http://localhost*
+//@exclude  http://www.google.com/*
+//@exclude  http://*.google.com/*
+//==/UserScript==
+
+/**
+ Collect good testcases/difficult pages here.
+ http://sec.gov/Archives/edgar/data/1326801/000119312512034517/d287954ds1.htm -- Facebook SEC S-1, very large page.
+ http://icones.pro/en/?s=folder ...
+ http://amazon.com (uses an old version of jquery, 1.2.6, so tests out noconflict issues
+ http://nytimes.com
+ http://cs.stanford.edu -- there is some funniness on this page with jquery claiming that nodeType 3 (txt nodes) are not visible. 
+*/
+
+(function() { // anon. wrapper function
+var RUNNING_IN_PLUGIN = false;
+
+if (window.top != window.self) // don't run on iframes window
+    return;
+
+if (typeof GM_log == 'undefined') {
+	GM_log = function (mesg) { 
+	if (typeof console != 'undefined')
+		console.log(mesg); 
+	};
+}
+
+// remove junk
+var url = document.URL;
+GM_log (url);
+var banned_suffixes = ['.js', '.css', '.png', '.jpg', '.gif', '.jpeg', '.pdf', '.ps', '.doc', '.ppt', '.pptx', '.docx', '.xls', '.xlsx', '.gz', '.zip'];
+var banned = false;
+for (var k = 0; k < banned_suffixes.length; k++) {
+    if (url.indexOf(banned_suffixes[k]) == url.length-banned_suffixes[k].length-banned_suffixes[k].length) { // endsWith banned suffix
+        banned = true;
+        GM_log ('dropping page ' + url + ' due to suffix: ' + banned_suffixes[k]);
+        break;
+    }
+}
+if (banned)
+	return;
+
+// warning: be careful of using jquery .closest because some sites like Amazon inject jquery 1.2.6 on the page after us, and it didn't have .closest()
+// instead use findParentWithSelector(node, selector)
+// see: http://stackoverflow.com/questions/6105544/jquery-closest-works-on-one-page-but-not-another
+
+if (typeof window.MUSE_URL == 'undefined')
+	window.MUSE_URL = "http://localhost:9099/muse";
+
+if (typeof unsafeWindow == 'undefined')
+	unsafeWindow = window;
+
+GM_log ('Highligher script running on ' + document.URL);
+
+// Add jQuery to the page
+inject_jquery = function() {
+if (RUNNING_IN_PLUGIN)
+{
+    $_ = $;
+    main();
+    return;
+}
+
+	var saved$ = null; // will save the original jq if page already has it
+	
+	function wait_for_prettyphoto_and_call_main() {
+		if (typeof unsafeWindow.jQuery.fn.prettyPhoto == 'undefined') {
+			window.setTimeout(wait_for_prettyphoto_and_call_main, 100); // jq not loaded, try again in 100ms
+		} else {
+			GM_log ('ok, pretty photo loaded up ' + unsafeWindow.jQuery.prettyPhoto.version);
+			
+			// now, make our version of jq invisible and restore the original version if it exists
+			$_ = unsafeWindow.jQuery.noConflict(true); // $_ is our version of jq, regardless of whether page had its own.	
+			if (saved$ != null) {
+				GM_log ('restoring original version of jquery on page: ' + saved$().jquery);
+				unsafeWindow.$ = unsafeWindow.jQuery = saved$; // restore saved
+			} else {
+				GM_log ('cool, no previous version of jquery on page');
+			}
+			if (document.URL.indexOf("youtube") >= 0) { 
+				prefetchYoutube();
+				window.setTimeout(main,3300); // 3500);
+			} else
+				window.setTimeout(main,300);
+		}
+	}
+	
+    // function that polls and waits for jq to show up before dispatching to main
+	function wait_for_jquery_and_call_main() {
+		if (typeof unsafeWindow.jQuery == 'undefined') {
+			window.setTimeout(wait_for_jquery_and_call_main, 100); // jq not loaded, try again in 100ms
+		} else {
+			// we have to install prettyPhoto also now
+			GM_log ('new jquery loaded, version is ' + unsafeWindow.jQuery().jquery + '. now injecting pretty photo');
+			function inject_prettyphoto() {
+				var GM_Head = document.getElementsByTagName('head')[0] || document.documentElement || document.body;
+				var GM_JQPP = document.createElement('script');
+				GM_JQPP.src = window.MUSE_URL + '/js/jquery.prettyPhoto.js';
+				GM_JQPP.type = 'text/javascript';
+				GM_JQPP.async = true;
+				GM_Head.insertBefore(GM_JQPP, GM_Head.lastChild);
+				var myStylesLocation = window.MUSE_URL + '/css/prettyPhoto.css';
+				unsafeWindow.jQuery('<link rel="stylesheet" type="text/css" href="' + myStylesLocation + '" >').appendTo("head");           
+			}
+			// we have to wait now for prettyphoto also, because we want it to be associated with our version of jq
+			$ = jQuery = unsafeWindow.jQuery;
+			inject_prettyphoto();
+			wait_for_prettyphoto_and_call_main();
+		}	
+	}
+	
+	function inject_jq_script() {
+		GM_log ("injecting jq");
+        var jq_scr = document.createElement('script');
+        jq_scr.src = window.MUSE_URL + '/js/jquery/jquery.js';
+        jq_scr.type = 'text/javascript';
+        jq_scr.async = true;
+	    var heads = document.getElementsByTagName('head');
+        if (heads.length > 0)
+            head = heads[0];
+        else
+            head = document.documentElement || document.body;
+		head.insertBefore(jq_scr, head.firstChild);
+	}
+
+	if (typeof unsafeWindow.jQuery == 'undefined') {
+		inject_jq_script();
+	} else {
+		// see http://blog.nemikor.com/2009/10/03/using-multiple-versions-of-jquery/ for noconflict explanation
+		saved$ = unsafeWindow.jQuery.noConflict(true); // first save away the original jq if page already has it			
+		GM_log ('saving away original version of jquery on page: ' + saved$().jquery);
+		inject_jq_script();
+	}
+	
+	GM_log ("Waiting for jquery in URL:" + document.URL);
+	wait_for_jquery_and_call_main();
+};
+
+init = function() {
+	if ((document.URL.indexOf(".js") == document.URL.length-3) || (document.URL.indexOf(".css") == document.URL.length-4)) {
+		GM_log ("skipping injecting jq into " + document.URL);
+		return;
+	}
+	inject_jquery();
+};
+
+
+function inject_html(html) {
+	var div = document.createElement('div');
+	div.innerHTML = html;
+	document.body.insertBefore(div, document.body.firstChild);
+}
+
+// most of the logic should be inside main
+main = function(evt) {
+	if (document.URL.indexOf(""))
+	if ($_('#muse-status').length == 0)
+	{
+		var content = 'Reading page...';
+		inject_html ('<div id="muse-status" style="position:fixed; opacity:0.8;padding:5px; top:10px;left:10px; width:150px; height:50px; font-size:12px; color: #ffffff; background: none repeat scroll 0 0 #0C3569; box-shadow: 2px 2px 3px #000000; border-radius:4px; background-color: border: 1px solid white; z-index:100000002">' + content + '</div>');
+	}
+	if ($_('.muse-highlight').length > 0)
+	{
+		$_('#muse-status').html('Already hilited!');
+		window.setTimeout(function() { $_('#muse-status').fadeOut('slow');}, 3000);
+		return;
+	}
+
+	GM_log ('starting main with evt ' + evt);
+    // if called due to an event, we want to be sure its due to the refresh button at the top
+	if (typeof evt !== 'undefined' && evt != null && evt.clientY > 50)
+		return;
+
+    var UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    var elementlist= new Array();
+    var hidden_flag=false;
+    var $iframeholder;
+    var hiddenhits, nonhiddenhits;
+    var n_hilights = 0;
+    var startTime = new Date().getTime();
+
+	var textNodesParsedWithoutBreak = 0;
+	
+	// fills in 'arr', an array of text nodes, arr can be passed in as null by external caller.
+	// also fills in a null for div, header, li endings if insert_delimiters is true 
+	// caller should watch out for nulls in arr
+	function addTextNodes(node, arr, insert_delimiters) {
+		// do not use jquery inside this method, it may not have been loaded!
+		if ((document.URL.indexOf('google') || document.URL.indexOf('gmail') >= 0) && node.id == 'gb')
+			return null; // ignore google bar because it causes spurious hits w/the name of the user.
+		if (document.URL.indexOf('facebook') >= 0 && node.id == 'pageNav')
+			return null; // ignore google bar because it causes spurious hits w/the name of the user.
+
+		if (textNodesParsedWithoutBreak > 10)
+		{
+			GM_log ('taking a break from finding text nodes');
+			textNodesParsedWithoutBreak = 0;
+			window.setTimeout (function() { addTextNodes(node, arr, insert_delimiters); }, 1); 
+			return;
+		}
+
+		if (!arr)
+			arr = new Array();
+		if (node.nodeType == 7 || node.nodeType == 2) // comment node, attribute node
+			return arr;
+
+        // ignore content that is not displayed in the page
+		try {
+			if (node.nodeType != 3) // don't do vis check for nodeType 3 (text nodes), as it fails unnecessarily on cs.stanford.edu
+                if (!$_(node).is(':visible')) 
+				return arr;
+		} catch(e) { }
+
+		if (node.className == 'muse-details')
+			return arr; // we don't want to highlight our own nodes!
+		if (typeof node.tagName !== 'undefined')
+			if (node.tagName.toUpperCase() == 'SCRIPT' || node.tagName.toUpperCase() == 'NOSCRIPT')
+				return arr; // don't look inside scripts, and even noscripts
+
+		var whitespace = /^\s*$/;
+
+		if (node.nodeType == 3 && !whitespace.test(node.nodeValue))
+		{
+			arr.push(node);
+			if (arr.length % 100 == 0)
+				GM_log ("# text nodes: " + arr.length);
+		}
+		else 
+		{
+            // GM_log ('looking for children # ' + node.childNodes.length); 
+			for (var i = 0, len = node.childNodes.length; i < len; ++i)
+				addTextNodes(node.childNodes[i], arr, insert_delimiters);
+
+			if (insert_delimiters && typeof node.tagName !== 'undefined')
+			{
+				if (typeof arr != 'undefined' && arr && arr.length > 0 && arr[arr.length-1] != null)
+				{
+					var lastText = arr[arr.length-1].data;
+
+					// see if the lastText ends with a sentence delimiter
+					if ('!?.'.indexOf(lastText[lastText.length-1]) < 0)
+					{
+						var tag = node.tagName.toUpperCase();
+						if (tag == 'H1' || tag == 'H2' || tag == 'H3' || tag == 'H4' || tag == 'H5' || tag == 'H6' || tag == 'DIV' || tag == 'P' || tag == 'LI' || tag == 'TD' || tag == 'B' || tag == 'I') // perhaps we should just check all tags that are not span.
+						{
+							// push an artificial stop after these tags.
+							// GM_log ('Pushing a stop after tag ' + tag);
+							arr.push(null);
+							if (arr.length % 100 == 0)
+								GM_log ("# text nodes: " + arr.length);
+						}
+					}
+				}
+			};
+		}
+	    return arr;
+	}
+	
+	// replacements for GM_ functions from http://userscripts.org/posts/search?page=13&q=GM_addStyle
+	if (typeof GM_xmlhttpRequest === "undefined") {
+		GM_xmlhttpRequest = function(/* object */ details) {
+			details.method = details.method.toUpperCase() || "GET";
+			
+			if(!details.url) {
+				throw("GM_xmlhttpRequest requires an URL.");
+				return;
+			}
+			
+			// build XMLHttpRequest object
+			var oXhr, aAjaxes = [];
+			if (typeof ActiveXObject !== "undefined") {
+				var oCls = ActiveXObject;
+				aAjaxes[aAjaxes.length] = {cls:oCls, arg:"Microsoft.XMLHTTP"};
+				aAjaxes[aAjaxes.length] = {cls:oCls, arg:"Msxml2.XMLHTTP"};
+				aAjaxes[aAjaxes.length] = {cls:oCls, arg:"Msxml2.XMLHTTP.3.0"};
+			}
+			if (typeof XMLHttpRequest !== "undefined")
+				 aAjaxes[aAjaxes.length] = {cls:XMLHttpRequest, arg:undefined};
+		
+			for (var i=aAjaxes.length; i--; )
+				try {
+					oXhr = new aAjaxes[i].cls(aAjaxes[i].arg);
+					if (oXhr) 
+						break;
+				} catch(e) {}
+			
+			// run it
+			if (oXhr) {
+				if ("onreadystatechange" in details)
+					oXhr.onreadystatechange = function() { details.onreadystatechange(oXhr); };
+				if ("onload" in details)
+					oXhr.onload = function() { details.onload(oXhr); };
+				if ("onerror" in details)
+					oXhr.onerror = function() { details.onerror(oXhr); };
+				
+				oXhr.open(details.method, details.url, true);
+				
+				if("headers" in details)
+					for(var header in details.headers)
+						oXhr.setRequestHeader(header, details.headers[header]);
+				
+				if("data" in details)
+					oXhr.send(details.data);
+				else
+					oXhr.send();
+			} else
+				throw ("This Browser is not supported, please upgrade.");
+		};
+	};
+
+	if (typeof GM_addStyle === "undefined") {
+		function GM_addStyle(/* String */ styles) {
+			var oStyle = document.createElement("style");
+			oStyle.setAttribute("type", "text\/css");
+			oStyle.appendChild(document.createTextNode(styles));
+			document.getElementsByTagName("head")[0].appendChild(oStyle);
+		};
+	}
+
+	// remove leading whitespace
+	var trim = function(s) {
+		if (typeof (s) !== 'string')
+			return s;
+
+		// trim leading
+		while (true) {
+			if (s.length == 0)
+				break;
+			var c = s.charAt(0);
+			if (c !== '\n' && c !== '\t' && c !== ' ')
+				break;
+			s = s.substring(1);
+		}
+		
+
+		// trim trailing
+		while (true) {
+			if (s.length == 0)
+				break;
+			var c = s.charAt(s.length-1);
+			if (c !== '\n' && c !== '\t' && c !== ' ')
+				break;
+			s = s.substring(0,s.length-1);
+		}
+		return s;
+	};
+
+	// main function
+	var textNodesOnPage; // global var
+
+	var inject_styles = function() {
+		styles =  '.muse-navbar {padding-top: 3px; position: fixed; top: 0pt; right:10px;z-index:10000; text-transform:uppercase;font-family:"Gill Sans",Calibri,Helvetica,Arial,Times;font-size:10pt;font-weight:normal} \
+				   .muse-navbar a span{-moz-border-radius: 4px; background-color: #0C3569; opacity: 0.9;} \
+				 	.muse-navbar a span {color:white;font-size:14pt; font-weight:normal; padding: 5px 5px 5px 5px; text-decoration:none;} \
+					.muse-navbar a span:hover {color:yellow; text-decoration:none;}';
+
+		/* padding-right:20px to ensure space for settings wheel */
+		styles += '#calloutparent { padding-right:20px; max-height:60px; line-height:20px; background: none repeat scroll 0 0 #0C3569; opacity: 0.8; color: #fff; box-shadow: 2px 2px 3px #000; padding-top: 5px; text-align:left;margin-left:2%;margin-right:2%;-moz-border-radius: 6px 6px 0px 0px;position: fixed; bottom: 0;left: 0;right: 0;z-index: 10000000;width: 96%;border-top: 1px solid #fff;}';
+		styles += '.termMenu { background-color: black; -moz-border-radius: 6px 6px 0px 0px;z-index: 100000;border-top: 1px solid #fff; position:absolute;top:-22px;min-width:70px; border-top: 1px solid white; border-left: 1px solid white; border-right: 1px solid white;}';
+		styles += '#callout { float: left;text-align: left; padding: 0px 5px; width:100%; margin-bottom: 4px} \
+				  #callout li {background:transparent; display: inline;padding: 0 3px;} \
+				  #callout, #callout a, .term {color: white; text-transform:uppercase;font-family:"Gill Sans",Calibri,Helvetica,Arial,Times;font-size:10pt;font-weight:normal;} \
+				  .term:hover {text-decoration:underline}';
+
+		styles += '.muse-highlight { background-color: yellow; color: black; cursor:hand; cursor:pointer;} \
+				   .muse-soft-highlight {  background-color: lightyellow; color: black; cursor: hand;cursor:pointer;} \
+				   .muse-NER-name { border-bottom: 1px red dotted; }';
+		
+		styles+= '.musified {margin: 5px;padding: 5px;background: #D8D5D2; font-size: 11px;line-height: 1.4em;float: left;-webkit-border-radius: 5px;-moz-border-radius: 5px;border-radius: 5px; max-width:40%;} \
+				.musified_story {margin: 5px;padding: 5px;background: #D8D5D2; font-size: 11px;line-height: 1.4em;float: left;-webkit-border-radius: 5px;-moz-border-radius: 5px;border-radius: 5px; max-width:40%;}';
+		styles+= '.customstyle1          { background: #F00; background: hsl(   0, 100%, 50%); } \
+				.customstyle2          { background: #F80; background: hsl(  36, 100%, 50%); } \
+				.customstyle3          { background: #FF0; background: hsl(  72, 100%, 50%); } \
+				.customstyle4          { background: #0F0; background: hsl( 108, 100%, 50%); } \
+				.customstyle5          { background: #0F8; background: hsl( 144, 100%, 50%); } \
+				.customstyle6          { background: #0FF; background: hsl( 180, 100%, 50%); } \
+				.customstyle7          { background: #08F; background: hsl( 216, 100%, 50%); } \
+				.customstyle8          { background: #00F; background: hsl( 252, 100%, 50%); } \
+				.customstyle9          { background: #F0F; background: hsl( 288, 100%, 50%); } \
+				.customstyle10         { background: #F08; background: hsl( 324, 100%, 50%); }';
+		styles += '#callout-menu { position:absolute; top:5px; right:0px}';
+		styles += '.menuitem { width:100% ; cursor:pointer;cursor:hand;} .menuitem {color:#999; padding:4px 8px;} .menuitem:hover {color:white;}';
+
+		styles += '#settings_dropdown {  top:-55px; right:-4px; margin: 0px;  text-align:right;  line-height:25px;  background-color:#0C3569;  border-top: 1px solid white; border-right: 1px solid white; border-left: 1px solid white; position: absolute; padding-left: 10px; padding-right: 10px; display: none;}';
+		GM_addStyle(styles);
+	};
+
+	inject_styles();
+	// wipe these out if they already existed
+	var p = document.getElementById('calloutparent');
+	if (p != null && p.parentNode != null)
+		p.parentNode.removeChild(p);
+	p = document.getElementsByClassName('muse-details');
+	if (p != null && p.length > 0 && p[0].parentNode != null)
+		p[0].parentNode.removeChild(p[0]);
+
+		var muse_url = MUSE_URL + "/ajax/leadsAsJson.jsp";
+		GM_log ('Finding text on page...');
+		textNodesOnPage = addTextNodes(document.body, null, true);
+	    GM_log (textNodesOnPage.length + ' text nodes found, elapsed time on page = ' + (new Date().getTime()-startTime) + 'ms');
+		var textOnPage = '';
+		var newtextOnPage = '';
+		for (var i = 0; i < textNodesOnPage.length; i++)
+		{
+			if (textNodesOnPage[i] == null)
+            {
+//                if (textOnPage && (textOnPage.substr(textOnPage.length-1) !== '.' || textOnPage.substr(textOnPage.length-2) !== '. '))
+				    textOnPage += '. '; 
+            }
+			else
+				textOnPage += ' ' + textNodesOnPage[i].data;
+		}
+		
+		textOnPage = textOnPage.replace (/&/g, ' '); // replace ampersands, they interrupt the refText param!
+		textOnPage = textOnPage.replace (/  /g, ' '); // rationalize spaces
+		// GM_log ('text on page = ' + textOnPage);
+		GM_log ('text on page length = ' + textOnPage.length + ' chars');
+		var encoded_page = encodeURI(textOnPage);
+		var encoded_url = encodeURI(document.URL);	
+		GM_log ("sending xhr for " + muse_url);
+//		GM_log ('encoded page = ' + encoded_page);
+		$_('#muse-status').html('Looking up terms...');
+
+		$_.ajax(
+				{url: muse_url, 
+				type: 'POST',
+				data: 'refText=' + encoded_page +"&refURL="+encoded_url, 
+				dataType: 'text',
+		beforeSend: function(xhr) { xhr.withCredentials = true;  },
+		xhrFields: { withCredentials: true},
+		crossDomain: true,
+		success: function(response) {
+				  //  GM_log ('received muse response, ' + response + ' elapsed time on page = ' + (new Date().getTime()-startTime) + 'ms');
+					muse_response = trim(response);
+					decoratePage(muse_response);
+				},
+		error: function(response) {
+				    var $newdiv1 = $_('<div id="calloutparent"/>');
+				    var $newdivchild = $_('<div id="callout"/>');
+				    $newdiv1.append($newdivchild);
+			        $_('body').append($newdiv1);
+			        $_("#callout").html ('Muse is off. (<a href="http://mobisocial.stanford.edu/muse/muse.jnlp">Launch it</a>)');
+			        $_("#callout").fadeIn('slow');
+			        $_("#calloutparent").fadeIn('slow');
+					$_('#muse-status').fadeOut('slow');
+
+                    window.setTimeout (function() { $('#calloutparent').fadeOut('slow'); }, 5000); // fade out in 5 seconds
+				}
+			});
+		
+        // hidden flag is used to get at content behind the current page
+		if (hidden_flag==true)
+		{
+			
+			var hiddentextNodesOnPage = addTextNodes($iframeholder[0], null, true);
+			
+			for (var i = 0; i < hiddentextNodesOnPage.length; i++)
+			{
+				if (hiddentextNodesOnPage[i] == null)
+					newtextOnPage += '. ';
+				else
+					newtextOnPage += ' ' + hiddentextNodesOnPage[i].data;
+					
+			}
+			newtextOnPage = textOnPage.replace (/&/g, ' '); // replace ampersands, they interrupt the refText param!
+			newtextOnPage = textOnPage.replace (/  /g, ' '); // rationalize spaces
+			//GM_log ('text on page = ' + textOnPage);
+			var newencoded_page = encodeURI(newtextOnPage);	
+//		GM_log ('encoded page = ' + encoded_page);
+			GM_xmlhttpRequest({
+				method : "POST",
+				url : muse_url,
+				data: ('refText=' + newencoded_page), 
+				headers: { "Content-Type": "application/x-www-form-urlencoded"},
+				onload :  function(response) {
+					GM_log ('received muse response');
+//					if (response)
+//	                    while (response.indexOf("\n") == 0)
+//	                    	response = response.substring(1);
+
+					hiddenhits = eval('(' + response + ')');
+					if (typeof hiddenhits.results == 'undefined') 
+						GM_log('error: ' + hiddenhits.error);
+					else
+					{	//alert(hits.results.length);
+						var textNodes = addTextNodes($iframeholder[0], null, false);
+						//alert (textNodes.length + ' text nodes on page');
+	
+						var anchors_entered = new Array();
+						for (var x = 0; x < textNodes.length; x++)
+							if (textNodes[x] != null)
+							{
+								try { decorateTextNode(textNodes[x],false, anchors_entered); }
+								catch(err) { GM_log("&&&"+err); }
+							}
+					}
+				}
+			});
+		}
+
+function inject_prettyphoto() {
+	var GM_Head = document.getElementsByTagName('head')[0] || document.documentElement || document.body;
+	var GM_JQPP = document.createElement('script');
+	GM_JQPP.src = window.MUSE_URL + '/js/jquery.prettyPhoto.js';
+	GM_JQPP.type = 'text/javascript';
+	GM_JQPP.async = true;
+	GM_Head.insertBefore(GM_JQPP, GM_Head.lastChild);
+	var myStylesLocation = window.MUSE_URL + '/css/prettyPhoto.css';
+	$_('<link rel="stylesheet" type="text/css" href="' + myStylesLocation + '" >').appendTo("head");           
+}
+
+// utility function to print s, subject to a maxChars limit
+function ellipsize(s, maxChars) {
+	if (s == null)
+		return null;
+
+	if (maxChars < 4)
+		return (s.substring(0, maxChars));
+
+	if (s.length > maxChars)
+		return s.substring(0, maxChars-3) + "...";
+	else
+		return s;
+}
+
+// start pretty photo, but wait for it to be come available first
+function start_prettyphoto() {
+	if (typeof $_.prettyPhoto == 'undefined')
+		window.setTimeout (start_prettyphoto, 100);
+	else
+    {
+        // muse-details is the div with the popup html.
+//		$_('.muse-highlight').prettyPhoto({theme: 'dark_rounded', opacity: "0.3"});
+
+        // muse-clicker is the div that is meant just to issue clicks. not displayed on page, but click() fired through jquery. 
+        // upon click, it always shows the same div, which is the muse-details div. this div is populated appropriately before the click is fired.
+        var $clickdiv = $_('<a id="muse-clicker" title="Message Details" href="#muse-details" alt="ALT"></a>'); // funnily, the title for this clicker needs to be set, otherwise pretty photo shows an undefined at bottom left
+        $_('body').append($clickdiv);
+        var $div = $_('<div style="font-size:11px; max-height:250px;display:none" class="muse-details" title="Message Details" style="align:left;display:none" id="muse-details"/>');
+        var $child = $_('<div id="muse-pointers" style="font-size:11px" title="Message Details" alt="alt"/>');
+        $div.append($child);
+        $_('body').append($div);
+		$_('#muse-clicker').prettyPhoto({theme: 'light_rounded', opacity: "0.3"});
+    }
+}
+
+// highlight contents
+// decoratedWithoutBreak is an internal counter counting how many nodes we've decorated since the last break ("timeout")
+// after some number of calls, we take a break, to allow the browser to become more responsive.
+var decoratedWithoutBreak = 0;
+
+function decorateTextNode(node,nonhiddencontent, anchors_entered) {
+    if (decoratedWithoutBreak > 100)
+    {
+         GM_log ('taking a break from decorating nodes');
+         decoratedWithoutBreak = 0;
+         window.setTimeout (function() { decorateTextNode(node, nonhiddencontent, anchors_entered); }, 1);
+         return;
+    }
+    decoratedWithoutBreak++;
+
+	// node has to be a text node
+    try {
+	// ignore whitespace
+	if (/^\s*$/.test(node.nodeValue))
+		return;
+
+	var newNodes = new Array(); // nodes we might create when we split this node
+    var nodeText = node.data.toUpperCase();
+    
+    // sort results so that longer phrases are before shorter ones. 
+    // ensures that superstrings are hilited in preference to substrings
+    // e.g. Texas Rangers should be before Texas, so the whole phrase gets hilited
+   // var hit_results = hits.results;
+  //  hit_results.sort (function(a, b) { return b.text.length - a.text.length;});
+
+	 if(nonhiddencontent==true)
+	 	hits=nonhiddenhits;
+	 else
+	 	hits=hiddenhits;
+    // check if this node contains any hits
+    for (var hit = 0; hit < hits.results.length; hit++)
+    {
+        var pat = hits.results[hit].text.toUpperCase();
+        if (hit > 160)
+            continue; // FLAG DEBUG, ideally could bail out if its a long doc and score reaches 0. (hits are sorted by score)
+
+        if (!node.parentNode)
+            continue;
+        if (node.parentNode.className == 'muse-NER-name' || node.parentNode.className == 'muse-highlight')
+        	continue;
+        if (document.URL.toUpperCase().indexOf(pat) >= 0) // if the term appears in the document's url, kill it... e.g. stanford on stanforddaily.com
+            continue;
+
+        var pos = nodeText.indexOf(pat);
+        if (pos < 0)
+            continue; // not found
+
+        // skip if prev or next letters are alpha's, we want only complete words
+        var prev_letter = '.', next_letter = '.'; // any non-alpha
+        if (pos > 0)
+            prev_letter = nodeText.charAt(pos-1);
+        if (pos + pat.length < nodeText.length)
+            next_letter = nodeText.charAt(pos + pat.length);
+        if (UPPERCASE.indexOf(prev_letter) >= 0 || UPPERCASE.indexOf(next_letter) >= 0)
+            continue;
+        
+	    // ok, we have a proper name in this node
+	    n_hilights++;
+	    
+	    // create a <span> decorator node for it -- preferable to a nodes 'cos it's less likely to have existing page styles associated with it.
+        var anchor = null;
+        var decorator = document.createElement('span');
+        
+        var hilite_class = sketchy_hit(hits.results[hit]) ? "muse-soft-highlight":"muse-highlight";
+        
+        // assign it muse-highlight or NER-highlight based on whether it was a real hit or not
+        if (hits.results[hit].nMessages > 0)
+        {
+            if (hilite_class == 'muse-highlight')
+            {
+                var name = pat.replace (/ /g, '_') + "_anchor";
+                name = name.toLowerCase(); // canonicalize
+                // only enter an anchor for the first occurrence on a page
+                if (typeof anchors_entered[name] == 'undefined' || !anchors_entered[name]) {
+	            	anchor = document.createElement('a');
+	            	anchor.setAttribute('name', name);
+	            	anchor.setAttribute('href', '#');
+	            	anchors_entered[name] = true;
+                }
+            }
+
+            var people_str = '';
+            var people = hits.results[hit].people;
+            if (typeof people !== 'undefined')
+            	for (var i = 0; i < people.length; i++)
+            		people_str += people[i].person + ' ';
+	        decorator.setAttribute('title', 'Page score: ' + hits.results[hit].timesOnPage + ' Index score: ' + hits.results[hit].nMessages + ' for term: ' + hits.results[hit].text + '. People: ' + people_str); // set it otherwise "undefined" shows up in bottom left corner
+	        decorator.setAttribute('alt', 'ALT');
+	        decorator.setAttribute('onclick', 'return SHOW_MESSAGES(event, ' + hit + ');');
+	        decorator.className = hilite_class;
+        }
+        else
+        {
+	        decorator.className = 'muse-NER-name'; // not a real hit, for debug only
+        }
+        // make sure existing css rules on span's don't cause extra margins, padding, etc.
+        // e.g. of site that causes trouble without this: the timeswire div on nytimes.com
+        $_(decorator).css({display: 'inline', padding: '0px', margin: '0px', 'float': 'none'});
+
+        if (pos > 0)
+        {
+        	// hit not at the beginning. 
+        	 // update nodeText to the portion before the hit
+        	var originalNodeLength = nodeText.length;
+        	middlebit = node.splitText(pos);
+        	endNode = middlebit.splitText(pat.length);
+	        var middleclone = middlebit.cloneNode(true);
+	        decorator.appendChild(middleclone);
+	        nodeText = node.data.toUpperCase();
+	        middlebit.parentNode.replaceChild(decorator, middlebit);
+        	// add endNode to newnodes if it has any content, we'll process it later
+	        if (pos + pat.length < originalNodeLength)
+	        {
+	        	// GM_log ('pushing end node ' + endNode.nodeValue);
+	        	newNodes.push(endNode);
+	        }
+	        
+	        if(nonhiddencontent==true)
+	        {
+	          	jparent=$_(node);
+			    while(jparent[0].nodeType!=1)
+			    	jparent=jparent.parent();
+			    if(! jparent.is(":visible"))
+			    {
+			    	jparent=jparent.clone();
+			    	$_("#hidden_content").append(jparent);
+			    	jparent.show();
+			    }
+			    elementlist.push(jparent);
+			 }
+			 else				
+	        {
+	          	jparent=$_(node,$iframeholder);
+			    while(jparent[0].nodeType!=1&&jparent.text().length<300)
+			    	jparent=jparent.parent();
+			    if(! jparent.is(":visible"))
+			    {
+			    	jparent=jparent.clone();
+			    	$_("#hidden_content").append(jparent);
+			    	jparent.show();
+			    }
+			    elementlist.push(jparent);
+			 }
+        }
+        else
+        {
+        	// hit at the beginning. nodeText = remaining portion after this hit.
+        	middlebit = node;
+        	node = middlebit.splitText(pat.length);
+	        var middleclone = middlebit.cloneNode(true);
+	        decorator.appendChild(middleclone);
+	        middlebit.parentNode.replaceChild(decorator, middlebit);
+	        nodeText = node.data.toUpperCase();
+	       // var parentel= middlebit.parentNode;
+	        if(nonhiddencontent==true)
+	        {
+	          	jparent=$_(node);
+			    while(jparent[0].nodeType!=1)
+			    	jparent=jparent.parent();
+			    if(! jparent.is(":visible"))
+			    {
+			    	jparent=jparent.clone();
+			    	$_("#hidden_content").append(jparent);
+			    	jparent.show();
+			    }
+			    elementlist.push(jparent);
+			 }
+			else				
+	        {
+	          	jparent=$_(node,$iframeholder);
+			    while(jparent[0].nodeType!=1&&jparent.text().length<300)
+			    	jparent=jparent.parent();
+			    if(! jparent.is(":visible"))
+			    {
+			    	jparent=jparent.clone();
+			    	$_("#hidden_content").append(jparent);
+			    	jparent.show();
+			    }
+			    elementlist.push(jparent);
+			 }
+        }
+        if (anchor != null)
+        	decorator.parentNode.insertBefore(anchor, decorator);
+      //  GM_log ('nodes twiddled, Node text is now: ' + node.data);
+	} // end for
+	    
+//	    if (newNodes.length > 0)
+//	    	GM_log (newNodes.length + " new nodes after decoration done");
+	    // this node done, handle any news nodes created on the way
+	    for (var x = 0; x < newNodes.length; x++)
+	    	decorateTextNode(newNodes[x],nonhiddencontent, decoratedWithoutBreak, anchors_entered); 
+    } catch(e) { GM_log("Exception decorating text node: " + e); }
+}
+
+// complicated way of getting an event target that is browser-portable
+// http://www.quirksmode.org/js/events_properties.html
+function getTarget(e) {
+    var targ;
+    if (!e) e = window.event;
+    if (e.target) targ = e.target;
+    else if (e.srcElement) targ = e.srcElement;
+    if (targ.nodeType == 3) // defeat Safari bug
+        targ = targ.parentNode;
+    return targ;
+}
+
+function voteDown(o) {
+    var value = o.getAttribute('value');
+	$_(findParentWithSelector(o, 'li')).hide(); // hide this list item from the callout
+	var cancel_url = window.MUSE_URL + '/ajax/downvote.jsp';
+
+    // remove existing highlights on current page
+    $jqs = $_('.muse-highlight');
+    $jqs = $jqs.filter(function() { return $_(this).text().toLowerCase() === value;});
+    $jqs.removeClass('muse-highlight');
+    $jqs = $_('.soft-highlight');
+    $jqs = $jqs.filter(function() { return $_(this).text().toLowerCase() === value;});
+    $jqs.removeClass('muse-soft-highlight');
+	
+    var encoded_url = encodeURI(document.URL);	
+	$_.ajax(
+			{url: cancel_url, 
+			type: 'POST',
+			data: 'term=' + value +"&url="+encoded_url, 
+			beforeSend: function(xhr) { xhr.withCredentials = true;  },
+			xhrFields: { withCredentials: true},
+			crossDomain: true,
+			success : function(response) { GM_log ('voted down term: ' + value); },
+			error: function(response) { GM_log ('WARNING: error voting down term: ' + value); }
+			});
+			/*
+	GM_xmlhttpRequest({
+				method : "POST",
+				url : cancel_url,
+				data: 'term=' + value +"&url="+encoded_url, 
+				headers: { "Content-Type": "application/x-www-form-urlencoded"},
+				onload :  function(response) { GM_log ("post successful"); }
+			});
+			*/
+}
+
+function voteUp(o) {
+    var value = o.getAttribute('value');
+	var scoring_url = window.MUSE_URL + '/ajax/upvote.jsp';
+	$_(findParentWithSelector(o, '.termMenu')).hide(); // make the term menu go away upon click.
+	
+    var encoded_url=encodeURI(document.URL);	
+    
+	$_.ajax(
+			{url: scoring_url, 
+			type: 'POST',
+			data: 'term=' + value +"&url=" + encoded_url + "&totalcount=" + $_(".musecheckbox").length, 
+			beforeSend: function(xhr) { xhr.withCredentials = true;  },
+			xhrFields: { withCredentials: true},
+			crossDomain: true,
+			success : function(response) { GM_log ('voted down term: ' + value); },
+			error: function(response) { GM_log ('WARNING: error voting down term: ' + value); }
+			});
+
+	/*
+	GM_xmlhttpRequest({
+				method : "POST",
+				url : scoring_url,
+				data: 'term=' + value +"&url=" + encoded_url + "&totalcount=" + $_(".musecheckbox").length, 
+				headers: { "Content-Type": "application/x-www-form-urlencoded"},
+				onload :  function(response) { }
+			});
+	*/
+}
+
+// is this a hit we're not really confident of? 
+function sketchy_hit (h) {
+	// < 1000 => not a name
+	return (h.timesOnPage < 10 && h.nMessages < 5);
+}
+
+// a replacement for .closest because we can't rely on all sites having a version of jquery that supports it
+var findParentWithSelector = function(node, selector) {
+	while (node != null)
+	{
+		if ($_(node).is(selector))
+			return node;
+		node = node.parentNode;
+	}
+	//GM_log ('sorry failed to find node');
+	return null;
+};
+
+//a useful debug function: get a string printing all members directly in o
+//note: does not actually print anything, just returns a string
+//print_supertype_fields is off by default
+unsafeWindow.dump_obj = function (o, print_supertype_fields) {
+	if (typeof(o) === 'undefined')
+		return 'undefined';
+	if (typeof(print_supertype_fields) === 'undefined')
+		print_supertype_fields = false;
+
+	var functions = new Array();
+
+	var s = 'typeof=' + typeof(o) + ' ';
+	if (o.constructor.name) // often the constructor name is empty because it is an anonymous function; print it only if non-empty
+		s += ' constructor=' + o.constructor.name + ' ';
+	for (var f in o)
+	{
+		try {
+			if (!print_supertype_fields && !o.hasOwnProperty(f)) // only print properties directly attached this object, not fields in its ancestors
+				continue;
+			if (typeof(o[f]) === 'function')
+				functions.push (f); // just write out "function" for functions
+			else
+			{
+				s += f + "=" + o[f] + ' '; // otherwise write out the value
+			}
+		} catch (e) {
+			GM_log ('exception trying to dump object field ' + f + ':' + e);
+		}
+	}
+	
+	if (functions.length > 0)
+		s += functions.length + ' function(s): {';
+	for (var i = 0; i < functions.length; i++)
+	{
+		s += functions[i];
+		if (i < functions.length-1)
+			s += ' ';
+	}
+	if (functions.length > 0)
+		s += '}';
+	
+	return s;
+};
+
+unsafeWindow.handleTermMenu = function(event, visible) {
+    try { 
+    	$li = $_(findParentWithSelector(event.target, 'LI'));
+    	var $menu = $_('.termMenu', $li);
+    	// GM_log ('handletermmenu for ' + event.target + ' visible = ' + visible + " " + $menu.length);
+    	$menu.css ('display', visible ? 'inline':'none');
+	} catch (e) { GM_log('exception with event ' + $_(event.target).html() + ' ' + e); }
+};
+
+unsafeWindow.SHOW_MESSAGES = function(e, hitNum) {
+    if (e.shiftKey)
+        return true;
+    
+    GM_log ("showing messages");
+    // insert the message popup into the page
+    var popup = '';
+    for (var m = 0; m < hits.results[hitNum].messages.length && m < 6; m++) {
+    	var mesg = hits.results[hitNum].messages[m];
+    	var plus_mesg = (mesg.to.length <= 1) ? '': ' (+' + (mesg.to.length-1) + ')';
+        var title = (typeof mesg.contents != 'undefined') ? mesg.contents : '';
+        title = title.replace(/"/g, "&quot;");
+        title = title.replace(/\n/g, " ");
+        popup += "<p title=\"" + title + "\">" + mesg.date + " | "
+        	   + "From: " + ((mesg.from.length > 0) ? mesg.from[0].email : '???')
+        	   + " | To: " + ((mesg.to.length > 0) ? mesg.to[0].email + plus_mesg : '???')
+               + "<br/>Subject: " + ellipsize(hits.results[hitNum].messages[m].subject, 46);
+        	   + "</p>";
+    }
+    popup += '<p><a href=\'' + hits.results[hitNum].url + '\' target="_">View ' + hits.results[hitNum].nMessages + ' message' + (hits.results[hitNum].nMessages > 1 ? 's':'') + '</a><hr/>';
+
+    $_('#muse-pointers').html(popup);
+    $_('#muse-details').attr('title', hits.results[hitNum].text);  // this title is not showing up, but if we don't have this, it says "undefined"...
+    $_('#muse-details').attr('alt', hits.results[hitNum].text);  // this title is not showing up, but if we don't have this, it says "undefined"...
+    $_('#muse-pointers').attr('title', hits.results[hitNum].text); 
+    $_('#muse-clicker').attr('title', '&nbsp;&nbsp;' + hits.results[hitNum].text);
+
+    $_('#muse-clicker').click();
+    GM_log ("click sent to open muse hits");
+    if ($_(e).stopPropagation)
+    {
+    	GM_log ('stopping propagation');
+    	$_(e).stopPropagation();
+    }
+    return false;
+};
+
+function decoratePage(muse_response) {
+	GM_log ('decorating pages: ' + muse_response);
+	nonhiddenhits = eval('(' + muse_response + ')');
+//	nonhiddenhits = eval('(' + muse_response + ')');
+//	nonhiddenhits = muse_response;
+	var hits=nonhiddenhits;
+	if (typeof hits.results == 'undefined') {
+        if (typeof hits.displayError !== 'undefined' && hits.displayError && hits.displayError.length > 0) {
+		    var $newdiv1 = $_('<div id="calloutparent"/>');
+		    var $newdivchild = $_('<div id="callout"/>');
+		    $newdiv1.append($newdivchild);
+	        $_('body').append($newdiv1);
+		    $_("#callout").html (hits.displayError); 
+		    $_("#callout").fadeIn('slow');
+		    $_("#calloutparent").fadeIn('slow');
+			$_("#muse-status").fadeOut('slow');
+			window.setTimeout(function() { $_('#calloutparent').fadeOut('slow');}, 5000); // fade out in 5 secs
+        }
+		GM_log('error: ' + hits.error);
+		return; // do nothing
+	}
+
+	GM_log (hits.results.length + ' names on page');
+
+    // populate the callout_content and insert messages into the page
+    var $newdiv1 = $_('<div id="calloutparent"/>');
+    var $menu = $_('<div id="callout-menu"><img width="15" onclick="muse_toggle_settings_menu()" src="' + window.MUSE_URL + '/images/gears-icon-gold.png"/></div>');
+    var $submenu = $_('<div id="settings_dropdown" style="display:none" class="dropdown-menu">'
+    			+ '<span title="Click to open lens settings" class="menuitem" onclick="muse_do_settings()">Settings</span><br/>'
+    			+ '<span title="Click to resize" class="menuitem" onclick="muse_do_resize_callout()">Resize</span></div>');
+    $menu.append($submenu);			
+    $newdiv1.append($menu);
+
+    window.muse_toggle_settings_menu = function() { 
+    	$_('#settings_dropdown').toggle('fast'); 
+    };
+    window.muse_do_settings = function() { 
+    	window.open(window.MUSE_URL + '/lens-settings.jsp');
+    };
+    
+    window.muse_do_resize_callout = function() { 
+    	$_('#settings_dropdown').hide();
+    	var x = prompt('Maximum number of rows in the listing at the bottom'); 
+    	if (!x)
+    		return;
+    	GM_log ('setting max height of callout to ' + 20*x + ' px');
+    	if (x >= 1)
+            $_("#calloutparent").css("max-height", 20*x);
+    };
+    
+    var $newdivchild = $_('<div id="callout"/>');
+    $newdiv1.append($newdivchild);
+    var n_hits = 0;
+    var callout_content = '<ul style="margin:0px;padding:0px">';
+    for (var i = 0; i < hits.results.length; i++) {
+        if (hits.results[i].nMessages == 0)
+            continue;
+        if (document.URL.toUpperCase().indexOf(hits.results[i].text.toUpperCase()) >= 0) // if the term appears in the document's url, kill it... e.g. stanford on stanforddaily.com
+            continue;
+        // no entry in callout for sketchy hits
+        if (sketchy_hit(hits.results[i]))
+	        continue;
+
+        n_hits++;
+        var title = 'On page: ' + hits.results[i].timesOnPage + '; in archive: ' + hits.results[i].nMessages; 
+      	callout_content += '<li style="display:inline;position:relative" class="term" onmouseover="handleTermMenu(event, true);" onmouseout="handleTermMenu(event,false);">';
+      	callout_content += '<span title="' + title + '"> ';
+
+        callout_content += '<span style="display:none;" class="termMenu">';
+//        callout_content += '<span title="' + title + '">' + hits.results[i].text + '</span>\n';
+        callout_content += '<img style="display:inline;width:30px;margin-left:2px;margin-right:2px;" class="voteDown" width="30px" value="' + hits.results[i].text + '" src="' + window.MUSE_URL + '/images/thumbs-down.png"/>';
+        callout_content += '<img style="display:inline;width:30px;margin-left:2px;margin-right:2px;" class="voteUp" width="30px" value="' + hits.results[i].text + '" src="' + window.MUSE_URL + '/images/thumbs-up.png"/>';
+        callout_content += '</span>\n'; // termMenu
+
+        callout_content += '</span>\n';
+        var term = hits.results[i].text;
+        var name = term.replace (/ /g, '_') + "_anchor";
+        // no need to lowercase too, as term is already lower case
+
+        callout_content += '<a href="#' + name + '">' + term + '</a>\n';
+//        callout_content += '<span title="' + title + '">' + hits.results[i].text + '</span>\n';
+        callout_content += '</li>\n';
+    }
+    // callout_content += '</ul>';
+    callout_content += '</ul>';
+
+    GM_log (n_hits + " name(s) in callout");
+    // show callout_content and context button and inject prettyphoto and css only if there are actual hits
+    if (n_hits > 0) {
+//    	$_("body").prepend('<div class="muse-navbar"> <a id="settings_button" href="#"><span>Settings</span></a> <a id="refresh_button" href="#"><span>Refresh</span></a> <a id="context_button" href="#"><span>Hide</span></a></div>');
+    	$_('#context_button').click(function(evt) {
+    		if ($_('#calloutparent').is(':visible')) {
+    			$_('#calloutparent').fadeOut();
+    			$_('#context_button span').html('Show');
+    		} else {
+    			$_('#calloutparent').fadeIn();
+    			$_('#context_button span').html('Hide');    			
+    		}
+    	}); 
+
+        $_('body').append($newdiv1);
+
+    	var b = document.getElementById('refresh_button');
+        if (b != null)
+    	    b.addEventListener("click", main, true);
+    	
+        $_("#callout").hide();
+        $_("#callout").html(callout_content);
+        $_("#callout").fadeIn('slow');
+        $_("#calloutparent").css("max-height", 20 * hits.callout_lines);
+        GM_log ('fading in callout now');
+    }
+
+	var ups = document.getElementsByClassName('voteUp');
+    for (var i = 0; i < ups.length; i++)
+		ups[i].addEventListener("click", function(e){ voteUp(getTarget(e));}, false);
+	var downs = document.getElementsByClassName('voteDown');
+    for (var i = 0; i < downs.length; i++)
+		downs[i].addEventListener("click", function(e){ voteDown(getTarget(e));}, false);
+
+	var textNodes = textNodesOnPage; // as an optimization, we'll reuse the nodes we found while extracting the text
+	GM_log ('decorating ' + textNodes.length + ' text nodes on page with ' + nonhiddenhits.results.length + ' hits');
+	
+	var anchors_entered = new Array();
+	for (var x = 0; x < textNodes.length; x++)
+		if (textNodes[x] != null)
+		{
+			try {
+				decorateTextNode(textNodes[x],true, anchors_entered);
+			}
+			catch(err) { alert(err); }
+		}
+	GM_log (n_hilights + " names hilited");
+	GM_log ('finished decorating page, elapsed time on page = ' + (new Date().getTime()-startTime) + 'ms');
+	start_prettyphoto();
+	
+    // ensure margin space for callout at the bottom. otherwise if margin is 0, a link right at the bottom of the page becomes unreachable.
+    if ($_('body').css('margin-bottom') == '0px')
+        $_('body').css('margin-bottom', '60px'); 
+
+	$_('#muse-status').fadeOut('slow');
+
+    // disabled for now -- need option to enable it
+//    if (document.URL.indexOf("youtube")>=0)
+//       reRankYoutube();
+}
+
+//////////////////////////////////// Youtube re-ordering /////////////////////////////////
+
+var youtubepersonalized=new Array();
+var youtubecounter= new Array();
+var youtubeit=0;
+
+function prefetchYoutube()
+{
+    if (window.top != window.self)
+      return;
+      
+    var query=$_("#masthead-search-term").val();
+    if(query.length<=0)
+    	return;
+
+    //http://www.youtube.com/results?search_query=java&page=2
+		// create iframe and attach it into the DOM
+    $_('<iframe id="myFrame" name="myFrame">').appendTo('body');
+
+		// Setting iframe's source
+		$_('#myFrame').attr('src', 'http://www.youtube.com/results?search_query='+query+'&page=2'); 
+
+   $_('#myFrame').load(function(){
+  
+   	$_("#myFrame").contents().find(".result-item").each(function(i, obj) {
+    	  //alert("iframe"+i);
+    		$_("#search-results").append($_(this).clone());
+     
+		});
+
+		$_("#myFrame").remove();
+	});
+	 //$_("#myFrame").remove();
+}
+
+function reRankYoutube() {
+	$_('.result-item').each(function(i, obj) {
+     GM_log ("hilited elems="+ $_(".muse-highlight",this).size());
+
+     youtubepersonalized[youtubeit]=$_(this).clone();
+     youtubecounter[youtubeit]=$_(".muse-highlight",this).size();
+		 youtubeit++;
+	});
+
+	for(var i=0;i<youtubeit;i++)
+	{
+			for(var j=i+1;j<youtubeit;j++)
+			{
+					if(youtubecounter[i]<youtubecounter[j])
+					{
+							var tempcounter=youtubecounter[i];
+							youtubecounter[i]=youtubecounter[j];
+							youtubecounter[j]=tempcounter;
+
+							var temppersonalized=youtubepersonalized[i];
+							youtubepersonalized[i]=youtubepersonalized[j];
+							youtubepersonalized[j]=temppersonalized;
+					}
+			}
+	}
+
+	$_("#search-results").html(" ");
+	for(var i=0;i<youtubeit;i++)
+	{
+			$_("#search-results").append(youtubepersonalized[i]);
+	}
+}
+};
+
+init();
+
+})(); // end of anonymous wrapper function 
+/* 
+
+	function select_hidden_content() {
+	        hidden_flag=true;
+		var responses_received = 0;
+		//var responses_expected = $("ul.primary li").length;
+		
+	        var $hidden_content = $_('<div id="hidden_content" />');
+		$_('body').append($hidden_content);
+		
+		 $iframeholder = $_('<div id="iframeholder"/>');
+		//$_('body').append($iframeholder);
+		
+		
+		for(var l=0;l<menuitems.length;l++)
+		{
+			$jelm=menuitems[l];
+			$_('a',$jelm).each(function(index,pele) { 
+			     GM_log( $_(this).attr("href"));
+
+			     var hidden_url= $_(this).attr("href");
+			    // alert(hidden_url);
+			     try
+			     {
+			     	
+			     		$_.get( $_(this).attr("href"), {}, function(html) {
+			    	 
+			    	  		 //alert($_(html).children("div").length);
+			    	  		
+					    	 var $content = $_('<div style="display:none"/>');
+						 
+						  
+						 
+						  $_(html).children().each(function(i) { 
+						  
+						  	$iframeholder.append($_(this));
+						  	
+		    				
+						 });
+						 
+						
+			
+			    		});
+			    	}
+			    	
+			    	catch(err)
+			     	{
+			     		GM_log("errrr"+err);
+			     	}
+		    		
+		    	});
+		    	
+		    }
+	}
+*/
+
+
+/*
+   function isVisible(obj)
+   {
+   if (obj == document) return true;
+
+   if (!obj) return false;
+
+   if (!obj.parentNode) return false;
+
+   if (obj.style) {
+   if (obj.style.display == 'none') return false;
+   if (obj.style.visibility == 'hidden') return false;
+//        if (obj.style.font-size == '-1px') return false
+}
+
+//Try the computed style in a standard way
+if (window.getComputedStyle) {
+var style = window.getComputedStyle(obj, "");
+if (style.display == 'none') return false;
+if (style.visibility == 'hidden') return false;
+}
+
+//Or get the computed style using IE's silly proprietary way
+var style = obj.currentStyle;
+if (style) {
+if (style['display'] == 'none') return false;
+if (style['visibility'] == 'hidden') return false;
+}
+
+return isVisible(obj.parentNode)
+}
+
+
+function inject_layout() {
+	var GM_Head = document.getElementsByTagName('head')[0]
+	|| document.documentElement;
+	var GM_JQMS = document.createElement('script');
+	GM_JQMS.src = 'http://mobisocial.stanford.edu/musemonkey/jquery.masonry.min.js';
+	GM_JQMS.type = 'text/javascript';
+	GM_JQMS.async = false;
+	GM_Head.insertBefore(GM_JQMS, GM_Head.lastChild);
+}
+
+	function select_menuitems($jelm) {
+//		GM_log("number of anchor tags:"+ $('a',$jelm).length);
+	        try{
+			//GM_log(" select_contentNodes");
+			// if($jelm[0].nodeType!=1)
+			//	select_contentNodes($jelm.parent());
+			
+			if($jelm[0].nodeType==1)
+			{
+				var offset = $jelm.offset();
+				if((($jelm.height() < 200 && $jelm.width()< 1000)||($jelm.height() < 1000 && $jelm.width()< 200))&& offset.left<300 && offset.top<600)
+				{
+					$jelm_parent=$jelm.parent();
+					
+					
+					//GM_log("number of anchor tags:"+ $jelm[0].getElementsByTagName('a').length);
+					if($_('a',$jelm).length<=25 && $_('a',$jelm).length > 6)
+					{
+					       //&& offset.left<600 && offset.top<600
+						GM_log($jelm.html());
+						
+						menuitems.push($jelm);	
+					}
+					if($_('a',$jelm).length>50)
+					{
+						$jelm.children().each(function(i) { 
+		    					select_menuitems($_(this));
+						});
+					}	
+				}
+				else
+				{
+					$jelm.children().each(function(i) { 
+		    				select_menuitems($_(this));
+					});
+				}
+				
+				
+			}
+			else
+			{
+				$jelm.children().each(function(i) { 
+		    				select_menuitems($_(this));
+				});
+			}
+			
+		
+	        }
+	        catch(err)
+		{
+			GM_log("error**************"+err);
+		}	
+	}
+
+ */

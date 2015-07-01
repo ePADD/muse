@@ -1,0 +1,27 @@
+
+<%@page language="java" import="java.util.*"%>
+<%@page language="java" import="java.io.*"%>
+<%@page language="java" import="edu.stanford.muse.index.*"%>
+<%@page language="java" import="edu.stanford.muse.email.*"%>
+<%@page language="java" import="edu.stanford.muse.mining.*"%>
+<%@page language="java" import="edu.stanford.muse.webapp.*"%>
+<%@page language="java" import="org.json.*"%>
+
+<%
+	// This jsp fetches the headers and populates the contactGroups and emailDocs session vars
+	// and passes on the baton to getContactGroups2.jsp
+    Thread.currentThread().setName("getContactGroups");
+    boolean success = JSPHelper.fetchEmails(request, session, false);
+
+	if (!success)
+	{
+        response.setContentType("text/xml");
+        response.setHeader("Cache-Control", "no-cache");
+	    out.println("<result><div resultPage=\"error.jsp\"></div></result>");
+		return;
+	}
+
+    response.setContentType("text/xml");
+    response.setHeader("Cache-Control", "no-cache");
+    out.println("<result><div resultPage=\"getContactGroups2.jsp\"></div></result>");
+%>

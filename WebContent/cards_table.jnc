@@ -1,0 +1,182 @@
+<div id="actual_cards" style="padding-left:auto;">
+<div class="db-hint">
+	Showing top <%=nResults%> results per month.
+	(<a href="?<%=archiveUrlParam%>&n=<%=nResults*2%>">More</a> terms, or <a href="?<%=archiveUrlParam%>&n=<%=nResults/2%>">fewer</a>).
+	<% if (!Config.isPublicMode()) { %>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="info">Back to summary</a>
+	<% } %>
+
+	<br/>
+	<span class="helpcue">CLICK</span> on a term to open a tab with related messages, or on the month's title to view all messages for that month.<br/>
+<!-- <span class="helpcue">Shift-click</span> to copy it to the diary.  -->
+	<% if (!Config.isPublicMode()) { %>
+	Terms are colored by the group with which they are most closely associated in that month. Terms not associated with any group are <span class="colorClass0">colored blue</span>.
+	<% } %>
+	<br/>
+
+</div>
+
+<div id="allCards" style="position:relative;display:inline-block"> <!-- "display:inline-block" for "shrinkwrapping" effect, else allocate extra width which makes center align look off -->
+
+<div id="navigator" align="center">
+	<img id="prevYear" src="/muse/images/prev.png" class="cardYearArrow" onclick="changeYear(-1)">
+	<select id="cardYearSelect" onchange="selectYear(this)">
+	<%
+	Map<Integer,Integer> nMessagesByYear = new LinkedHashMap<Integer,Integer>();
+	for (Card c : cards) {
+		if (!nMessagesByYear.containsKey(c.startYear))
+			nMessagesByYear.put(c.startYear, 0);
+		nMessagesByYear.put(c.startYear, nMessagesByYear.get(c.startYear) + c.nMessages);
+	}
+	for (Map.Entry<Integer,Integer> e : nMessagesByYear.entrySet()) {
+		int year = e.getKey();
+		int n_messages = e.getValue();
+		String style = n_messages > 0 ? "" : " style='color:#ddd;'";
+		%>
+		<option value='<%=year%>'<%=style%>>&nbsp;<%=year%>&nbsp;</option>
+		<%
+	}
+	%>
+	</select>
+	<img id="nextYear" src="/muse/images/next.png" class="cardYearArrow" onclick="changeYear(+1)">
+</div>
+
+<%
+	int cloudNum = -1, displayedCloudNum = 0;
+// cloudNum = absolute cloudNum based on intervals
+// nonZeroCloudNum is clouds with non-zero documents (used by indexer methods)
+// displayedCloudNum = cloud # actually displayed on screen
+// sone nonZeroClouds may not be displayed
+// but because all terms in the cloud don't have any docsForTerm
+
+	int next_card_idx = 0;
+	Card next_card = cards.get(next_card_idx);
+	int firstYear = next_card.startYear;
+	int year = firstYear;
+	final List<CardTerm> empty_terms = new ArrayList<CardTerm>();
+	String cardDisplay = "block";
+	while (next_card_idx < cards.size()) {
+    	%>
+		<table class="cardYearTable" id="cards-<%=year%>" style="display:<%=cardDisplay%>">
+		<tr class="card-row">
+    	<%
+    	cardDisplay = "none";
+		for (int month = 0; month < 12; month++) {
+			String month_str = CalendarUtil.getDisplayMonth(month);
+			String description = Util.URLEncode(month_str + " " + year);
+			int nMessages = 0;
+			List<CardTerm> tagList = empty_terms;
+
+			if (month == next_card.startMonth && year == next_card.startYear) {
+				cloudNum++;
+				tagList = next_card.terms;
+				nMessages = next_card.nMessages;
+				next_card_idx++;
+				if (next_card_idx < cards.size()) {
+					next_card = cards.get(next_card_idx);
+					boolean bad_sort = next_card.startYear*12+next_card.startMonth <= year*12+month;
+					if (bad_sort)
+						throw new RuntimeException("Cards are not properly sorted by date/time");
+				}
+			}
+
+			// filter and sort terms if we have groups
+			List<CardTerm> newTagList;
+			if (nogroups)
+			{
+				newTagList = tagList;
+				for (CardTerm tag : newTagList)
+					tag.colorWeights = null; // clear the tag colors
+			}
+			else
+				newTagList = IndexUtils.computerTermOrderAndColors(tagList, cloudNum, archive, groupAssigner);
+		
+			//if (newTagList.size() > 0)
+			{
+				displayedCloudNum++;
+				// link for all docs in a given month. Note: adjustment to startMonth necessary
+				String fullClusterLink = "/muse/browse?" + archiveUrlParam + "&title=" + description + "&year=" + year + "&month=" + (month+1);
+		%>
+				<td class="monthly-card" id="tagclouddiv<%=cloudNum%>" yy="<%=year%>" mm="<%=month%>">
+					<div class="monthly-card-box"> <!--  div for padding and talign -->
+
+					<div title="Click to view all messages for this month" style="vertical-align: text-bottom;">
+					<span class="tagcloud-name"><a target="_blank" href="<%=fullClusterLink%>"><%=month_str%></a>&nbsp;</span>
+					<span class="tagcloud-name tagcloud-name2"><a target="_blank" href="<%=fullClusterLink%>"><%=nMessages%> message<%=(nMessages!=1)?"s":""%></a></span>
+			        </div>
+
+						<div class="monthly-terms" class="tagcloud-content" description="<%=description%>" id="mytagcloud<%=cloudNum%>">
+						<%
+							int count = 0;
+							// print all the tags
+							for (CardTerm tag : newTagList)
+							{
+								String tagHTML = tag.toHTML(request.getParameter("uncolored") == null, year, month, archiveUrlParam); /* colored by default */
+								if (Util.nullOrEmpty(tagHTML)) continue;
+							%>
+							<span class="tagcloud-base">
+								<%=tagHTML%>
+								<br/>
+							</span>
+							<%
+							count++;
+						}
+						
+						for (; count < nResults-1; count++)
+						{
+							%>
+							<span class="tagcloud-base" style="font-size: 16pt;">
+								&nbsp;
+							<br/>
+							</span>
+							<%
+						}
+						// below, ideally check if we have any attachments in that cluster
+						%>
+						</div>
+					</div> <!--  div for padding and text-align -->
+				</td>
+				<%
+				//	String term =  "tc"  + cloudNum + ".add('" + tag.originalTerm.replace("'", "\\'") + "', " + tag.size + ", '" + link + "', " + tag.bestColor() + ");";
+				if (displayedCloudNum % 4 == 0)
+					out.println("</tr><tr>"); // start a new UL for the next 3
+
+			} // end of newTagList.size() > 0
+			out.flush();
+		} // for each month
+
+		year++;
+		%>
+		</tr>
+		</table>
+		<%
+	} // for each year
+%>
+
+</div>
+</div> <!--  actual_cards -->
+
+<script>
+var selectedYear = <%=firstYear%>;
+function selectYear(sel)
+{
+	var index = sel.selectedIndex;
+	$('#cards-' + selectedYear).hide();
+	selectedYear = parseInt(sel.options[index].value);
+	$('#cards-' + selectedYear).show();
+	$('#prevYear').css('opacity', index == 0 ? 0.3 : 1);
+	$('#nextYear').css('opacity', index == sel.options.length-1 ? 0.3 : 1);
+}
+
+function changeYear(offset)
+{
+	var sel = $('#cardYearSelect').get(0);
+	var index = sel.selectedIndex + offset;
+	if (index < 0 || index >= sel.options.length) return false;
+	sel.selectedIndex = index;
+	selectYear(sel);
+	return true;
+}
+
+changeYear(0); // to compute initial clickability of prev/next arrows
+</script>

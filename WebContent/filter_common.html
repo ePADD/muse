@@ -1,0 +1,50 @@
+<script src="js/jquery/jquery.ui.core.js"></script>
+<script src="js/jquery/jquery.ui.widget.js"></script>
+<script src="js/jquery/jquery.ui.mouse.js"></script>
+<script src="js/jquery/jquery.ui.slider.js"></script>
+<link href="css/jquery.ui.demos.css" rel="stylesheet" type="text/css"/>
+<link href="css/jquery.ui.theme.css" rel="stylesheet" type="text/css"/>
+<link href="css/jquery.ui.slider.css" rel="stylesheet" type="text/css"/>
+
+<script type="text/javascript">
+//convert month offset to "mm/yy"
+function convert_month_num_to_yy_mm(month_offset, gStartYear, gStartMonth) {
+	var abs_offset = gStartYear*12 + gStartMonth + month_offset;
+	var yy = parseInt(abs_offset / 12);
+	var mm = 1 + (abs_offset % 12);
+	return {mm:mm,yy:yy};
+}
+
+function convert_month_num_to_yy_mm_str(month_offset, gStartYear, gStartMonth) {
+	var o = convert_month_num_to_yy_mm(month_offset, gStartYear, gStartMonth);
+	var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+	return months[o.mm-1] + " " + o.yy;
+}
+
+function make_date_slider(slider_bar, slider_text, g_n_months, gStartYear, gStartMonth, n_months, startYear, startMonth, change_func)
+{
+  var slider = $( slider_bar ).slider({
+		range: true,
+		min: 0,
+		width:'100px',
+		max: g_n_months,
+		step: 1,
+		values: [0, g_n_months],
+		slide: function( event, ui ) {
+			var range = convert_month_num_to_yy_mm_str(ui.values[ 0 ], gStartYear, gStartMonth) + " to " + convert_month_num_to_yy_mm_str(ui.values[ 1 ], gStartYear, gStartMonth);
+			$( slider_text ).html( range );
+			$( slider_text ).css( 'font-weight', 'bold' ); // make text bold if user slides it
+			$( slider_bar ).attr('title', range);
+		},
+		change: change_func
+	});
+
+	// compute initial position of slider
+	var initial_slider_0 = (startYear*12+startMonth) - (gStartYear*12+gStartMonth);
+	var initial_slider_1 = initial_slider_0 + n_months;
+	var range = convert_month_num_to_yy_mm_str(initial_slider_0, gStartYear, gStartMonth) + " to " + convert_month_num_to_yy_mm_str(initial_slider_1, gStartYear, gStartMonth);
+	$( slider_text ).html( range );
+	$( slider_bar ).attr('title', range);
+    $( slider_bar ).slider( "values", [initial_slider_0, initial_slider_1]);
+}
+</script>

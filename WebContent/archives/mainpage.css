@@ -1,0 +1,165 @@
+
+.element-invisible 
+{
+    clip: rect(1px, 1px, 1px, 1px);
+    position: absolute !important;
+}
+#leftcolumn{
+	width: 380px;
+	float: left;
+	border-height: 1000px;
+	border-style: groove;
+	border-radius: 15px;
+	margin-top: 10px;
+	background-color: #CFDCE7;
+	padding: 10px;
+}
+#information{
+	padding-bottom: 100px;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+#tablewrapper {
+    width: 400px;
+	float: left;
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+#tableheader {
+    height: 55px;
+}
+.search {
+    background: none repeat scroll 0 0 #FFFFFF;
+    border: 1px solid #C6D5E1;
+    float: left;
+    padding: 6px;
+}
+#tableheader select {
+    float: left;
+    font-size: 12px;
+    padding: 2px 4px 4px;
+    width: 125px;
+}
+#tableheader input {
+    float: left;
+    font-size: 12px;
+    margin-left: 4px;
+    padding: 2px 4px 4px;
+    width: 225px;
+}
+.details {
+    float: right;
+    padding-top: 12px;
+}
+.details div {
+    float: left;
+    font-size: 12px;
+    margin-left: 15px;
+}
+.tinytable {
+    border-bottom: medium none;
+    border-left: 1px solid #C6D5E1;
+    border-top: 1px solid #C6D5E1;
+    width: 700px;
+/* 	float: right; */
+}
+.tinytable th {
+    -moz-border-bottom-colors: none;
+    -moz-border-image: none;
+    -moz-border-left-colors: none;
+    -moz-border-right-colors: none;
+    -moz-border-top-colors: none;
+	background: #93190A;
+    border-color: #FFFFFF -moz-use-text-color #FFFFFF #FFFFFF;
+    color: #CFDCE7;
+    text-align: left;
+}
+.tinytable th h3 {
+    padding: 7px;
+}
+.tinytable td {
+    border-bottom: 1px solid #C6D5E1;
+    border-right: 1px solid #C6D5E1;
+    padding: 7px;
+}
+.tinytable .head h3 {
+    background: url("images/sort.gif") no-repeat scroll 7px center transparent;
+    cursor: pointer;
+    padding-left: 18px;
+}
+.tinytable .desc, .sortable .asc {
+    background: url("images/header-selected-bg.gif") repeat scroll 0 0 transparent;
+}
+.tinytable .desc h3 {
+    background: url("images/desc.gif") no-repeat scroll 7px center transparent;
+    cursor: pointer;
+    padding-left: 18px;
+}
+.tinytable .asc h3 {
+    background: url("images/asc.gif") no-repeat scroll 7px center transparent;
+    cursor: pointer;
+    padding-left: 18px;
+}
+.tinytable .head:hover, .tinytable .desc:hover, .tinytable .asc:hover {
+    color: #FFFFFF;
+}
+.tinytable .evenrow td {
+    background: none repeat scroll 0 0 #FFFFFF;
+}
+.tinytable .oddrow td {
+    background: none repeat scroll 0 0 #ECF2F6;
+}
+.tinytable td.evenselected {
+    background: none repeat scroll 0 0 #ECF2F6;
+}
+.tinytable td.oddselected {
+    background: none repeat scroll 0 0 #DCE6EE;
+}
+.tinytable tfoot {
+    background: none repeat scroll 0 0 #FFFFFF;
+    font-weight: bold;
+}
+.tinytable tfoot td {
+    padding: 6px 8px 8px;
+}
+#tablefooter {
+    height: 15px;
+    margin-top: 20px;
+}
+#tablenav {
+    float: left;
+}
+#tablenav img {
+    cursor: pointer;
+}
+#tablenav div {
+    float: left;
+    margin-right: 15px;
+}
+#tablelocation {
+    float: right;
+    font-size: 12px;
+}
+#tablelocation select {
+    margin-right: 3px;
+}
+#tablelocation div {
+    float: left;
+    margin-left: 15px;
+}
+.page {
+    font-style: italic;
+    margin-top: 2px;
+}
+#selectedrow td {
+    background: none repeat scroll 0 0 #C6D5E1;
+}
+p.main{
+	text-align: justify;
+}
+#count-chart-wrapper {
+	float: right;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	width: 650px;
+}

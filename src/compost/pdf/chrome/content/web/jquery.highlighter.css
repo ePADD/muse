@@ -1,0 +1,59 @@
+/* Highlighter */
+#highlight-desc, #control {
+	font: 12px "Lucida Grande", Helvetica, Verdana, sans-serif;
+	font-size:80%;
+}
+#screen {
+	position:fixed;
+	top:0;
+	left:0;
+	right: 0;
+	bottom:0;
+}
+#control {
+	z-index: 10;
+	background-color: white;
+	padding: 10px;
+	font-size: 1em;
+	top:10px;
+	left:10px;
+	position:fixed;
+	border: 5px solid #808080 !important;
+	-moz-border-radius: 10px;
+	-webkit-border-radius: 10px;
+	-webkit-box-shadow:0px 0px 30px white;
+	-moz-box-shadow: 0px 0px 30px white;
+	font-weight: bold;
+	text-align:left;
+}
+#control a{
+	padding: 5px;
+	text-decoration:none;
+	color: black;
+}
+#control a.jhighlight-active {
+	color: white;
+}
+#control a#close{
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px; 
+	background-color:#CCCCCC;
+	color: #black;
+}
+#highlight-desc {
+	z-index: 99 !important;
+	font-size: 1.2em;
+	top:50px;
+	position:fixed;
+	width: 300px;
+	padding: 5px 5px 5px 20px;
+	color:#fff;
+	text-shadow: 1px 1px 2px #000;
+	display:none;
+}
+.jhighlight-active, #control a:hover {
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px; 
+	background-color: #808080;
+	color: white;
+}

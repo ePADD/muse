@@ -1,0 +1,378 @@
+/* skin: */
+
+body {
+	background-color: #F2F3EB; /* #f0f0f0; */ /* #ffffcc; */
+}
+
+h1 {
+	color: #333333;
+}
+
+h2 {
+	color: green;
+}
+
+.page {
+	background-color: white;
+}
+
+.blackpage {
+	background-color: #111;
+	color: #fff;
+}
+
+.login-method-box, .login-method-box-centered {
+	background-color: rgb(201,101,72); /* #87CEFA;*/
+	background-color: rgb(4,119,130);
+}
+
+.login-method-text {
+	background-color: rgb(140,112,112); /* #000060; */
+	color: #ffffff;
+}
+
+.login-error-message {
+	background-color:#a02060;
+	color:white;
+	font-weight:bold;
+	padding: 0px 5px 5px 5px;
+	margin-bottom: 10px;
+	text-align:left;
+}
+
+.facet { padding: 2px }
+.facet:hover, .noTNattachmentText:hover, .hilitedTerm:hover, .selected-facet {
+    background-color: #99CC32;
+    border-bottom: 1px solid #9A8E51;
+    color: #000000;
+    text-decoration:none;
+}
+
+.facet-count {
+	color:gray;	/* slightly washed out counts */
+}
+
+.hilitedTerm {
+	background-color: lightyellow;
+    border-bottom: 1px solid #9A8E51;
+    color: #000000;
+    text-decoration:none;
+
+}
+
+.noTNattachmentText {
+	color: #000000;
+}
+
+.noTNattachment a {
+	padding-left:10px; padding-right:10px;padding-top: 5px; padding-bottom: 5px;
+    text-decoration:none;
+}
+
+.hilited-person {
+	background-color: yellow;
+}
+
+.hilited-group {
+	background-color: #000000; /* #fffacd; */
+}
+
+.groupname {
+	color: black;
+}
+
+.db-filters-div, .db-div-welcome, .panel {
+	background-color: #17BECF; color: white; /* rgb(228,188,116); */
+	border-color:#c0c0c0;
+}
+
+.panel-header, .selected-folder {
+	background-color: #D5724D; 
+	color:#ffffff;
+}
+
+.tagcloud-name a {
+	color:rgba(127,127,127,0.5);
+	text-decoration: none;
+}
+
+.topnav li a, .topnav li a:visited, .clickableLink, .tools-button {
+	// background-color: rgb(201,101,72);/* #a67c52; /* #4682B4; #f0f0f0; #404050; */
+	color:rgb(140,112,112); /* #000000; /* #ffffff; */
+}
+
+.tools-button:hover {
+	text-decoration:underline;
+}
+
+.input-field {
+	background-color: #c0c0c0;
+}
+
+
+input[type=text], input[type=password] {
+	background-color: #cccccc; /* #c0c0c0; */
+}
+
+.searchbox {
+	background-color: #c0c0c0;
+}
+
+hr {
+	color: #rgba(127,127,127,0.2); /* rgb(140,112,112);#EF8A62;*/
+	background-color: rgba(127,127,127,0.2); /* rgb(140,112,112);#EF8A62;*/
+	shade: noshade;
+	border-style:solid none none none;
+	/* amazing the extent one has to go to make <hr> look good! */
+}
+
+.toolbox-advanced {
+	border-color: rgb(140,112,112);/*#EF8A62;*/
+}
+
+.page {
+/*	border-color: #EF8A62; */
+}
+
+.folderspage {
+	border-color: #EF8A62;
+}
+
+.db-hint {
+	color: #444; /* gray */
+}
+
+.showMessageFilter {
+	color:white;
+	background-color:black;
+}
+
+#status {
+	background-color: #f0f0f0; /* #F0E68C; */
+}
+
+table.message {
+	color:#000000;
+}
+
+table.docheader {
+	border-color: green;
+}
+
+ul.thumbnails li {
+	border-color: #101080;
+}
+
+ul.thumbnails li a.hover img {
+	border-color: #101080;
+}
+
+#jog_contents a:visited {
+	background-color: white;
+	color: #4040c0;
+}
+
+.progress_bar {
+	background-color: #40f040;
+}
+
+.helpcue {
+	background-color: #ccc;
+	padding: 1px 3px 1px 3px;
+}
+
+/* colors borrowed from http://protovis-js.googlecode.com/svn/trunk/jsdoc/symbols/pv.Colors.html */
+.colorClass-1 {
+  color: #808080;
+}
+
+.colorClass0 {
+  color: #1f77b4;
+}
+
+.colorClass1 {
+  color: #aec7e8;
+}
+
+.colorClass2 {
+  color: #ff7f0e;
+}
+
+.colorClass3 {
+  color: #ffbb78;
+}
+
+.colorClass4 {
+  color: #2ca02c;
+}
+
+.colorClass5 {
+  color: #17becf; /* replacing lightgreen with color # 18 #98df8a; ! lightgreen; */
+
+}
+
+.colorClass6 {
+  color: #d62728;
+}
+
+.colorClass7 {
+  color: #ff9896;
+}
+
+.colorClass8 {
+  color: #9467bd;
+}
+
+.colorClass9 {
+  color: #c5b0d5;
+}
+
+.colorClass10 {
+  color: #8c564b; // forest green
+}
+
+.colorClass11 {
+  color: #c49c94; // cornflower blue
+}
+
+.colorClass12 {
+  color: #e377c2; //
+}
+
+.colorClass13 {
+	  color: #f7b6d2; // coral
+}
+
+.colorClass14 {
+  color: #7f7f7f;
+}
+
+.colorClass15 {
+  color: #c7c7c7; // indigo
+}
+
+.colorClass16 {
+  color: #bcbd22; // medium orchid
+}
+
+.colorClass17 {
+  color: #dbdb8d; // saddle brown
+}
+.colorClass18 {
+  color: #17becf; // dark salmon
+}
+.colorClass19 {
+  color: #9edae5; // dim gray
+}
+
+.bcolorClass-1 {
+  background-color: #808080;
+}
+
+.bcolorClass0 {
+  background-color: #1f77b4;
+}
+
+.bcolorClass1 {
+  background-color: #aec7e8;
+}
+
+.bcolorClass2 {
+  background-color: #ff7f0e;
+}
+
+.bcolorClass3 {
+  background-color: #ffbb78;
+}
+
+.bcolorClass4 {
+  background-color: #2ca02c;
+}
+
+.bcolorClass5 {
+  background-color: #17becf; /* replacing lightgreen with background-color # 18 #98df8a; ! lightgreen; */
+
+}
+
+.bcolorClass6 {
+  background-color: #d62728;
+}
+
+.bcolorClass7 {
+  background-color: #ff9896;
+}
+
+.bcolorClass8 {
+  background-color: #9467bd;
+}
+
+.bcolorClass9 {
+  background-color: #c5b0d5;
+}
+
+.bcolorClass10 {
+  background-color: #8c564b; // forest green
+}
+
+.bcolorClass11 {
+  background-color: #c49c94; // cornflower blue
+}
+
+.bcolorClass12 {
+  background-color: #e377c2; //
+}
+
+.bcolorClass13 {
+	  background-color: #f7b6d2; // coral
+}
+
+.bcolorClass14 {
+  background-color: #7f7f7f;
+}
+
+.bcolorClass15 {
+  background-color: #c7c7c7; // indigo
+}
+
+.bcolorClass16 {
+  background-color: #bcbd22; // medium orchid
+}
+
+.bcolorClass17 {
+  background-color: #dbdb8d; // saddle brown
+}
+.bcolorClass18 {
+  background-color: #17becf; // dark salmon
+}
+.bcolorClass19 {
+  background-color: #9edae5; // dim gray
+}
+
+.comment {
+	background-color:rgba(167,189,91,0.8); /* 255,255,80,0.8); // #99CC32 */
+	color: rgba(32,32,192,0.8);
+}
+
+.error {
+	/* these colors synced with keep calm poster via http://www.keepcalm-o-matic.co.uk */
+	color:#c1bea2;	
+	background-color:#c10c06;
+}
+
+.prompt { color: #ccc; }
+
+.error a {
+	color: #69AA35;
+}
+
+.error a:visited {
+	color: #69AA35;
+}
+
+/* nice bright orange we can use somewhere; #ffd700.
+nice lightgreen: #99CC32;
+honeysuckle pink (pantone coty 2011;) rgb(204,101,134).
+nice bright prpl #6D2C70
+evernote green: #69AA35
+royal blue from whosent.it: #0C3569
+*/

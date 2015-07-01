@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+<title>Top contacts</title>
+<link href="muse.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+
+<%@page language="java" import="java.util.*"%>
+<%@page language="java" import="javax.mail.*"%>
+<%@page language="java" import="java.io.*"%>
+<%@page language="java" import="edu.stanford.muse.email.*"%>
+<%@page language="java" import="edu.stanford.muse.index.*"%>
+<%@page language="java" import="edu.stanford.muse.*"%>
+<%@page language="java" import="edu.stanford.muse.util.*"%>
+
+<p/> <p/> <p/> <p/>
+<jsp:include page="header.html"/>
+<%
+	List<TagCloud> tagClouds = (List<TagCloud>) session
+	.getAttribute("tagClouds");
+	List<List<Contact>> topContacts = (List<List<Contact>>) session
+	.getAttribute("topContacts");
+
+	if (topContacts == null)
+	{
+		out.println ("Sorry, top contacts information is disabled in this version");
+		return;
+	}
+	int lower = tagClouds.size();
+
+	// we think right now the # of tagclouds is the same as the # of topcontact sets
+	// this should be true, but re-examine when any changes happen to handling of empty time clusters
+	if (tagClouds.size() != topContacts.size()) {
+		out
+		.println("------REAL WARNING: top contacts size misaliged with cluster descriptions, results may be off in time");
+		if (topContacts.size() < lower)
+	lower = topContacts.size();
+	}
+
+	for (int i = 0; i < lower; i++) {
+		System.out.println("---- top contacts for "
+		+ tagClouds.get(i).description + " -----");
+		out.println("<h2>Top contacts for "
+		+ tagClouds.get(i).description + "</h2><br/>");
+
+		for (Contact ci : topContacts.get(i)) {
+	System.out.println(ci);
+	out.println(Util.escapeXML(ci.toString()) + " <br/>");
+		}
+		out.println("<hr color=\"red\"/>");
+	}
+
+	// printing matrix
+	IndexEmailDriver driver = (IndexEmailDriver) session
+	.getAttribute("indexDriver");
+	if (driver == null) {
+		out
+		.println("Sorry... your session has timed out. Detailed information not available.");
+		return;
+	}
+
+	AddressBook fullSet = driver.addressBook;
+	if (fullSet == null) {
+		out.println("No contact set?");
+		return;
+	}
+	List<Contact> list = fullSet.sortedContacts();
+
+	StringBuilder sb = new StringBuilder();
+	sb.append("<br/><b>Incoming</b><br/>\n<table><tr>\n");
+	sb.append("<td>email</td>");
+
+	for (int i = 0; i < lower; i++)
+		sb.append("<td>" + tagClouds.get(i).description + "</td>");
+
+	sb.append("</tr>\n");
+
+	List<AddressBook> csList = driver.topAddressBooks;
+
+	for (Contact ci : list) {
+		String email = "UNKNOWN";
+		if (ci.emails.size() > 0)
+	email = ci.emails.iterator().next();
+		sb.append("<tr><td>" + email + "</td>");
+		for (int i = 0; i < lower; i++) {
+	AddressBook ab = csList.get(i);
+	sb.append("<td>"
+	+ ab.getContact(null, email).inDates.size()
+	+ "</td>");
+		}
+		sb.append("</tr>\n");
+	}
+	sb.append("</table>");
+
+	out.println(sb);
+	String s = sb.toString();
+
+	sb = new StringBuilder();
+	sb.append("<br/><b>Outgoing</b><br/>\n<table><tr>\n");
+	sb.append("<td>email</td>");
+
+	for (int i = 0; i < lower; i++)
+		sb.append("<td>" + tagClouds.get(i).description + "</td>");
+
+	sb.append("</tr>\n");
+
+	for (Contact c : list)
+	{
+		String email = "UNKNOWN";
+		if (c.emails.size() > 0)
+			email = c.emails.iterator().next();
+		sb.append("<tr><td>" + email + "</td>");
+		for (int i = 0; i < lower; i++)
+		{
+			AddressBook ab = csList.get(i);
+			sb.append("<td>"
+			+ ab.getContact(null, email).outDates.size()
+			+ "</td>");
+		}
+		sb.append("</tr>\n");
+	}
+	sb.append("</table>");
+
+	out.println(sb);
+%>
+
+<jsp:include page="footer.jsp"/>
+</body>
+</html>
+

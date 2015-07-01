@@ -1,0 +1,108 @@
+/* skin: */
+
+/* kuler compl. colors: #202B30, #4E7178, #74C0CF, #74C0CF, #F1F7E2
+*/
+@import "colors_common.css";
+body {
+}
+h1 {
+    color: #333333;
+}
+.panel h2 {
+	color: #F1F7E2;
+	/*   	#99CC32; /* #CC5700; rgb(204,101,134) */
+}
+
+h2 {
+	color: #99CC32; /* #CC5700; rgb(204,101,134) */
+}
+
+.panel, .page, .comment, .noTNattachmentText:hover, .selected-facet, .facet:hover, .info, .bundle-select, .browsepage .modal {
+    background-color: #2A8E82;
+}
+
+.bundle-select {
+	color: black;
+	background-color: white;
+	border: 1px solid black;	
+}
+/*
+.shadow {
+	-moz-box-shadow: 2px 2px 3px #4E7178;
+	-webkit-box-shadow: 2px 2px 3px #4E7178;
+	box-shadow: 2px 2px 3px #4E7178;
+}*/ 
+.panel, select {
+    border-color: #4E7178;
+}
+*/
+.panel, select { border-color: #4E7178; } 
+#groupsarea .db-hint, .cardspage .db-hint, .browsepage .db-hint {
+	color: black; /* this has to be separately done because groups editor/cards page/newbrowse are on a white background */
+}
+
+.menuitem {color:#999; padding:4px 8px;}
+.menuitem:hover {color:white;} 
+
+.login-method-box-centered, .login-method-box, .login-method-text {
+    background-color: #2A8E82;
+	color: white;
+}
+input[type="text"]::-moz-selection, input[type="password"]::-moz-selection {
+    background-color: #74C0CF;
+    color: white;
+}
+.selected-folder {
+	color: white;
+}
+	
+.panel-header, .tools-button, .comment, .info-header  {
+	color: #F1F7E2; 
+}
+	
+.topnav li a, .topnav li a:visited, .clickableLink {
+	color: black;
+}
+
+.login-method-box-centered .clickableLink, .login-method-box .clickableLink, .saved-session {
+	color: white;		
+}
+	
+table.docheader {
+	border-color: #74C0CF;
+}
+	
+.facet:hover, .noTNattachmentText:hover, .selected-facet {
+    border-bottom: 1px solid #4E7178;
+    text-decoration:none;
+}
+
+.facet-count {
+	color: gray;	/* slightly washed out counts */
+}
+
+.selected-facet, .selected-facet .facet-count, .facet:hover, .facet:hover .facet-count {
+	color: white;	/* slightly washed out counts */
+}
+
+a.hilitedTerm, .hilitedTerm {
+	background-color: yellow;
+  /*  border-bottom: 1px solid #74C0CF; */
+    color: #000000;
+}
+
+table.docheader {
+	border-color: #74C0CF;
+}
+
+ul.thumbnails li {
+	border-color: #101080;
+}
+
+ul.thumbnails li a.hover img {
+	border-color: #101080;
+}
+
+.teaser { 
+	color: green;
+}

@@ -1,0 +1,196 @@
+/* skin: */
+@import url(colorscheme_web.css);
+
+body {
+	margin: 1% 5% 1% 5%;
+	font-family: "Myriad Pro", "Trebuchet MS", Calibri, Verdana, Geneva, Arial, sans-serif;
+	text-align: justify;
+	line-height: 1.6em;
+}
+
+h1 {
+	font-variant: small-caps;
+}
+
+h2 {
+	font-weight: normal;
+	text-transform: uppercase;
+	font-size: 20px;
+	font-family: "Gill Sans", "Gill Sans MT", Calibri, Arial, sans-serif; /* prefer gill sans if available */
+	letter-spacing: 0.05em;
+	padding-bottom: 0px;
+	margin-top: 0px;
+	margin-bottom: 0px;
+	padding-top: 10px;
+}
+
+h3 {
+	font-weight: normal;
+	font-family: "Gill Sans", "Gill Sans MT", Calibri, Arial, sans-serif; /* prefer gill sans if available */
+	letter-spacing: 0.05em;
+	padding-bottom: 0px;
+	margin-top: 10px;
+	margin-bottom: 0px;
+	font-size: 20px;
+}
+
+.page {
+	padding-left: 2%;
+	padding-right: 2%;
+}
+
+.pageFrame {
+	/* a good margin looks nice */
+	padding-left: 50px;
+	padding-right: 50px;
+}
+.folderspage {
+	padding-left: 2%;
+	padding-right: 2%;
+/*	border-style: solid;
+	border-width: 1px;
+	*/
+}
+
+.account {
+	border-style: none;
+	border-width: 1px;
+}
+
+.toolbox-advanced {
+	border-style: none none solid none;
+	border-width: 1px;
+	padding-top:10px;
+}
+
+.blackpage {
+	padding-left: 2%;
+	padding-right: 2%;
+}
+
+.diary {
+	font-family:Chalkboard;
+	background-image: url('../images/parchment.png');
+}
+
+.login-method-box, .login-method-box-centered {
+}
+
+.login-method-text {
+}
+
+.login-error-message {
+	font-weight:bold;
+	padding: 0px 5px 5px 2px;
+	margin-bottom: 10px;
+	text-align:left;
+}
+
+.hilited-person {
+}
+
+.hilited-group {
+}
+
+.groupname {
+}
+
+#groups_legend {
+	font-size: 12px;
+}
+
+.top-banner{
+/*		background-color: #a8f1a0; */
+/*	background-image: url('../images/parchment.png'); */
+}
+
+.db-filters-div, .db-div-welcome, .panel {
+	border-width: 1px;
+	border-style: solid;
+}
+
+.panel-header {
+	font-family: "Gill Sans", Calibri, Arial, sans-serif; /* prefer gill sans if available */
+}
+
+.tools-button {
+	font-size:14px;
+	text-transform: uppercase;
+	font-family: Calibri, Arial, sans-serif; /* prefer gill sans if available */
+/*	letter-spacing: 1px; */
+	text-decoration: none;
+}
+
+.tools-button:hover {
+	text-decoration: underline;
+}
+
+.hilited-button {
+	font-size:14px;
+	font-variant: small-caps;
+	font-family: "Gill Sans", "Gill Sans MT", Calibri, Arial, sans-serif; /* prefer gill sans if available */
+	letter-spacing: 1px;
+}
+
+.question {
+	font-weight: bold;
+	font-style: italic;
+}
+
+.input-field {
+/*	font-size:17px; */
+	width: 200px;
+}
+
+input[type=text], input[type=password] {
+}
+
+.searchbox {
+}
+
+hr {
+}
+
+.db-hint {
+	font-size: 10pt;
+	font-style: italic;
+}
+
+.showMessageFilter {
+	opacity:0.5
+}
+
+#status {
+	border: medium red;
+	border-style: solid;
+}
+
+table.browse_contents {
+	border:1px solid #D4D4D4;
+	background-image:url('../images/parchment-light.png');
+}
+
+table.message {
+}
+
+table.docheader {
+	border-color: green;
+}
+
+ul.thumbnails li {
+}
+
+ul.thumbnails img {
+	border: 2px solid #f3efef;
+}
+
+ul.thumbnails li a.hover img {
+}
+
+div.facets {
+	font-size:12px;
+	background-color:#ccc;
+	padding-left:5px;
+}
+
+/* nice bright orange we can use somewhere; #ffd700 */
