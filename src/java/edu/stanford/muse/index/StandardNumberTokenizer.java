@@ -22,14 +22,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.standard.StandardTokenizerImpl;
 import org.apache.lucene.analysis.standard.StandardTokenizerInterface;
-import org.apache.lucene.analysis.standard.std31.StandardTokenizerImpl31;
-import org.apache.lucene.analysis.standard.std34.StandardTokenizerImpl34;
-import org.apache.lucene.analysis.standard.std40.StandardTokenizerImpl40;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;

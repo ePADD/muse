@@ -41,7 +41,7 @@ for (int i = startPage; i <= endPage; i++) // note: start and end page inclusive
 	else
 	{
 		try {
-		out.println (dataset.getPage(i, IA_links, inFull));
+		out.println (dataset.getPage(i, IA_links, inFull, false));
 		out.println ("\n");
 		} catch (Exception e) {
 			out.println ("Sorry... exception reading page content: " + e);

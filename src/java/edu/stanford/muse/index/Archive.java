@@ -316,13 +316,16 @@ public class Archive implements Serializable {
 
 		f_dir.mkdirs();
 		// copy lexicons over to the muse dir
-		String[] lexicons = { "sensitive.english.lex.txt", "general.english.lex.txt" }; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
+		String[] lexicons = { "sensitive.english.lex.txt", "general.english.lex.txt", "default.english.lex.txt" }; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
 		log.info(lexicons.length + " lexicons copied to " + dir);
 		for (String l : lexicons)
 		{
 			try {
 				InputStream is = EmailUtils.class.getClassLoader().getResourceAsStream("lexicon/" + l);
-				Util.copy_stream_to_file(is, dir + File.separator + l);
+				if (is != null)
+					Util.copy_stream_to_file(is, dir + File.separator + l);
+				else
+					log.info ("lexicon " + l + " not found");
 			} catch (Exception e) {
 				Util.print_exception(e, log);
 			}

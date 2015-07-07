@@ -59,7 +59,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 import org.apache.log4j.PropertyConfigurator;
 import org.mortbay.jetty.Connector;
-import org.mortbay.jetty.Handler;
+import org.mortbay.jetty
+		.Handler;
 import org.mortbay.jetty.Server;
 import org.mortbay.jetty.handler.HandlerList;
 import org.mortbay.jetty.handler.ResourceHandler;

@@ -1,17 +1,9 @@
 <%@page contentType="text/html; charset=UTF-8"%>
-<%@page language="java" import="java.io.*"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="com.google.gson.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="org.apache.commons.logging.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
-<%@page language="java" import="edu.stanford.muse.exceptions.*"%>
-<%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
-<%@page language="java" import="edu.stanford.muse.ie.ie.*"%>
 <%
-	JSPHelper.logRequest(request);
+		JSPHelper.logRequest(request);
 //browser check
 String ua = request.getHeader("User-Agent");
 if (ua != null) 
