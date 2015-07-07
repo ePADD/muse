@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project name="Muse" default="standalone" basedir=".">
+
+	<description>
+        PRPL application build script
+    </description>
+	<!-- set global properties for this build -->
+	<property name="src.dir" location="src" />
+	<property name="src.java.dir" location="${src.dir}/java" />
+	<property name="src.jsp.dir" location="WebContent" />
+	<property name="src.js.dir" location="WebContent" />
+	<property name="src.html.dir" location="${src.dir}/html" />
+	<property name="config.files.dir" location="config" />
+	<property name="build.dir" location="build" />
+	<property name="build.classes.dir" location="${build.dir}/classes" />
+	<property name="build.jar.file" location="${build.dir}/jar/muse.jar" />
+	<property name="build.jar.dir" location="${build.dir}/jar" />
+	<property name="mvn.war.dir" location="target" />
+	<property name="build.muse.war" location="${build.war.dir}/muse.war" />
+	<property environment="env" />
+
+	<property name="doc.dir" location="doc" />
+	<property name="javadoc.dir" location="${doc.dir}/api" />
+	<property name="lib.dir" location="lib" />
+	<property name="webinf.classes.dir" location="WebContent/WEB-INF/classes" />
+	<property name="resource.dir" location="WebContent/resource" />
+	<property name="exe.dir" location="../../prpl_executables" />
+    <property name="tmpdir" value="${java.io.tmpdir}/${user.name}/${ant.project.name}" />
+    <property name="palin-cache.dir" value="./local/palin-cache" />
+	<property name="debug" value="true" />
+
+	<target name="init">
+		<tstamp />
+		<mkdir dir="${build.dir}" />
+	</target>
+
+	<path id="lib.path">
+		<fileset dir="${lib.dir}" includes="*.jar" />
+	</path>
+
+	<target name="clean" description="clean up">
+		<!-- Delete the ${build.dir} directory tree -->
+		<delete dir="${build.dir}" />
+		<delete dir="${build.war.dir}" />
+		<delete dir="${dist}" />
+	</target>
+
+	<target name="javadoc">
+		<mkdir dir="${javadoc.dir}" />
+		<javadoc sourcepath="${src.java.dir}" destdir="${javadoc.dir}" classpathref="lib.path" />
+	</target>
+
+	<target name="clean-javadoc">
+		<delete dir="${javadoc.dir}" />
+	</target>
+
+	<target name="build" depends="init" description="compile the source ">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<mkdir dir="${build.classes.dir}" />
+		<javac srcdir="${src.java.dir}/edu/stanford/muse/launcher" destdir="${build.classes.dir}" classpathref="lib.path" debug="${debug}" target="1.7"/>
+	</target>
+
+    <!-- create a single jar with launcher and jetty and webapp -->
+    <target name="standalone" depends="build">
+        <delete dir="${tmpdir}"/>
+        <echo message="tmp dir is ${tmpdir}"/>
+        <!-- copy launcher files -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.classes.dir}" includes="edu/stanford/muse/launcher/**/*" />
+		</copy>
+        <!-- copy over muse.war -->
+		<copy tofile="${tmpdir}/muse.war" file="${mvn.war.dir}/muse-1.0.0-SNAPSHOT.war" />
+		<copy todir="${tmpdir}"> <fileset dir="${lib.dir}" includes="crossdomain.xml" /> </copy>
+		<copy todir="${tmpdir}"> <fileset dir="${webinf.classes.dir}" includes="log4j*" /> </copy> <!-- so we have the log4j prop files -->
+        <!-- unjar jetty+browserlauncher -->
+        <unjar src="${lib.dir}/jetty+browserlauncher.jar" dest="${tmpdir}"/>
+        <unjar src="${lib.dir}/commons-cli-1.2.jar" dest="${tmpdir}"/> <!-- unjar cli because we need it at the top level in standalone -->
+        <!-- unjar resource.jar. needed for muse-icon.png to show up in desktop tray. -->
+        <unjar src="${lib.dir}/resource.jar" dest="${tmpdir}"/>
+        <delete dir="${tmpdir}/META-INF"/>
+        <!-- manifest assumed to be in current dir -->
+        <jar destfile="muse-standalone.jar" basedir="${tmpdir}" manifest="MANIFEST.MF"/>
+    </target>
+
+    <!-- create a single musesearch jar with launcher and jetty and webapp -->
+    <target name="slant">
+        <delete dir="${tmpdir}"/>
+        <echo message="tmp dir is ${tmpdir}"/>
+        <!-- copy launcher files -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.classes.dir}" includes="edu/stanford/muse/launcher/**/*" />
+		</copy>
+        <!-- copy over muse.war -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.war.dir}" includes="muse.war" />
+		</copy>
+		<copy todir="${tmpdir}">
+			<fileset dir="${lib.dir}" includes="crossdomain.xml" />
+		</copy>
+		<copy todir="${tmpdir}"> <fileset dir="${webinf.classes.dir}" includes="log4j*" /> </copy> <!-- so we have the log4j prop files -->
+        <!-- unjar jetty+browserlauncher -->
+        <unjar src="${lib.dir}/jetty+browserlauncher.jar" dest="${tmpdir}"/>
+        <unjar src="${lib.dir}/commons-cli-1.2.jar" dest="${tmpdir}"/> <!-- unjar cli because we need it at the top level -->
+        <!-- unjar resource.jar. not sure if this is needed ?? -->
+        <unjar src="${lib.dir}/resource.jar" dest="${tmpdir}"/>
+        <delete dir="${tmpdir}/META-INF"/>
+        <!-- manifest assumed to be in current dir -->
+        <jar destfile="slant.jar" basedir="${tmpdir}" manifest="SLANT.MANIFEST.MF"/>
+    </target>
+
+    <!-- create a palinarchive.jar launcher and jetty and webapp -->
+	<!-- palin files must be present as /tmp/palin.{contents,headers,session} -->
+    <target name="palinarchive">
+        <delete dir="${tmpdir}"/>
+        <delete file="palinarchive.jar"/>
+        <echo message="tmp dir is ${tmpdir}"/>
+        <!-- copy launcher files -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.classes.dir}" includes="edu/stanford/muse/launcher/**/*" />
+		</copy>
+        <!-- copy over muse.war -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.war.dir}" includes="muse.war" />
+		</copy>
+		<copy todir="${tmpdir}">
+			<fileset dir="${lib.dir}" includes="crossdomain.xml" />
+		</copy>
+		<copy todir="${tmpdir}"> <fileset dir="${webinf.classes.dir}" includes="log4j*" /> </copy> <!-- so we have the log4j prop files -->
+        <!-- copy over palin files -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${palin-cache.dir}" includes="**/*" />
+		</copy>
+
+        <!-- unjar jetty+browserlauncher -->
+        <unjar src="${lib.dir}/jetty+browserlauncher.jar" dest="${tmpdir}"/>
+        <unjar src="${webinf.lib.dir}/commons-cli-1.2.jar" dest="${tmpdir}"/> <!-- unjar cli because we need it at the top level -->
+        <!-- unjar resource.jar. not sure if this is needed ?? -->
+        <unjar src="${lib.dir}/resource.jar" dest="${tmpdir}"/>
+        <delete dir="${tmpdir}/META-INF"/>
+        <!-- manifest assumed to be in current dir -->
+        <jar destfile="palinarchive.jar" basedir="${tmpdir}" manifest="PALINARCHIVE.MANIFEST.MF"/>
+    </target>
+
+	<!-- build war for public-mode muse webapp -->
+	<target name="war.public">
+		<mkdir dir="${build.war.dir}/work/WEB-INF/lib" />
+		<mkdir dir="${build.war.dir}/work/WEB-INF/classes" />
+		<!-- copy all libs to WEB-INF/lib -->
+		<copy todir="${build.war.dir}/work/WEB-INF/lib">
+			<fileset dir="${webinf.lib.dir}" includes="*.jar" excludes="antlr-*.jar gdata-*.jar commons-lang-* jchronic-* ical4j* natty-* jsr305*"/>
+		</copy>
+		<!-- copy muse jar -->
+		<copy todir="${build.war.dir}/work/WEB-INF/lib">
+			<fileset dir="${build.jar.dir}" includes="muse.jar" />
+		</copy>
+		<!-- copy jsp's -->
+		<copy todir="${build.war.dir}/work/archives">
+			<fileset dir="${src.jsp.dir}/archives" includes="*.css *.jsp header.html title.html footer.html script.js bootstrap/** images/**" excludes="style.css" />
+		</copy>
+		<copy todir="${build.war.dir}/work/ajax">
+			<fileset dir="${src.jsp.dir}/ajax" includes="doSessions.jsp jogPageIn.jsp muselog.jsp leadsAsJson.jsp getHitTermDetails.jsp releaseDataset.jsp" />
+		</copy>
+		<copy todir="${build.war.dir}/work">
+			<fileset dir="${src.jsp.dir}" includes="css/** js/** images/** WEB-INF/web.xml newBrowse.jsp charts.jsp cards_table.jnc reflectText.jsp filter_common.html footer.jsp div_status.jsp error.jsp types.jsp graph.jsp" excludes="js/protovis-d3.2.js WEB-INF/lib/**"/> <!-- don't copy all web-inf/lib, omit some libs, see above -->
+		</copy>
+		<!-- process and overwrite web.xml -->
+		<exec dir="${src.jsp.dir}/WEB-INF" executable="./jetty-setup.sh">
+			<arg line="web.xml ${build.war.dir}/work/WEB-INF/web.xml"/>
+		</exec>
+		<!-- copy files in WEB-INF/classes (mainly log4j properties) -->
+		<copy todir="${build.war.dir}/work/WEB-INF/classes">
+			<fileset dir="${webinf.classes.dir}" includes="*" />
+		</copy>
+		<!-- copy extra resource.jar (currently only for sorry.png and muse-icon.png) to web-inf/lib -->
+		<copy todir="${build.war.dir}/work/WEB-INF/lib">
+			<fileset dir="${lib.dir}" includes="resource.jar" />
+		</copy>
+		<!-- build war -->
+		<jar jarfile="${build.muse.war}" basedir="${build.war.dir}/work" />
+	</target>
+
+    <!-- create a single jar with launcher and jetty and webapp for public-mode -->
+    <target name="public" depends="war.public">
+        <delete dir="${tmpdir}"/>
+        <echo message="tmp dir is ${tmpdir}"/>
+        <!-- copy launcher files -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.classes.dir}" includes="edu/stanford/muse/launcher/**/*" />
+		</copy>
+        <!-- copy over muse.war -->
+		<copy todir="${tmpdir}">
+			<fileset dir="${build.war.dir}" includes="muse.war" />
+			<fileset dir="." includes="root.war" />
+		</copy>
+		<copy todir="${tmpdir}"> <fileset dir="${lib.dir}" includes="crossdomain.xml" /> </copy>
+		<copy todir="${tmpdir}"> <fileset dir="${webinf.classes.dir}" includes="log4j*" /> </copy> <!-- so we have the log4j prop files -->
+        <!-- unjar jetty+browserlauncher -->
+        <unjar src="${lib.dir}/jetty+browserlauncher.jar" dest="${tmpdir}"/>
+        <unjar src="${webinf.lib.dir}/commons-cli-1.2.jar" dest="${tmpdir}"/> <!-- unjar cli because we need it at the top level in standalone -->
+        <!-- unjar resource.jar. not sure if this is needed ?? -->
+        <unjar src="${lib.dir}/resource.jar" dest="${tmpdir}"/>
+        <delete dir="${tmpdir}/META-INF"/>
+        <!-- manifest assumed to be in current dir -->
+        <jar destfile="muse-public.jar" basedir="${tmpdir}" manifest="MANIFEST.MF"/>
+
+    </target>
+
+	<!-- note: this exe target is for building on mac only. there is a different version of l4j for building on windows. -->
+	<target name="exe" depends="standalone">
+		<condition property="launch4j.dir" value="launch4j-3.3-macos10.7">
+		    <matches string="${os.version}" pattern="^10.[1234567]." />
+		</condition>
+		<condition property="launch4j.dir" value="launch4j-macos10.8">
+		    <matches string="${os.version}" pattern="^10.[89]." />
+		</condition>
+		<taskdef name="launch4j" classname="net.sf.launch4j.ant.Launch4jTask" classpath="${launch4j.dir}/launch4j.jar
+		    :${launch4j.dir}/lib/xstream.jar" />
+		<launch4j configFile="${launch4j.dir}/muse.xml" />
+	</target>
+
+<taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask" classpath="lib/appbundler-1.0.jar" /> 
+
+<property environment="env" />
+<taskdef name="bundleapp"
+	 classname="com.oracle.appbundler.AppBundlerTask"
+         classpath="lib/appbundler-1.0.jar" /> 
+
+<target name="macapp">
+    <mkdir dir="dist/Muse" /> <!-- dist/Muse becuase the vol. name on the dmg needs to be Muse and not dist. -->
+    <bundleapp outputdirectory="dist/Muse"
+        name="ePADD"
+        displayname="ePADD"
+        identifier="components.muse"
+	icon="lib/muse-icon.icns"
+        mainclassname="edu.stanford.muse.launcher.Main">
+	<runtime dir="${env.JAVA_HOME}" />
+        <classpath file="muse-standalone.jar" />
+	<option value="-Xmx2g"/>
+  </bundleapp>
+  <!-- copy the icon file -->
+  <!-- need the command: hdiutil create Muse.dmg -srcfolder ./dist/ -ov -->
+  <exec executable="hdiutil">
+	<arg value="create"/>
+	<arg value="Muse.dmg"/>
+	<arg value="-srcfolder"/>
+	<arg value="./dist/Muse"/>
+	<arg value="-ov"/>
+  </exec> 
+</target>
+
+<target name="release" depends="standalone,exe,macapp"></target>
+
+</project>
