@@ -78,8 +78,6 @@ Accounts.updateUserInfo(request);
 
 <div class="panel">
 
-<br/> <!--  some space at the top -->
-
 <div id="div_main" style="min-width:400px" class="folderspage">
 <form id="folders">
 	<div align="center" style="width:95%">

@@ -179,7 +179,7 @@ public class Accounts {
 				} catch (Exception e) {
 					log.info("Exception: " + e.getMessage());
 					errorStatus = 2; // status code = 2 => ispdb lookup failed
-					errorMessage = "No automatic configuration available, please enter mail server.";
+					errorMessage = "No automatic configuration available for " + emailDomain + ", please use the option to provide a private (IMAP) server.";
 				}
 				
 			}
