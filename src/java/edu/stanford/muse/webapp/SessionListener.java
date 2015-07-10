@@ -37,30 +37,31 @@ public class SessionListener implements HttpSessionListener {
 	public void sessionCreated(HttpSessionEvent event) {
 		synchronized (this) {
 			sessionCount++;
+			log.info("Session Created: " + event.getSession().getId() + " at " + new Date());
+			log.info("Current number of sessions: " + sessionCount);
 		}
-
-		log.info("Session Created: " + event.getSession().getId() + " at " + new Date());
-		log.info("Total Sessions: " + sessionCount);
 	}
 
 	public void sessionDestroyed(HttpSessionEvent event) {
 		log.info("Destroying session: " + event.getSession().getId() + " at " + new Date());
 		HttpSession session = event.getSession();
 
-		// save the archive before quitting the session, so the annotations, flags, etc. can be saved
-		Archive archive = (Archive) session.getAttribute("archive");
-		if (archive != null)
-			try {
-				SimpleSessions.saveArchive(session);
-			} catch (Exception e) {
-				Util.print_exception(e, log);
-				return;
-			}
-			
+		if (ModeConfig.isDiscoveryMode())
+			log.info ("Not saving archive on session destroy because we're in discovery mode");
+		else {
+			// save the archive before quitting the session, so the annotations, flags, etc. can be saved
+			Archive archive = (Archive) session.getAttribute("archive");
+			if (archive != null)
+				try {
+					SimpleSessions.saveArchive(session);
+				} catch (Exception e) {
+					Util.print_exception(e, log);
+					return;
+				}
+		}
 		synchronized (this) {
 			sessionCount--;
+			log.info("Current number of sessions: " + sessionCount);
 		}
-		
-		log.info("Total Sessions: " + sessionCount);
 	}
 }

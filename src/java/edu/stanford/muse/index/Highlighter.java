@@ -341,7 +341,7 @@ public class Highlighter {
 		try {
 			result = highlight(contents, highlightArray, true, preHighlightTag, postHighlightTag, merge);
 		} catch (Exception e) {
-			log.info("Exception while adding html annotation to highlight", e);
+			Util.print_exception("Exception while adding html annotation to highlight", e, log);
 		}
 
 		highlightArray = new String[cUnstemmedTermsToHighlight.size()];
@@ -351,7 +351,7 @@ public class Highlighter {
 		try {
 			result = highlight(contents, highlightArray, false, preHighlightTag, postHighlightTag, merge);
 		} catch (Exception e) {
-			log.info("Exception while adding html annotation to highlight", e);
+			Util.print_exception("Exception while adding html annotation to highlight", e, log);
 		}
 
 		String[] hyperlinkArray = new String[cStemmedTermsToHyperlink.size()];
@@ -361,7 +361,7 @@ public class Highlighter {
 		try {
 			result = highlight(contents, hyperlinkArray, true, preHighlightTag, postHighlightTag, merge);
 		} catch (Exception e) {
-			log.info("Exception while adding html annotation to highlight", e);
+			Util.print_exception("Exception while adding html annotation to highlight", e, log);
 		}
 
 		hyperlinkArray = new String[cUnstemmedTermsToHyperlink.size()];
@@ -371,7 +371,7 @@ public class Highlighter {
 		try {
 			result = highlight(contents, hyperlinkArray, false, preHighlightTag, postHighlightTag, merge);
 		} catch (Exception e) {
-			log.info("Exception while adding html annotation to highlight", e);
+			Util.print_exception("Exception while adding html annotation to highlight", e, log);
 		}
 
 		//need to post process.
@@ -405,7 +405,7 @@ public class Highlighter {
 			try {
 				result = highlight(result, new String[] { term }, stemmed, preTag, postTag, merge);
 			} catch (Exception e) {
-				log.info("Exception while adding html annotation: " + ann.first, e);
+				Util.print_exception("Exception while adding html annotation: " + ann.first, e, log);
 			}
 		}
 		//do some line breaking and show overflow.
@@ -428,9 +428,11 @@ public class Highlighter {
 		//Now do post-processing to add complex tags that depend on the text inside. title, link and cssclass
 		org.jsoup.nodes.Document doc = Jsoup.parse(htmlResult.toString());
 		if (entitiesWithId != null) {
+			/* disabling -- leads to too much logging. -sgh, july 9/2015
 			log.info("Entities with id: ");
 			for (String ewi : entitiesWithId.keySet())
 				log.info(ewi + " : " + entitiesWithId.get(ewi));
+				*/
 		}
 		Elements elts = doc.select("[data-process]");
 

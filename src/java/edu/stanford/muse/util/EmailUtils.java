@@ -367,7 +367,7 @@ public class EmailUtils {
 
 			mbox.println("This is a multi-part message in MIME format.\n"); // blank line
 
-			mbox.println(frontier);
+			mbox.println("--" + frontier);
 			mbox.println("Content-Type: text/plain; charset=\"UTF-8\"");
 			mbox.println("Content-Encoding: quoted-printable\n"); // need blank line after this
 			try {
@@ -380,6 +380,7 @@ public class EmailUtils {
 				mbox.println(contents);
 				mbox.println();
 			}
+			mbox.println("--" + frontier + "--");
 
 			// probably need to fix: other types of charset, encodings
 			if (blobStore != null)

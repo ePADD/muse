@@ -339,7 +339,7 @@ public class Sessions {
 	public static Archive loadSharedArchiveAndPrepareSession(HttpSession session, String archiveId) throws CorruptIndexException, LockObtainFailedException, IOException
     {
     	Util.ASSERT(ModeConfig.isMultiUser());
-
+		log.info ("Loading shared session: " + archiveId);
     	Archive result = null;
 
     	if (Util.nullOrEmpty(archiveId)) return result;
@@ -358,13 +358,16 @@ public class Sessions {
 		synchronized (globalSessions) {
 			if (!globalSessions.containsKey(filename)) {
 				// has never been loaded = need a fresh load.
+				log.info ("Archive has not been loaded, needs a fresh load: " + archiveId);
 				globalSessions.put(filename, new SoftReference<Map<String,Object>>(null));
 				removeAllAttributes(session);
-			}
+			} else
+				log.info ("Good, archive has already been loaded: " + archiveId);
 		}
 
 		Map<String, Object> loaded_map = null;
 		try {
+			log.info ("Loading global session from basedir: " + baseDir + " filename: " + filename);
 			loaded_map = getGlobalSession(filename, baseDir); // perform the actual load
 		} catch (Exception e) {
 			Util.print_exception(e, log);

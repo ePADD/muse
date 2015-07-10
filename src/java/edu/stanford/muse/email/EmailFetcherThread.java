@@ -279,14 +279,16 @@ public class EmailFetcherThread implements Runnable, Serializable {
 			d = m.getReceivedDate();
 		if (d == null)
 		{
-			dataErrors.add("null date: message id:" + id + ": " + EmailUtils.formatMessageHeader(m));
 			if (prevDate != null)
 			{
 				long newTime = prevDate.getTime() + 1L; // added +1 so that this email is not considered the same object as the prev. one if they are in the same thread
 				d = new Date(newTime);
+				dataErrors.add("No date for message id:" + id + ": " + EmailUtils.formatMessageHeader(m) + " assigned approximate date");
 			}
-			else
-				d = new Date(); // wrong, but what can we do... :-(
+			else {
+				d = INVALID_DATE; // wrong, but what can we do... :-(
+				dataErrors.add("No date for message id:" + id + ": " + EmailUtils.formatMessageHeader(m) + " assigned deliberately invalid date");
+			}
 			hackyDate = true;
 		}
 		else

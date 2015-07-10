@@ -1,9 +1,11 @@
 package edu.stanford.muse.webapp;
 
+import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.email.MuseEmailFetcher;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Archive.ProcessingMetadata;
 import edu.stanford.muse.index.Document;
+import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Lexicon;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
@@ -14,12 +16,13 @@ import org.apache.lucene.store.LockObtainFailedException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.io.*;
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class SimpleSessions {
-	public static Log	log	= LogFactory.getLog(Sessions.class);
+	public static Log	log	= LogFactory.getLog(SimpleSessions.class);
 
 	/**
 	 * loads session from the given filename, and returns the map of loaded
@@ -132,16 +135,60 @@ public class SimpleSessions {
 		archive.processingMetadata.timestamp = new Date().getTime();
 		archive.processingMetadata.tz = TimeZone.getDefault();
 		archive.processingMetadata.nDocs = archive.getAllDocs().size();
-		archive.processingMetadata.nBlobs = archive.blobStore.uniqueBlobs();
+		archive.processingMetadata.nUniqueBlobs = archive.blobStore.uniqueBlobs();
 
-		archive.close();
+        int totalAttachments = 0, images = 0, docs = 0, others = 0, incoming = 0, outgoing = 0, sentMessages = 0, receivedMessages = 0;
+        Date firstDate = null, lastDate = null;
+
+        for (Document d: archive.getAllDocs()) {
+            if (!(d instanceof EmailDocument))
+                continue;
+            EmailDocument ed = (EmailDocument) d;
+            if (ed.date != null) {
+                if (firstDate == null || ed.date.before(firstDate))
+                    firstDate = ed.date;
+                if (lastDate == null || ed.date.after(lastDate))
+                    lastDate = ed.date;
+            }
+            int sentOrReceived = ed.sentOrReceived(archive.addressBook);
+            if ((sentOrReceived & EmailDocument.SENT_MASK) != 0)
+                sentMessages++;
+            if ((sentOrReceived & EmailDocument.RECEIVED_MASK) != 0)
+                receivedMessages++;
+
+            if (!Util.nullOrEmpty(ed.attachments))
+            {
+                totalAttachments += ed.attachments.size();
+                for (Blob b: ed.attachments)
+                    if (!Util.nullOrEmpty(b.filename))
+                    {
+                        if (Util.is_image_filename(b.filename))
+                            images++;
+                        else if (Util.is_doc_filename(b.filename))
+                            docs++;
+                        else
+                            others++;
+                    }
+            }
+        }
+
+        archive.processingMetadata.nIncomingMessages = receivedMessages;
+        archive.processingMetadata.nOutgoingMessages = sentMessages;
+
+        archive.processingMetadata.nBlobs = totalAttachments;
+        archive.processingMetadata.nUniqueBlobs = archive.blobStore.uniqueBlobs();
+        archive.processingMetadata.nImageBlobs = images;
+        archive.processingMetadata.nDocBlobs = docs;
+        archive.processingMetadata.nOtherBlobs = others;
+
+        archive.close();
 
 		ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream(filename)));
 		try {
 			oos.writeObject("archive");
 			oos.writeObject(archive);
 		} catch (Exception e1) {
-			log.warn("Failed to write archive: " + e1);
+			Util.print_exception("Failed to write archive: ", e1, log);
 		} finally {
 			oos.close();
 		}
@@ -152,18 +199,30 @@ public class SimpleSessions {
 		try {
 			oos.writeObject(archive.processingMetadata);
 		} catch (Exception e1) {
-			log.warn("Failed to write archive's metadata: " + e1);
+            Util.print_exception("Failed to write archive's metadata: ", e1, log);
 			oos.close();
 		} finally {
 			oos.close();
 		}
 
+        // re-open for reading
 		archive.openForRead();
 
 		return true;
 	}
 
-	/** loads an archive from the given directory. return false if it exists */
+	// an archive in a given dir should be loaded only once into memory.
+	// this map stores the directory -> archive mapping.
+	static LinkedHashMap<String, WeakReference<Archive>> globaldirToArchiveMap = new LinkedHashMap<String, WeakReference<Archive>>();
+	static LinkedHashMap<String, Integer> globaldirToLoadCountMap = new LinkedHashMap<String, Integer>();
+	/** loads an archive from the given directory. always re-uses archive objects loaded from the same directory.
+	 * this is fine when:
+	 * - running single-user
+	 * - running discovery mode epadd, since a single archive should be loaded only once.
+	 * - even in a hosted mode with different archives in simultaneous play, where different people have their own userKeys and therefore different dirs.
+	 * It may NOT be fine if  multiple people are operating on their different copies of an archive loaded from the same place. Don't see a use-case for this right now.
+	 * if you don't like that, tough luck.
+	 * return the archive, or null if it doesn't exist. */
 	public static Archive readArchiveIfPresent(String baseDir) throws CorruptIndexException, LockObtainFailedException, IOException
 	{
 		String archiveFile = baseDir + File.separator + Archive.SESSIONS_SUBDIR + File.separator + "default" + Sessions.SESSION_SUFFIX;
@@ -171,15 +230,44 @@ public class SimpleSessions {
 			return null;
 		}
 
-		Map<String, Object> map = loadSessionAsMap(archiveFile, baseDir, /*
-																		 * read
-																		 * only
-																		 */true);
-		// read the session map, but only use archive
-		Archive a = (Archive) map.get("archive");
-		// could do more health checks on archive here
-		a.setBaseDir(baseDir);
-		return a;
+		synchronized (globaldirToLoadCountMap) {
+			Integer loadCount = globaldirToLoadCountMap.get(archiveFile);
+			int newCount = (loadCount == null) ? 1 : loadCount + 1;
+			globaldirToLoadCountMap.put(archiveFile, newCount);
+			log.info ("Since server start, the archive: " + archiveFile + " has been (attempted to be) loaded " + Util.pluralize(newCount, "time"));
+		}
+
+		try {
+			// locking the global dir might be inefficient if many people are loading different archives at the same time.
+			// not a concern right now. it it does become one, locking a small per-dir object like archiveFile.intern(), along with a ConcurrenctHashMap might handle it.
+			synchronized (globaldirToArchiveMap) {
+				// the archive is wrapped inside a weak ref to allow the archive object to be collected if there are no references to it (usually the references are in the user sessions).
+				WeakReference<Archive> wra = globaldirToArchiveMap.get(archiveFile);
+				if (wra != null) {
+					Archive a = wra.get();
+					if (a != null) {
+						log.info("Great, could re-use loaded archive for dir: " + archiveFile + "; archive = " + a);
+						return a;
+					}
+				}
+
+				log.info("Archive not already loaded, reading from dir: " + archiveFile);
+				Map<String, Object> map = loadSessionAsMap(archiveFile, baseDir, true);
+				// read the session map, but only use archive
+				Archive a = (Archive) map.get("archive");
+				// could do more health checks on archive here
+				if (a == null) {
+					log.warn ("Archive key is not present in archive file! The archive must be corrupted! directory:" + archiveFile);
+					return null;
+				}
+				a.setBaseDir(baseDir);
+				globaldirToArchiveMap.put(archiveFile, new WeakReference<Archive>(a));
+				return a;
+			}
+		} catch (Exception e) {
+			Util.print_exception("Error reading archive from dir: " + archiveFile, e, log);
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**

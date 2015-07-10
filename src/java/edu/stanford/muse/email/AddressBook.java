@@ -345,7 +345,16 @@ public class AddressBook implements Serializable {
 		// Ignore the name if this is the case, otherwise it bothers users to see spurious names.
 		if (name != null && name.equals("'" + email + "'"))
 			name = null;
-
+		if (name != null && name.equals(email)) // if the name is exactly the same as the email, it has no content.
+			name = null;
+		// sometimes the name field incorrectly has an email address.
+		// we need to mask these out permanently; otherwise in discovery mode, we'll be revealing email addresses thinking they are names.
+		if (name != null)
+		{
+			int idx = name.indexOf("@");
+			if (idx >= 0)
+				name = name.substring(0, idx+1) + "...";
+		}
 		email = email.trim().toLowerCase();
 		// get existing CIs for email/name
 		if (email != null)

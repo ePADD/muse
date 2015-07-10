@@ -298,11 +298,42 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 	public static void readPresetQueries() {
 		List<String> q = new ArrayList<String>();
+        String PRESET_QUERIES_FILE = "presetqueries.txt";
+		String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + PRESET_QUERIES_FILE;
 		try {
-			String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "presetqueries.txt";
-			log.info("Reading Preset queries from: " + path);
-			BufferedReader br = new BufferedReader(new FileReader(new File(path)));
-			String line = null;
+			log.info("Reading preset queries from: " + path);
+			File presetQueriesFile = new File(path);
+			if (!presetQueriesFile.exists()) {
+				log.warn("Preset queries file does not exist: " + path);
+
+                File settingsDir = new File(edu.stanford.muse.Config.SETTINGS_DIR);
+                if (!settingsDir.exists()) {
+                    log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
+                    settingsDir.mkdirs();
+                }
+
+                try {
+                    InputStream is = Indexer.class.getResourceAsStream(PRESET_QUERIES_FILE);
+                    if (is == null)
+                        log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
+                    else {
+                        long bytes = Util.copy_stream_to_file(is, PRESET_QUERIES_FILE);
+                        is.close();
+                        log.warn("Preset queries file copied successfully to: " + path + " (" + bytes + " bytes)");
+                    }
+                } catch (Exception e) {
+                    Util.print_exception("Exception trying to copy embedded preset queries file: " + PRESET_QUERIES_FILE, e, log);
+                    return;
+                }
+            }
+
+			if (!presetQueriesFile.canRead()) {
+                log.warn("Preset queries file exists, but is not readable: " + path);
+				return;
+			}
+
+			BufferedReader br = new BufferedReader(new FileReader(presetQueriesFile));
+			String line;
 			while ((line = br.readLine()) != null)
 				q.add(line);
 			presetQueries = q.toArray(new String[q.size()]);
@@ -310,7 +341,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			br.close();
 		} catch (Exception e) {
 			e.printStackTrace();
-			log.info("Exception while reading presetqueries file", e);
+            Util.print_exception("Exception while reading presetqueries file: " + path, e, log);
 		}
 	}
 
