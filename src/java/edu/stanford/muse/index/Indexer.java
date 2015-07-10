@@ -313,7 +313,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
                 }
 
                 try {
-                    InputStream is = Indexer.class.getResourceAsStream(PRESET_QUERIES_FILE);
+                    InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("/" + PRESET_QUERIES_FILE);
                     if (is == null)
                         log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
                     else {
