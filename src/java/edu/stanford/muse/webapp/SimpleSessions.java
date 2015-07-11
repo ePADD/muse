@@ -137,7 +137,7 @@ public class SimpleSessions {
 		archive.processingMetadata.nDocs = archive.getAllDocs().size();
 		archive.processingMetadata.nUniqueBlobs = archive.blobStore.uniqueBlobs();
 
-        int totalAttachments = 0, images = 0, docs = 0, others = 0, incoming = 0, outgoing = 0, sentMessages = 0, receivedMessages = 0;
+        int totalAttachments = 0, images = 0, docs = 0, others = 0, sentMessages = 0, receivedMessages = 0;
         Date firstDate = null, lastDate = null;
 
         for (Document d: archive.getAllDocs()) {
@@ -172,6 +172,8 @@ public class SimpleSessions {
             }
         }
 
+        archive.processingMetadata.firstDate = firstDate;
+        archive.processingMetadata.lastDate = lastDate;
         archive.processingMetadata.nIncomingMessages = receivedMessages;
         archive.processingMetadata.nOutgoingMessages = sentMessages;
 
