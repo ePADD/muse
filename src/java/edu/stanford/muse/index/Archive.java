@@ -823,13 +823,10 @@ public class Archive implements Serializable {
 
 		indexer.copyDirectoryWithDocFilter(out_dir, filter);
 		log.info("Completed exporting indexes");
-		// write out the archive file
-		SimpleSessions.saveArchive(out_dir, name, this); // save .session file. note: no blobs saved, they don't need to change.
-		log.info("Completed saving archive object");
 
 		// save the blobs in a new blobstore
 		if (!exportInPublicMode) {
-			log.info("Starting to export blobs");
+			log.info("Starting to export blobs, old blob store is: " + blobStore);
 			Set<Blob> blobsToKeep = new LinkedHashSet<Blob>();
 			for (Document d : allDocs)
 				if (d instanceof EmailDocument)
@@ -837,9 +834,15 @@ public class Archive implements Serializable {
 						blobsToKeep.addAll(((EmailDocument) d).attachments);
 			String blobsDir = out_dir + File.separatorChar + BLOBS_SUBDIR;
 			new File(blobsDir).mkdirs();
-			((FileBlobStore) blobStore).createCopy(blobsDir, blobsToKeep);
-			log.info("Completed exporting blobs");
+			FileBlobStore newBlobStore = ((FileBlobStore) blobStore).createCopy(blobsDir, blobsToKeep);
+			log.info("Completed exporting blobs, newBlobStore in dir: " + blobsDir + " is: " + newBlobStore);
+			// switch to the new blob store (important -- the urls and indexes in the new blob store are different from the old one! */
+			blobStore = newBlobStore;
 		}
+
+		// write out the archive file
+		SimpleSessions.saveArchive(out_dir, name, this); // save .session file.
+		log.info("Completed saving archive object");
 
 		// restore states
 		allDocs = savedAllDocs;

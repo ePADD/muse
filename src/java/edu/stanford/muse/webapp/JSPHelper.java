@@ -1098,6 +1098,7 @@ public class JSPHelper {
 			// they are just indexes into a dataset, which is a collection of docs from the result of some search.
 			DataSet dataset = (DataSet) getSessionAttribute(session, datasetId);
 			if (dataset != null)
+
 			{
 				String[] docNumbers = request.getParameterValues("docNum");
 				if (docNumbers == null)
