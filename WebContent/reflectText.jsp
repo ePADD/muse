@@ -38,7 +38,7 @@ out.println (Util.escapeHTML(req).replace("\r", "").replace("\n", "<br/>\n"));
 %>
 </div>
 <script type="text/javascript">
-	window.MUSE_URL = '<%=HTMLUtils.getRootURL(request)%>';
+	window.MUSE_URL = '/muse';
 </script>
 <script type="text/javascript" src="js/muse-lens.user.js"></script>
 </body>
