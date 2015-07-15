@@ -106,16 +106,19 @@ public class Highlighter {
 		QueryParser qp = new MultiFieldQueryParser(lv, new String[] { "" }, snAnalyzer2);
 
 		for (int i = 0; i < terms.length; i++) {
-            //dirty code here, we want to add quotations to multi word terms and also optionally search for term ending in 's
-            //but should make sure its not a regex
-            if(terms[i].charAt(0)!='/'){
-                query.add(new BooleanClause(qp.parse("\""+terms[i]+"\""), BooleanClause.Occur.SHOULD));
-                query.add(new BooleanClause(qp.parse("\""+terms[i]+"'s\""), BooleanClause.Occur.SHOULD));
+            try {
+                //dirty code here, we want to add quotations to multi word terms and also optionally search for term ending in 's
+                //but should make sure its not a regex
+                if (terms[i].charAt(0) != '/') {
+                    query.add(new BooleanClause(qp.parse("\"" + terms[i] + "\""), BooleanClause.Occur.SHOULD));
+                    query.add(new BooleanClause(qp.parse("\"" + terms[i] + "'s\""), BooleanClause.Occur.SHOULD));
+                } else {
+                    query.add(new BooleanClause(qp.parse(terms[i]), BooleanClause.Occur.SHOULD));
+                }
+            }catch (Exception e){
+                //if there is problem in parsing a search term, try to continue
+                log.info("Problem parsing "+terms[i]);
             }
-            else{
-                query.add(new BooleanClause(qp.parse(terms[i]), BooleanClause.Occur.SHOULD));
-            }
-            query.add(new BooleanClause(qp.parse(terms[i]), BooleanClause.Occur.SHOULD));
         }
 
 		Scorer scorer = new QueryScorer(query);
@@ -157,7 +160,7 @@ public class Highlighter {
 			Indexer.readPresetQueries();
 		String[] qs = Indexer.presetQueries;
 		if (qs == null || qs.length == 0) {
-			log.warn("Preset queries are not set, not annotating sensitive stuff");
+			//log.warn("Preset queries are not set, not annotating sensitive stuff");
 			return content;
 		}
 		//We expand the query to match any numbers to the left and right of queried regular exp as the chunker is aggressive and chunks any numbers occurring together into one even if they are in different lines
@@ -266,7 +269,7 @@ public class Highlighter {
 		contents = sb.toString();
 
 		if (sensitive) {
-			log.info("Annotating sensitive stuff");
+			//log.info("Annotating sensitive stuff");
 			contents = annotateSensitive(contents, preHighlightTag, postHighlightTag);
 		}
 
@@ -278,8 +281,8 @@ public class Highlighter {
 		if (entitiesWithId != null)
 			cUnstemmedTermsToHyperlink.addAll(entitiesWithId.keySet());
 
-		log.info("hyperlink terms: " + cStemmedTermsToHyperlink + ", " + cUnstemmedTermsToHyperlink);
-		log.info("highlight terms: " + cStemmedTermsToHighlight + ", " + cUnstemmedTermsToHighlight);
+//		log.info("hyperlink terms: " + cStemmedTermsToHyperlink + ", " + cUnstemmedTermsToHyperlink);
+//		log.info("highlight terms: " + cStemmedTermsToHighlight + ", " + cUnstemmedTermsToHighlight);
 		//if there are overlapping annotations, then they need to be serialised.
 		//this is serialized order for such annotations.
 		//map strings to be annotated -> boolean denoting whether to highlight or hyperlink.
@@ -298,31 +301,39 @@ public class Highlighter {
 		Map<Pair<String, Short>, Integer> o = new LinkedHashMap<Pair<String, Short>, Integer>();
         //prioritised terms
 		List<String> priorTerms = Arrays.asList("class","span","data","ignore");
+        Set<String> consTerms = new HashSet<String>();
         for (String at : allTerms) {
             //Catch: if we are trying to highlight terms like class, span e.t.c,
             //we better annotate them first as it may go into span tags and annotate the stuff, causing the highlighter to break
 			Set<String> substrs = IndexUtils.computeAllSubstrings(at);
 			for (String substr : substrs) {
-                boolean match = priorTerms.contains(substr);
+                short tag = -1;
+                boolean match = priorTerms.contains(substr.toLowerCase());
                 int val = match?Integer.MAX_VALUE:substr.length();
-				//remove it from terms to be annotated.
+                //remove it from terms to be annotated.
 				if (cStemmedTermsToHighlight.contains(substr)) {
-					o.put(new Pair<String, Short>(substr, HIGHLIGHT_STEMMED), val);
+                    o.put(new Pair<String, Short>(substr, HIGHLIGHT_STEMMED), val);
 					cStemmedTermsToHighlight.remove(substr);
-				}
+                }
 				if (cUnstemmedTermsToHighlight.contains(substr)) {
-					o.put(new Pair<String, Short>(substr, HIGHLIGHT_UNSTEMMED), val);
-					cUnstemmedTermsToHighlight.remove(substr);
-				}
+					tag = HIGHLIGHT_UNSTEMMED;
+                    cUnstemmedTermsToHighlight.remove(substr);
+                }
 				if (cStemmedTermsToHyperlink.contains(substr)) {
-					o.put(new Pair<String, Short>(substr, HYPERLINK_STEMMED), val);
-					cStemmedTermsToHyperlink.remove(substr);
-				}
+					tag = HYPERLINK_STEMMED;
+                    cStemmedTermsToHyperlink.remove(substr);
+                }
 				if (cUnstemmedTermsToHyperlink.contains(substr)) {
-					o.put(new Pair<String, Short>(substr, HYPERLINK_UNSTEMMED), val);
-					cUnstemmedTermsToHyperlink.remove(substr);
-				}
-			}
+					tag = HYPERLINK_UNSTEMMED;
+                    cUnstemmedTermsToHyperlink.remove(substr);
+      		    }
+
+                //there should be no repetitions in the order array, else it leads to multiple annotations i.e. two spans around one single element
+                if(!consTerms.contains(substr) && tag>=0) {
+                    o.put(new Pair<String, Short>(substr, tag), val);
+                    consTerms.add(substr);
+                }
+            }
 		}
 
 		//now sort the phrases from longest length to smallest length
@@ -375,11 +386,9 @@ public class Highlighter {
 		}
 
 		//need to post process.
-		//In html, nested tags are forbidden, hence if terms like Vihari Piratla and Vihari are both annotated then the html parsing wont be proper.
-
 		//now highlight terms in order.
 		for (Pair<String, Short> ann : order) {
-			short type = ann.second;
+            short type = ann.second;
 			String term = ann.first;
 			String preTag = null, postTag = null;
 			boolean stemmed = false;
@@ -427,13 +436,11 @@ public class Highlighter {
 
 		//Now do post-processing to add complex tags that depend on the text inside. title, link and cssclass
 		org.jsoup.nodes.Document doc = Jsoup.parse(htmlResult.toString());
-		if (entitiesWithId != null) {
-			/* disabling -- leads to too much logging. -sgh, july 9/2015
-			log.info("Entities with id: ");
-			for (String ewi : entitiesWithId.keySet())
-				log.info(ewi + " : " + entitiesWithId.get(ewi));
-				*/
-		}
+//		if (entitiesWithId != null) {
+//			log.info("Entities with id: ");
+//			for (String ewi : entitiesWithId.keySet())
+//				log.info(ewi + " : " + entitiesWithId.get(ewi));
+//		}
 		Elements elts = doc.select("[data-process]");
 
 		for (int j = 0; j < elts.size(); j++) {
@@ -444,7 +451,7 @@ public class Highlighter {
 
 			String best_e = null;
 			int best_j = -1;
-			//@TODO expands a span without checking if they are continuous, under the assumption that the expanded span contained in the entitiesWithId and not sensible is rare.
+			//TODO expands a span without checking if they are continuous, under the assumption that the expanded span contained in the entitiesWithId and not sensible is rare.
 			while (true) {
 				entity = entity.replaceAll("'s", "");
                 entity = canonicalizeMultiWordTerm(entity);
@@ -455,9 +462,9 @@ public class Highlighter {
 				boolean con = false;
 				for (String str : entitiesWithId.keySet()) {
                     str = canonicalizeMultiWordTerm(str);
-                    //this allows nested annotation i.e. annotation swith different offsets on the same string
                     //TODO: do we really need nested annotation
-                    if (str.contains(entity)) {
+                    //if(str.contains(entity)) -- this allows nested annotation i.e. annotation with different offsets on the same string
+                    if (str.equals(entity)) {
                         con = true;
                         break;
                     }
@@ -487,9 +494,6 @@ public class Highlighter {
 				continue;
 			}
 
-//			if (prev_j != span_j)
-//				System.err.println(elts.get(prev_j).text() + " expanded to " + entity);
-
 			String link = "browse?term=\"" + Util.escapeHTML(entity) + "\"";
 			// note &quot here because the quotes have to survive
 			// through
@@ -516,13 +520,15 @@ public class Highlighter {
 						//could have defined overlapping sub-classes, which would have reduced code repetitions in css file; but this way more flexibility
 						String[] types = new String[] { "cp", "cl", "co", "person", "org", "place", "acr"};
 						String[] cssclasses = new String[] { "custom-people", "custom-loc", "custom-org", "opennlp-person", "opennlp-org", "opennlp-place", "acronym" };
-						for (String et : info.types) {
+						outer:
+                        for (String et : info.types) {
 							for (int t = 0; t < types.length; t++) {
 								String type = types[t];
 								if (type.equals(et)) {
 									if (t < 3) {
 										cssclass += cssclasses[t] + " ";
-										c = true;
+							            //consider no other class
+                                        continue outer;
 									}
 									else {
 										cssclass += cssclasses[t] + " ";
@@ -530,7 +536,6 @@ public class Highlighter {
 								}
 							}
 						}
-						//log.info(entity + " found with types: " + info.types);
 					}
 				} else {
 					cssclass += " unresolved";
@@ -555,12 +560,12 @@ public class Highlighter {
 					elt.attr("onclick", "window.location='" + link + "'");
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+			    log.info("Some unknown error while highlighting", e);
 			}
 		}
 		//The output Jsoup .html() will dump each tag in separate line
 		//span elements in different lines are separated by spaces which is undesired.
-		//@TODO: also have to fix the spacing to the left
+		//TODO: also have to fix the spacing to the left
 		String html = doc.html();
 		html = html.replaceAll("\\-\\->\\n\\s+?<span", "\\-\\-><span");
 		html = html.replaceAll("\\n\\s+?<\\!\\-\\-", "<\\!\\-\\-");

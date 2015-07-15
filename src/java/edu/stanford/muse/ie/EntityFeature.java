@@ -188,7 +188,6 @@ public class EntityFeature implements StatusProvider, Serializable {
             return null;
         }
         for (EntityFeature eft : efts) {
-            log.info(eft.name);
             Map<String, Integer> targetCE = eft.cooccuringEntities;
             Map<String, Integer> targetEA = eft.emailAddresses;
             double cScore, eScore;
