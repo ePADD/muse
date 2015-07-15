@@ -30,7 +30,7 @@ public class AuthorisedAuthorities {
 			cnameToDefiniteID = (Map<String, Authority>) Util.readObjectFromFile(filename);
 		} catch (Exception e) {
 			cnameToDefiniteID = new LinkedHashMap<String, Authority>();
-			JSPHelper.log.info("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
+			//JSPHelper.log.info("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
 		}
 		if (cnameToDefiniteID == null)
 			cnameToDefiniteID = new LinkedHashMap<String, Authority>();

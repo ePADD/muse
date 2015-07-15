@@ -25,29 +25,6 @@ import java.util.*;
  */
 public class Util {
 	static int			TIMEOUT		= 10000;
-	static Set<String>	tabooList	= new HashSet<String>();
-
-	public static Boolean isTaboo(String phrase) {
-		if (phrase == null)
-			return true;
-		return KillPhrases.killPhrases.contains(phrase.toLowerCase());
-	}
-
-	public static int countMatches(String str, String sstr) {
-		if (str == null || sstr == null)
-			return 0;
-
-		int lastIndex = 0;
-		int count = 0;
-		while (lastIndex != -1) {
-			lastIndex = str.indexOf(sstr, lastIndex);
-			if (lastIndex != -1) {
-				count++;
-				lastIndex += sstr.length();
-			}
-		}
-		return count;
-	}
 
 	/**
 	 * @param context
@@ -127,13 +104,13 @@ public class Util {
 					if (crosscheckWords.get(t).contains(prevToken)) {
 						//int idx = mainHtml.indexOf(prevToken + " " + t);
 						//if (idx < scrapPos)
-						if (!isTaboo(prevToken + " " + t) && !sws.contains(prevToken) && !sws.contains(t))
+						if (filterEntity(prevToken + " " + t) && !sws.contains(prevToken) && !sws.contains(t))
 							matches.add(EmailUtils.uncanonicaliseName(prevToken + " " + t));
 					}
 					else if (crosscheckWords.get(t).contains(nextToken) && !sws.contains(nextToken) && !sws.contains(t)) {
 						//int idx = mainHtml.indexOf(t + " " + nextToken);
 						//if (idx < scrapPos)
-						if (!isTaboo(t + " " + nextToken))
+						if (!filterEntity(t + " " + nextToken))
 							matches.add(EmailUtils.uncanonicaliseName(t + " " + nextToken));
 
 					}
@@ -194,8 +171,8 @@ public class Util {
 		return l;
 	}
 
-	//TODO: ideally killphrases class should be doing all this.
-	static Log						log								= LogFactory.getLog(FeatureDictionary.class);
+	//TODO: ideally kill phrases class should be doing all this.
+	static Log						log								= LogFactory.getLog(Util.class);
 	static Map<String, Set<String>>	files							= new LinkedHashMap<String, Set<String>>();
 	static String					COMMON_WORDS_FILE				= edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "kill.txt";
 	//order person, location, org
@@ -220,26 +197,31 @@ public class Util {
 			files.put(fileName, words);
 			return words;
 		} catch (Exception e) {
-			System.err.println("Did not find the common words file: " + fileName);
 			log.info("Did not find the common words file: " + fileName);
 			files.put(fileName, words);
 			return words;
 		}
 	}
 
+
+    public static boolean filterEntity(String e){
+        return filterEntity(e, null);
+    }
+
 	/**
 	 * Filters any entity that does not look like one
-	 */
+	 * returns true if the entity looks OK and false otherwise, type can be null if it is of unknown type
+     */
 	public static boolean filterEntity(String e, String type) {
 		if (e == null)
 			return false;
 
 		int ti = 0;
-		if (type.equals(NER.EPER))
+		if (NER.EPER.equals(type))
 			ti = 0;
-		else if (type.equals(NER.ELOC))
+		else if (NER.ELOC.equals(type))
 			ti = 1;
-		else if (type.equals(NER.EORG))
+		else if (NER.EORG.equals(type))
 			ti = 2;
 		Set<String> cws = readFile(COMMON_WORDS_FILE);
 		Set<String> tcws = new HashSet<String>();
