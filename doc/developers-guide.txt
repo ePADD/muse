@@ -1,0 +1,114 @@
+Muse: the developer's guide
+
+Basic coding guidelines
+-----------------------
+
+We depend on Java 1.7 and above.
+Download size is sometimes a concern, so we want to discourage wanton import of 3rd party libraries if the functionality being provided is tiny.
+We want to keep yellow warning marks in Eclipse (i.e. compiler warnings) down to a minimum.
+Casts of collections to versions with generics (and associated compiler warnings) are ok.
+Remove unused imports with "Organize imports" in Eclipse before checking in. (apple-shift-O on mac).
+Recommend using Eclipse Team -> sync with repository (or cvs diff) to review all changes before checking in (and make sure nothing gets checked in unintentionally)
+Static util methods should go to the appropriate util class in package edu.stanford.muse.util
+Prefer code to be thread-safe, but not strictly required unless there is an explicit need.
+Don't put too much Java code in JSPs, call out to JSPHelper or other Java code instead instead.
+No dependency should exist on webapp package except from JSPs, since core Muse code should be usable with other (even non-web based) frontends (e.g. ePADD)
+Visibility: Classes and class members should have minimum visibility. (i.e. private preferred to protected to package to public)
+Static vs. instance: Methods should be declared static if they do not reference instance state.
+Prefer to support as much functionality as possible on all browsers including IE, but fully support at least Firefox 4.x, Safari, Chrome.
+Serialversion uid for many classes is set to 1 for convenience, but consider bumping it when a change cannot inter-operate gracefully with previous versions of the object.
+
+Logging
+-------
+We use apache-commons logging, with a log4j configuration. Most classes have a logger based on the class name.
+Do not depend on System.out.println/System.err.println. For example, when reporting an error in the field, we might be able to get the
+logger log but not necessarily System.out. Always use Util.print_exception(message, e, log) to report an exception; this ensures stack trace is captured also.
+
+To run a debug logging configuration, use e.g. java -Dlog4j.configuration=file:///tmp/log4j.properties.debug
+See WebContent/WEB-INF/classes/log4j.properties.debug for an example log4j config. If running from a standalone Muse jar, can also specify
+-Dlog4j.configuration=log4j.properties.debug directly, which gets picked up from WebContent/WEB-INF/classes
+
+Logging in JSPs: use log.info/debug/warn/error etc. (Where log is an appropriate logger, JSPHelper.log can be used as the default)
+Make sure to call JSPHelper.logRequest(request) at the beginning of each JSP. and call JSPHelper.logRequestComplete(request) at the end.
+Error messages to be hidden from user (usually by redirecting to error.jsp, with an optional session var called "errorMessage" set
+if additional information is to be displayed),
+but details should be logged to debug log. 
+If logging a caught exception, be sure to Util.stackTrace(exception) to ensure the stack trace gets logged. 
+The debug log is posted to us if the user clicks on "report error", and is the only means we have of troubleshooting problems in the field.
+
+Debug and Profile
+-----------------
+Debug and supposedly temporary code fragments should preferably have the word FLAG (all caps) somewhere in it, so its obvious if it accidentally gets checked in. (happens all too often)
+To debug muse-standalone or musegroups.jar, start Muse with e.g.
+	java -Xmx1g -Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,address=3408 muse-standalone.jar
+and connect with Eclipse using "Remote Java application"
+For debugging UI stuff in the browser, Firebug is essential. Esp. use the console and Net panes. often useful to check "persist".
+Profiling: Jiwon has a copy of the Yourkit Java profiler if needed.
+
+Documentation
+-------------
+Document tricky bits of code, as well as VIP interfaces that are used by many clients.
+Prefer code written in paragraphs with a line explaining the purpose of each paragraph at the top.
+include URLs or references to original material when borrowing or implementing something non-trivial you learnt from the web (e.g. stackoverflow)
+Recommend best effort to use Javadoc conventions for commenting methods and classes.
+method params and return values in javadoc format are cumbersome and not required, though may be nice to have for really important methods.
+
+Project organization
+--------------------
+
+Java code: src/java/edu/stanford/muse/...
+Images source code (photoshop, powerpoint for logos, etc): src/images
+Documentation: doc
+Web pages: WebContent
+Ajax Web pages: WebContent/ajax/...
+Javascript: WebContent/js
+3rd party javascript frameworks (jquery, protovis, etc): WebContent/js/{framework}
+images: WebContent/images (Important: if "borrowing" an image from somewhere else, make notes about the ToS in the file called CREDITS)
+
+Eclipse
+-------
+Make sure the libraries in workspace/muse/WEB-INF/lib and workspace/muse/lib are in the project classpath.
+(see project properties -> java build path -> libraries)
+
+IntelliJ Idea: use 14.x or higher.
+
+Eclipse tips:
+Prefer eclipse 3.5 or higher. I recommend using the Eclipse EE configuration, or the WTP plugin for regular eclipse.
+For dev testing, can use a locally installed instance of Tomcat (6 or higher) or Jetty.
+Set memory of the server appropriately in the runtime configuration.
+Recommend using CVS repository type "extssh" because it lets command line cvs interoperate with eclipse.
+Recommend setting up ssh key in suif:~/.ssh/authorized_keys and configuring SSH2 support in Eclipse.
+Ctrl-Shift-G (Java references) does not look inside JSPs. Use Ctrl-H instead for raw text search.
+
+Building 
+--------
+mvn -f pom-jar.xml to build muse.jar for use in ePADD.
+mvn -f pom.xml to build muse.war
+
+Ant targets
+-----------------
+main top-level muse targets in build.xml: standalone and musegroups
+other targets:
+jar: builds muse.jar which has just the muse code as a library. (does not contain other libraries this one may depend upon)
+war: builds muse.war, the muse web application that can be deployed in a servlet container
+standalone: builds muse-standalone.jar (which is the muse web application with an embedded jetty server), and can be launched with a webstart configuration or on a command line with java -jar. This jar should be signed with our code signing cert for release builds.
+musegroups.jar: a smaller version of muse-standalone, but with restricted functionality for the groups code.
+
+For release builds (Muse is going to be used by non-developers), always make sure you use a script based on scripts/release or scripts/releasegroups,
+to ensure that the build string reflects the correct person who built the release and its timestamp, and that it is jarsigned correctly.
+The build string is at the bottom of most Muse pages, along with a debug and feedback link.
+
+All HTML page rules:
+
+All pages should be UTF-8 encoded.
+All Code from a user/external world should be HTML-escaped.
+<DOCTYPE HTML>
+
+Frontend JS rules:
+-----------------
+For JSON files, use <%@page language="java" contentType="application/json;charset=UTF-8"%> (not text/javascript)
+Document exceptions with printStackTrace() by including stacktrace.js
+All ajax requests must have error handling.
+Analyze multiple requests, out-of-order requests.
+One one status operation allowed per page (if possible disable the button that launches a long-running op, so the second one cannot be issued till the first one completes).
+
