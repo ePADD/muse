@@ -1470,7 +1470,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		{
 			query = new BooleanQuery();
 			/**
-			 * Note: this is not a spanning (ie.doesn't search over more than
+			 * Note: this is not a spanning (i.e. doesn't search over more than
 			 * one token) regexp, for spanning regexp use: body_unanlyzed and
 			 * title_unanlyzed fields instead
 			 */
@@ -1519,7 +1519,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 
 		int n_added = 0;
-		log.info("Info about this searcher: " + searcher.getIndexReader().maxDoc());
 		log.info("Found: " + hits.length + " hits for query: " + q);
 		for (int i = 0; i < hits.length; i++) {
 			int ldocId = hits[i].doc; // this is the lucene doc id, we need to map it to our doc id.

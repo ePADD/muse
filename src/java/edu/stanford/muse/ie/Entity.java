@@ -25,7 +25,9 @@ import java.util.*;
  * A representative class for candidate entity. Just like a contact in
  * address book, will merge many different names and contains some other pre-processing information.
  *
- * This class is for experimentation and is not used anywhere
+ * This class is used nowhere and is for only experimentation purposes
+ * This is an attempt to merge all the coreferring noun phrase mentions into clusters; The algorithm used here is naive and mostly adapted from a paper
+ * TODO: Whats the title?
  */
 public class Entity extends EntityFeature {
 	private static final long	serialVersionUID	= -6930196836983330301L;

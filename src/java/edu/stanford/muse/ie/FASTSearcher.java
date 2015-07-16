@@ -28,7 +28,7 @@ import java.util.Set;
  */
 public class FASTSearcher {
 	private static Log		log			= LogFactory.getLog(FASTSearcher.class);
-	static String			indexDir	= FASTIndexer.indexPath;
+	public static String			indexDir	= FASTIndexer.indexPath;
 	// ModeConfig.SETTINGS_DIR + File.separator + "index";
 	static IndexReader		reader		= null;
 	static IndexSearcher	searcher	= null;
@@ -38,8 +38,8 @@ public class FASTSearcher {
 			reader = DirectoryReader.open(FSDirectory.open(new File(indexDir)));
 			searcher = new IndexSearcher(reader);
 		} catch (IOException e) {
-			// log.info("Couldn't find/read index files.");
-			Util.print_exception("Serious trouble: Exception reading FAST index from " + indexDir + " ... Authority resolution may not work!", e, log);
+			//no point in printing stack
+            log.info("Serious trouble: Exception reading FAST index from " + indexDir + " ... Authority resolution may not work!", e);
 		}
 	}
 

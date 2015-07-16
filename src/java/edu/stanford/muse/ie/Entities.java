@@ -55,9 +55,6 @@ public class Entities implements Serializable, StatusProvider {
 	boolean								cancel				= false;
 	String								status;
 	double								pctComplete;
-    //used to keep track of the html ids that are rendered in the html table on assign auth page
-    Set<String>                         ids = new HashSet<String>();
-    Random                              rand                = new Random();
 
 	public Entities() {
 		pairs = new ArrayList<Pair<String, Integer>>();
@@ -189,7 +186,6 @@ public class Entities implements Serializable, StatusProvider {
 		Boolean test = false;
 		Entities entitiesData = this;
 		JSONArray table = new JSONArray();
-
 		log.info("Number of confirmed authorities: " + AuthorisedAuthorities.getAuthorisedAuthorities(archive).size());
 
 		List<Integer> indices = new ArrayList<Integer>();
@@ -201,6 +197,18 @@ public class Entities implements Serializable, StatusProvider {
 				indices.add(maxIndex);
 			}
 		}
+
+        if (type.equals("person") || type.equals("correspondent")){
+            //because it throws an exception if the file does not exist
+            File f = new File(FASTSearcher.indexDir);
+            if(f==null || !f.exists()) {
+                JSONObject obj = new JSONObject();
+                obj.put("status", "0");
+                //dont use the key "error" as statusUpdate.js has some default behaviour with that key
+                obj.put("info", "FAST index not found in: " + FASTSearcher.indexDir);
+                return obj.toString();
+            }
+        }
 
 		int entitynum = 0;
 		if (beginIdx < 0)
@@ -230,7 +238,7 @@ public class Entities implements Serializable, StatusProvider {
 				while (true) {
 					//For sampling based on the distribution of frequency
 					int k = (int) (Math.random() * maxIndex);
-					int j = 0;
+					int j;
 					for (j = 0; j < indices.size(); j++)
 						if (indices.get(j) > k)
 							break;
@@ -251,14 +259,13 @@ public class Entities implements Serializable, StatusProvider {
 			cnames.add(IndexUtils.canonicalizeEntity(p.getFirst()));
 
 			boolean authorityResolved = false;
-			// there are 2 ways a name can be resolved -- either its already in cnameToDefiniteFastID, or we have to lookup cnameToFASTIds
 			Set<FASTPerson> setPerson = null;
-
 			Set<FASTCorporate> setOrg = null;
 			Set<FASTGeographic> setPlaces = null;
 			//freebase places.
 			Set<FreebaseApi> placesSetFB = null, orgSetFB = null;
 
+            //check if the authority is already resolved
 			Authority authority = null;
 			Map<String, Authority> cnameToDefiniteID = AuthorisedAuthorities.getAuthorisedAuthorities(archive);
 			if (cnameToDefiniteID != null)
@@ -275,7 +282,6 @@ public class Entities implements Serializable, StatusProvider {
 				st = System.currentTimeMillis();
 				Set<FASTRecord> fts;
 				if (type.equals("person") || type.equals("correspondent")) {
-					//System.err.println("Searching for: " + entity);
 					fts = FASTSearcher.getMatches(entity, FASTRecord.FASTDB.PERSON);
 					if (fts == null) {
 						log.info("No matches for: " + entity);
@@ -388,17 +394,12 @@ public class Entities implements Serializable, StatusProvider {
 			else
 				values.put(Util.escapeHTML(p.getFirst()));
 			contexts.put("");
-			//html += "</td>";
 
 			classes.put("");
-			if (entitiesData.counts.containsKey(p.getFirst())) {
-				//html += "<td>" + entitiesData.counts.get(p.getFirst()) + "</td>";
+			if (entitiesData.counts.containsKey(p.getFirst()))
 				values.put(entitiesData.counts.get(p.getFirst()));
-			}
-			else {
-				//html += "<td>" + p.getSecond() + "</td>";
+			else
 				values.put(p.getSecond());
-			}
 			contexts.put("");
 
 			StringBuilder contextSB = new StringBuilder();
@@ -493,16 +494,7 @@ public class Entities implements Serializable, StatusProvider {
             String tab = "&nbsp&nbsp&nbsp&nbsp";
 
             //random id for this row
-            String randNum = null;
-            if(rand == null)
-                rand = new Random();
-            //there may no be any repeatability here, not at the scale we are dealing with; but cannot take a chance
-            if(ids == null)
-                ids = new HashSet<String>();
-            while(randNum == null || ids.contains(randNum))
-                randNum = rand.nextInt()+"";
-            ids.add(randNum);
-
+            String randNum = entitynum+"";
             if(enableDAButton) {
                 html += "<span style='cursor:pointer' id='" + randNum + "' onclick='sort(" + randNum + ")' class='sort'><i class='fa fa-sort-amount-desc'></i></span>" + tab;
             }
@@ -533,6 +525,7 @@ public class Entities implements Serializable, StatusProvider {
 		//use this endIndex as the beginIndex for the next step.
 		obj2.put("endIndex", iter + 1);
 		obj2.put("data", table);
+        obj2.put("status", "1");
 		totalTime = System.currentTimeMillis() - totalTime;
 		log.info("Total time: " + totalTime + "\nTime to collect record hits: " + whileLoopTime + "\nResolution time: " + resolutionTime + "\nContext Collection Time: " + contextCollectionTime);
 		return obj2.toString();

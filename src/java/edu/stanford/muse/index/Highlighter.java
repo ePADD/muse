@@ -117,7 +117,7 @@ public class Highlighter {
                 }
             }catch (Exception e){
                 //if there is problem in parsing a search term, try to continue
-                log.info("Problem parsing "+terms[i]);
+                log.info("Problem parsing query term: "+terms[i]);
             }
         }
 
@@ -173,8 +173,7 @@ public class Highlighter {
 		try {
 			result = highlight(content, queries, false, preTag, postTag, true);
 		} catch (Exception e) {
-			log.info("Exception while highlighting sensitive stuff", e);
-			e.printStackTrace();
+			Util.print_exception("Exception while highlighting sensitive stuff", e, log);
 		}
 		if (result == null) {
 			System.err.println("Result is null!!");
@@ -297,6 +296,7 @@ public class Highlighter {
 		 * TODO: This test can still miss cases when a regular expression that eventually matches a word already annotated and
 		 * when two terms like "Robert Creeley" "Mr Robert" to match a text like: "Mr Robert Creeley".
 		 * In such cases one of the terms may not be annotated.
+		 * Terms that are added to o are those that just share at-least one word, TODO: this is undesired
 		 */
 		Map<Pair<String, Short>, Integer> o = new LinkedHashMap<Pair<String, Short>, Integer>();
         //prioritised terms
@@ -436,11 +436,6 @@ public class Highlighter {
 
 		//Now do post-processing to add complex tags that depend on the text inside. title, link and cssclass
 		org.jsoup.nodes.Document doc = Jsoup.parse(htmlResult.toString());
-//		if (entitiesWithId != null) {
-//			log.info("Entities with id: ");
-//			for (String ewi : entitiesWithId.keySet())
-//				log.info(ewi + " : " + entitiesWithId.get(ewi));
-//		}
 		Elements elts = doc.select("[data-process]");
 
 		for (int j = 0; j < elts.size(); j++) {
@@ -478,7 +473,6 @@ public class Highlighter {
 				//Consider the case when OpenNLP recognises "Andrew Solt's" and SVM recognises "Andrew Solt" in a text like "Andrew Solt's unpredictable screenplay"
 				//"Andrew Solt" will have two nested annotations on top of it.
 				if (elt.childNodes().contains(elts.get(span_j)) && !elt.text().equals(nxtText)) {
-					//log.info("Skipping " + nxtText + " as it is child node of: " + elt.text());
 					continue;
 				}
 				if (nxtText == null)
@@ -490,7 +484,6 @@ public class Highlighter {
 				entity = best_e;
 				span_j = best_j;
 			} else {
-				//log.info("Did not find: " + entity);
 				continue;
 			}
 
@@ -560,7 +553,7 @@ public class Highlighter {
 					elt.attr("onclick", "window.location='" + link + "'");
 				}
 			} catch (Exception e) {
-			    log.info("Some unknown error while highlighting", e);
+			    Util.print_exception("Some unknown error while highlighting", e, log);
 			}
 		}
 		//The output Jsoup .html() will dump each tag in separate line
