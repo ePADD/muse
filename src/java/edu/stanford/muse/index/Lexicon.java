@@ -18,8 +18,10 @@ package edu.stanford.muse.index;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.lucene.queryparser.classic.ParseException;
 
 import java.io.*;
+import java.security.GeneralSecurityException;
 import java.util.*;
 
 /** a lexicon is a list of words, for several languages */
@@ -141,11 +143,37 @@ public class Lexicon implements Serializable {
 			pw.close();
 			log.info(captionToRawQuery.size() + " sentiment categories saved in " + filename);
 		}
-		
+
+        public Map<String,Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly) {
+            Map<String, Integer> map = new LinkedHashMap<String, Integer>();
+            String[] captions = captionToExpandedQuery.keySet().toArray(new String[captionToExpandedQuery.size()]);
+            for (String caption : captions) {
+                String query = captionToExpandedQuery.get(caption);
+                if (query == null) {
+                    log.warn("Skipping unknown caption '" + caption + "'");
+                    continue;
+                }
+                Integer cnt = 0;
+                try {
+                    if (originalContentOnly)
+                        cnt = indexer.getTotalHits(query, false, Indexer.QueryType.ORIGINAL);
+                    else
+                        cnt = indexer.getTotalHits(query, false, Indexer.QueryType.FULL);
+                } catch(Exception e){
+                    Util.print_exception("Exception while collecting lexicon counts", e, log);
+                }
+                map.put(caption, cnt);
+            }
+            return map;
+        }
+
 		/** main entry point: returns a category -> docs map for each (non-zero) category in the current captionToQueryMap. 
 		 * @indexer must already have run 
 		 * @docs results are restrictes to these docs. assumes all docs if docs is null or empty.
 		 * @captions (null/none = all)
+         *
+         * vihari
+         * This is a weird name for a method that returns documents with emotions instead of emotions.
 		 */
 		public Map<String, Set<Document>> getEmotions (Indexer indexer, Collection<Document> docs, boolean originalContentOnly, String... captions)
 		{
@@ -293,6 +321,34 @@ public class Lexicon implements Serializable {
 		}
 		return lexicons;
 	}
+
+    //accumulates counts returned by lexicons in each language
+    //TODO: It is possible to write a generic accumulator that accumulates sum over all the languages
+    public Map<String, Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly){
+        List<Document> docs = indexer.docs;
+        Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(indexer, docs);
+        Map<String, Integer> result = new LinkedHashMap<String, Integer>();
+        Set<Document> docs_set = Util.castOrCloneAsSet(docs);
+        // aggregate results for each lang into result
+        for (Lexicon1Lang lex: lexicons)
+        {
+            Map<String, Integer> resultsForThisLang = lex.getLexiconCounts(indexer, originalContentOnly);
+            if (resultsForThisLang == null)
+                continue;
+
+            for (String caption: resultsForThisLang.keySet())
+            {
+                Integer resultCountsThisLang = resultsForThisLang.get(caption);
+                Integer resultCounts = result.get(caption);
+                // if caption doesn't exist already, create a new entry, or else add to the existing set of docs that match this caption
+                if (resultCounts == null)
+                    result.put(caption, resultCountsThisLang);
+                else
+                    result.put(caption, resultCounts + resultCountsThisLang);
+            }
+        }
+        return result;
+    }
 	
 	/** Core sentiment detection method. doNota = none of the above 
 	 * @param captions (null/none = all) */

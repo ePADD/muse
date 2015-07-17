@@ -1447,12 +1447,26 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
+    private Collection<String> luceneLookupAsDocIds (String q, int threshold, IndexSearcher searcher, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
+        Pair<Collection<String>,Integer> p = luceneLookupAsDocIdsWithTotalHits(q, threshold, searcher, qt, 10000);
+        return p.first;
+    }
+
+    public Integer getTotalHits(String q, boolean isAttachments, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
+        Pair<Collection<String>,Integer> p = null;
+        if (!isAttachments)
+            p = luceneLookupAsDocIdsWithTotalHits(q, 1, isearcher, qt, 1);
+        else
+            p = luceneLookupAsDocIdsWithTotalHits(q, 1, isearcher_blob, qt, 1);
+        return p.second;
+    }
+
 	/**
 	 * returns collection of docIds of the Lucene docs that hit, at least
 	 * threshold times.
 	 * warning! only looks up body field, no others
 	 */
-	private Collection<String> luceneLookupAsDocIds(String q, int threshold, IndexSearcher searcher, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	private Pair<Collection<String>,Integer> luceneLookupAsDocIdsWithTotalHits(String q, int threshold, IndexSearcher searcher, QueryType qt, int lt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		Collection<String> result = new ArrayList<String>();
 
@@ -1498,7 +1512,9 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		log.info("Query: "+query);
 
 		//		query = convertRegex(query);
-		ScoreDoc[] hits = searcher.search(query, null, 10000).scoreDocs;
+        TopDocs tds = searcher.search(query, null, lt);
+		ScoreDoc[] hits = tds.scoreDocs;
+        int totalHits = tds.totalHits;
 
 		// this logging causes a 50% overhead on the query -- maybe enable it only for debugging
 		// log.info (hits.length + " hits for query " + Util.ellipsize(q, 30) + " => " + Util.ellipsize(escaped_q, 30) + " = " + Util.ellipsize(query.toString(), 30) + " :");
@@ -1599,7 +1615,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			}
 		}
 		log.info(n_added + " docs added to docIdMap cache");
-		return result;
+		return new Pair<Collection<String>,Integer>(result, totalHits);
 	}
 
 	/** returns collection of docId's that hit, at least threshold times */
@@ -2151,6 +2167,10 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		q = "first\\sbook";
 		docs = li.luceneLookupDocs(q, QueryType.REGEX);
 		System.out.println("hits for: " + q + " = " + docs.size());
+
+        q = "ssn";
+        int numHits = li.getTotalHits(q, false, QueryType.FULL);
+        System.err.println("Number of hits for: " + q + " is " + numHits);
 
 		Indexer.readPresetQueries();
 		System.err.println(presetQueries[0]);
