@@ -317,7 +317,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
                     if (is == null)
                         log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
                     else {
-                        long bytes = Util.copy_stream_to_file(is, PRESET_QUERIES_FILE);
+                        long bytes = Util.copy_stream_to_file(is, path);
                         is.close();
                         log.warn("Preset queries file copied successfully to: " + path + " (" + bytes + " bytes)");
                     }
