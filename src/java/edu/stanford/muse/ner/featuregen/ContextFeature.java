@@ -27,7 +27,7 @@ public class ContextFeature extends FeatureGenerator {
     }
 
     @Override
-    public List<Pair<String,Short>> getFeatureTypes(){
+    public List<Pair<String,Short>> getFeatureGens(){
         return featureTypes;
     }
 

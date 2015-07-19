@@ -9,7 +9,7 @@ import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
@@ -146,7 +146,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			try {
 				//TODO: trying to get acronyms this way is a hack and inefficient
 				//Initialise a special reg exp for this task
-				Set<String> pnames = Tokenizer.getNamesFromPatternWithoutOffset(content, true);
+				Set<String> pnames = CICTokenizer.tokenizeWithoutOffsets(content, true);
 				if (pnames != null)
 					for (String name : pnames) {
 						String tc = FeatureGeneratorUtil.tokenFeature(name);
@@ -210,7 +210,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			//else it adds noise and can increase the size of the dump uncontrollably
 			//			try {
 			//				//generally, org are the one with acronyms; hence get non-person like names
-			//				Set<String> names = Tokenizer.getNamesFromPatternWithoutOffset(content, false);
+			//				Set<String> names = CICTokenizer.tokenizeWithoutOffsets(content, false);
 			//				if (names != null)
 			//					for (String name : names) {
 			//						String acronym = "";

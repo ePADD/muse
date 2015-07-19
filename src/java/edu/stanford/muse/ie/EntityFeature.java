@@ -6,7 +6,6 @@ import java.io.Serializable;
 import java.util.*;
 
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
@@ -42,7 +41,6 @@ import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 
 /**

@@ -17,10 +17,7 @@ package edu.stanford.muse.index;
  * limitations under the License.
  */
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+import java.io.*;
 
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -167,17 +164,13 @@ public final class StandardNumberTokenizer extends Tokenizer {
 
 	public static void main(String[] args) {
 		try {
-			FileReader input = new FileReader(new File(System.getProperty("user.home") + File.separator + "sandbox" + File.separator + "test.txt"));
-			StandardNumberTokenizer t = new StandardNumberTokenizer(Version.LUCENE_CURRENT, input);
-			//StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_CURRENT);
-
-			//			TokenStream tokenStream = analyzer.tokenStream(null, "Some thing here 123-345");
+            StringReader input = new StringReader("Passport number: k4190175 ");
+            StandardNumberTokenizer t = new StandardNumberTokenizer(Version.LUCENE_CURRENT, input);
 			OffsetAttribute offsetAttribute = t.addAttribute(OffsetAttribute.class);
 			CharTermAttribute charTermAttribute = t.addAttribute(CharTermAttribute.class);
 			TypeAttribute typeAttribute = t.addAttribute(TypeAttribute.class);
 
 			t.reset();
-			int i = 0;
 			while (t.incrementToken()) {
 				int startOffset = offsetAttribute.startOffset();
 				int endOffset = offsetAttribute.endOffset();

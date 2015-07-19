@@ -325,7 +325,7 @@ public class WordSegmenter {
 //
 //        int ti = 0;
 //        for(String lname: wfs.counts.keySet()) {
-//            WordFeatureVector wfv = new WordFeatureVector(WordFeature.compute(lname, wfs), wfs);
+//            WordFeatureVector wfv = new WordFeatureVector(WordSurfaceFeature.compute(lname, wfs), wfs);
 //            double v = svm.svm_predict(model,wfv.getSVMNode());
 //            if(v>0) {
 //                segment(lname, perceptron, gazettes, wfs, model);

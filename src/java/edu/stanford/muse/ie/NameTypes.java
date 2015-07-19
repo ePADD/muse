@@ -15,7 +15,7 @@ import java.util.Set;
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -98,7 +98,7 @@ public class NameTypes {
 			i++;
 			String id = ed.getUniqueId();
 			String content = archive.indexer.getContents(ed, false);
-			Set<String> pnames = Tokenizer.getNamesFromPatternWithoutOffset(content, true);
+			Set<String> pnames = CICTokenizer.tokenizeWithoutOffsets(content, true);
 			//List<String> nernames = archive.indexer.getNamesForDocId(id, Indexer.QueryType.ORIGINAL);
 			List<String> names = new ArrayList<String>();
 

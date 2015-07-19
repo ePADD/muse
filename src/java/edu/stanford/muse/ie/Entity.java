@@ -3,7 +3,7 @@ package edu.stanford.muse.ie;
 import com.google.gson.Gson;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
@@ -602,7 +602,7 @@ public class Entity extends EntityFeature {
 				String content = archive.getContents(ed, true);
 				Set<String> entities = null;
 				try {
-					entities = Tokenizer.getNamesFromPatternWithoutOffset(content, true);
+					entities = CICTokenizer.tokenizeWithoutOffsets(content, true);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -751,7 +751,7 @@ public class Entity extends EntityFeature {
 		for (edu.stanford.muse.index.Document cdoc : cdocs) {
 			String content = indexer.getContents(cdoc, false);
 			try {
-				Set<String> es = Tokenizer.getNamesFromPatternWithoutOffset(content, true);
+				Set<String> es = CICTokenizer.tokenizeWithoutOffsets(content, true);
 				for (String e : es) {
 					if (!ents.containsKey(e))
 						ents.put(e, 0);

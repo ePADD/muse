@@ -29,7 +29,7 @@ public class FeatureVector implements Serializable {
 				NER.log.error("Word feature vector not properly initialised as proper feature generators are not supplied");
 				return;
 			}
-			List<Pair<String,Short>> featureTypes = fgs[fi].getFeatureTypes();
+			List<Pair<String,Short>> featureTypes = fgs[fi].getFeatureGens();
 			for (Pair<String,Short> ft: featureTypes) {
 				String dim = ft.getFirst();
 				Short type = ft.getSecond();

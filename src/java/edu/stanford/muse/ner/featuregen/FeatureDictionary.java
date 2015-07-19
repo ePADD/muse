@@ -1,16 +1,11 @@
 package edu.stanford.muse.ner.featuregen;
 
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
 import edu.stanford.muse.ner.NER;
 
 import libsvm.svm_parameter;
-import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -21,7 +16,7 @@ import java.util.regex.Pattern;
 
 /**
  * Probable improvements in train file generation are:
- * 1. Use proper relevant stopwords for extracting entities for each type. (for example why would entity contain "in"? take stop-word stats from Dbpedia)
+ * 1. Use proper relevant stop words for extracting entities for each type. (for example why would entity contain "in"? take stop-word stats from Dbpedia)
  * 2. recognise words that truly belong to the Org name and place name. For example in "The New York Times", dont consider "New" to be part of the org name, but just as a place name. Two questions: Will this really improve the situation?, Does this worse the results? because we are not considering the inherent ambiguity affiliated with that word.
  * 3. Get all the names associated with the social network of the group communicating and use it annotate sents.
  * 4. Better classification of People and orgs. In Robert Creeley's archive names like: Penn state, Some Internet solutions are also names from AB
@@ -38,27 +33,22 @@ public class FeatureDictionary implements Serializable {
 	 * 
 	 */
 	private static final long							serialVersionUID	= 1L;
-	//triple contains freqs with person, org and location types.
-	//Set<Map<String, String>>			gazettes			= new HashSet<Map<String, String>>();
-	//dim -> instance -> #positive type, #negative type
+	//dimension -> instance -> entity type of interest -> #positive type, #negative type
 	//patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
-	public Map<String, Map<String, Pair<Integer, Integer>>>	features			= new LinkedHashMap<String, Map<String, Pair<Integer, Integer>>>();
+	public Map<String, Map<String, Map<String, Pair<Integer, Integer>>>> features = new LinkedHashMap<String, Map<String, Map<String, Pair<Integer, Integer>>>>();
 	//contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
 	//This can get quite depending on the archive and is not a scalable solution
 	//TODO: Explore indexing of this data-structure
 	public Map<String,Integer> counts = new HashMap<String,Integer>();
-	//maximum number of times a CIC pattern repeated
-	public Integer maxCount = 0;
 
 	public static String								PERSON				= "Person", ORGANISATION = "Organisation", PLACE = "Place";
-	public String									    iType;
+    public static String[] allTypes = new String[]{PERSON, ORGANISATION, PLACE};
 	static Log											log					= LogFactory.getLog(FeatureDictionary.class);
 	public static Map<String, String[]>					aTypes				= new LinkedHashMap<String, String[]>();
 	public FeatureGenerator[]                           featureGens         = null;
-	public Map<String, EntityContext> entityContexts = new LinkedHashMap<String, EntityContext>();
 	public static Map<String,String[]> startMarkersForType = new LinkedHashMap<String, String[]>();
 	public static Map<String,String[]> endMarkersForType = new LinkedHashMap<String, String[]>();
-	public static Map<String, String[]> ignoreTypes = new LinkedHashMap<String, String[]>();
+	public static List<String> ignoreTypes = new ArrayList<String>();
 	public static String MARKERS_PATT = "^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.|[Pp]rof\\.)\\W+";
 
 	//feature types
@@ -83,27 +73,8 @@ public class FeatureDictionary implements Serializable {
 		 * fox example periodicals, magazine etc. If these types are not ignored, then word proportion score for "*Press" is very low and is unrecognised
 		 * leading to a drop of recall from 0.6 to 0.53*/
 		//these types may contain tokens from this type
-		ignoreTypes.put(FeatureDictionary.ORGANISATION, new String[]{
-//				"Film|Work",
-//				"Building|ArchitecturalStructure|Place",
-//				"AdministrativeRegion|PopulatedPlace|Place",
-//				"Book|WrittenWork|Work",
-//				"TelevisionShow|Work","AutomobileEngine|Device",
-//				"VideoGame|Software|Work",
-//              "Software|Work",
-//				"TelevisionEpisode|Work","ProtectedArea|Place",
-//				//"Newspaper|PeriodicalLiterature|WrittenWork|Work","AcademicJournal|PeriodicalLiterature|WrittenWork|Work",
-//				"Weapon|Device",
-//				//"Magazine|PeriodicalLiterature|WrittenWork|Work",
-//				"Website|Work","Award",
-//				"Hotel|Building|ArchitecturalStructure|Place","MusicFestival|Event",
-//				"Theatre|Building|ArchitecturalStructure|Place","Device",
-//				"Library|EducationalInstitution|Organisation|Building|ArchitecturalStructure|Place","Restaurant|Building|ArchitecturalStructure|Place",
-				"Band|Organisation", "SoccerClub|SportsTeam|Organisation", "TelevisionEpisode|Work",
-				"SoccerClubSeason|SportsTeamSeason|Organisation", "Album|MusicalWork|Work",
-				"SportsTeamMember|OrganisationMember|Person"
-		});
-		ignoreTypes.put(FeatureDictionary.PLACE, new String[]{
+        //dont see why these ignoreTypes have to be type (i.e. person, org, loc) specific
+		ignoreTypes = Arrays.asList(
 				"Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
 				"SportsTeamMember|OrganisationMember|Person", "TelevisionShow|Work", "Book|WrittenWork|Work",
 				"Film|Work", "Album|MusicalWork|Work", "Band|Organisation", "SoccerClub|SportsTeam|Organisation",
@@ -112,230 +83,94 @@ public class FeatureDictionary implements Serializable {
 				"FilmFestival|Event",
 				"SportsTeamMember|OrganisationMember|Person",
 				"SoccerClub|SportsTeam|Organisation"
-		});
-		ignoreTypes.put(FeatureDictionary.PERSON, new String[]{
-
-		});
+		);
 	}
 
-	public static class EntityContext implements Serializable{
-		//people co-occurred with and docids appeared in
-		public Map<String, Integer> people;
-		public Set<String> docIds;
-		public String name, type;
-		public EntityContext(String name, String type){
-			this.name = name;
-			this.type = type;
-			people = new LinkedHashMap<String, Integer>();
-			docIds = new HashSet<String>();
-		}
-
-		public EntityContext(String name, String type, Document doc, Archive archive) {
-			this.name = name;
-			this.type = type;
-			people = new LinkedHashMap<String, Integer>();
-			docIds = new HashSet<String>();
-
-			Set<String> ownerNames = archive.ownerNames;
-			EmailDocument ed = (EmailDocument) doc;
-			List<String> names = ed.getAllNames();
-			Set<String> nonown = new HashSet<String>();
-			if (names != null)
-				for (String n : names)
-					if (!ownerNames.contains(n))
-						nonown.add(n);
-
-			String docId = doc.getUniqueId();
-			add(docId, nonown);
-		}
-
-		public void add(String docId, Set<String> names){
-			docIds.add(docId);
-			for(String name: names) {
-				if (!people.containsKey(name))
-					people.put(name, 0);
-				people.put(name, people.get(name)+1);
-			}
-		}
-
-		public List<EntityContext> getClosestNHits(Collection<EntityContext> contexts, int N) {
-			Map<EntityContext, Double> scontexts = new LinkedHashMap<EntityContext, Double>();
-			String wc = FeatureGeneratorUtil.tokenFeature(name);
-			boolean acronym = false, dictWord = false;
-			if ("ac".equals(wc))
-				acronym = true;
-			if (!acronym)
-				if (DictUtils.commonDictWords5000.contains(name.toLowerCase()))
-					dictWord = true;
-
-			//dont expand stuff like office, all, national, the etc.
-			if (!dictWord) {
-				for (EntityContext context : contexts) {
-					if (acronym) {
-						String acr = edu.stanford.muse.ie.Util.getAcronym(context.name);
-						if (acr == null || !acr.equals(this.name))
-							continue;
-					} else {
-						if(!(context.name.equals(this.name) || context.name.startsWith(this.name+" ") || context.name.endsWith(" "+this.name) || context.name.contains(" "+this.name+" ")))
-//							if (!context.name.contains(this.name))
-							continue;
-					}
-					double num = 0;
-					//its a candidate, score based on context
-					if (context.docIds != null && this.docIds != null)
-						for (String cdocid : context.docIds)
-							if (docIds.contains(cdocid))
-								num++;
-					if (context.people != null && this.people != null)
-						for (String p : context.people.keySet())
-							if (this.people.containsKey(p))
-								num++;
-					scontexts.put(context, num);
-				}
-			}
-			List<Pair<EntityContext,Double>> sscontexts = Util.sortMapByValue(scontexts);
-			List<EntityContext> ret = new ArrayList<EntityContext>();
-			int i=0;
-			for(Pair<EntityContext,Double> p: sscontexts)
-				if(i++<N)
-					ret.add(p.getFirst());
-			return ret;
-		}
-	}
-
-	public FeatureDictionary(String iType, FeatureGenerator[] featureGens) {
-		this.iType = iType;
+	public FeatureDictionary(FeatureGenerator[] featureGens) {
 		this.featureGens = featureGens;
 	}
 	/**
-	 * addressbook should be specially handled and dbpedia gazette is required.
-	 * and make sure the addressbook is cleaned see cleanAB method
+	 * address book should be specially handled and dbpedia gazette is required.
+	 * and make sure the address book is cleaned see cleanAB method
 	 */
-	public FeatureDictionary(Map<String, String> abNames, Map<String, String> dbpedia, FeatureGenerator[] featureGens, String type) {
-		this.iType = type;
-		this.featureGens = featureGens;
-
-		Set<Map<String, String>> gazettes = new HashSet<Map<String, String>>();
-		//adress book contains junk, dont want to rely on it now, also trying to filter addressbook names based on this frequency generated over AB and DBpedia does not make sense
-		gazettes.add(abNames);
-		gazettes.add(dbpedia);
+	public FeatureDictionary(Map<String, String> gazettes, FeatureGenerator[] featureGens) {
+        this.featureGens = featureGens;
 
 		long start_time = System.currentTimeMillis();
 		long timeToComputeFeatures = 0, timeOther = 0;
 		long tms = System.currentTimeMillis();
 		log.info("Analysing gazettes");
-		//Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-		int g = 0, nume = 0;
-		Set<String> ignoreTypeSet = new HashSet<String>();
-		if(ignoreTypes.get(iType)!=null)
-			for(String it: ignoreTypes.get(iType)) {
-				ignoreTypeSet.add(it);
-			}
-		Set<String> ignoredTypes = new HashSet<String>();
-		for (Map<String, String> gazette : gazettes) {
-			final int gs = gazette.size();
-			int gi = 0;
-			for (String str : gazette.keySet()) {
-				timeOther += System.currentTimeMillis() - tms;
-				tms = System.currentTimeMillis();
 
-				//if is a single word name and in dictionary, ignore.
-				if(!str.contains(" ") && DictUtils.fullDictWords.contains(str.toLowerCase()))
-					continue;
+        int g = 0, nume = 0;
+	   final int gs = gazettes.size();
+        int gi = 0;
+        for (String str : gazettes.keySet()) {
+            timeOther += System.currentTimeMillis() - tms;
+            tms = System.currentTimeMillis();
 
-				String entityType = gazette.get(str);
-				if(ignoreTypeSet.contains(entityType)) {
-					ignoredTypes.add(entityType);
-					continue;
-				}
+            //if is a single word name and in dictionary, ignore.
+            if(!str.contains(" ") && DictUtils.fullDictWords.contains(str.toLowerCase()))
+                continue;
 
-				for(FeatureGenerator fg: featureGens) {
-					if(!fg.getContextDependence()) {
-						add(fg.createFeatures(str, null, null, iType), entityType);
-					}
-				}
-				timeToComputeFeatures += System.currentTimeMillis() - tms;
-				tms = System.currentTimeMillis();
+            String entityType = gazettes.get(str);
+            if(ignoreTypes.contains(entityType)) {
+                continue;
+            }
 
-				if ((++gi) % 10000 == 0) {
-					log.info("Analysed " + (gi) + " records of " + gs + " percent: " + (gi * 100 / gs) + "% in gazette: " + g);
-					log.info("Time spent in computing features: " + timeToComputeFeatures + " total time spent: " + (timeOther + timeToComputeFeatures));
-				}
-				nume++;
-			}
+            for(FeatureGenerator fg: featureGens) {
+                if(!fg.getContextDependence()) {
+                    for(String iType: allTypes)
+                       add(fg.createFeatures(str, null, null, iType), entityType, iType);
+                }
+            }
+            timeToComputeFeatures += System.currentTimeMillis() - tms;
+            tms = System.currentTimeMillis();
 
-			log.info("Done analysing gazette: " + (g++));
-		}
-		log.info("Trained over "+nume+" entities in "+gazettes.size());
-		log.info("Ignored: "+ignoredTypes.size());
+            if ((++gi) % 10000 == 0) {
+                log.info("Analysed " + (gi) + " records of " + gs + " percent: " + (gi * 100 / gs) + "% in gazette: " + g);
+                log.info("Time spent in computing features: " + timeToComputeFeatures + " total time spent: " + (timeOther + timeToComputeFeatures));
+            }
+            nume++;
+        }
 
-		int gi = 0;
-		for(Map<String,String> gazette: gazettes) {
-			log.info("Gazettes: " + gi + " size: " + gazette.size());
-			gi++;
-		}
-
-		log.info("Done ananlysing gazettes in: " + (System.currentTimeMillis() - start_time));
+		log.info("Considered "+nume+" entities in "+gazettes.size()+" total entities");
+		log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
     }
 
-	public FeatureVector getVector(String cname){
+	public FeatureVector getVector(String cname, String iType){
 		Map<String,List<String>> features = FeatureGenerator.generateFeatures(cname,null,null,iType,featureGens);
 		return new FeatureVector(this, featureGens, features);
 	}
 
-	/**
-	 * Adds the context of a match to the dictionary
-	 * @param match recognised entity name
-	 * @param type DBpedia type or some other*/
-	public EntityContext considerDocFor(String match, String type, Document doc, Archive archive){
-		//strip any Mr, Mrs. stuff
-		Pair<String,Boolean> p = WordFeature.checkAndStrip(match, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON),true, true);
-		match = p.getFirst();
-		Set<String> ownerNames = archive.ownerNames;
-		EmailDocument ed = (EmailDocument)doc;
-		List<String> names = ed.getAllNames();
-		Set<String> nonown = new HashSet<String>();
-		if(names!=null)
-			for(String name: names)
-				if(!ownerNames.contains(name))
-					nonown.add(name);
-
-		String docId = doc.getUniqueId();
-		if (!this.entityContexts.containsKey(match))
-			this.entityContexts.put(match, new EntityContext(match, type));
-
-		this.entityContexts.get(match).add(docId, nonown);
-		return this.entityContexts.get(match);
-	}
-
-	//dictionary should not be build anywhere else other tahn in this file
-	private void add(Map<String,List<String>> wfeatures, String type) {
-		//System.err.println("Adding type: "+type);
+	//dictionary should not be built anywhere without this method
+	private void add(Map<String,List<String>> wfeatures, String type, String iType) {
 		for (String dim : wfeatures.keySet()) {
 			if (!features.containsKey(dim))
-				features.put(dim, new LinkedHashMap<String, Pair<Integer, Integer>>());
-			Map<String, Pair<Integer, Integer>> hm = features.get(dim);
+				features.put(dim, new LinkedHashMap<String, Map<String, Pair<Integer, Integer>>>());
+			Map<String, Map<String,Pair<Integer, Integer>>> hm = features.get(dim);
 			if (wfeatures.get(dim) != null)
 				for (String val : wfeatures.get(dim)) {
-					if (!hm.containsKey(val))
-						hm.put(val, new Pair<Integer, Integer>(0, 0));
-					Pair<Integer, Integer> p = hm.get(val);
+					if (!hm.containsKey(val)) {
+                        hm.put(val, new LinkedHashMap<String, Pair<Integer, Integer>>());
+                        hm.get(val).put(iType, new Pair<Integer,Integer>(0,0));
+                    }
+					Pair<Integer, Integer> p = hm.get(val).get(iType);
 					if (type.contains(iType))
 						p.first++;
 					p.second++;
-					hm.put(val, p);
+					hm.get(val).put(iType, p);
 				}
 			features.put(dim, hm);
 		}
 	}
 
-	public double getMaxpfreq(String name){
+	public double getMaxpfreq(String name, String iType){
 		String[] words = name.split("\\s+");
 		double p = 0;
 		for(String word: words) {
 			double pw = 0;
 			try{
-				Pair<Integer,Integer> freqs = features.get("word").get("word");
+				Pair<Integer,Integer> freqs = features.get("word").get(word).get(iType);
 				pw = (double)freqs.first/freqs.second;
 			}catch(Exception e){
 				;
@@ -347,8 +182,8 @@ public class FeatureDictionary implements Serializable {
 
 	/**
 	 * returns the value of the dim in the features generated*/
-	public Double getFeatureValue(String name, String dim){
-		FeatureVector wfv = getVector(name);
+	public Double getFeatureValue(String name, String dim, String iType){
+		FeatureVector wfv = getVector(name, iType);
 		Double[] fv = wfv.fv;
 		Integer idx = wfv.featureIndices.get(dim);
 		if(idx == null || idx>fv.length) {
@@ -363,17 +198,18 @@ public class FeatureDictionary implements Serializable {
 		long start_time = System.currentTimeMillis();
 		long timeToComputeFeatures = 0, timeOther = 0;
 		long tms = System.currentTimeMillis();
+        String iType = FeatureDictionary.PERSON;
 		log.info("Analysing gazettes");
 		System.err.println("Analysing gazettes");
 		Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-		FeatureDictionary wfs = new FeatureDictionary(FeatureDictionary.PERSON, new FeatureGenerator[]{new WordFeature()});
+		FeatureDictionary wfs = new FeatureDictionary(new FeatureGenerator[]{new WordSurfaceFeature()});
 		int gi = 0, gs = dbpedia.size();
 		for (String str : dbpedia.keySet()) {
 			timeOther += System.currentTimeMillis() - tms;
 			tms = System.currentTimeMillis();
 
-			//the type supplied to WordFeatures should not matter, atleast for filtering
-			wfs.add(new WordFeature().createFeatures(str, FeatureDictionary.PERSON), dbpedia.get(str));
+			//the type supplied to WordFeatures should not matter, at least for filtering
+			wfs.add(new WordSurfaceFeature().createFeatures(str, iType), dbpedia.get(str), iType);
 
 			if ((++gi) % 10000 == 0) {
 				log.info("Analysed " + (gi) + " records of " + gs + " percent: " + (gi * 100 / gs)+"%");
@@ -383,31 +219,11 @@ public class FeatureDictionary implements Serializable {
 
 		Map<String,Pair<String,Double>> scoredAB = new LinkedHashMap<String, Pair<String,Double>>();
 		for(String name: abNames.keySet()) {
-			double val = wfs.getFeatureValue(name, "words");
+			double val = wfs.getFeatureValue(name, "words", iType);
 			scoredAB.put(name,new Pair<String,Double>(abNames.get(name), val));
 		}
 		return scoredAB;
 	}
-
-//	public Map<String,String> getCleanAB(){
-//		return getCleanAB(0.8);
-//	}
-//
-//	public Map<String,String> getCleanAB(double thresh){
-//		if(scoredAddressBook == null) {
-//			log.warn("This Feature dictionary of type: " + iType + " does not have score addressbook, did you properly initialise the object?");
-//			System.err.println("This Feature dictionary of type: " + iType + " does not have score addressbook, did you properly initialise the object?");
-//			return null;
-//		}
-//
-//		Map<String,String> cleanAB = new LinkedHashMap<String, String>();
-//		for(String entry: scoredAddressBook.keySet()){
-//			Pair<String,Double> p = scoredAddressBook.get(entry);
-//			if(p.second>0.8)
-//				cleanAB.put(entry, p.first);
-//		}
-//		return cleanAB;
-//	}
 
 	public static Map<String,String> cleanAB(Map<String,String> abNames, Map<String,String> dbpedia){
 		if(abNames == null)

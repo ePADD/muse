@@ -773,7 +773,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 //                protected TokenStreamComponents createComponents(final String fieldName,
 //                                                                 final Reader reader) {
 //                    Version matchVersion = Indexer.LUCENE_VERSION;
-//                    final Tokenizer source = new StandardNumberTokenizer(matchVersion, reader);
+//                    final CICTokenizer source = new StandardNumberTokenizer(matchVersion, reader);
 //                    TokenStream result = new LowerCaseFilter(matchVersion, source);
 //                    return new TokenStreamComponents(source, result);
 //                }
@@ -2105,7 +2105,10 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		li.indexSubdoc(" ssn 123 45 6789", "name 1 is John Smith.  credit card # 111234 5678 9012 3456 ", ed, null);
 		ed = new EmailDocument("4", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
 		li.indexSubdoc(" ssn 123 45 6789", "\nmy \nfirst \n book is \n something ", ed, null);
-		li.close();
+        ed = new EmailDocument("5", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
+        li.indexSubdoc("passport number k4190893", "\nmy \nfirst \n book is \n something ", ed, null);
+
+        li.close();
 
 		li.setupForRead();
 		String q = "john";
@@ -2173,9 +2176,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         System.err.println("Number of hits for: " + q + " is " + numHits);
 
 		Indexer.readPresetQueries();
-		System.err.println(presetQueries[0]);
-		docs = li.luceneLookupDocs(presetQueries[0], QueryType.REGEX);
-		System.err.println("Doing a preset regex search");
+        q = "k[0-9]{7}";
+		docs = li.luceneLookupDocs(q, QueryType.REGEX);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		li.analyzer = null;
