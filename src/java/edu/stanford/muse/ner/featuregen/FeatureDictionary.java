@@ -1,17 +1,17 @@
 package edu.stanford.muse.ner.featuregen;
 
+import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.ner.NER;
 
+import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm_parameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -39,7 +39,7 @@ public class FeatureDictionary implements Serializable {
 	//contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
 	//This can get quite depending on the archive and is not a scalable solution
 	//TODO: Explore indexing of this data-structure
-	public Map<String,Integer> counts = new HashMap<String,Integer>();
+	public Map<String,Integer> counts = new LinkedHashMap<String,Integer>();
 
 	public static String								PERSON				= "Person", ORGANISATION = "Organisation", PLACE = "Place";
     public static String[] allTypes = new String[]{PERSON, ORGANISATION, PLACE};
@@ -98,14 +98,13 @@ public class FeatureDictionary implements Serializable {
 
 		long start_time = System.currentTimeMillis();
 		long timeToComputeFeatures = 0, timeOther = 0;
-		long tms = System.currentTimeMillis();
+		long tms;
 		log.info("Analysing gazettes");
 
         int g = 0, nume = 0;
 	   final int gs = gazettes.size();
         int gi = 0;
         for (String str : gazettes.keySet()) {
-            timeOther += System.currentTimeMillis() - tms;
             tms = System.currentTimeMillis();
 
             //if is a single word name and in dictionary, ignore.
@@ -124,11 +123,10 @@ public class FeatureDictionary implements Serializable {
                 }
             }
             timeToComputeFeatures += System.currentTimeMillis() - tms;
-            tms = System.currentTimeMillis();
 
             if ((++gi) % 10000 == 0) {
                 log.info("Analysed " + (gi) + " records of " + gs + " percent: " + (gi * 100 / gs) + "% in gazette: " + g);
-                log.info("Time spent in computing features: " + timeToComputeFeatures + " total time spent: " + (timeOther + timeToComputeFeatures));
+                log.info("Time spent in computing features: " + timeToComputeFeatures);
             }
             nume++;
         }
@@ -139,7 +137,7 @@ public class FeatureDictionary implements Serializable {
 
 	public FeatureVector getVector(String cname, String iType){
 		Map<String,List<String>> features = FeatureGenerator.generateFeatures(cname,null,null,iType,featureGens);
-		return new FeatureVector(this, featureGens, features);
+		return new FeatureVector(this, iType, featureGens, features);
 	}
 
 	//dictionary should not be built anywhere without this method
@@ -152,7 +150,8 @@ public class FeatureDictionary implements Serializable {
 				for (String val : wfeatures.get(dim)) {
 					if (!hm.containsKey(val)) {
                         hm.put(val, new LinkedHashMap<String, Pair<Integer, Integer>>());
-                        hm.get(val).put(iType, new Pair<Integer,Integer>(0,0));
+                        for (String at: allTypes)
+                            hm.get(val).put(at, new Pair<Integer,Integer>(0,0));
                     }
 					Pair<Integer, Integer> p = hm.get(val).get(iType);
 					if (type.contains(iType))
@@ -187,7 +186,7 @@ public class FeatureDictionary implements Serializable {
 		Double[] fv = wfv.fv;
 		Integer idx = wfv.featureIndices.get(dim);
 		if(idx == null || idx>fv.length) {
-			NER.log.warn("No proper index found for dim " + dim + ", " + idx + " for " + name);
+			//log.warn("No proper index found for dim " + dim + ", " + idx + " for " + name);
 			return 0.0;
 		}
 		return fv[idx];
@@ -195,13 +194,10 @@ public class FeatureDictionary implements Serializable {
 
 	//clean address book names based on gazette freqs on dbpedia.
 	static Map<String,Pair<String,Double>> scoreAB(Map<String,String> abNames, Map<String,String> dbpedia){
-		long start_time = System.currentTimeMillis();
 		long timeToComputeFeatures = 0, timeOther = 0;
 		long tms = System.currentTimeMillis();
         String iType = FeatureDictionary.PERSON;
 		log.info("Analysing gazettes");
-		System.err.println("Analysing gazettes");
-		Pattern endClean = Pattern.compile("^\\W+|\\W+$");
 		FeatureDictionary wfs = new FeatureDictionary(new FeatureGenerator[]{new WordSurfaceFeature()});
 		int gi = 0, gs = dbpedia.size();
 		for (String str : dbpedia.keySet()) {
@@ -210,7 +206,7 @@ public class FeatureDictionary implements Serializable {
 
 			//the type supplied to WordFeatures should not matter, at least for filtering
 			wfs.add(new WordSurfaceFeature().createFeatures(str, iType), dbpedia.get(str), iType);
-
+            timeToComputeFeatures += System.currentTimeMillis()-tms;
 			if ((++gi) % 10000 == 0) {
 				log.info("Analysed " + (gi) + " records of " + gs + " percent: " + (gi * 100 / gs)+"%");
 				log.info("Time spent in computing features: " + timeToComputeFeatures + " total time spent: " + (timeOther + timeToComputeFeatures));
@@ -237,7 +233,7 @@ public class FeatureDictionary implements Serializable {
 		Map<String,String> cleanAB = new LinkedHashMap<String, String>();
 		for(String entry: scoredAddressBook.keySet()){
 			Pair<String,Double> p = scoredAddressBook.get(entry);
-			if(p.second>0.8)
+			if(p.second>0.5)
 				cleanAB.put(entry, p.first);
 		}
 		return cleanAB;
@@ -278,22 +274,17 @@ public class FeatureDictionary implements Serializable {
 	}
 
 	public static void main(String[] args) {
-		String content = "\"If they were to wrest control away from Robert Bertholf then whoever manages Jess' affairs now and, after his death, the beneficiaries of his estate (and I don't know who they would be) would have control of Robert's work...\".";
-		String[] a = new String[] { "Robert", "Robert Bertholf" };
-		String str = "(";
-		for (int i = 0; i < a.length; i++) {
-			str += a[i];
-			if (i < (a.length - 1))
-				str += "|";
-		}
-		str += ")";
-		Pattern p = Pattern.compile(str);
-		Matcher m = p.matcher(content);
-		StringBuffer sb = new StringBuffer();
-		while (m.find())
-			m.appendReplacement(sb, " <START:person> " + m.group() + " <END> ");
-		m.appendTail(sb);
-		content = sb.toString();
-		System.err.println(content);
-	}
+        try {
+            Map<String, String> dbpedia = EmailUtils.readDBpedia();
+            String userDir = "/Users/vihari/epadd-appraisal/user";
+            edu.stanford.muse.webapp.ModeConfig.mode = edu.stanford.muse.webapp.ModeConfig.Mode.DISCOVERY;
+            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+            Map<String,String> abNames = EmailUtils.getNames(archive.getAddressBook().allContacts());
+            System.err.println("Address book size before cleaning: "+abNames.size());
+            abNames = FeatureDictionary.cleanAB(abNames, dbpedia);
+            System.err.println("Address book size after cleaning "+abNames.size());
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 }

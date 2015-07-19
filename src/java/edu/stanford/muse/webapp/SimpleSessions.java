@@ -34,7 +34,7 @@ public class SimpleSessions {
 	 * @throws LockObtainFailedException
 	 * @throws CorruptIndexException
 	 */
-	public static Map<String, Object> loadSessionAsMap(String filename, String baseDir, boolean readOnly) throws CorruptIndexException, LockObtainFailedException, IOException
+	public static Map<String, Object> loadSessionAsMap(String filename, String baseDir, boolean readOnly) throws IOException
 	{
 		log.info("Loading session from file " + filename + " size: " + Util.commatize(new File(filename).length() / 1024) + " KB");
 

@@ -18,7 +18,8 @@ public class SegmentFeatures {
     public static double[] genarateFeatures(String phrase,FeatureDictionary wfs,svm_model model){
         String cp = phrase;
         phrase = phrase.replaceAll(FeatureDictionary.MARKERS_PATT, "");
-        FeatureVector wfv = wfs.getVector(cp);
+        //TODO: what is the type that is being segmented here? Review the next line
+        FeatureVector wfv = wfs.getVector(cp, FeatureDictionary.PERSON);
         svm_node[] sx = wfv.getSVMNode();
         double[] probs = new double[2];
         double prob = svm.svm_predict_probability(model,sx,probs);

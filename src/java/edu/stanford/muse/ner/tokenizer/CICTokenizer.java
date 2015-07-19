@@ -8,6 +8,7 @@ import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,7 +29,7 @@ import java.util.regex.Pattern;
  * @TODO: Clean email related stuff like: "Subject: Re:", "Subject:", "Date:", "Email:", ">"
  * @TODO: Having two dashes in the name is not ok
  */
-public class CICTokenizer implements Tokenizer{
+public class CICTokenizer implements Tokenizer, Serializable {
 	static Pattern	personNamePattern, entityPattern, acronymPattern;
 	static String[] stopWords =  new String[]{"the","for"};//new String[]{"and", "for","on","a","the","to","at","of", "in"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});

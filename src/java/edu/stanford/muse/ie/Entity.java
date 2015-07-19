@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
@@ -591,6 +592,7 @@ public class Entity extends EntityFeature {
 			System.err.println("No feature index found..., starting to process and index. This can take a while.");
 			int di = 0;
 			archive.assignThreadIds();
+            Tokenizer tokenizer = new CICTokenizer();
 			for (EmailDocument ed : docs) {
 				if (di % 1 == 0) {
 					System.err.println("Done analysing documents: " + di + " of: " + docs.size());
@@ -602,7 +604,7 @@ public class Entity extends EntityFeature {
 				String content = archive.getContents(ed, true);
 				Set<String> entities = null;
 				try {
-					entities = CICTokenizer.tokenizeWithoutOffsets(content, true);
+					entities = tokenizer.tokenizeWithoutOffsets(content, true);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -748,10 +750,11 @@ public class Entity extends EntityFeature {
 
 	public static Map<String, Integer> getEntitiesIn(Set<edu.stanford.muse.index.Document> cdocs, Indexer indexer) {
 		Map<String, Integer> ents = new HashMap<String, Integer>();
+        Tokenizer tokenizer = new CICTokenizer();
 		for (edu.stanford.muse.index.Document cdoc : cdocs) {
 			String content = indexer.getContents(cdoc, false);
 			try {
-				Set<String> es = CICTokenizer.tokenizeWithoutOffsets(content, true);
+				Set<String> es = tokenizer.tokenizeWithoutOffsets(content, true);
 				for (String e : es) {
 					if (!ents.containsKey(e))
 						ents.put(e, 0);

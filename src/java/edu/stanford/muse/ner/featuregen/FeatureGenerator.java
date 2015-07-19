@@ -18,7 +18,7 @@ abstract public class FeatureGenerator implements Serializable{
     public abstract Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offsets, String content, String iType);
     //Context dependent features are not handled well, do not use.
     public abstract Boolean getContextDependence();
-    public abstract List<Pair<String,Short>> getFeatureGens();
+    public abstract List<Pair<String,Short>> getFeatureTypes();
 
     public static Map<String,List<String>> generateFeatures(String name, Pair<Integer,Integer> offsets, String content, String iType, FeatureGenerator[] fgs){
         Map<String,List<String>> features = new LinkedHashMap<String, List<String>>();

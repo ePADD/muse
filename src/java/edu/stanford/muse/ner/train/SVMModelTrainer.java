@@ -102,11 +102,13 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
         for(int iti=0;iti<types.size();iti++) {
             int numExternal = 0, di = 0, ds = archiveContent.getSize();
             String iType = types.get(iti);
+            log.info("Training for type: " + iType);
             String[] aType = FeatureDictionary.aTypes.get(iType);
             List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();
             Map<String, String> hits = new LinkedHashMap<String, String>();
             Set<String> considered = new HashSet<String>();
-            for (int i=0; i<ds; i++) {
+            considered.clear();
+            for (int i = 0; i < ds; i++) {
                 String content = archiveContent.getContent(i);
                 List<Triple<String, Integer, Integer>> cands = tokenizer.tokenize(content, iType.equals(FeatureDictionary.PERSON));
 
@@ -199,16 +201,18 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
             }
             log.info("Wrote dbpedia #" + numExternal + ", abNames #" + numC + ", to balance: " + x);
 
-            File cdir = new File(CACHE_DIR);
-            if (!cdir.exists())
-                cdir.mkdir();
-
             FileWriter fw1 = null, fw2 = null;
-            try {
-                fw1 = new FileWriter(new File(CACHE_DIR + File.separator + iType + "_fvs.train"));
-                fw2 = new FileWriter(new File(CACHE_DIR + File.separator + iType + "_names.train"));
-            } catch (Exception e) {
-                log.warn(e);
+            if (CACHE_DIR != null) {
+                File cdir = new File(CACHE_DIR);
+                if (!cdir.exists())
+                    cdir.mkdir();
+
+                try {
+                    fw1 = new FileWriter(new File(CACHE_DIR + File.separator + iType + "_fvs.train"));
+                    fw2 = new FileWriter(new File(CACHE_DIR + File.separator + iType + "_names.train"));
+                } catch (Exception e) {
+                    log.warn(e);
+                }
             }
             svm_problem prob = new svm_problem();
             //svm_node of this line and target
@@ -254,19 +258,19 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
                 try {
                     fw1.close();
                     fw2.close();
-                }catch(Exception e){
+                } catch (Exception e) {
 
                 }
             }
             log.info("Wrote training file to : " + new File(CACHE_DIR + File.separator + iType + ".train").getAbsolutePath());
-            status = "Done learning for type: "+iType;
+            status = "Done learning for type: " + iType;
             model.models.put(iType, svmModel);
         }
         time += System.currentTimeMillis() - st;
         st = System.currentTimeMillis();
         status = "Done learning";
         try {
-            model.writeModel(new File(tparams.modelWriteLocation));
+            model.writeModel(new File(tparams.modelWriteLocation+File.separator+SVMModel.modelFileName));
         } catch(IOException e){
             Util.print_exception("Fatal! Could not write the trained model to "+tparams.modelWriteLocation, e, log);
         }

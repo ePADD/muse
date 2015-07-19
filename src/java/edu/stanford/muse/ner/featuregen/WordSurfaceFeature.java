@@ -95,7 +95,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 	}
 
 	@Override
-	public List<Pair<String,Short>> getFeatureGens(){
+	public List<Pair<String,Short>> getFeatureTypes(){
 		return featureGens;
 	}
 

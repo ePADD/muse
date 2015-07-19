@@ -10,6 +10,7 @@ import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
@@ -130,6 +131,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		 */
 		//get all acronyms
 		int di = 0;
+        Tokenizer tokenizer = new CICTokenizer();
 		for (EmailDocument ed : docs) {
 			List<String> addrs = ed.getAllAddrs();
 			for (String addr : addrs) {
@@ -146,7 +148,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			try {
 				//TODO: trying to get acronyms this way is a hack and inefficient
 				//Initialise a special reg exp for this task
-				Set<String> pnames = CICTokenizer.tokenizeWithoutOffsets(content, true);
+				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
 				if (pnames != null)
 					for (String name : pnames) {
 						String tc = FeatureGeneratorUtil.tokenFeature(name);

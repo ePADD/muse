@@ -247,7 +247,8 @@ public class WordSegmenter {
         //sample few names randomly from many CIC names
         int i=0,pi=0,ni=0;
         for(String cicname: wfs.counts.keySet()){
-            FeatureVector wfv = wfs.getVector(cicname);
+            //TODO: review the next line
+            FeatureVector wfv = wfs.getVector(cicname, FeatureDictionary.PERSON);
             svm_node[] sx = wfv.getSVMNode();
             double v = svm.svm_predict(model,sx);
             if(v>0) {
@@ -354,7 +355,7 @@ public class WordSegmenter {
         int numGood = 0;
         SegmentationFunction sfunction = new SegmentationFunction(svmModel, wfs);
         List<String> markers = Arrays.asList("dear","hi","hello","mr","mrs","miss","sir","madam","dr.","prof");
-        String[] aTypes = wfs.aTypes.get(wfs.iType);
+        String[] aTypes = wfs.aTypes.get(FeatureDictionary.PERSON);
         //iterate over cicnames to find names that are super strings of names in gazettes
         for(String cicname: wfs.counts.keySet()){
             cicname = IndexUtils.stripExtraSpaces(cicname);
@@ -417,38 +418,5 @@ public class WordSegmenter {
     }
 
     public static void main(String[] args){
-        try {
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-creeley2";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            NER ner = new NER(archive);
-            NER.NEROptions options = new NER.NEROptions();
-            options.dbpedia = false;
-            options.addressbook = true;
-            options.prefix = "woDB_";
-
-            Pair<svm_model,FeatureDictionary> p = ner.loadModel(FeatureDictionary.PERSON, options);
-            FeatureDictionary wfs = p.getSecond();
-            if(wfs.features!=null)
-                System.err.println("Read "+wfs.features.size()+", type: "+wfs.iType);
-            System.err.println(wfs.getVector("Dear Robert Creeley"));
-            double v = svm.svm_predict(p.getFirst(), wfs.getVector("Robert Creeley").getSVMNode());
-            System.err.println(v);
-            Set<Map<String,String>> gazettes = new HashSet<Map<String,String>>();
-            Map<String,String> dbpedia = EmailUtils.readDBpedia();
-            //List<Contact> contacts = archive.addressBook.allContacts();
-
-    //        SegmentationModel psmodel = WordSegmenter.loadModel(dataFldr,options.prefix+"_"+FeatureDictionary.PERSON,p.first,p.second,gazettes);
-            //System.out.println("coeffs: "+Arrays.toString(psmodel.coeffs));
-
-//            int maxC = 0;
-//            for(String c: wfs.counts.keySet())
-//                maxC = Math.max(maxC,wfs.counts.get(c));
-//            wfs.maxCount = maxC;
-//            System.err.println("Setting the max count to: "+maxC);
-            //train(p.first, p.second, gazettes);
-            //new WordSegmenter(gazettes,wfs,model);
-        }catch(Exception  e){
-            e.printStackTrace();
-        }
     }
 }

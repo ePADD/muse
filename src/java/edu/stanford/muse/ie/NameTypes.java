@@ -16,6 +16,7 @@ import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -91,14 +92,14 @@ public class NameTypes {
 
 		int i = 0;
 		List<String> upnames = new ArrayList<String>(), unernames = new ArrayList<String>();
-		for (EmailDocument ed : allDocs)
-		{
+        Tokenizer tokenizer = new CICTokenizer();
+        for (EmailDocument ed : allDocs) {
 			if (i % 1000 == 0)
 				System.err.println("Collected names from :" + i + "/" + allDocs.size());
 			i++;
 			String id = ed.getUniqueId();
 			String content = archive.indexer.getContents(ed, false);
-			Set<String> pnames = CICTokenizer.tokenizeWithoutOffsets(content, true);
+			Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
 			//List<String> nernames = archive.indexer.getNamesForDocId(id, Indexer.QueryType.ORIGINAL);
 			List<String> names = new ArrayList<String>();
 

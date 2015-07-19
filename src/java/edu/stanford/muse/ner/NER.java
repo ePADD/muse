@@ -1,5 +1,6 @@
 package edu.stanford.muse.ner;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
@@ -171,8 +172,7 @@ public class NER implements StatusProvider {
         return getNameOffsets(ldoc, body);
     }
 
-    public static List<Triple<String, Integer, Integer>> getNameOffsets(org.apache.lucene.document.Document doc, boolean body)
-    {
+    public static List<Triple<String, Integer, Integer>> getNameOffsets(org.apache.lucene.document.Document doc, boolean body) {
         String fieldName = null;
         if(body)
             fieldName = NAMES_OFFSETS;
@@ -200,18 +200,22 @@ public class NER implements StatusProvider {
 		return result;
 	}
 
-    public NERModel trainModel(){
+    public NERModel trainModel() {
         NERTrainer trainer = new SVMModelTrainer();
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
-        Map<String,String> addressbook = EmailUtils.getNames(archive.addressBook.allContacts());
+        Map<String,String> addressbook =  EmailUtils.getNames(archive.addressBook.allContacts());
         addressbook = FeatureDictionary.cleanAB(addressbook, dbpedia);
         Tokenizer tokenizer = new CICTokenizer();
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
         List<String> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
-        List<String[]> aTypes = Arrays.asList(FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
+        List<String[]> aTypes = Arrays.asList(
+                FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
                 FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
-                FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION));
-        SVMModelTrainer.TrainingParam tparams = SVMModelTrainer.TrainingParam.initialize(null,null);
+                FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION)
+        );
+        String CACHE_DIR = archive.baseDir + File.separator + Config.CACHE_FOLDER;
+        String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
+        SVMModelTrainer.TrainingParam tparams = SVMModelTrainer.TrainingParam.initialize(CACHE_DIR, MODEL_DIR);
         ArchiveContent archiveContent = new ArchiveContent() {
             @Override
             public int getSize() {
@@ -243,7 +247,7 @@ public class NER implements StatusProvider {
 
         String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
 		List<Document> docs = archive.getAllDocs();
-		NERModel nerModel = SVMModel.loadModel(new File());
+		NERModel nerModel = SVMModel.loadModel(new File(modelFile));
         if(nerModel == null) {
             status = "Did not find ner model in " + modelFile;
             status = "Building model";
@@ -367,7 +371,7 @@ public class NER implements StatusProvider {
 
 	//arrange offsets such that the end offsets are in increasing order and if there are any overlapping offsets, the bigger of them should appear first
 	//makes sure the redaction is proper.
-	public static void arrangeOffsets(List<Triple<String,Integer,Integer>> offsets){
+	public static void arrangeOffsets(List<Triple<String,Integer,Integer>> offsets) {
 		Collections.sort(offsets, new Comparator<Triple<String, Integer, Integer>>() {
 			@Override
 			public int compare(Triple<String, Integer, Integer> t1, Triple<String, Integer, Integer> t2) {
@@ -433,19 +437,17 @@ public class NER implements StatusProvider {
 	public static void main(String[] args) {
 		try {
 			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
-            userDir = "/Users/vihari/epadd-discovery/ePADD archive of Robert Creeley-Discovery/";
-			edu.stanford.muse.webapp.ModeConfig.mode = edu.stanford.muse.webapp.ModeConfig.Mode.DISCOVERY;
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-	        Indexer li = archive.indexer;
-//            System.err.println(li.directory);
-            int i=0;
-            Set<EmailDocument> docs = li.luceneLookupDocs("Jim");
-            for(Document doc: docs) {
-                System.err.println(li.getDoc(doc));
-                if(i++>=0)
-                    break;
+            NER ner = new NER(archive);
+            NERModel model = ner.trainModel();
+            Pair<Map<String,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find("Hi, My name is Vihari. I work for Amuse Labs. I code on MacBook Pro, a product of Apple.");
+            for(String type: ret.getFirst().keySet()) {
+                System.err.print("Type: " + type);
+                for (String str : ret.getFirst().get(type))
+                    System.err.print(":::" + str + ":::");
+                System.err.println();
             }
-		} catch (Exception e) {
+        } catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
