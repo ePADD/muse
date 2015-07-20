@@ -200,6 +200,12 @@ public class NER implements StatusProvider {
 		return result;
 	}
 
+    public NERModel loadModel() throws IOException{
+        String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
+        SVMModel model = SVMModel.loadModel(new File(MODEL_DIR+File.separator+SVMModel.modelFileName));
+        return model;
+    }
+
     public NERModel trainModel() {
         NERTrainer trainer = new SVMModelTrainer();
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
@@ -439,8 +445,16 @@ public class NER implements StatusProvider {
 			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             NER ner = new NER(archive);
-            NERModel model = ner.trainModel();
-            Pair<Map<String,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find("Hi, My name is Vihari. I work for Amuse Labs. I code on MacBook Pro, a product of Apple.");
+            System.err.println("Loading model...");
+            NERModel model = ner.loadModel();//ner.trainModel();
+            System.err.println("Done loading model");
+            String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
+            String[] locs = new String[]{"Florida", "Plantation"};
+            String[] orgs = new String[]{"Broward Republican Executive Committee", "National Education Association"};
+            String text = "First I would like to tell you who I am. I am a lifelong Republican and have served on the Broward Republican Executive Committee since 1991. I have followed education issues in Florida since I moved here in 1973. All four of my children went to public schools here in Plantation. I continued to study education issues when I worked for Senator Jim Scott for six years, and more recently as I worked for Rep. Bill Andrews for the past eight years.\n" +
+                    "On the amendment, I would like to join any effort to get it repealed. Second, if the amendment is going to be implemented, I believe that decisions about how money is spent should be taken out of the hands of the school boards. I know the trend has been to provide more local control, however, there has been little or no accountability for school boards that fritter away money on consultants, shoddy construction work, and promoting the agenda of the National Education Association and the local teachers’ unions. Third, while the teachers’ union is publicly making “nice” with you and other Republican legislators, they continue to undermine education reform measures, and because school board members rely heavily on the unions to get elected and re-elected, they pretty much call the shots on local policies. ";
+            Pair<Map<String,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
+            boolean testPass = true;
             for(String type: ret.getFirst().keySet()) {
                 System.err.print("Type: " + type);
                 for (String str : ret.getFirst().get(type))

@@ -12,7 +12,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * Probable improvements in train file generation are:
@@ -27,33 +26,31 @@ import java.util.regex.Pattern;
  * Nominal: generates value based on proportion of times the nominal value appeared in iType to total frquency
  * Boolean: Passes the value of the feature generator as is
  * Numeric: Passes the value of the feature generator as is
+ * TODO: Explore indexing of this data-structure
  * */
 public class FeatureDictionary implements Serializable {
-	/**
-	 * 
-	 */
 	private static final long							serialVersionUID	= 1L;
 	//dimension -> instance -> entity type of interest -> #positive type, #negative type
 	//patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
 	public Map<String, Map<String, Map<String, Pair<Integer, Integer>>>> features = new LinkedHashMap<String, Map<String, Map<String, Pair<Integer, Integer>>>>();
 	//contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
 	//This can get quite depending on the archive and is not a scalable solution
-	//TODO: Explore indexing of this data-structure
-	public Map<String,Integer> counts = new LinkedHashMap<String,Integer>();
+
+    //this data-structure is only used for Segmentation which itself is not employed anywhere
+    public Map<String,Integer> counts = new LinkedHashMap<String,Integer>();
 
 	public static String								PERSON				= "Person", ORGANISATION = "Organisation", PLACE = "Place";
-    public static String[] allTypes = new String[]{PERSON, ORGANISATION, PLACE};
+    public static String[]                              allTypes            = new String[]{PERSON, ORGANISATION, PLACE};
 	static Log											log					= LogFactory.getLog(FeatureDictionary.class);
 	public static Map<String, String[]>					aTypes				= new LinkedHashMap<String, String[]>();
 	public FeatureGenerator[]                           featureGens         = null;
-	public static Map<String,String[]> startMarkersForType = new LinkedHashMap<String, String[]>();
-	public static Map<String,String[]> endMarkersForType = new LinkedHashMap<String, String[]>();
+	public static Map<String,String[]>                  startMarkersForType = new LinkedHashMap<String, String[]>();
+	public static Map<String,String[]>                  endMarkersForType   = new LinkedHashMap<String, String[]>();
 	public static List<String> ignoreTypes = new ArrayList<String>();
 	public static String MARKERS_PATT = "^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.|[Pp]rof\\.)\\W+";
 
 	//feature types
 	public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2, OTHER = 3;
-
 	static{
 		//the extra '|' is appended so as not to match junk.
 		//matches both Person and PersonFunction in dbpedia types.
@@ -90,7 +87,7 @@ public class FeatureDictionary implements Serializable {
 		this.featureGens = featureGens;
 	}
 	/**
-	 * address book should be specially handled and dbpedia gazette is required.
+	 * address book should be specially handled and DBpedia gazette is required.
 	 * and make sure the address book is cleaned see cleanAB method
 	 */
 	public FeatureDictionary(Map<String, String> gazettes, FeatureGenerator[] featureGens) {
@@ -102,7 +99,7 @@ public class FeatureDictionary implements Serializable {
 		log.info("Analysing gazettes");
 
         int g = 0, nume = 0;
-	   final int gs = gazettes.size();
+	    final int gs = gazettes.size();
         int gi = 0;
         for (String str : gazettes.keySet()) {
             tms = System.currentTimeMillis();
@@ -275,14 +272,24 @@ public class FeatureDictionary implements Serializable {
 
 	public static void main(String[] args) {
         try {
-            Map<String, String> dbpedia = EmailUtils.readDBpedia();
             String userDir = "/Users/vihari/epadd-appraisal/user";
-            edu.stanford.muse.webapp.ModeConfig.mode = edu.stanford.muse.webapp.ModeConfig.Mode.DISCOVERY;
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            Map<String,String> abNames = EmailUtils.getNames(archive.getAddressBook().allContacts());
-            System.err.println("Address book size before cleaning: "+abNames.size());
-            abNames = FeatureDictionary.cleanAB(abNames, dbpedia);
-            System.err.println("Address book size after cleaning "+abNames.size());
+            Map<String,String> abNames = EmailUtils.getNames(archive.addressBook.allContacts());
+            Map<String, String> dbpedia = EmailUtils.readDBpedia();
+            Map<String, String> gazzs = new LinkedHashMap<>();
+            gazzs.putAll(abNames);
+            gazzs.putAll(dbpedia);
+            System.err.println("AB: "+abNames.size()+"\nDBpedia: "+dbpedia.size()+"\nAll:"+ gazzs.size());
+            FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
+            FeatureDictionary dictionary = new FeatureDictionary(gazzs, fgs);
+            Map<String, Map<String, Map<String, Pair<Integer, Integer>>>> features = dictionary.features;
+            for(String str1: features.keySet())
+                for(String str2: features.get(str1).keySet()) {
+                    for (String str3 : features.get(str1).get(str2).keySet()) {
+                        System.err.print(str1 + " : " + str2 + " : " + str3 + " : " + features.get(str1).get(str2).get(str3) + ", ");
+                    }
+                    System.err.println();
+                }
         } catch (Exception e){
             e.printStackTrace();
         }

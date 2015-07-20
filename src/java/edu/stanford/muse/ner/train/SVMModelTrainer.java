@@ -23,6 +23,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Trains an SVM model with surface features and gazettes
+ * TODO: It should be possible to build archive independent model*/
 public class SVMModelTrainer implements NERTrainer, StatusProvider {
     public static class TrainingParam {
         svm_parameter svmParam = new svm_parameter();
@@ -76,6 +79,7 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
     }
 
     /**
+     * @param archiveContent - that which returns the document content, since its not feasible to pass the entire content of archive in an array
      * @param externalGazz - this is corpus independent list of names, like DBpedia titles
      * @param internalGazz - corpus related list of names, like address book
      * external gazette and internal gazette are handled slightly different during training
@@ -85,77 +89,80 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
      *                     In the end we just want to be able to classify all the mentions in the documents*/
     @Override
     public SVMModel train(ArchiveContent archiveContent, Map<String,String> externalGazz, Map<String,String> internalGazz, List<String> types, List<String[]> aTypes,
-                   FeatureGenerator[] fgs, Tokenizer tokenizer, Object params){
-        Map<String,String> gazzs = new LinkedHashMap<>();
+                   FeatureGenerator[] fgs, Tokenizer tokenizer, Object params) {
+        Map<String, String> gazzs = new LinkedHashMap<>();
         gazzs.putAll(externalGazz);
         gazzs.putAll(internalGazz);
-        TrainingParam tparams = (TrainingParam)params;
+        TrainingParam tparams = (TrainingParam) params;
         String CACHE_DIR = tparams.cacheDir;
         long st = System.currentTimeMillis(), time = 0;
         SVMModel model = new SVMModel();
 
         //build a feature dictionary
-        FeatureDictionary dictionary = new FeatureDictionary(gazzs,fgs);
+        FeatureDictionary dictionary = new FeatureDictionary(gazzs, fgs);
         model.dictionary = dictionary;
         model.tokenizer = tokenizer;
         model.fgs = fgs;
-        for(int iti=0;iti<types.size();iti++) {
-            int numExternal = 0, di = 0, ds = archiveContent.getSize();
+        int numExternal = 0, di = 0, ds = archiveContent.getSize();
+        Map<String, String> hits = new LinkedHashMap<String, String>();
+        Set<String> considered = new HashSet<String>();
+        for (int i = 0; i < ds; i++) {
+            String content = archiveContent.getContent(i);
+            List<Triple<String, Integer, Integer>> personLikeMentions = tokenizer.tokenize(content, true);
+            List<Triple<String, Integer, Integer>> nonPersonLikeMentions = tokenizer.tokenize(content, false);
+            List<Triple<String, Integer, Integer>> cands = new ArrayList<Triple<String, Integer, Integer>>();
+            cands.addAll(personLikeMentions);
+            cands.addAll(nonPersonLikeMentions);
+            for (Triple<String, Integer, Integer> cand : cands) {
+                String n = cand.getFirst();
+                Pair<String, Boolean> cleanname = WordSurfaceFeature.checkAndStrip(n, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON), true, true);
+                n = cleanname.getFirst();
+
+                if (considered.contains(n))
+                    continue;
+
+                if (gazzs.containsKey(n)) {
+                    String type = gazzs.get(n);
+
+                    //if is a single word and is dictionary word, forget about this
+                    if (!n.contains(" ") && DictUtils.fullDictWords.contains(n.toLowerCase()))
+                        continue;
+
+                    hits.put(n, type);
+                    numExternal++;
+                } else
+                    hits.put(n, "notype");
+                considered.add(n);
+            }
+            if ((++di) % 1000 == 0)
+                log.info("Analysed " + di + "/" + ds + " to find known instances");
+        }
+        for (int iti = 0; iti < types.size(); iti++) {
             String iType = types.get(iti);
             log.info("Training for type: " + iType);
             String[] aType = FeatureDictionary.aTypes.get(iType);
             List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();
-            Map<String, String> hits = new LinkedHashMap<String, String>();
-            Set<String> considered = new HashSet<String>();
-            considered.clear();
-            for (int i = 0; i < ds; i++) {
-                String content = archiveContent.getContent(i);
-                List<Triple<String, Integer, Integer>> cands = tokenizer.tokenize(content, iType.equals(FeatureDictionary.PERSON));
-
-                for (Triple<String, Integer, Integer> cand : cands) {
-                    String n = cand.getFirst();
-                    Pair<String, Boolean> cleanname = WordSurfaceFeature.checkAndStrip(n, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON), true, true);
-                    n = cleanname.getFirst();
-
-                    if (considered.contains(n))
-                        continue;
-
-                    if (gazzs.containsKey(n)) {
-                        String type = gazzs.get(n);
-                        int label = -1;
-
-                        //if is a single word and is dictionary word, forget about this
-                        if (!n.contains(" ") && DictUtils.fullDictWords.contains(n.toLowerCase()))
-                            continue;
-
-                        //dont add to training
-                        if (FeatureDictionary.ignoreTypes.contains(type))
-                            continue;
-
-                        for (String at : aType)
-                            if (type.endsWith(at))
-                                label = 1;
-
-                        fvs.add(new Triple<String, FeatureVector, Integer>(cand.getFirst(), dictionary.getVector(cand.getFirst(), iType), label));
-
-                        hits.put(n, type);
-                        numExternal++;
-                    } else
-                        hits.put(n, "notype");
-                    considered.add(n);
-                }
-                if ((++di) % 1000 == 0)
-                    log.info("Analysed " + di + "/" + ds + " to find known instances");
-            }
-
             int numC = 0;
+            for (String h : hits.keySet()) {
+                int label = -1;
+                String type = hits.get(h);
+                //dont add to training
+                //if the name is a junk work and has not type, then dont train on it
+                if ("notype".equals(type) || FeatureDictionary.ignoreTypes.contains(type))
+                    continue;
+
+                for (String at : aType)
+                    if (type.endsWith(at))
+                        label = 1;
+
+                fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
+            }
             if (iType.contains(FeatureDictionary.PERSON)) {
                 NER.log.info("Adding from internal gazette #" + internalGazz.size());
 
                 for (String cname : internalGazz.keySet()) {
                     numC++;
                     fvs.add(new Triple<String, FeatureVector, Integer>(cname, dictionary.getVector(cname, iType), 1));
-
                     //for corporate and locations, we cannot use addressbook for positive examples. hence low accuracy
                     //The stats after dumping addressbook and before respectively are:
                     //Accuracy:0.6170212765957447, Recall:0.675
@@ -165,7 +172,7 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
 
             //try to equalize number of vectors of each class.
             int x = 0;
-            log.info("Adding some dummy names to balance the addressbook");
+            log.info("Adding some dummy names to balance the address book");
             for (String h : hits.keySet()) {
                 if (x > numC)
                     break;
@@ -195,11 +202,11 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
                     nonName = true;
                 if (nonName) {
                     fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), -1));
-                    log.warn("Adding: " + h + ", number-of-words-in-dictionary/total-number-of-words: (" + num + "/" + tokens.length + "), maximum chance of being a name: " + maxp);
+                    //log.warn("Adding: " + h + ", number-of-words-in-dictionary/total-number-of-words: (" + num + "/" + tokens.length + "), maximum chance of being a name: " + maxp);
                     x++;
                 }
             }
-            log.info("Wrote dbpedia #" + numExternal + ", abNames #" + numC + ", to balance: " + x);
+            log.info("Wrote external #" + numExternal + ", internal #" + numC + ", to balance: " + x);
 
             FileWriter fw1 = null, fw2 = null;
             if (CACHE_DIR != null) {
@@ -244,10 +251,10 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
             param.shrinking = 0;
 
             status = "Learning " + iType + " model...";
-            log.info("Training " + iType + " NER model");
+            log.info(status);
             svm_print_interface svm_print_logger = new svm_print_interface() {
                 public void print(String s) {
-                    NER.log.warn(s);
+                    log.warn(s);
                 }
             };
             svm.svm_set_print_string_function(svm_print_logger);
@@ -258,9 +265,7 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
                 try {
                     fw1.close();
                     fw2.close();
-                } catch (Exception e) {
-
-                }
+                } catch (Exception e) {}
             }
             log.info("Wrote training file to : " + new File(CACHE_DIR + File.separator + iType + ".train").getAbsolutePath());
             status = "Done learning for type: " + iType;
@@ -268,12 +273,13 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
         }
         time += System.currentTimeMillis() - st;
         st = System.currentTimeMillis();
-        status = "Done learning";
+        status = "Done learning... dumping model";
+        log.info("Dumping model for reuse");
         try {
-            model.writeModel(new File(tparams.modelWriteLocation+File.separator+SVMModel.modelFileName));
-        } catch(IOException e){
-            Util.print_exception("Fatal! Could not write the trained model to "+tparams.modelWriteLocation, e, log);
+            model.writeModel(new File(tparams.modelWriteLocation + File.separator + SVMModel.modelFileName));
+        } catch (IOException e) {
+            Util.print_exception("Fatal! Could not write the trained model to " + tparams.modelWriteLocation, e, log);
         }
-            return model;
+        return model;
     }
 }

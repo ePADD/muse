@@ -47,7 +47,6 @@ public class SVMModel implements NERModel, Serializable {
 //		}
 
         List<Triple<String, Integer, Integer>> names = new ArrayList<Triple<String, Integer, Integer>>();
-        long start_time = System.currentTimeMillis();
         String[] types = new String[] { FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION };
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
 
@@ -61,19 +60,19 @@ public class SVMModel implements NERModel, Serializable {
                 String tc = FeatureGeneratorUtil.tokenFeature(name);
                 if (name == null || tc.equals("ac"))
                     continue;
-                name = name.replaceAll("^\\W+|\\W+$", "");
-                //trailing apostrophe
                 //this could be a good signal for name(occasionally could also be org). The training data (Address book) doesn't contain such pattern, hence probably have to hard code it and I dont want to.
                 name = name.replaceAll("'s$", "");
                 //stuff b4 colon like subject:, from: ...
                 name = name.replaceAll("\\w+:\\W+", "");
                 name = name.replaceAll("^\\W+|\\W+$", "");
+                //trailing apostrophe
 
                 FeatureVector wfv = dictionary.getVector(name, type);
                 svm_node[] sx = wfv.getSVMNode();
                 double[] probs = new double[2];
                 svm_model svmModel = models.get(type);
                 double v = svm.svm_predict_probability(svmModel, sx, probs);
+                log.info("Name: "+name+", predict: "+v+", fv:"+wfv);
                 if (v > 0) {
                     //clean before passing for annotation.
                     name = name.replaceAll("^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam)\\W+", "");

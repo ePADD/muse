@@ -6,7 +6,6 @@ import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.webapp.SimpleSessions;
-import libsvm.svm_model;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 
 import java.io.File;
