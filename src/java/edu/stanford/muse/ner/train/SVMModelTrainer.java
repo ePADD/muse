@@ -25,8 +25,8 @@ import java.util.*;
 
 /**
  * Trains an SVM model with surface features and gazettes
- * TODO: It should be possible to build archive independent model*/
-public class SVMModelTrainer implements NERTrainer, StatusProvider {
+ */
+ public class SVMModelTrainer implements NERTrainer, StatusProvider {
     public static class TrainingParam {
         svm_parameter svmParam = new svm_parameter();
         String cacheDir;
@@ -76,6 +76,119 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
     @Override
     public void cancel(){
         cancelled = true;
+    }
+
+    /**
+     * Archive independent way of building models
+     * TODO: test this routine*/
+    public SVMModel trainArchiveIndependent(Map<String,String> externalGazz, List<Short> types, List<String[]> aTypes,
+                          FeatureGenerator[] fgs, Tokenizer tokenizer, Object params){
+        TrainingParam tparams = (TrainingParam) params;
+        String CACHE_DIR = tparams.cacheDir;
+        long st = System.currentTimeMillis(), time = 0;
+        SVMModel model = new SVMModel();
+
+        //build a feature dictionary
+        FeatureDictionary dictionary = new FeatureDictionary(externalGazz, fgs);
+        model.dictionary = dictionary;
+        model.tokenizer = tokenizer;
+        model.fgs = fgs;
+        Map<String, String> hits = externalGazz;
+        for (int iti = 0; iti < types.size(); iti++) {
+            Short iType = types.get(iti);
+            log.info("Training for type: " + iType);
+            String[] aType = FeatureDictionary.aTypes.get(iType);
+            List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();
+            int numC = 0;
+            for (String h : hits.keySet()) {
+                int label = -1;
+                String type = hits.get(h);
+                //dont add to training
+                //if the name is a junk work and has not type, then dont train on it
+                if ("notype".equals(type) || FeatureDictionary.ignoreTypes.contains(type))
+                    continue;
+
+                for (String at : aType)
+                    if (type.endsWith(at))
+                        label = 1;
+
+                fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
+            }
+            log.info("Wrote external #" + externalGazz.size());
+
+            FileWriter fw1 = null, fw2 = null;
+            if (CACHE_DIR != null) {
+                File cdir = new File(CACHE_DIR);
+                if (!cdir.exists())
+                    cdir.mkdir();
+
+                try {
+                    fw1 = new FileWriter(new File(CACHE_DIR + File.separator + iType + "_fvs.train"));
+                    fw2 = new FileWriter(new File(CACHE_DIR + File.separator + iType + "_names.train"));
+                } catch (Exception e) {
+                    log.warn(e);
+                }
+            }
+            svm_problem prob = new svm_problem();
+            //svm_node of this line and target
+            log.info("Number of feature vectors for training: " + fvs.size());
+            prob.l = fvs.size();
+            prob.x = new svm_node[prob.l][];
+            prob.y = new double[prob.l];
+            //for gamma computation.
+            int max_dim = -1;
+            int i = 0;
+            for (Triple<String, FeatureVector, Integer> fv : fvs) {
+                prob.x[i] = fv.second.getSVMNode();
+                //target
+                prob.y[i] = fv.third;
+                if (fw1 != null && fw2 != null) {
+                    try {
+                        fw1.write(fv.third + " " + fv.second.toVector() + "\n");
+                        fw2.write(fv.first + "  " + fv.third + " " + fv.second + "\n");
+                    } catch (Exception e) {
+                    }
+                }
+                max_dim = Math.max(max_dim, fv.second.NUM_DIM);
+                i++;
+            }
+
+            svm_parameter param = FeatureDictionary.getDefaultSVMParam();
+            param.gamma = 1.0 / max_dim;
+            param.probability = 1;
+            param.shrinking = 0;
+
+            status = "Learning " + iType + " model...";
+            log.info(status);
+            svm_print_interface svm_print_logger = new svm_print_interface() {
+                public void print(String s) {
+                    log.warn(s);
+                }
+            };
+            svm.svm_set_print_string_function(svm_print_logger);
+
+            svm_model svmModel = svm.svm_train(prob, param);
+
+            if (fw1 != null && fw2 != null) {
+                try {
+                    fw1.close();
+                    fw2.close();
+                } catch (Exception e) {}
+            }
+            log.info("Wrote training file to : " + new File(CACHE_DIR + File.separator + iType + ".train").getAbsolutePath());
+            status = "Done learning for type: " + iType;
+            model.models.put(iType, svmModel);
+        }
+        time += System.currentTimeMillis() - st;
+        st = System.currentTimeMillis();
+        status = "Done learning... dumping model";
+        log.info("Dumping model for reuse");
+        try {
+            model.writeModel(new File(tparams.modelWriteLocation + File.separator + SVMModel.modelFileName));
+        } catch (IOException e) {
+            Util.print_exception("Fatal! Could not write the trained model to " + tparams.modelWriteLocation, e, log);
+        }
+        return model;
     }
 
     /**

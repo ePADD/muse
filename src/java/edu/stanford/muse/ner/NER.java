@@ -206,6 +206,22 @@ public class NER implements StatusProvider {
         return model;
     }
 
+    public static NERModel trainArchiveIndependentModel(Object params){
+        SVMModelTrainer.TrainingParam tparams = (SVMModelTrainer.TrainingParam)params;
+        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        Tokenizer tokenizer = new CICTokenizer();
+        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
+        SVMModelTrainer trainer = new SVMModelTrainer();
+        List<Short> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
+        List<String[]> aTypes = Arrays.asList(
+                FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
+                FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
+                FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION)
+        );
+        NERModel model = trainer.trainArchiveIndependent(dbpedia, types, aTypes, fgs, tokenizer, params);
+        return model;
+    }
+
     public NERModel trainModel() {
         NERTrainer trainer = new SVMModelTrainer();
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
@@ -440,13 +456,15 @@ public class NER implements StatusProvider {
 		return cancelled;
 	}
 
-	public static void main(String[] args) {
+	public static void main1(String[] args) {
 		try {
 			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             NER ner = new NER(archive);
             System.err.println("Loading model...");
+            long start = System.currentTimeMillis();
             NERModel model = ner.trainModel();
+            System.err.println("Trained model in: " + (System.currentTimeMillis() - start));
             System.err.println("Done loading model");
             String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
             String[] locs = new String[]{"Florida", "Plantation"};
@@ -465,4 +483,19 @@ public class NER implements StatusProvider {
 			e.printStackTrace();
 		}
 	}
+
+    public static void main(String[] args){
+        String cacheDir = "/Users/vihari/sandbox/cache";
+        String mwl = "/Users/vihari/sandbox/SVMModel-full.ser";
+        SVMModelTrainer.TrainingParam params = SVMModelTrainer.TrainingParam.initialize(cacheDir, mwl);
+        NERModel model = trainArchiveIndependentModel(params);
+        String text = "Hi, My name is Vihari. I work with Amuse Labs. I code in Macbook Pro, a product of Apple";
+        Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
+        for(Short type: ret.getFirst().keySet()) {
+            System.err.print("Type: " + type);
+            for (String str : ret.getFirst().get(type))
+                System.err.print(":::" + str + ":::");
+            System.err.println();
+        }
+    }
 }

@@ -13,11 +13,12 @@ import libsvm.svm_node;
  * Creates features for segmentation
  */
 public class SegmentFeatures {
+    public static String MARKERS_PATT = "^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.|[Pp]rof\\.)\\W+";
     static int NUM_FEATURES = 3;
     //fills the classifiedtype value upon return
     public static double[] genarateFeatures(String phrase,FeatureDictionary wfs,svm_model model){
         String cp = phrase;
-        phrase = phrase.replaceAll(FeatureDictionary.MARKERS_PATT, "");
+        phrase = phrase.replaceAll(MARKERS_PATT, "");
         //TODO: what is the type that is being segmented here? Review the next line
         FeatureVector wfv = wfs.getVector(cp, FeatureDictionary.PERSON);
         svm_node[] sx = wfv.getSVMNode();

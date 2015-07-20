@@ -78,7 +78,7 @@ public class WordSegmenter {
 //                System.err.println("Phrase: " + cicname + ", name: " + bestName);
 //            }
             if(bestName!=null)
-                bestName = bestName.replaceAll(FeatureDictionary.MARKERS_PATT, "");
+                bestName = bestName.replaceAll(SegmentFeatures.MARKERS_PATT, "");
             return new Pair<String,String> (bestName,debugStr);
         }
 
