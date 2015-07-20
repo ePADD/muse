@@ -104,7 +104,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 	}
 
 	@Override
-	public Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offsets, String content, String iType){
+	public Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offsets, String content, Short iType){
 		return createFeatures(name, iType);
 	}
 
@@ -136,7 +136,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 
 	//computes the word feature.
 	//TODO: Some very common words like: William, mike etc. appear in the dictionary, bad?
-	public Map<String,List<String>> createFeatures(String name, String iType) {
+	public Map<String,List<String>> createFeatures(String name, Short iType) {
 		Map<String,List<String>> features = new LinkedHashMap<String, List<String>>();
 
 		String[] startMarkers = FeatureDictionary.startMarkersForType.get(iType);

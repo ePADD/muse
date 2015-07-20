@@ -47,20 +47,20 @@ public class NER implements StatusProvider {
 
 	public static class NERStats {
 		//non-repeating number of instances of each type
-		public Map<String, Integer>		counts;
+		public Map<Short, Integer>		counts;
 		//total number of entities of each type recognised
-		public Map<String, Integer>		rcounts;
-		public Map<String, Set<String>>	all;
+		public Map<Short, Integer>		rcounts;
+		public Map<Short, Set<String>>	all;
 
 		NERStats() {
-			counts = new LinkedHashMap<String, Integer>();
-			rcounts = new LinkedHashMap<String, Integer>();
-			all = new LinkedHashMap<String, Set<String>>();
+			counts = new LinkedHashMap<Short, Integer>();
+			rcounts = new LinkedHashMap<Short, Integer>();
+			all = new LinkedHashMap<Short, Set<String>>();
 		}
 
 		//a map of entity-type key and value list of entities
-		public void update(Map<String, List<String>> map) {
-			for (String type : map.keySet()) {
+		public void update(Map<Short, List<String>> map) {
+			for (Short type : map.keySet()) {
 				if (!rcounts.containsKey(type))
 					rcounts.put(type, 0);
 				rcounts.put(type, rcounts.get(type) + map.get(type).size());
@@ -78,7 +78,7 @@ public class NER implements StatusProvider {
 		@Override
 		public String toString() {
 			String str = "";
-			for (String t : counts.keySet())
+			for (Short t : counts.keySet())
 				str += "Type: " + t + ":" + counts.get(t) + "\n";
 			return str;
 		}
@@ -213,7 +213,7 @@ public class NER implements StatusProvider {
         addressbook = FeatureDictionary.cleanAB(addressbook, dbpedia);
         Tokenizer tokenizer = new CICTokenizer();
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
-        List<String> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
+        List<Short> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
         List<String[]> aTypes = Arrays.asList(
                 FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
                 FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
@@ -283,15 +283,15 @@ public class NER implements StatusProvider {
 			String content = li.getContents(ldoc, false);
             String title = li.getTitle(ldoc);
 			//original content is substring of content;
-            Pair<Map<String, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
-            Pair<Map<String, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
+            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
+            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
 			recTime += System.currentTimeMillis() - st;
 			st = System.currentTimeMillis();
 
-			Map<String, List<String>> map = mapAndOffsets.first;
-            Map<String, List<String>> mapTitle = mapAndOffsetsTitle.first;
+			Map<Short, List<String>> map = mapAndOffsets.first;
+            Map<Short, List<String>> mapTitle = mapAndOffsetsTitle.first;
 			stats.update(map);
-            stats.update(map);
+            stats.update(mapTitle);
 			updateTime += System.currentTimeMillis() - st;
 			st = System.currentTimeMillis();
 
@@ -446,16 +446,16 @@ public class NER implements StatusProvider {
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             NER ner = new NER(archive);
             System.err.println("Loading model...");
-            NERModel model = ner.loadModel();//ner.trainModel();
+            NERModel model = ner.trainModel();
             System.err.println("Done loading model");
             String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
             String[] locs = new String[]{"Florida", "Plantation"};
             String[] orgs = new String[]{"Broward Republican Executive Committee", "National Education Association"};
             String text = "First I would like to tell you who I am. I am a lifelong Republican and have served on the Broward Republican Executive Committee since 1991. I have followed education issues in Florida since I moved here in 1973. All four of my children went to public schools here in Plantation. I continued to study education issues when I worked for Senator Jim Scott for six years, and more recently as I worked for Rep. Bill Andrews for the past eight years.\n" +
                     "On the amendment, I would like to join any effort to get it repealed. Second, if the amendment is going to be implemented, I believe that decisions about how money is spent should be taken out of the hands of the school boards. I know the trend has been to provide more local control, however, there has been little or no accountability for school boards that fritter away money on consultants, shoddy construction work, and promoting the agenda of the National Education Association and the local teachers’ unions. Third, while the teachers’ union is publicly making “nice” with you and other Republican legislators, they continue to undermine education reform measures, and because school board members rely heavily on the unions to get elected and re-elected, they pretty much call the shots on local policies. ";
-            Pair<Map<String,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
+            Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
             boolean testPass = true;
-            for(String type: ret.getFirst().keySet()) {
+            for(Short type: ret.getFirst().keySet()) {
                 System.err.print("Type: " + type);
                 for (String str : ret.getFirst().get(type))
                     System.err.print(":::" + str + ":::");

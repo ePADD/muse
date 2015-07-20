@@ -18,6 +18,6 @@ public interface NERTrainer {
      * @param tokenizer - Tokenizer to identify mentions or candidates
      * @param params - training parameters for model to be trained
      * @return trained NER model*/
-    NERModel train(ArchiveContent archiveContent, Map<String,String> externalGazz, Map<String,String> internalGazz, List<String> types, List<String[]> aTypes,
+    NERModel train(ArchiveContent archiveContent, Map<String,String> externalGazz, Map<String,String> internalGazz, List<Short> types, List<String[]> aTypes,
                    FeatureGenerator[] fgs, Tokenizer tokenizer, Object params);
 }

@@ -37,7 +37,7 @@ public class ContextFeature extends FeatureGenerator {
     }
 
     @Override
-    public Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offset, String content, String iType) {
+    public Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offset, String content,Short iType) {
         Map<String,List<String>> features = new LinkedHashMap<String, List<String>>();
 
         //identify the offset of the first line and the signature

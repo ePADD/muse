@@ -15,12 +15,12 @@ import java.util.Map;
  * Thats a TODO*/
 abstract public class FeatureGenerator implements Serializable{
     private static final long							serialVersionUID	= 1L;
-    public abstract Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offsets, String content, String iType);
+    public abstract Map<String,List<String>> createFeatures(String name, Pair<Integer,Integer> offsets, String content, Short iType);
     //Context dependent features are not handled well, do not use.
     public abstract Boolean getContextDependence();
     public abstract List<Pair<String,Short>> getFeatureTypes();
 
-    public static Map<String,List<String>> generateFeatures(String name, Pair<Integer,Integer> offsets, String content, String iType, FeatureGenerator[] fgs){
+    public static Map<String,List<String>> generateFeatures(String name, Pair<Integer,Integer> offsets, String content, Short iType, FeatureGenerator[] fgs){
         Map<String,List<String>> features = new LinkedHashMap<String, List<String>>();
         for(FeatureGenerator fg: fgs) {
             Map<String,List<String>> temp = fg.createFeatures(name,offsets,content, iType);

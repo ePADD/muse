@@ -25,7 +25,7 @@ import java.util.Map;
 public class SVMModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
     public FeatureGenerator[] fgs;
-    public Map<String, svm_model> models;
+    public Map<Short, svm_model> models;
     public Tokenizer tokenizer;
     public static String modelFileName = "SVMModel.ser";
     private static final long serialVersionUID	= 1L;
@@ -33,10 +33,10 @@ public class SVMModel implements NERModel, Serializable {
     public static final int		MIN_NAME_LENGTH		= 3, MAX_NAME_LENGTH = 100;
 
     public SVMModel(){
-        models = new LinkedHashMap<String, svm_model>();
+        models = new LinkedHashMap<Short, svm_model>();
     }
 
-    public Pair<Map<String, List<String>>, List<Triple<String, Integer, Integer>>> find(String content) {
+    public Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> find(String content) {
         //check if the model is initialised
 //		if (fdw == null) {
 //			try {
@@ -47,11 +47,11 @@ public class SVMModel implements NERModel, Serializable {
 //		}
 
         List<Triple<String, Integer, Integer>> names = new ArrayList<Triple<String, Integer, Integer>>();
-        String[] types = new String[] { FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION };
+        Short[] types = new Short[] { FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION };
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
 
-        Map<String, List<String>> map = new LinkedHashMap<String, List<String>>();
-        for (String type : models.keySet()) {
+        Map<Short, List<String>> map = new LinkedHashMap<Short, List<String>>();
+        for (Short type : models.keySet()) {
             List<String> entities = new ArrayList<String>();
 
             List<Triple<String, Integer, Integer>> candNames = tokenizer.tokenize(content, type.equals(FeatureDictionary.PERSON));
@@ -72,7 +72,7 @@ public class SVMModel implements NERModel, Serializable {
                 double[] probs = new double[2];
                 svm_model svmModel = models.get(type);
                 double v = svm.svm_predict_probability(svmModel, sx, probs);
-                log.info("Name: "+name+", predict: "+v+", fv:"+wfv);
+                //log.info("Name: "+name+", predict: "+v+", fv:"+wfv);
                 if (v > 0) {
                     //clean before passing for annotation.
                     name = name.replaceAll("^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam)\\W+", "");
@@ -102,7 +102,7 @@ public class SVMModel implements NERModel, Serializable {
             }
             map.put(type, entities);
         }
-        return new Pair<Map<String, List<String>>, List<Triple<String, Integer, Integer>>>(map, names);
+        return new Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>>(map, names);
     }
 
     public static SVMModel loadModel(File modelFile) throws IOException{

@@ -88,8 +88,9 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
      * We dont train over all the names in the external gazette, because that is not necessary;
      *                     In the end we just want to be able to classify all the mentions in the documents*/
     @Override
-    public SVMModel train(ArchiveContent archiveContent, Map<String,String> externalGazz, Map<String,String> internalGazz, List<String> types, List<String[]> aTypes,
+    public SVMModel train(ArchiveContent archiveContent, Map<String,String> externalGazz, Map<String,String> internalGazz, List<Short> types, List<String[]> aTypes,
                    FeatureGenerator[] fgs, Tokenizer tokenizer, Object params) {
+        //TODO: put some basic checkups to make sure al the arguments are compatible
         Map<String, String> gazzs = new LinkedHashMap<>();
         gazzs.putAll(externalGazz);
         gazzs.putAll(internalGazz);
@@ -138,7 +139,7 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
                 log.info("Analysed " + di + "/" + ds + " to find known instances");
         }
         for (int iti = 0; iti < types.size(); iti++) {
-            String iType = types.get(iti);
+            Short iType = types.get(iti);
             log.info("Training for type: " + iType);
             String[] aType = FeatureDictionary.aTypes.get(iType);
             List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();
@@ -157,7 +158,7 @@ public class SVMModelTrainer implements NERTrainer, StatusProvider {
 
                 fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
             }
-            if (iType.contains(FeatureDictionary.PERSON)) {
+            if (iType == FeatureDictionary.PERSON) {
                 NER.log.info("Adding from internal gazette #" + internalGazz.size());
 
                 for (String cname : internalGazz.keySet()) {

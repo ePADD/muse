@@ -89,7 +89,7 @@ public class Archive implements Serializable {
 		public int 					nBlobs, nUniqueBlobs, nImageBlobs, nDocBlobs, nOtherBlobs; // this is just a cache so we don't have to read the archive
 		public String				ownerName, about;
 		//will be set by method that computes epadd-ner
-		public Map<String, Integer>	entityCounts;
+		public Map<Short, Integer>	entityCounts;
 		public int					numPotentiallySensitiveMessages	= -1;
 		public Date 				firstDate, lastDate;
 		public int					numLexicons						= -1;

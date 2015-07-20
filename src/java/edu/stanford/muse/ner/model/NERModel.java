@@ -12,5 +12,5 @@ public interface NERModel {
      * @returns map and offset, map with key the type of entity and offsets contain the string, start offset and end offset
      * @returns names recognised by the custom trained SVM model
      */
-    Pair<Map<String,List<String>>, List<Triple<String, Integer, Integer>>> find (String content);
+    Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> find (String content);
 }

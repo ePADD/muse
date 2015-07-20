@@ -32,20 +32,20 @@ public class FeatureDictionary implements Serializable {
 	private static final long							serialVersionUID	= 1L;
 	//dimension -> instance -> entity type of interest -> #positive type, #negative type
 	//patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
-	public Map<String, Map<String, Map<String, Pair<Integer, Integer>>>> features = new LinkedHashMap<String, Map<String, Map<String, Pair<Integer, Integer>>>>();
+	public Map<String, Map<String, Map<Short, Pair<Integer, Integer>>>> features = new LinkedHashMap<String, Map<String, Map<Short, Pair<Integer, Integer>>>>();
 	//contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
 	//This can get quite depending on the archive and is not a scalable solution
 
     //this data-structure is only used for Segmentation which itself is not employed anywhere
     public Map<String,Integer> counts = new LinkedHashMap<String,Integer>();
 
-	public static String								PERSON				= "Person", ORGANISATION = "Organisation", PLACE = "Place";
-    public static String[]                              allTypes            = new String[]{PERSON, ORGANISATION, PLACE};
+	public static Short								PERSON				= 1, ORGANISATION = 2, PLACE = 3;
+    public static Short[]                              allTypes            = new Short[]{PERSON, ORGANISATION, PLACE};
 	static Log											log					= LogFactory.getLog(FeatureDictionary.class);
-	public static Map<String, String[]>					aTypes				= new LinkedHashMap<String, String[]>();
+	public static Map<Short, String[]>					aTypes				= new LinkedHashMap<Short, String[]>();
 	public FeatureGenerator[]                           featureGens         = null;
-	public static Map<String,String[]>                  startMarkersForType = new LinkedHashMap<String, String[]>();
-	public static Map<String,String[]>                  endMarkersForType   = new LinkedHashMap<String, String[]>();
+	public static Map<Short,String[]>                  startMarkersForType = new LinkedHashMap<Short, String[]>();
+	public static Map<Short,String[]>                  endMarkersForType   = new LinkedHashMap<Short, String[]>();
 	public static List<String> ignoreTypes = new ArrayList<String>();
 	public static String MARKERS_PATT = "^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.|[Pp]rof\\.)\\W+";
 
@@ -115,7 +115,7 @@ public class FeatureDictionary implements Serializable {
 
             for(FeatureGenerator fg: featureGens) {
                 if(!fg.getContextDependence()) {
-                    for(String iType: allTypes)
+                    for(Short iType: allTypes)
                        add(fg.createFeatures(str, null, null, iType), entityType, iType);
                 }
             }
@@ -132,27 +132,31 @@ public class FeatureDictionary implements Serializable {
 		log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
     }
 
-	public FeatureVector getVector(String cname, String iType){
+	public FeatureVector getVector(String cname, Short iType){
 		Map<String,List<String>> features = FeatureGenerator.generateFeatures(cname,null,null,iType,featureGens);
 		return new FeatureVector(this, iType, featureGens, features);
 	}
 
 	//dictionary should not be built anywhere without this method
-	private void add(Map<String,List<String>> wfeatures, String type, String iType) {
+	private void add(Map<String,List<String>> wfeatures, String type, Short iType) {
 		for (String dim : wfeatures.keySet()) {
 			if (!features.containsKey(dim))
-				features.put(dim, new LinkedHashMap<String, Map<String, Pair<Integer, Integer>>>());
-			Map<String, Map<String,Pair<Integer, Integer>>> hm = features.get(dim);
+				features.put(dim, new LinkedHashMap<String, Map<Short, Pair<Integer, Integer>>>());
+			Map<String, Map<Short,Pair<Integer, Integer>>> hm = features.get(dim);
 			if (wfeatures.get(dim) != null)
 				for (String val : wfeatures.get(dim)) {
 					if (!hm.containsKey(val)) {
-                        hm.put(val, new LinkedHashMap<String, Pair<Integer, Integer>>());
-                        for (String at: allTypes)
+                        hm.put(val, new LinkedHashMap<Short, Pair<Integer, Integer>>());
+                        for (Short at: allTypes)
                             hm.get(val).put(at, new Pair<Integer,Integer>(0,0));
                     }
 					Pair<Integer, Integer> p = hm.get(val).get(iType);
-					if (type.contains(iType))
-						p.first++;
+                    String[] allowT = aTypes.get(iType);
+					for(String at: allowT)
+                        if (type.contains(at)) {
+                            p.first++;
+                            break;
+                        }
 					p.second++;
 					hm.get(val).put(iType, p);
 				}
@@ -160,7 +164,7 @@ public class FeatureDictionary implements Serializable {
 		}
 	}
 
-	public double getMaxpfreq(String name, String iType){
+	public double getMaxpfreq(String name, Short iType){
 		String[] words = name.split("\\s+");
 		double p = 0;
 		for(String word: words) {
@@ -178,7 +182,7 @@ public class FeatureDictionary implements Serializable {
 
 	/**
 	 * returns the value of the dim in the features generated*/
-	public Double getFeatureValue(String name, String dim, String iType){
+	public Double getFeatureValue(String name, String dim, Short iType){
 		FeatureVector wfv = getVector(name, iType);
 		Double[] fv = wfv.fv;
 		Integer idx = wfv.featureIndices.get(dim);
@@ -193,7 +197,7 @@ public class FeatureDictionary implements Serializable {
 	static Map<String,Pair<String,Double>> scoreAB(Map<String,String> abNames, Map<String,String> dbpedia){
 		long timeToComputeFeatures = 0, timeOther = 0;
 		long tms = System.currentTimeMillis();
-        String iType = FeatureDictionary.PERSON;
+        Short iType = FeatureDictionary.PERSON;
 		log.info("Analysing gazettes");
 		FeatureDictionary wfs = new FeatureDictionary(new FeatureGenerator[]{new WordSurfaceFeature()});
 		int gi = 0, gs = dbpedia.size();
@@ -282,11 +286,11 @@ public class FeatureDictionary implements Serializable {
             System.err.println("AB: "+abNames.size()+"\nDBpedia: "+dbpedia.size()+"\nAll:"+ gazzs.size());
             FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
             FeatureDictionary dictionary = new FeatureDictionary(gazzs, fgs);
-            Map<String, Map<String, Map<String, Pair<Integer, Integer>>>> features = dictionary.features;
+            Map<String, Map<String, Map<Short, Pair<Integer, Integer>>>> features = dictionary.features;
             for(String str1: features.keySet())
                 for(String str2: features.get(str1).keySet()) {
-                    for (String str3 : features.get(str1).get(str2).keySet()) {
-                        System.err.print(str1 + " : " + str2 + " : " + str3 + " : " + features.get(str1).get(str2).get(str3) + ", ");
+                    for (Short s3 : features.get(str1).get(str2).keySet()) {
+                        System.err.print(str1 + " : " + str2 + " : " + s3 + " : " + features.get(str1).get(str2).get(s3) + ", ");
                     }
                     System.err.println();
                 }
