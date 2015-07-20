@@ -3,14 +3,12 @@ This package forms the core of ePADD NER. The implemented algorithm is explained
 The algorithm does not follow the classic sequence labelling paradigm, but does recognition by classifying mentions. The features for classification are simple surface features. The algorithm is designed so as to avoid domain adaptability problem and for performance. 
 
 #Quick Start Guide
-=====
 ##Entity Recognition
 
 `SVMModel.loadModel(model File)` will return `SVMModel`, an instance of `NERModel`
 
 Once a model is loaded, entities can be recognised in any free text by `NERModel.find(content)`. This method returns `Pair<Map<Short, List<String>>, List<Triple<String,Integer,Integer>>>` where the first element in the pair is a map from entity type (see `FeatureDictionary.{PERSON,ORGANIZATION,PLACE}`) to list of identified entities of this type, the second element in the pair is the list of offset for all the reognised entities irrespective of type. Note: This method returns names recognised by all the available types in the loaded model.
 
-=====
 ##Training
 
 The trainer takes the text in the entire archive as an arguement, recognises candidate mentions in the text, consults gazette to resolve types of the mentions. A model is trained to yeild maximum score over all the candidate mentions with known types, and hence require the text from the entire archive. 
