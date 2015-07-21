@@ -21,7 +21,6 @@ import java.util.Set;
 import java.util.Map;
 
 import edu.stanford.muse.datacache.Blob;
-import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.util.Pair;

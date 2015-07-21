@@ -104,7 +104,7 @@
 
 	    runInformation = new StringBuilder();
 
-	    AddressBookStats abStats = addressBook.getStats();
+	    AddressBook.AddressBookStats abStats = addressBook.getStats();
 	    String str = abStats.toString();
 	    runInformation.append("\nAddress book stats: " + str);
 	    runInformation.append("\nGrouping stats: " + stats);

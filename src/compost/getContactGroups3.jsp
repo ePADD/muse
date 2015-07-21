@@ -90,7 +90,7 @@ function toggleVisibility()
 	String utilityType = request.getParameter("utilityType");
 	GroupHierarchy<String> hierarchy = SimilarGroupMethods.findContactGroupsIUI(input, MINCOUNT, MIN_GROUP_SIZE, MAX_ERROR, MIN_MERGE_GROUP_SIM, utilityType, UTILITY_MULTIPLIER, stats);
 
-	AddressBookStats abStats = addressBook.getStats();
+	AddressBook.AddressBookStats abStats = addressBook.getStats();
 	String str = abStats.toString();
 	out.println ("<b>Contacts information</b><p/> " + str.replace("\n", "<br/>\n") + "<br/>");
 	System.out.println ("Address book stats: " + str);

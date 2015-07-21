@@ -17,7 +17,6 @@ package edu.stanford.muse.webapp;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
-import edu.stanford.muse.datacache.FileBlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
@@ -429,7 +428,7 @@ public class JSPHelper {
 		BlobStore attachmentsStore = null;
 		try {
 			new File(attachmentsStoreDir).mkdirs();
-			attachmentsStore = new FileBlobStore(attachmentsStoreDir);
+			attachmentsStore = new BlobStore(attachmentsStoreDir);
 		} catch (IOException ioe) {
 			log.error("MAJOR ERROR: Disabling attachments because unable to initialize attachments store in directory: " + attachmentsStoreDir + " :" + ioe + " " + Util.stackTrace(ioe));
 			attachmentsStore = null;

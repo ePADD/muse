@@ -16,7 +16,6 @@
 package edu.stanford.muse.email;
 
 
-import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.MboxFolderNotReadableException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;

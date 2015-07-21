@@ -31,7 +31,7 @@ private static Log log = LogFactory.getLog(BlobSet.class);
 private List<Blob> allBlobs; // all data's known, some of them may be duplicates (in terms of equals()), even though all the items are distinct object
 private Map<String, List<Blob>> personToBlobMap = new LinkedHashMap<String, List<Blob>>();
 private Map<Blob, List<Blob>> uniqueBlobMap = new LinkedHashMap<Blob, List<Blob>>();
-private FileBlobStore blobStore;
+private BlobStore blobStore;
 private String rootDir;
 
 /*
@@ -85,7 +85,7 @@ public BlobSet(String root_dir, List<Blob> allBlobs, BlobStore store) throws IOE
 	
     this.rootDir = root_dir;
     this.allBlobs = allBlobs;
-    this.blobStore = (FileBlobStore) store;
+    this.blobStore = (BlobStore) store;
     // be defensive, sometimes due to an error, all_datas gets passed in as null.
     // instead of crashing, better to treat it as an empty dataset.
     if (this.allBlobs == null)

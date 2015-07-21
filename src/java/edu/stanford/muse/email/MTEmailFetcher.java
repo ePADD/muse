@@ -35,7 +35,6 @@ import org.apache.log4j.Logger;
 import org.json.JSONException;
 
 import edu.stanford.muse.datacache.Blob;
-import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.util.JSONUtils;

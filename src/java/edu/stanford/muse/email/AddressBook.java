@@ -1306,4 +1306,23 @@ public class AddressBook implements Serializable {
 		list = parsePossibleNamesFromEmailAddress("70451.2444@compuserve.com");
 		System.out.println (Util.join(list, " "));
 	}
+
+    public static class AddressBookStats implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        public int nOwnEmails, nOwnNames;
+        // Calendar firstMessageDate, lastMessageDate;
+        // int spanInMonths;
+        public int nContacts;
+        public int nNames = 0, nEmailAddrs = 0;
+
+        public String toString()
+        {
+            // do not use html special chars here!
+
+            String s = "own_email_address: " + nOwnEmails + " own_names: " + nOwnNames + "\n";
+            s += "contacts: " + nContacts + " non_zero_contacts: " + "\n";
+            return s;
+        }
+    }
 }

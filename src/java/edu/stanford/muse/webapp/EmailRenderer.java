@@ -7,7 +7,6 @@ import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
 import edu.stanford.muse.datacache.Blob;
-import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;

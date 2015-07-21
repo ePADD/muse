@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
  *
  * @bug while highlighting preset query -- a regexp like: \d{3}-\d{2}-\d{4} highlights 022-29), 1114 as <B>022-29), 11</B>14.
  *      This is due to improper offsets in tokenstream or could be because lucene highlighter is considering endoffset like startoffset+token.length()
- * @bug- the line breaking is not proper, sometimes line length just overflows what seems to be normal. This could be because annotation is removing '\n'.
+ * @bug the line breaking is not proper, sometimes line length just overflows what seems to be normal. This could be because annotation is removing '\n'.
  *       I am not sure.
  */
 public class Highlighter {

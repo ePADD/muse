@@ -5,7 +5,8 @@ import java.util.List;
 
 import edu.stanford.muse.util.Pair;
 
-/** test q. for interview */
+/** test q. for interview
+ * @exclude*/
 
 public class FriendsLocation {
 

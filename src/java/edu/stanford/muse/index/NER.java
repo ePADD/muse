@@ -39,6 +39,9 @@ import java.net.URL;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
+/**OpenNLP NER
+ * @see edu.stanford.muse.ner.NER */
+@Deprecated
 public class NER {
 	public static Log								log						= LogFactory.getLog(NER.class);
 	public static boolean							REMOVE_I18N_CHARS		= false;
@@ -701,6 +704,64 @@ public class NER {
 	public static void printStats() {
 		System.out.println("count = " + count + " hitcount = " + hitCount);
 	}
+
+    public static void testOpenNLP() {
+
+        try {
+            String s = Util.readFile("/tmp/in");
+			/*
+			List<Pair<String,Float>> pairs = NER.namesFromText(s);
+			for (Pair<String,Float> p: pairs) {
+				System.out.println (p);
+			}
+			System.out.println ("-----");
+			*/
+
+            InputStream pis = OpenNLP.class.getClassLoader().getResourceAsStream("en-ner-person.bin");
+            TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
+            InputStream lis = OpenNLP.class.getClassLoader().getResourceAsStream("en-ner-location.bin");
+            TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
+            InputStream ois = OpenNLP.class.getClassLoader().getResourceAsStream("en-ner-organization.bin");
+            TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
+            InputStream tokenStream = OpenNLP.class.getClassLoader().getResourceAsStream("en-token.bin");
+            TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
+            TokenizerME tokenizer = new TokenizerME(modelTokenizer);
+            Span[] tokSpans = tokenizer.tokenizePos(s); // Util.tokenize(s).toArray(new String[0]);
+
+            String tokens[] = new String[tokSpans.length];
+            for (int i = 0; i < tokSpans.length; i++)
+                tokens[i] = s.substring(tokSpans[i].getStart(), tokSpans[i].getEnd());
+
+            NameFinderME pFinder = new NameFinderME(pmodel);
+            Span[] pSpans = pFinder.find(tokens);
+            NameFinderME lFinder = new NameFinderME(lmodel);
+            Span[] lSpans = lFinder.find(tokens);
+            NameFinderME oFinder = new NameFinderME(omodel);
+            Span[] oSpans = oFinder.find(tokens);
+            System.out.println("Names found:");
+            for (Span span : pSpans) {
+                for (int i = span.getStart(); i < span.getEnd(); i++)
+                    System.out.print(tokens[i] + " ");
+                System.out.println();
+            }
+
+            System.out.println("Locations found:");
+            for (Span span : lSpans) {
+                for (int i = span.getStart(); i < span.getEnd(); i++)
+                    System.out.print(tokens[i] + " ");
+                System.out.println();
+            }
+
+            System.out.println("Orgs found:");
+            for (Span span : oSpans) {
+                for (int i = span.getStart(); i < span.getEnd(); i++)
+                    System.out.print(tokens[i] + " ");
+                System.out.println();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 	public static void main(String[] args) {
 		try {

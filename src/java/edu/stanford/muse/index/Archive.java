@@ -17,7 +17,6 @@ package edu.stanford.muse.index;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
-import edu.stanford.muse.datacache.FileBlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
@@ -160,7 +159,7 @@ public class Archive implements Serializable {
 	public void setBaseDir(String dir)
 	{
 		baseDir = dir;
-		((FileBlobStore) blobStore).setDir(dir + File.separator + BLOBS_SUBDIR);
+		((BlobStore) blobStore).setDir(dir + File.separator + BLOBS_SUBDIR);
 	}
 
 	public void setNameMap(Map<String, NameInfo> nameMap) {
@@ -833,7 +832,7 @@ public class Archive implements Serializable {
 						blobsToKeep.addAll(((EmailDocument) d).attachments);
 			String blobsDir = out_dir + File.separatorChar + BLOBS_SUBDIR;
 			new File(blobsDir).mkdirs();
-			FileBlobStore newBlobStore = ((FileBlobStore) blobStore).createCopy(blobsDir, blobsToKeep);
+			BlobStore newBlobStore = ((BlobStore) blobStore).createCopy(blobsDir, blobsToKeep);
 			log.info("Completed exporting blobs, newBlobStore in dir: " + blobsDir + " is: " + newBlobStore);
 			// switch to the new blob store (important -- the urls and indexes in the new blob store are different from the old one! */
 			blobStore = newBlobStore;
