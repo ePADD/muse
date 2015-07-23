@@ -380,7 +380,7 @@ public class EmailUtils {
 				mbox.println(contents);
 				mbox.println();
 			}
-			mbox.println("--" + frontier + "--");
+//			mbox.println("--" + frontier + "--");
 
 			// probably need to fix: other types of charset, encodings
 			if (blobStore != null)
@@ -396,8 +396,10 @@ public class EmailUtils {
 					byte encodedBytes[] = Base64.encodeBase64(bytes, true);
 					for (byte by : encodedBytes)
 						mbox.print((char) by);
-					mbox.println("--" + frontier + "--\n");
 				}
+				// note: the --frontier-- line is needed only at the very end, after all attachments -- NOT after each attachment.
+				// this used to be a bug.
+				mbox.println("--" + frontier + "--\n");
 			}
 		}
 	}

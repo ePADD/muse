@@ -137,7 +137,7 @@ public class SimpleSessions {
 		archive.processingMetadata.nDocs = archive.getAllDocs().size();
 		archive.processingMetadata.nUniqueBlobs = archive.blobStore.uniqueBlobs();
 
-        int totalAttachments = 0, images = 0, docs = 0, others = 0, sentMessages = 0, receivedMessages = 0;
+        int totalAttachments = 0, images = 0, docs = 0, others = 0, sentMessages = 0, receivedMessages = 0, hackyDates = 0;
         Date firstDate = null, lastDate = null;
 
         for (Document d: archive.getAllDocs()) {
@@ -145,10 +145,14 @@ public class SimpleSessions {
                 continue;
             EmailDocument ed = (EmailDocument) d;
             if (ed.date != null) {
-                if (firstDate == null || ed.date.before(firstDate))
-                    firstDate = ed.date;
-                if (lastDate == null || ed.date.after(lastDate))
-                    lastDate = ed.date;
+				if (ed.hackyDate)
+					hackyDates++;
+				else {
+					if (firstDate == null || ed.date.before(firstDate))
+						firstDate = ed.date;
+					if (lastDate == null || ed.date.after(lastDate))
+						lastDate = ed.date;
+				}
             }
             int sentOrReceived = ed.sentOrReceived(archive.addressBook);
             if ((sentOrReceived & EmailDocument.SENT_MASK) != 0)
@@ -176,6 +180,7 @@ public class SimpleSessions {
         archive.processingMetadata.lastDate = lastDate;
         archive.processingMetadata.nIncomingMessages = receivedMessages;
         archive.processingMetadata.nOutgoingMessages = sentMessages;
+		archive.processingMetadata.nHackyDates = hackyDates;
 
         archive.processingMetadata.nBlobs = totalAttachments;
         archive.processingMetadata.nUniqueBlobs = archive.blobStore.uniqueBlobs();
