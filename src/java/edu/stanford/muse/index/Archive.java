@@ -68,25 +68,25 @@ public class Archive implements Serializable {
         String PRESET_QUERIES_FILE = "presetqueries.txt";
         String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + PRESET_QUERIES_FILE;
         try {
-            Indexer.log.info("Reading preset queries from: " + path);
+            log.info("Reading preset queries from: " + path);
             File presetQueriesFile = new File(path);
             if (!presetQueriesFile.exists()) {
-                Indexer.log.warn("Preset queries file does not exist: " + path);
+                log.warn("Preset queries file does not exist: " + path);
 
                 File settingsDir = new File(edu.stanford.muse.Config.SETTINGS_DIR);
                 if (!settingsDir.exists()) {
-                    Indexer.log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
+                    log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
                     settingsDir.mkdirs();
                 }
 
                 try {
                     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("/" + PRESET_QUERIES_FILE);
                     if (is == null)
-                        Indexer.log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
+                        log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
                     else {
                         long bytes = Util.copy_stream_to_file(is, path);
                         is.close();
-                        Indexer.log.warn("Preset queries file copied successfully to: " + path + " (" + bytes + " bytes)");
+                        log.warn("Preset queries file copied successfully to: " + path + " (" + bytes + " bytes)");
                     }
                 } catch (Exception e) {
                     Util.print_exception("Exception trying to copy embedded preset queries file: " + PRESET_QUERIES_FILE, e, Indexer.log);
@@ -95,7 +95,7 @@ public class Archive implements Serializable {
             }
 
             if (!presetQueriesFile.canRead()) {
-                Indexer.log.warn("Preset queries file exists, but is not readable: " + path);
+                log.warn("Preset queries file exists, but is not readable: " + path);
                 return;
             }
 
@@ -236,7 +236,7 @@ public class Archive implements Serializable {
     public List<String> allAccessions = new ArrayList<String>();
     public List<MuseEmailFetcher.FetchStats> allStats = new ArrayList<MuseEmailFetcher.FetchStats>(); // multiple stats because usually there is 1 per import
 
-    /*
+	/*
 	 * baseDir is used loosely... it may not be fully reliable, e.g. when the
 	 * archive moves.
 	 */
