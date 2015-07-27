@@ -149,4 +149,18 @@ public Pair<String, String> getContent(BlobStore store)
 		return new Pair<String,String>(metadataBuffer.toString(), handler.toString());
 }
 
+    public static class BlobStats {
+        public long unique_data_size;
+        public long total_data_size;
+        public long n_unique_pics;
+        public long n_total_pics;
+
+        public BlobStats(long unique_data_size, long total_data_size,
+                long n_unique_pics, long n_total_pics) {
+            this.unique_data_size = unique_data_size;
+            this.total_data_size = total_data_size;
+            this.n_unique_pics = n_unique_pics;
+            this.n_total_pics = n_total_pics;
+        }
+    }
 }

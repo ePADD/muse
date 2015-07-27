@@ -57,9 +57,9 @@ public class CrosswordFromEmail {
 
 		archive.openForRead();
 
-		List<Set<String>> docs = archive.indexer.getAllNames(filteredIds, Indexer.QueryType.ORIGINAL);
+		List<List<String>> docs = archive.indexer.getAllNames(filteredIds, Indexer.QueryType.ORIGINAL);
 		// docs is now the set of names in the filtered docs. count the names
-		for (Set<String> names : docs) {
+		for (Collection<String> names : docs) {
 			if (names == null)
 				continue;
 			for (String name : names) {

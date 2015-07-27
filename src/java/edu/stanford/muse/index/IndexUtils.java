@@ -16,6 +16,7 @@
 package edu.stanford.muse.index;
 
 import edu.stanford.muse.datacache.Blob;
+import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.CalendarUtil;
 import edu.stanford.muse.email.Contact;

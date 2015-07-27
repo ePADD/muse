@@ -168,6 +168,7 @@ for (Card t: cards)
 	if (li != null && !shownLocations.contains(loc))
 	{
 		int total = (indexer != null) ? 1 : 0;
+        //location counts is not available anymore.
 		Integer I = indexer.locationCounts.get(loc);
 		int identifiedAslocation = (I == null) ? 0 : I;
 		int vote = (identifiedAslocation*2-total);

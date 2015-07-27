@@ -34,6 +34,7 @@ import java.util.Set;
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
+import edu.stanford.muse.datacache.BlobStore;
 import org.json.JSONException;
 import org.json.JSONObject;
 

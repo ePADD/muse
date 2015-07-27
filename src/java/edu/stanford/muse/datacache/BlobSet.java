@@ -72,10 +72,10 @@ private void compute_unique_data_map()
 }
 
 // Instance variable for Blob stats
-private BlobStats stats;
+private Blob.BlobStats stats;
 
 // Public Method to get the Blob stats of the current BlobSet
-public BlobStats getStats(){
+public Blob.BlobStats getStats(){
 	return stats;
 }
 
@@ -92,7 +92,7 @@ public BlobSet(String root_dir, List<Blob> allBlobs, BlobStore store) throws IOE
     	this.allBlobs = new ArrayList<Blob>();
 
     compute_unique_data_map();
-    stats = new BlobStats(0, 0, 0, 0);
+    stats = new Blob.BlobStats(0, 0, 0, 0);
     compute_stats(stats);
 }
 
@@ -291,7 +291,7 @@ private int emit_gallery_page(String prefix, String applicationURL, String extra
     return nEntriesForPiclens;
 }
 
-private void compute_stats(BlobStats stats)
+private void compute_stats(Blob.BlobStats stats)
 {
     stats.unique_data_size = 0;
     for (Map.Entry<Blob, List<Blob>> me : uniqueBlobMap.entrySet())

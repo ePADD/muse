@@ -411,9 +411,9 @@ public class EntityFeature implements StatusProvider, Serializable {
 				}
 				di++;
 
-				List<String> entities = indexer.getEntitiesInDoc(ed, type);
-				List<String> orgs = indexer.getEntitiesInDoc(ed, otype);
-				List<String> places = indexer.getEntitiesInDoc(ed, pType);
+				List<String> entities = archive.getEntitiesInDoc(ed, type);
+				List<String> orgs = archive.getEntitiesInDoc(ed, otype);
+				List<String> places = archive.getEntitiesInDoc(ed, pType);
 				if (entities != null)
 					c1 += entities.size();
 				if (orgs != null)

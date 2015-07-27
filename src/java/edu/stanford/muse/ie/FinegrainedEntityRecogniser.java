@@ -43,7 +43,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 	double						pctComplete			= 0;
 	boolean						cancelled			= false;
 	Collection<EmailDocument>	docs				= null;
-	Indexer indexer				= null;
+	Archive archive = null;
 	SentenceDetector			sentenceDetector;
 	public static String		TRAIN_FILE			= "en-ner-finetypes.train";
 
@@ -162,7 +162,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 		status = "Preparing the training file";
 		for (EmailDocument ed : docs) {
 			status = "Processed: " + i + "/" + docs.size();
-			String content = indexer.getContents(ed, true);
+			String content = archive.getContents(ed, true);
 			content = content.replaceAll("^>+.*", "");
 			content = content.replaceAll("\\n\\n", ". ");
 			content = content.replaceAll("\\n", " ");
@@ -251,7 +251,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 
 	/** Generates training data and trains the NER */
 	public void trainNER(Archive archive) {
-		indexer = archive.indexer;
+		archive = archive;
 		String[] ftypes = new String[] { KnownClasses.BOOK, KnownClasses.DISEASE, KnownClasses.UNIV, KnownClasses.MUSEUM, KnownClasses.MOVIE, KnownClasses.AWARD, KnownClasses.COMPANY };
 		KnownClasses kc = new KnownClasses();
 		Set<String> keywords = new HashSet<String>();
@@ -310,7 +310,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 
 				i++;
 
-				String content = indexer.getContents(ed, false);
+				String content = archive.getContents(ed, false);
 				content = content.replaceAll("^>+.*", "");
 				content = content.replaceAll("\\n\\n", ". ");
 				content = content.replaceAll("\\n", " ");
@@ -326,7 +326,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 				if (!found)
 					continue;
 
-				List<String> names = indexer.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);
+				List<String> names = archive.indexer.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);
 				for (String me : matchingEntities) {
 					if (!contextMap.containsKey(me))
 						contextMap.put(me, new HashSet<String>());

@@ -143,7 +143,7 @@ public class Main {
 		}
 		
 		Archive archive = Archive.createArchive();
-		archive.setup(baseDir, new String[0] /* default indexoptions */);
+		archive.setup(baseDir, null, new String[0] /* default indexoptions */);
 		// need to set up its blobs etc
 		
 		String[] selectedFolders = selectedFoldersList.toArray(new String[selectedFoldersList.size()]);

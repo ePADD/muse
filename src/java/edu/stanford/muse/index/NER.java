@@ -171,23 +171,23 @@ public class NER {
 		long startTimeMillis = System.currentTimeMillis();
 		log.info("Initializing NER models");
 
-		InputStream pis = OpenNLP.class.getClassLoader().getResourceAsStream("models/en-ner-person.bin");
+		InputStream pis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-person.bin");
 		TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
 		pFinder = new NameFinderME(pmodel);
 
-		InputStream lis = OpenNLP.class.getClassLoader().getResourceAsStream("models/en-ner-location.bin");
+		InputStream lis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-location.bin");
 		TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
 		lFinder = new NameFinderME(lmodel);
 
-		InputStream ois = OpenNLP.class.getClassLoader().getResourceAsStream("models/en-ner-organization.bin");
+		InputStream ois = NER.class.getClassLoader().getResourceAsStream("models/en-ner-organization.bin");
 		TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
 		oFinder = new NameFinderME(omodel);
 
-		InputStream modelIn = OpenNLP.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+		InputStream modelIn = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
 		SentenceModel model = new SentenceModel(modelIn);
 		sFinder = new SentenceDetectorME(model);
 
-		InputStream tokenStream = OpenNLP.class.getClassLoader().getResourceAsStream("models/en-token.bin");
+		InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("models/en-token.bin");
 		TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
 		tokenizer = new TokenizerME(modelTokenizer);
 		long endTimeMillis = System.currentTimeMillis();
@@ -717,13 +717,13 @@ public class NER {
 			System.out.println ("-----");
 			*/
 
-            InputStream pis = OpenNLP.class.getClassLoader().getResourceAsStream("en-ner-person.bin");
+            InputStream pis = NER.class.getClassLoader().getResourceAsStream("en-ner-person.bin");
             TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
-            InputStream lis = OpenNLP.class.getClassLoader().getResourceAsStream("en-ner-location.bin");
+            InputStream lis = NER.class.getClassLoader().getResourceAsStream("en-ner-location.bin");
             TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
-            InputStream ois = OpenNLP.class.getClassLoader().getResourceAsStream("en-ner-organization.bin");
+            InputStream ois = NER.class.getClassLoader().getResourceAsStream("en-ner-organization.bin");
             TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
-            InputStream tokenStream = OpenNLP.class.getClassLoader().getResourceAsStream("en-token.bin");
+            InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("en-token.bin");
             TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
             TokenizerME tokenizer = new TokenizerME(modelTokenizer);
             Span[] tokSpans = tokenizer.tokenizePos(s); // Util.tokenize(s).toArray(new String[0]);
@@ -779,12 +779,12 @@ public class NER {
 			//Random randnum = new Random();
 			Indexer li = archive.indexer;
 			for (String dId : dIds) {
-				Document doc = (Document) li.docForId(dId);
+				Document doc = (Document) archive.docForId(dId);
 				org.apache.lucene.document.Document ldoc = li.getDoc(doc);
 				System.err.println(ldoc.getBinaryValue("names_offsets"));
 				//System.err.println(ldoc.get("body_redacted"));
 				//System.err.println("\n---------------------------\n");
-				System.err.println(NER.retainOnlyNames(li.getContents(doc, false), Indexer.getNamesOffsets(ldoc)));
+				//System.err.println(NER.retainOnlyNames(li.getContents(doc, false), Indexer.getNamesOffsets(ldoc)));
 				//	System.err.println(NER.retainOnlyNames(li.getContents(doc, false)));
 			}
 		} catch (Exception e) {

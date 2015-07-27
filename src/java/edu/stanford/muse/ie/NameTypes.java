@@ -98,7 +98,7 @@ public class NameTypes {
 				System.err.println("Collected names from :" + i + "/" + allDocs.size());
 			i++;
 			String id = ed.getUniqueId();
-			String content = archive.indexer.getContents(ed, false);
+			String content = archive.getContents(ed, false);
 			Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
 			//List<String> nernames = archive.indexer.getNamesForDocId(id, Indexer.QueryType.ORIGINAL);
 			List<String> names = new ArrayList<String>();

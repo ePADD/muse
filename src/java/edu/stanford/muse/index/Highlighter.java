@@ -156,9 +156,9 @@ public class Highlighter {
 	}
 
 	static String annotateSensitive(String content, String preTag, String postTag) {
-		if (Indexer.presetQueries == null)
-			Indexer.readPresetQueries();
-		String[] qs = Indexer.presetQueries;
+		if (Archive.getPresetQueries() == null)
+			Archive.readPresetQueries();
+		String[] qs = Archive.getPresetQueries();
 		if (qs == null || qs.length == 0) {
 			//log.warn("Preset queries are not set, not annotating sensitive stuff");
 			return content;
@@ -611,7 +611,7 @@ public class Highlighter {
 			//String text = "dear Bob (hello Pen) how does the time get away like this?? total franticity here; I look longingly at the Maine pic set as wallpaper on this machine and an GLAD we had that great time with you. it's about as bitterly winter here as Akld gets (remember 1995!) and the rains have set in all weekdays that require some movement toward school or workpl;aces. but the house is warm and getting more painted by the weekend, and I am learning to drive the new appliances, yay! there ius a copy of Roger's Len Lye biography almost ready for posting to you; the author is signing it and I'll get it off him this week with luck. question: to which address should the package go, Waldoboro or Buffalo? Roger was delighted when I passed on your good wishes and congrats about the book. Lye should be next poet on nzepc pages if everything pans out.. http://www.nzepc.auckland.ac.nz/ public announcement of nzepc occurred Friday (NZ Poetry Day; wet and cold) and so far reception is bright and interested. the great hunt for permamnent funding swings into action as Janet Copsey marshalls her resources, now with the trial site under one wing, and heads off towards V-C's Development Fund (the one I tried unsuccessfully last year) and various corporate sponsors. she (Janet) declares no more work can be done on the site without proper money (fair enough), so I have to pull in my horns for a while -- but Brian is saying he can probably get the odd thing up there as needed. good. he's been working like a Trojan and the site is beginning to hang together. plotting ahead: when we hear about Fulbright (whether yes or no) might be the time to announce public affiliation with EPC -- i.e. it would become our next piece of 'news' on the site. if we could mark that by also putting up 'The Dogs of Auckland' or similar, so much the better. what do you think? I'm pooped after a huge week of webbing, and I think Brian is about ready to drop. but it's all worthwhile. the home page images are a fave -- Killeens which change each time you come into the site; click on one to see whole range -- very generous of Rick. lots of love to you both, in Waldoboro, Buffalo or whever elkse you are XXMichele";
             String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            EmailDocument doc = archive.indexer.docForId("/Users/vihari/epadd-data/Bush small 2/Top of Outlook data file.mbox-64");
+            EmailDocument doc = archive.docForId("/Users/vihari/epadd-data/Bush small 2/Top of Outlook data file.mbox-64");
             String text = archive.getContents(doc, false);
 			Set<String> highlightTerms = new HashSet<String>();
 			highlightTerms.add("poetry");

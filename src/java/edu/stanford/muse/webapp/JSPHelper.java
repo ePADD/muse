@@ -508,10 +508,9 @@ public class JSPHelper {
 
 		// careful about the ordering here.. first setup, then read indexer, then run it
 		Archive archive = Archive.createArchive();
-		archive.setup(baseDir, s);
+        BlobStore blobStore = JSPHelper.preparedBlobStore(baseDir);
+        archive.setup(baseDir, blobStore, s);
 		log.info("archive setup in " + baseDir);
-		BlobStore blobStore = JSPHelper.preparedBlobStore(baseDir);
-		archive.setBlobStore(blobStore); // should we pass blobStore to preparedArchive?	
 		return archive;
 	}
 
@@ -1085,7 +1084,7 @@ public class JSPHelper {
 			docsForDocIds = new ArrayList<Document>();
 			for (String id : docIds)
 			{
-				Document d = indexer.docForId(id);
+				Document d = archive.docForId(id);
 				if (d != null)
 					docsForDocIds.add(d);
 			}

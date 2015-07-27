@@ -7,6 +7,7 @@ import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
 import edu.stanford.muse.datacache.Blob;
+import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
@@ -401,9 +402,9 @@ public class EmailRenderer {
 		x = ed.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
-        List<String> cpeople = archive.indexer.getAllEntitiesInDoc(ed, NER.EPER_TITLE);
-        List<String> corgs = archive.indexer.getAllEntitiesInDoc(ed, NER.EORG_TITLE);
-        List<String> cplaces = archive.indexer.getAllEntitiesInDoc(ed, NER.ELOC_TITLE);
+        List<String> cpeople = archive.getAllEntitiesInLuceneDoc(ed, NER.EPER_TITLE);
+        List<String> corgs = archive.getAllEntitiesInLuceneDoc(ed, NER.EORG_TITLE);
+        List<String> cplaces = archive.getAllEntitiesInLuceneDoc(ed, NER.ELOC_TITLE);
         List<String> entities = new ArrayList<String>();
         entities.addAll(cpeople);
         entities.addAll(cplaces);
