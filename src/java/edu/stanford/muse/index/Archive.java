@@ -168,7 +168,7 @@ public class Archive implements Serializable {
         public String institution, repository, collectionTitle, collectionID, accessionID, findingAidLink, catalogRecordLink, contactEmail;
         public long timestamp;
         public TimeZone tz;
-        public int nDocs, nIncomingMessages, nOutgoingMessages; // note a message can be both incoming and outgoing.
+        public int nDocs, nIncomingMessages, nOutgoingMessages, nHackyDates; // note a message can be both incoming and outgoing.
         public int nBlobs, nUniqueBlobs, nImageBlobs, nDocBlobs, nOtherBlobs; // this is just a cache so we don't have to read the archive
         public String ownerName, about;
         //will be set by method that computes epadd-ner
