@@ -31,7 +31,7 @@ private static Log log = LogFactory.getLog(BlobSet.class);
 private List<Blob> allBlobs; // all data's known, some of them may be duplicates (in terms of equals()), even though all the items are distinct object
 private Map<String, List<Blob>> personToBlobMap = new LinkedHashMap<String, List<Blob>>();
 private Map<Blob, List<Blob>> uniqueBlobMap = new LinkedHashMap<Blob, List<Blob>>();
-private FileBlobStore blobStore;
+private BlobStore blobStore;
 private String rootDir;
 
 /*
@@ -72,10 +72,10 @@ private void compute_unique_data_map()
 }
 
 // Instance variable for Blob stats
-private BlobStats stats;
+private Blob.BlobStats stats;
 
 // Public Method to get the Blob stats of the current BlobSet
-public BlobStats getStats(){
+public Blob.BlobStats getStats(){
 	return stats;
 }
 
@@ -85,14 +85,14 @@ public BlobSet(String root_dir, List<Blob> allBlobs, BlobStore store) throws IOE
 	
     this.rootDir = root_dir;
     this.allBlobs = allBlobs;
-    this.blobStore = (FileBlobStore) store;
+    this.blobStore = (BlobStore) store;
     // be defensive, sometimes due to an error, all_datas gets passed in as null.
     // instead of crashing, better to treat it as an empty dataset.
     if (this.allBlobs == null)
     	this.allBlobs = new ArrayList<Blob>();
 
     compute_unique_data_map();
-    stats = new BlobStats(0, 0, 0, 0);
+    stats = new Blob.BlobStats(0, 0, 0, 0);
     compute_stats(stats);
 }
 
@@ -291,7 +291,7 @@ private int emit_gallery_page(String prefix, String applicationURL, String extra
     return nEntriesForPiclens;
 }
 
-private void compute_stats(BlobStats stats)
+private void compute_stats(Blob.BlobStats stats)
 {
     stats.unique_data_size = 0;
     for (Map.Entry<Blob, List<Blob>> me : uniqueBlobMap.entrySet())

@@ -77,7 +77,7 @@ List<Pair<String,Integer>> names = (p == null) ? null : p.getSecond();
 	<div style="margin-left:30px">
 	<%=Util.commatize(allDocs.size()) %> EMAILS (<%=Util.commatize(o)%> outgoing, <%=Util.commatize(allDocs.size()-o)%> incoming)<br/>
 	<%
-	AddressBookStats abs = ab.getStats();
+	AddressBook.AddressBookStats abs = ab.getStats();
 	%>
 	<%=Util.commatize(abs.nContacts)%> PEOPLE <br/>
 	<!--  

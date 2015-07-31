@@ -2707,6 +2707,10 @@ public class Util
 		return setUnion(s1, s2);
 	}
 
+    /**Cleans names by
+     * removing any return chars, replaces consecutive spaces with single space, removes HTML tags,
+     * removes junk chars like curly brackets and quotes.
+     * Puts these in a ste and returns*/
 	public static Set<String> scrubNames(Collection<String> list)
 	{
 		Set<String> set = new LinkedHashSet<String>();

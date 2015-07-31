@@ -42,7 +42,7 @@ public class DataSet {
 	private GroupAssigner			groupAssigner;
 	String							datasetTitle;
 	Archive							archive;
-	BlobStore						attachmentsStore;
+	BlobStore attachmentsStore;
 	Set<String>						highlightTermsStemmed;
 	Set<String>						highlightTermsUnstemmed;
 	Set<Blob>						highlightAttachments;
@@ -84,23 +84,23 @@ public class DataSet {
 	}
 
 	public String toString() {
-		return "Dataset with " + docs.size() + " documents";
+		return "Data set with " + docs.size() + " documents";
 	}
 
 	/* returns html for doc i. Caches the html once computed. */
 	public String getPage(int i, boolean IA_links, boolean inFull, boolean debug)
 	{
-		if (authorisedEntities == null && !ModeConfig.isPublicMode()) {
-			String filename = archive.baseDir + java.io.File.separator + edu.stanford.muse.Config.AUTHORITIES_FILENAME;
-			try {
-				Map<String, Authority> tmpauth = (Map<String, Authority>) Util.readObjectFromFile(filename);
-				for (String str : tmpauth.keySet()) {
-					authorisedEntities.put(str, tmpauth.get(str).sources);
-				}
-			} catch (Exception e) {
-                JSPHelper.log.warn("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
-			}
-		}
+//		if (authorisedEntities == null && !ModeConfig.isPublicMode()) {
+//			String filename = archive.baseDir + java.io.File.separator + edu.stanford.muse.Config.AUTHORITIES_FILENAME;
+//			try {
+//				Map<String, Authority> tmpauth = (Map<String, Authority>) Util.readObjectFromFile(filename);
+//				for (String str : tmpauth.keySet()) {
+//					authorisedEntities.put(str, tmpauth.get(str).sources);
+//				}
+//			} catch (Exception e) {
+//                JSPHelper.log.warn("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
+//			}
+//		}
 		try {
 			if (inFull || pages.get(i) == null) // inFull==true now means it
 												// previously was inFull==false

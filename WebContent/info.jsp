@@ -104,7 +104,7 @@ List<Pair<String,Integer>> names = (p == null) ? null : p.getSecond();
 	</div>
 	
 	<%
-	AddressBookStats abs = ab.getStats();
+	AddressBook.AddressBookStats abs = ab.getStats();
 	%>
 	<div class="infocolumn">
 	<span class="infocolumn-header"><%=Util.commatize(abs.nContacts)%> PEOPLE</span> <br/>

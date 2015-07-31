@@ -454,7 +454,7 @@ public class Entity extends EntityFeature {
 			//gives a higher entropy if mentioned more times, need to nulltify that.
 			e.entropyTime = getEntropy(e.timeHistogram) * (1 - ((double) e.freq / (double) numEmails)) + 1;
 			//			try {
-			//				Collection<EmailDocument> docs = li.luceneLookupDocs("\"" + str + "\"");
+			//				Collection<EmailDocument> docs = li.lookupDocs("\"" + str + "\"");
 			//				e.cifreq = docs.size();
 			//				if (e.cifreq > 0)
 			//					score *= ((double) 1) / e.cifreq;
@@ -748,11 +748,11 @@ public class Entity extends EntityFeature {
 		return istatus;
 	}
 
-	public static Map<String, Integer> getEntitiesIn(Set<edu.stanford.muse.index.Document> cdocs, Indexer indexer) {
+	public static Map<String, Integer> getEntitiesIn(Set<edu.stanford.muse.index.Document> cdocs, Archive archive) {
 		Map<String, Integer> ents = new HashMap<String, Integer>();
         Tokenizer tokenizer = new CICTokenizer();
 		for (edu.stanford.muse.index.Document cdoc : cdocs) {
-			String content = indexer.getContents(cdoc, false);
+			String content = archive.getContents(cdoc, false);
 			try {
 				Set<String> es = tokenizer.tokenizeWithoutOffsets(content, true);
 				for (String e : es) {
@@ -777,14 +777,14 @@ public class Entity extends EntityFeature {
 		Set<edu.stanford.muse.index.Document> docs = new HashSet<edu.stanford.muse.index.Document>();
 		for (String name : names) {
 			try {
-				Set<EmailDocument> ldocs = indexer.luceneLookupDocs("\"" + name + "\"");
+				Set<EmailDocument> ldocs = indexer.lookupDocs("\"" + name + "\"");
 				System.err.println("Looking up: " + name);
 				docs.addAll(ldocs);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
-		ces = getEntitiesIn(docs, indexer);
+		ces = getEntitiesIn(docs, archive);
 		List<Pair<String, Integer>> sces = Util.sortMapByValue(ces);
 		for (Pair<String, Integer> sce : sces)
 			System.err.println(sce.first + " : " + sce.second);
@@ -793,7 +793,7 @@ public class Entity extends EntityFeature {
 		int[] contact_ids = new int[] { 69 };
 		Set<edu.stanford.muse.index.Document> cdocs = IndexUtils.selectDocsByAllPersons(archive.addressBook, (Collection) archive.getAllDocs(), null, contact_ids);
 
-		Map<String, Integer> ents = getEntitiesIn(cdocs, indexer);
+		Map<String, Integer> ents = getEntitiesIn(cdocs, archive);
 		List<Pair<String, Integer>> sens = Util.sortMapByValue(ents);
 		for (Pair<String, Integer> se : sens)
 			System.err.println(se.first + " : " + se.second);
@@ -806,7 +806,7 @@ public class Entity extends EntityFeature {
 
 			//			Indexer li = archive.indexer;
 			//			String q = "\"Holly Tavel\"";
-			//			Collection<EmailDocument> docs = li.luceneLookupDocs(q);
+			//			Collection<EmailDocument> docs = li.lookupDocs(q);
 			//			System.out.println("hits for: " + q + " = " + docs.size());
 			test(archive);
 			//checkIndex1(archive, true);

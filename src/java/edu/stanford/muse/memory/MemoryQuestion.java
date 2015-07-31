@@ -118,9 +118,9 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 			// do further lookups on user answer if its wrong
 			try {
 				Indexer li = study.archive.indexer;
-				Set<EmailDocument> docs = li.luceneLookupDocs("\"" + cAnswer + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+				Set<EmailDocument> docs = li.lookupDocs("\"" + cAnswer + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
 				stats.nMessagesWithUserAnswer = docs.size();
-				Set<EmailDocument> correctAnswerDocs = li.luceneLookupDocs("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+				Set<EmailDocument> correctAnswerDocs = li.lookupDocs("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
 			} catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }			

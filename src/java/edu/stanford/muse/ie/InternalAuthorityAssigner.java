@@ -203,9 +203,9 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 		di = 0;
 		for (EmailDocument ed : docs) {
-			List<String> people = indexer.getEntitiesInDoc(ed, type);
-			List<String> orgs = indexer.getEntitiesInDoc(ed, otype);
-			List<String> places = indexer.getEntitiesInDoc(ed, ptype);
+			List<String> people = archive.getEntitiesInDoc(ed, type);
+			List<String> orgs = archive.getEntitiesInDoc(ed, otype);
+			List<String> places = archive.getEntitiesInDoc(ed, ptype);
 			//List<String> expansions = new ArrayList<String>();
 			String content = archive.getContents(ed, false);
 			//For an acronym, expand it to one of entities to only of the types: place, org or people

@@ -25,7 +25,7 @@ String archiveDescription = Sessions.getArchiveInfoMap(archiveId).get("descripti
 
 Archive archive = Sessions.loadSharedArchiveAndPrepareSession(session, archiveId);
 AddressBook addressBook = archive.addressBook;
-AddressBookStats abs = addressBook.getStats();
+AddressBook.AddressBookStats abs = addressBook.getStats();
 
 Set<EmailDocument> allDocs = (Set) JSPHelper.selectDocs(request, session, false /* not only apply to filtered docs */, true /* or (not and) */);
 

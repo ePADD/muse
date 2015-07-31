@@ -42,7 +42,7 @@ import org.xhtmlrenderer.simple.Graphics2DRenderer;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobSet;
-import edu.stanford.muse.datacache.FileBlobStore;
+import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.index.DatedDocument;
@@ -95,7 +95,7 @@ public class WebPageThumbnail extends Blob {
 		}
 
 		List<Blob> allDatas = new ArrayList<Blob>();
-		FileBlobStore data_store = new FileBlobStore(rootDir + File.separator + "blobs");
+		BlobStore data_store = new BlobStore(rootDir + File.separator + "blobs");
 
 		int successes = 0;
 		outer:

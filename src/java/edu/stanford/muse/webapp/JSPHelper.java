@@ -17,7 +17,6 @@ package edu.stanford.muse.webapp;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
-import edu.stanford.muse.datacache.FileBlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
@@ -429,7 +428,7 @@ public class JSPHelper {
 		BlobStore attachmentsStore = null;
 		try {
 			new File(attachmentsStoreDir).mkdirs();
-			attachmentsStore = new FileBlobStore(attachmentsStoreDir);
+			attachmentsStore = new BlobStore(attachmentsStoreDir);
 		} catch (IOException ioe) {
 			log.error("MAJOR ERROR: Disabling attachments because unable to initialize attachments store in directory: " + attachmentsStoreDir + " :" + ioe + " " + Util.stackTrace(ioe));
 			attachmentsStore = null;
@@ -509,10 +508,9 @@ public class JSPHelper {
 
 		// careful about the ordering here.. first setup, then read indexer, then run it
 		Archive archive = Archive.createArchive();
-		archive.setup(baseDir, s);
+        BlobStore blobStore = JSPHelper.preparedBlobStore(baseDir);
+        archive.setup(baseDir, blobStore, s);
 		log.info("archive setup in " + baseDir);
-		BlobStore blobStore = JSPHelper.preparedBlobStore(baseDir);
-		archive.setBlobStore(blobStore); // should we pass blobStore to preparedArchive?	
 		return archive;
 	}
 
@@ -1086,7 +1084,7 @@ public class JSPHelper {
 			docsForDocIds = new ArrayList<Document>();
 			for (String id : docIds)
 			{
-				Document d = indexer.docForId(id);
+				Document d = archive.docForId(id);
 				if (d != null)
 					docsForDocIds.add(d);
 			}

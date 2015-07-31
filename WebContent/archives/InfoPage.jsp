@@ -18,7 +18,7 @@ String archiveSearchWorks = Sessions.getArchiveInfoMap(archiveId).get("searchwor
 Archive archive = Sessions.loadSharedArchiveAndPrepareSession(session, archiveId);
 
 AddressBook ab = archive.addressBook;
-AddressBookStats abs = ab.getStats();
+AddressBook.AddressBookStats abs = ab.getStats();
 Collection<EmailDocument> allDocs = (Collection) archive.getAllDocs();
 assert(ab != null && allDocs != null);
 session.setAttribute("emailDocs", allDocs);

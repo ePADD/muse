@@ -133,7 +133,7 @@ public class ArchiveCluer extends Cluer {
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
-		Set<EmailDocument> docs = archive.indexer.luceneLookupDocs("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+		Set<EmailDocument> docs = archive.indexer.lookupDocs("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
 	    boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
 
 	    // find all messages with the answer in them (original content only)

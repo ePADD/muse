@@ -259,8 +259,8 @@ public class NER implements StatusProvider {
 	public void trainAndRecognise() throws CancelledException, IOException {
 		time = 0;
 		Indexer li = archive.indexer;
-		li.setupForRead();
-		li.setupForWrite();
+		archive.openForRead();
+		archive.setupForWrite();
 
 		if (cancelled) {
 			status = "Cancelling...";
@@ -295,8 +295,8 @@ public class NER implements StatusProvider {
 			// instead of RBF kernel and classifier instead of a regression model
 			// (the confidence scores of regression model can be useful in segmentation)
             //TODO: @bug -> should also recognise names in the subject
-			String originalContent = li.getContents(ldoc, true);
-			String content = li.getContents(ldoc, false);
+			String originalContent = archive.getContents(ldoc, true);
+			String content = archive.getContents(ldoc, false);
             String title = li.getTitle(ldoc);
 			//original content is substring of content;
             Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
@@ -364,7 +364,7 @@ public class NER implements StatusProvider {
 
             //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance
 			//Makes me think building a new index could be faster
-			li.updateDocument(ldoc);
+			archive.updateDocument(ldoc);
 			duTime += System.currentTimeMillis() - st;
 			di++;
 
@@ -386,9 +386,9 @@ public class NER implements StatusProvider {
 		}
 
 		log.info("Trained and recognised entities in " + di + " docs in " + totalTime + "ms" + "\nPerson: " + ps + "\nOrgs:" + os + "\nLocs:" + ls);
-		li.close();
+		archive.close();
 		//prepare to read again.
-		li.setupForRead();
+		archive.openForRead();
 	}
 
 	//arrange offsets such that the end offsets are in increasing order and if there are any overlapping offsets, the bigger of them should appear first

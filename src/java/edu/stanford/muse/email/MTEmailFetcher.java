@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.mail.MessagingException;
 
+import edu.stanford.muse.datacache.BlobStore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.Level;
@@ -35,7 +36,6 @@ import org.apache.log4j.Logger;
 import org.json.JSONException;
 
 import edu.stanford.muse.datacache.Blob;
-import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.util.JSONUtils;

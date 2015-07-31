@@ -21,16 +21,11 @@ import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.lang.Languages;
 import edu.stanford.muse.util.*;
-import edu.stanford.muse.webapp.ModeConfig;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
-import org.apache.lucene.analysis.core.LowerCaseFilter;
-import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -64,7 +59,10 @@ import java.util.*;
  * documents as subdocs) against each other,
  * The index can be looked up with specific terms, and returns subdocs that
  * contain the term.
- * 
+ *
+ * Methods of one or more of this type are set public
+ * 1. Those that deal with lucene document fields, like getNamesInDoc.
+ * 2. Lookup methods that does the query on the indexer, I feel this class is a better place for them
  */
 public class Indexer implements StatusProvider, java.io.Serializable {
 
@@ -75,40 +73,27 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		FULL, ORIGINAL, CORRESPONDENTS, SUBJECT, REGEX, PRESET_REGEX, META;
 	};
 
-	static final int			DEFAULT_SUBJECT_WEIGHT			= 2;							// weight
-																								// given
-																								// to
-																								// email
-																								// subject;
-																								// 2
-																								// means
-																								// subject
-																								// is
-																								// given
-																								// 2x
-																								// weight
+    // weight given to email subject; 2 means subject is given 2x weight
+    static final int			DEFAULT_SUBJECT_WEIGHT			= 2;
 	public static final int		MAX_MAILING_LIST_NAME_LENGTH	= 20;
-	private static final String	LANGUAGE_FIELD_DELIMITER	= "|";										// warning: make sure this is a single char, not a string because StringTokenizer constructor with "AB" will split on A or B
+	private static final String	LANGUAGE_FIELD_DELIMITER	= "|";								    // warning: make sure this is a single char, not a string because StringTokenizer constructor with "AB" will split on A or B
 	public static final String	NAMES_FIELD_DELIMITER		= "\n";									// this String is not allowed within a name
 	public static final Version LUCENE_VERSION				= Version.LUCENE_47;
 	private static final String	INDEX_BASE_DIR_NAME			= Archive.INDEXES_SUBDIR;
 	private static final String	INDEX_NAME_EMAILS			= "emails";
 	private static final String	INDEX_NAME_ATTACHMENTS		= "attachments";
-	public static String[]		presetQueries				= null;
+    //I dont see why the presetQueries cannot be static. As we read these from a file, there cannot be two set of preset queries for two (or more) archives in session
+	protected static String[]		presetQueries				= null;
 
 	//Write feature related debug info to cache dir in user dir
 	static FileWriter fw							= null;
-
-	static {
-		readPresetQueries();
-	}
 
 	private Map<String, EmailDocument>				docIdToEmailDoc			= new LinkedHashMap<String, EmailDocument>();			// docId -> EmailDoc
 	private Map<String, Blob>						attachmentDocIdToBlob	= new LinkedHashMap<String, Blob>();					// attachment's docid -> Blob
 	private HashMap<String, Map<Integer, String>>	dirNameToDocIdMap		= new LinkedHashMap<String, Map<Integer, String>>();	// just stores 2 maps, one for content and one for attachment Lucene doc ID -> docId
 
 	//changed the below line
-	public Directory directory;
+	protected Directory directory;
 	transient private Directory						directory_blob;																// for attachments
 	transient private Analyzer analyzer;
 	transient private IndexSearcher isearcher;
@@ -181,91 +166,33 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	public static class IndexStats implements java.io.Serializable {
 		private static final long	serialVersionUID		= 1L;
 		// int nTokens = 0, nStopTokens = 0, nDictTokens = 0;
-		int							nDocuments				= 0;	// total #
-																	// messages
-																	// indexed
-		long						indexedTextSize			= 0;	// #chars
-																	// indexed
-		long						indexedTextSizeOriginal	= 0;	// #chars
-																	// indexed,
-																	// original
-																	// content
-																	// only
-		long						indexedTextLength_blob	= 0, nIndexedNames_blob = 0;	// attachments
-																							// indexed
+        //total # of messages indexed
+		int							nDocuments				= 0;
+        //#chars indexed
+		long						indexedTextSize			= 0;
+        //#chars indexed in original content
+		long						indexedTextSizeOriginal	= 0;
+		long						indexedTextLength_blob	= 0, nIndexedNames_blob = 0;	// attachments indexed
 
 		// original => only in original content, i.e. not quoted parts of
 		// messages
-		int							nNames					= 0, nOriginalNames = 0;		// total
-																							// #
-																							// of
-																							// occurrences,
-																							// i.e.
-																							// each
-																							// name
-																							// will
-																							// be
-																							// counted
-																							// as
-																							// many
-																							// times
-																							// as
-																							// it
-																							// occurs
-		public int					nUniqueNames			= 0, nUniqueNamesOriginal = 0;	// #
-																							// of
-																							// unique
-																							// names
-																							// in
-																							// entire
-																							// corpus,
-																							// #
-																							// of
-																							// unique
-																							// names
-																							// in
-																							// entire
-																							// corpus
-																							// considering
-																							// original
-																							// text
-																							// only
+        //total # of occurances i.e. each name will be counted as many times as it occurs
+		int							nNames					= 0, nOriginalNames = 0;
+        //# of unique names in entire corpus, # of unique names in original content
+		public int					nUniqueNames			= 0, nUniqueNamesOriginal = 0;
 	}
 
 	public IndexStats			stats					= new IndexStats();
 
 	protected List<MultiDoc>	docClusters;
-	Map<Integer, Integer>		nonEmptyTimeClusterMap	= new LinkedHashMap<Integer, Integer>();	// mapping
-																									// of
-																									// non-zero
-																									// time
-																									// cluster
-																									// index
-																									// to
-																									// actual
-																									// time
-																									// cluster
-																									// index
+    // mapping of non-zero time cluster index to actual time cluster index
+    Map<Integer, Integer>		nonEmptyTimeClusterMap	= new LinkedHashMap<Integer, Integer>();
 
-	public Map<String, Integer>	locationCounts			= new LinkedHashMap<String, Integer>();	// the
-																									// #
-																									// of
-																									// times
-																									// a
-																									// string
-																									// was
-																									// listed
-																									// as
-																									// a
-																									// location
-																									// type
-																									// by
-																									// NER
 	List<Document>				docs					= new ArrayList<Document>();
 	List<Document>				subdocs					= new ArrayList<Document>();
 	public Summarizer			summarizer				= new Summarizer(this);
 
-	public Indexer(IndexOptions io) throws IOException
+	protected Indexer(IndexOptions io) throws IOException
 	{
 		clear();
 		this.io = io;
@@ -277,11 +204,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	public Indexer() throws IOException {
+	protected Indexer() throws IOException {
 		this(null, (IndexOptions) null);
 	}
 
-	public Indexer(String baseDir, IndexOptions io) throws IOException {
+	protected Indexer(String baseDir, IndexOptions io) throws IOException {
 		this(io);
 		this.baseDir = baseDir;
 		//		analyzer = new StandardAnalyzer(MUSE_LUCENE_VERSION, MUSE_STOP_WORDS_SET);
@@ -293,60 +220,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		iwriter_blob = openIndexWriter(directory_blob);
 	}
 
-	public static interface FilterFunctor {
+	public interface FilterFunctor {
 		boolean filter(org.apache.lucene.document.Document doc); // can modify doc and return whether the result should be included
 	}
 
-	public static void readPresetQueries() {
-		List<String> q = new ArrayList<String>();
-        String PRESET_QUERIES_FILE = "presetqueries.txt";
-		String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + PRESET_QUERIES_FILE;
-		try {
-			log.info("Reading preset queries from: " + path);
-			File presetQueriesFile = new File(path);
-			if (!presetQueriesFile.exists()) {
-				log.warn("Preset queries file does not exist: " + path);
-
-                File settingsDir = new File(edu.stanford.muse.Config.SETTINGS_DIR);
-                if (!settingsDir.exists()) {
-                    log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
-                    settingsDir.mkdirs();
-                }
-
-                try {
-                    InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("/" + PRESET_QUERIES_FILE);
-                    if (is == null)
-                        log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
-                    else {
-                        long bytes = Util.copy_stream_to_file(is, path);
-                        is.close();
-                        log.warn("Preset queries file copied successfully to: " + path + " (" + bytes + " bytes)");
-                    }
-                } catch (Exception e) {
-                    Util.print_exception("Exception trying to copy embedded preset queries file: " + PRESET_QUERIES_FILE, e, log);
-                    return;
-                }
-            }
-
-			if (!presetQueriesFile.canRead()) {
-                log.warn("Preset queries file exists, but is not readable: " + path);
-				return;
-			}
-
-			BufferedReader br = new BufferedReader(new FileReader(presetQueriesFile));
-			String line;
-			while ((line = br.readLine()) != null)
-				q.add(line);
-			presetQueries = q.toArray(new String[q.size()]);
-			log.info("Initiated " + q.size() + " preset queries");
-			br.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-            Util.print_exception("Exception while reading presetqueries file: " + path, e, log);
-		}
-	}
-
-	// Below two routines are for dropping fields from index on the given directory.
+    // Below two routines are for dropping fields from index on the given directory.
 	// (Adapted from http://www.flax.co.uk/blog/2011/06/24/how-to-remove-a-stored-field-in-lucene/)
 
 	// report on whether some of these fields exist in the given directory, and return result
@@ -438,7 +316,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/** returns whether indexAttachments succeeded */
-	public synchronized boolean indexAttachments(Collection<EmailDocument> docs, BlobStore blobStore) throws CorruptIndexException, LockObtainFailedException, IOException
+	private synchronized boolean indexAttachments(Collection<EmailDocument> docs, BlobStore blobStore) throws CorruptIndexException, LockObtainFailedException, IOException
 	{
 		if (iwriter_blob == null) {
 			//if (directory_blob == null) directory_blob = initializeDirectory(directory_blob, INDEX_NAME_ATTACHMENTS); // should already be valid
@@ -467,14 +345,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return createDirectory(this.baseDir, name);
 	}
 
-	public void clear()
+	protected void clear()
 	{
 		cancel = false;
 		links.clear();
 		summarizer.clear();
 	}
 
-	public boolean clustersIncludeAllDocs(Collection<edu.stanford.muse.index.Document> docs)
+	private boolean clustersIncludeAllDocs(Collection<edu.stanford.muse.index.Document> docs)
 	{
 		Set<edu.stanford.muse.index.Document> allIndexerDocs = new LinkedHashSet<edu.stanford.muse.index.Document>();
 		for (MultiDoc mdoc : docClusters)
@@ -503,7 +381,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * quick method for extracting links only, without doing all the parsing and
 	 * indexing - used by slant, etc.
 	 */
-	public void extractLinks(Collection<edu.stanford.muse.index.Document> docs) throws IOException
+	protected void extractLinks(Collection<edu.stanford.muse.index.Document> docs) throws IOException
 	{
 		try {
 			for (edu.stanford.muse.index.Document d : docs)
@@ -531,12 +409,13 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	public String computeStats()
+	protected String computeStats()
 	{
 		return computeStats(true);
 	}
 
-	public String computeStats(boolean blur)
+    //This method cannot be moved to Archive because of stats object
+	protected String computeStats(boolean blur)
 	{
 		String result = "Index options: " + io.toString(blur) + "\n"; // + " " +
 																		// currentJobDocsetSize
@@ -605,7 +484,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/** -1 => all clusters */
-	public List<edu.stanford.muse.index.Document> getDocsInCluster(int clusterNum)
+	private List<edu.stanford.muse.index.Document> getDocsInCluster(int clusterNum)
 	{
 		List<edu.stanford.muse.index.Document> result = new ArrayList<edu.stanford.muse.index.Document>();
 		if (clusterNum < 0)
@@ -640,15 +519,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	//			Set<String> unstemmedTermsToHighlight, Map<String, Map<String, Short>> entitiesWithId) throws Exception
 	//	{
 	//		return Highlighter.getHTMLAnnotatedDocumentContents(contents, d, docId, searchTerms, isRegexSearch, stemmedTermsToHighlight, unstemmedTermsToHighlight,
-	//				entitiesWithId, null, summarizer.importantTermsCanonical /*
-	//																		 * unstemmed
-	//																		 * because
-	//																		 * we
-	//																		 * are
-	//																		 * only
-	//																		 * using
-	//																		 * names
-	//																		 */);
+	//				entitiesWithId, null, summarizer.importantTermsCanonical
+    //              unstemmed because we are only using names
 	//	}
 
 	// remove any duplicate link URLs from the incoming LinkInfos
@@ -663,11 +535,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				seenURLs.add(li.link);
 			}
 		return result;
-	}
-
-	public List<LinkInfo> getLinks()
-	{
-		return links;
 	}
 
 	/**
@@ -751,7 +618,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 */
 
 
-	public Analyzer newAnalyzer() {
+	private Analyzer newAnalyzer() {
         // we can use LimitTokenCountAnalyzer to limit the #tokens
 
         EnglishAnalyzer stemmingAnalyzer = new EnglishAnalyzer(LUCENE_VERSION, MUSE_STOP_WORDS_SET);
@@ -798,7 +665,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return new IndexWriter(dir, iwc); // , new IndexWriter.MaxFieldLength(250000));
 	}
 
-	public void setBaseDir(String baseDir)
+	protected void setBaseDir(String baseDir)
 	{
 		if (this.baseDir != null && !this.baseDir.equals(baseDir)) {
 			close();
@@ -811,7 +678,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 *
 	 * @throws IOException
 	 */
-	public synchronized void setupDirectory() throws IOException
+	private synchronized void setupDirectory() throws IOException
 	{
 		directory = initializeDirectory(directory, INDEX_NAME_EMAILS);
 		directory_blob = initializeDirectory(directory_blob, INDEX_NAME_ATTACHMENTS);
@@ -824,7 +691,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * sets up indexer just for reading... if needed for writing only, call
 	 * setupForWrite. if need both read & write, call both.
 	 */
-	public synchronized void setupForRead()
+	protected synchronized void setupForRead()
 	{
 		log.info("setting up index for read only access");
 		long startTime = System.currentTimeMillis();
@@ -918,7 +785,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		log.info ("Setting up index for read took " + (System.currentTimeMillis() - startTime) + " ms");
 	}
 
-	public int nDocsInIndex()
+	protected int nDocsInIndex()
 	{
 		return iwriter.maxDoc();
 	}
@@ -929,7 +796,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * but packIndex MUST be called to close the writer, otherwise lucene will
 	 * throw write lock errors
 	 */
-	public void setupForWrite() throws CorruptIndexException, LockObtainFailedException, IOException
+	protected void setupForWrite() throws IOException
 	{
 		log.info("setting up index for write access");
 		setupDirectory();
@@ -957,7 +824,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * also null out directories that may not be serializable
 	 * (e.g., RAMDirectory is, but FSDirectory isn't)
 	 */
-	public void close()
+	protected void close()
 	{
 		log.info("Closing indexer handles");
 		//closeHandles();
@@ -1008,21 +875,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	public Map<String, EmailDocument> getDocMap() {
+	private Map<String, EmailDocument> getDocMap() {
 		return docIdToEmailDoc;
 	}
 
-	public static Set<String> extractNames(String text) throws Exception
-	{
-		List<Pair<String, Float>> pairs = NER.namesFromText(text);
-		Set<String> names = new LinkedHashSet<String>();
-		for (Pair<String, ?> p : pairs)
-			names.add(p.getFirst());
-
-		return Util.scrubNames(names);
-	}
-
-	// quote chars (> ) interfere with name recognition, so remove them from the text.
+    // quote chars (> ) interfere with name recognition, so remove them from the text.
 	// however be careful that the char positions don't change since NER returns us offsets into the string.
 	private static String prepareFullBodyForNameExtraction(String text)
 	{
@@ -1075,30 +932,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			log.warn("Failed to serialize names_offsets");
 			e.printStackTrace();
 		}
-	}
-
-	public static List<Triple<String, Integer, Integer>> getNamesOffsets(org.apache.lucene.document.Document doc)
-	{
-		BytesRef bytesRef = doc.getBinaryValue("names_offsets");
-		if (bytesRef == null)
-			return null;
-		byte[] data = bytesRef.bytes;
-		if (data == null)
-			return null;
-
-		ByteArrayInputStream bs = new ByteArrayInputStream(data);
-		List<Triple<String, Integer, Integer>> result;
-		ObjectInputStream ois;
-		try {
-			ois = new ObjectInputStream(bs);
-			result = (List<Triple<String, Integer, Integer>>) ois.readObject();
-		} catch (Exception e) {
-			log.warn("Failed to deserialize names_offsets");
-			e.printStackTrace();
-			result = new ArrayList<Triple<String, Integer, Integer>>();
-		}
-
-		return result;
 	}
 
 	/**
@@ -1199,7 +1032,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				namesOriginal = allNames;
 			else {
 				String originalTextForNameExtraction = bodyOriginal + ". " + effectiveSubject;
-				namesOriginal = extractNames(originalTextForNameExtraction);
+				namesOriginal = Archive.extractNames(originalTextForNameExtraction);
 			}
 			if(stats!=null) {
 				stats.nNames += allNames.size();
@@ -1224,7 +1057,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return ns;
 	}
 
-	public void updateDocument(org.apache.lucene.document.Document doc) {
+	protected void updateDocument(org.apache.lucene.document.Document doc) {
 		try {
 			iwriter.updateDocument(new Term("docId", doc.get("docId")), doc);
 		} catch (Exception e) {
@@ -1234,7 +1067,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/* note sync. because we want only one writer to be going at it, at one time */
-	public synchronized void indexSubdoc(String title, String documentText, edu.stanford.muse.index.Document d, BlobStore blobStore)
+	protected synchronized void indexSubdoc(String title, String documentText, edu.stanford.muse.index.Document d, BlobStore blobStore)
 	{
 		if (d == null)
 			return;
@@ -1255,7 +1088,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				links.addAll(d.links);
 	}
 
-	public List<org.apache.lucene.document.Document> getAllDocs(Boolean attachmentType) throws IOException
+	private List<org.apache.lucene.document.Document> getAllDocs(Boolean attachmentType) throws IOException
 	{
 		List<org.apache.lucene.document.Document> result = new ArrayList<org.apache.lucene.document.Document>();
 
@@ -1281,23 +1114,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-	public List<org.apache.lucene.document.Document> getAllDocs() throws IOException{
-		return getAllDocs(false);
-	}
-
-	public List<org.apache.lucene.document.Document> getAttachmentDocs() throws IOException {
-		return getAllDocs(true);
-	}
-
-	public EmailDocument docForId(String id) {
+	protected EmailDocument docForId(String id) {
 		return docIdToEmailDoc.get(id);
 	}
 
-	public List<Set<String>> getAllNames(Collection<String> ids, QueryType qt) throws CorruptIndexException, IOException
+	public List<List<String>> getAllNames(Collection<String> ids, QueryType qt) throws IOException
 	{
-		List<Set<String>> result = new ArrayList<Set<String>>();
+		List<List<String>> result = new ArrayList<List<String>>();
 		for (String id : ids)
-			result.add(getNamesForDocIdAsSet(id, qt));
+			result.add(getNamesForDocId(id, qt));
 		return result;
 	}
 
@@ -1313,7 +1138,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		Set<edu.stanford.muse.index.Document> result = new LinkedHashSet<edu.stanford.muse.index.Document>();
 		try {
-			Collection<String> hitDocIds = luceneLookup(term, threshold, isearcher, qt);
+			Collection<String> hitDocIds = lookupAsDocIds(term, threshold, isearcher, qt);
 			for (String d : hitDocIds)
 			{
 				EmailDocument ed = docIdToEmailDoc.get(d);
@@ -1340,7 +1165,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			return result;
 
 		try {
-			Collection<String> hitDocIds = luceneLookup(term, 1, isearcher_blob, QueryType.FULL);
+			Collection<String> hitDocIds = lookupAsDocIds(term, 1, isearcher_blob, QueryType.FULL);
 			for (String d : hitDocIds)
 			{
 				Blob b = attachmentDocIdToBlob.get(d);
@@ -1392,45 +1217,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return 0;
 	}
 
-	private Set<String> getNamesForDocIdAsSet(String id, QueryType qt) throws IOException
-	{
-		return new LinkedHashSet<String>(getNamesForDocId(id, qt));
-	}
-
 	public List<String> getNamesForDocId(String id, QueryType qt) throws IOException
 	{
 		// get this doc from the index first...
 		org.apache.lucene.document.Document docForThisId = getLDoc(id);
-		return getNamesForDoc(docForThisId, qt);
+		return getNamesForLuceneDoc(docForThisId, qt);
 	}
 
-	private Set<String> getNamesForDocAsSet(org.apache.lucene.document.Document doc, QueryType qt)
-	{
-		return new LinkedHashSet<String>(getNamesForDoc(doc, qt));
-	}
-
-	public List<String> getNamesOfTypeForDoc(String field, String docId, QueryType qt) throws IOException
-	{
-		org.apache.lucene.document.Document docForThisId = getLDoc(docId);
-
-		List<String> result = new ArrayList<String>();
-		if (docForThisId == null)
-		{
-			log.warn("trying to get names from null doc");
-			return result;
-		}
-		// ...and read its names
-		//		String names = (qt == QueryType.ORIGINAL) ? doc.get("names_original") : doc.get("names");
-		String names = (qt == QueryType.ORIGINAL) ? docForThisId.get(field + "_original") : docForThisId.get(field);
-		if (!Util.nullOrEmpty(names)) {
-			StringTokenizer names_st = new StringTokenizer(names, Indexer.NAMES_FIELD_DELIMITER);
-			while (names_st.hasMoreTokens())
-				result.add(names_st.nextToken());
-		}
-		return result;
-	}
-
-	private List<String> getNamesForDoc(org.apache.lucene.document.Document doc, QueryType qt)
+	private List<String> getNamesForLuceneDoc(org.apache.lucene.document.Document doc, QueryType qt)
 	{
 		List<String> result = new ArrayList<String>();
 		if (doc == null)
@@ -1620,19 +1414,19 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/** returns collection of docId's that hit, at least threshold times */
-	public Collection<String> luceneLookup(String q, int threshold, IndexSearcher searcher, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	public Collection<String> lookupAsDocIds(String q, int threshold, IndexSearcher searcher, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		// get as documents, then convert to ids
 		return luceneLookupAsDocIds(q, threshold, searcher, qt);
 	}
 
-	public Set<EmailDocument> luceneLookupDocs(String q) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	public Set<EmailDocument> lookupDocs(String q) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
-		return luceneLookupDocs(q, QueryType.FULL);
+		return lookupDocs(q, QueryType.FULL);
 	}
 
 	/** returns collection of EmailDocs that hit */
-	public Set<EmailDocument> luceneLookupDocs(String q, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	public Set<EmailDocument> lookupDocs(String q, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		Collection<String> docIds = luceneLookupAsDocIds(q, 1, isearcher, qt);
 		Set<EmailDocument> result = new LinkedHashSet<EmailDocument>();
@@ -1662,7 +1456,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
     //@return pair of content of the attachment and status of retrieval
-	public Pair<String,String> getContentsOfAttachment(String fileName){
+	protected Pair<String,String> getContentsOfAttachment(String fileName){
 		try {
             fileName = "\""+fileName+"\"";
 			Collection<String> docIds = luceneLookupAsDocIds(fileName, 1, isearcher_blob, QueryType.META);
@@ -1693,7 +1487,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	// since we may need to rebuild the index in a new directory, the analyzer needs to have been initialized apriori
-	public synchronized Directory copyDirectoryExcludeFields(Directory dir, String out_basedir, String out_name, String... fields_to_be_removed) throws CorruptIndexException, IOException
+	private synchronized Directory copyDirectoryExcludeFields(Directory dir, String out_basedir, String out_name, String... fields_to_be_removed) throws CorruptIndexException, IOException
 	{
 		IndexReader reader = DirectoryReader.open(dir); // IndexReader.open(dir, true); // read-only=true
 
@@ -1715,7 +1509,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	// since we may need to rebuild the index in a new directory, the analyzer needs to have been initialized apriori
-	public synchronized Directory copyDirectoryWithDocFilter(Directory dir, String out_basedir, String out_name, FilterFunctor filter_func) throws CorruptIndexException, IOException
+	private synchronized Directory copyDirectoryWithDocFilter(Directory dir, String out_basedir, String out_name, FilterFunctor filter_func) throws CorruptIndexException, IOException
 	{
 		long startTime = System.currentTimeMillis();
 		IndexReader reader = DirectoryReader.open(dir); // IndexReader.open(dir, true); // read-only=true
@@ -1741,8 +1535,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return newDir;
 	}
 
-    //TODO: please review
-	private synchronized Directory removeFieldsFromDirectory(Directory dir, String... fields_to_be_removed) throws CorruptIndexException, IOException
+    private synchronized Directory removeFieldsFromDirectory(Directory dir, String... fields_to_be_removed) throws CorruptIndexException, IOException
 	{
 		if (!indexHasFields(dir, fields_to_be_removed))
 			return dir;
@@ -1771,26 +1564,26 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	// since we may need to rebuild the index in a new directory, the analyzer needs to have been initialized apriori
-	public synchronized void removeFieldsFromDirectory(String... fields_to_be_removed) throws CorruptIndexException, IOException
+	private synchronized void removeFieldsFromDirectory(String... fields_to_be_removed) throws CorruptIndexException, IOException
 	{
 		directory = removeFieldsFromDirectory(directory, fields_to_be_removed);
 		directory_blob = removeFieldsFromDirectory(directory_blob, fields_to_be_removed);
 	}
 
-	public synchronized void copyDirectoryExcludeFields(String out_dir, String... fields_to_be_removed) throws CorruptIndexException, IOException
+	private synchronized void copyDirectoryExcludeFields(String out_dir, String... fields_to_be_removed) throws CorruptIndexException, IOException
 	{
 		directory = copyDirectoryExcludeFields(directory, out_dir, INDEX_NAME_EMAILS, fields_to_be_removed);
 		directory_blob = copyDirectoryExcludeFields(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, fields_to_be_removed);
 	}
 
-	public synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor func) throws CorruptIndexException, IOException
+	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor func) throws CorruptIndexException, IOException
 	{
 		directory = copyDirectoryWithDocFilter(directory, out_dir, INDEX_NAME_EMAILS, func);
 		directory_blob = copyDirectoryWithDocFilter(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, func);
 	}
 
 	// CAUTION: permanently change the index!
-	public synchronized int removeEmailDocs(Collection<? extends edu.stanford.muse.index.Document> docs) throws IOException
+	private synchronized int removeEmailDocs(Collection<? extends edu.stanford.muse.index.Document> docs) throws IOException
 	{
 		if (iwriter != null) {
 			throw new IOException("iwriter is not null. prepareForSerialization() should be called first.");
@@ -1830,7 +1623,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return count;
 	}
 
-	public synchronized void rollbackWrites() throws IOException
+	private synchronized void rollbackWrites() throws IOException
 	{
 		if (iwriter != null) {
 			iwriter.rollback();
@@ -1842,10 +1635,10 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	public Set<String> getNames(edu.stanford.muse.index.Document d, QueryType qt)
+	protected Set<String> getNames(edu.stanford.muse.index.Document d, QueryType qt)
 	{
 		try {
-			return getNamesForDocIdAsSet(d.getUniqueId(), qt);
+			return new LinkedHashSet<String>(getNamesForDocId(d.getUniqueId(), qt));
 		} catch (Exception e) {
 			Util.print_exception(e, log);
 			return new LinkedHashSet<String>();
@@ -1906,51 +1699,20 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return getLDoc(docId, false);
 	}
 
-	//TODO: This method is not consistent in args with the next method.
-	public static List<String> getAllEntitiesInDoc(org.apache.lucene.document.Document doc) {
-		List<String> result = new ArrayList<String>();
-		String[] types = new String[] { "person", "organization", "location" };
-		for (String type : types) {
-			String field = doc.get(type);
-			List<String> e = Util.tokenize(field, NAMES_FIELD_DELIMITER);
-			if (e != null && e.size() > 0)
-				result.addAll(e);
-		}
-		return result;
-	}
+//	//TODO: This method is not consistent in args with the next method.
+//	public static List<String> getAllEntitiesInLuceneDoc(org.apache.lucene.document.Document doc) {
+//		List<String> result = new ArrayList<String>();
+//		String[] types = new String[] { "person", "organization", "location" };
+//		for (String type : types) {
+//			String field = doc.get(type);
+//			List<String> e = Util.tokenize(field, NAMES_FIELD_DELIMITER);
+//			if (e != null && e.size() > 0)
+//				result.addAll(e);
+//		}
+//		return result;
+//	}
 
-	//type should be one of strings EPER, ELOC, EORG, as set in NER.java
-    //returns filtered list of all names
-	public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type)
-	{
-		org.apache.lucene.document.Document doc = null;
-		try {
-			doc = getDoc(d);
-		} catch (IOException e) {
-			log.warn("Unable to obtain document " + d.getUniqueId() + " from index");
-			e.printStackTrace();
-			return null;
-		}
-		String field = doc.get(type);
-		return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, NAMES_FIELD_DELIMITER), type);
-	}
-
-    //@return list of all names recognised in this document
-    public List<String> getAllEntitiesInDoc(edu.stanford.muse.index.Document d, String type)
-    {
-        org.apache.lucene.document.Document doc = null;
-        try {
-            doc = getDoc(d);
-        } catch (IOException e) {
-            log.warn("Unable to obtain document " + d.getUniqueId() + " from index");
-            e.printStackTrace();
-            return null;
-        }
-        String field = doc.get(type);
-        return Util.tokenize(field, NAMES_FIELD_DELIMITER);
-    }
-
-	public String getContents(edu.stanford.muse.index.Document d, boolean originalContentOnly)
+	protected String getContents(edu.stanford.muse.index.Document d, boolean originalContentOnly)
 	{
 		org.apache.lucene.document.Document doc = null;
 		try {
@@ -1970,7 +1732,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return doc.get("title");
     }
 
-	public String getContents(org.apache.lucene.document.Document doc, boolean originalContentOnly) {
+	protected String getContents(org.apache.lucene.document.Document doc, boolean originalContentOnly) {
         String contents = null;
         try {
             if (originalContentOnly)
@@ -1985,7 +1747,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
         if (contents == null) { // fall back to 'names' (or in public mode)
             try {
-                Set<String> names = getNamesForDocAsSet(doc, originalContentOnly ? QueryType.ORIGINAL : QueryType.FULL);
+                List<String> names = getNamesForLuceneDoc(doc, originalContentOnly ? QueryType.ORIGINAL : QueryType.FULL);
                 contents = Util.joinSort(Util.scrubNames(names), "\n"); // it seems <br> will get automatically added downstream
             } catch (Exception e) {
                 log.warn("Exception " + e + " trying to read extracted names of " + this.toString());
@@ -1999,47 +1761,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return contents;
     }
 
-	/**
-	 * Until we use Lucene that has built-in support for regex, we manually
-	 * handle regex pattern.
-	 * @return new query whose WildcardQuery's with regex pattern (according to
-	 *         escapeRegex) are converted to RegexQuery's
-	 */
-
-	/*
-	 * expires june 2014
-	 * private Query convertRegex(Query query)
-	 * {
-	 * if (query instanceof BooleanQuery) {
-	 * BooleanQuery bquery = (BooleanQuery) query;
-	 * BooleanQuery result = new BooleanQuery();
-	 * for (BooleanClause c : bquery.clauses()) {
-	 * result.add(new BooleanClause(convertRegex(c.getQuery()), c.getOccur()));
-	 * }
-	 * return result;
-	 * } else if (query instanceof WildcardQuery) {
-	 * Term term = ((WildcardQuery) query).getTerm();
-	 * String text = term.text();
-	 * final String regex_marker = "\\*\\?"; // this regex_marker causes
-	 * QueryParser to detect it as WildcardQuery
-	 * if (text.startsWith(regex_marker) && text.endsWith(regex_marker)) {
-	 * return new RegexQuery(new Term(term.field(),
-	 * text.substring(regex_marker.length(),
-	 * text.length()-regex_marker.length())));
-	 * }
-	 * } else if (query instanceof TermQuery) {
-	 * Term term = ((TermQuery) query).getTerm();
-	 * String text = term.text();
-	 * if (text.startsWith("/") && text.endsWith("/") && text.length() > 2) {
-	 * text = text.substring(1, text.length()-2);
-	 * Term t = new Term(term.field(), text);
-	 * query = new RegexQuery(t);
-	 * }
-	 * }
-	 *
-	 * return query;
-	 * }
-	 */
 
 	public static void main(String args[]) throws IOException, ClassNotFoundException, ParseException, GeneralSecurityException
 	{
@@ -2082,18 +1803,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		//		}
 	}
 
-	public int numMatchesPresetQueries() {
-		readPresetQueries();
-		try {
-			return this.luceneLookupDocs(null, QueryType.PRESET_REGEX).size();
-		} catch (Exception e) {
-			Util.print_exception("Minor: error while computing number of sensitive messages, the number will be set to 0", e, log);
-			e.printStackTrace();
-			return 0;
-		}
-	}
-
-	public static void testQueries() throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	private static void testQueries() throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		Indexer li = new Indexer("/tmp", new IndexOptions());
 
@@ -2113,53 +1823,53 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		li.setupForRead();
 		String q = "john";
-		Collection<EmailDocument> docs = li.luceneLookupDocs(q, QueryType.FULL);
+		Collection<EmailDocument> docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "/j..n/\\\\*";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "\"john\"";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "\"john smith\"";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "john*smith";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "title:john";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "title:subject";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "body:johns";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "title:johns";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "joh*";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		q = "/j..n/";
 		//		q = "/\\b(\\d{9}|\\d{3}-\\d{2}-\\d{4})\\b/";
-		docs = li.luceneLookupDocs(q, QueryType.FULL);
+		docs = li.lookupDocs(q, QueryType.FULL);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		// look for sequence of 4-4-4-4 . the .* at the beginning and end is needed.
 		q = "[0-9]{3}[\\- ]*[0-9]{2}[ \\-]*[0-9]{4}";
-		docs = li.luceneLookupDocs(q, QueryType.REGEX);
+		docs = li.lookupDocs(q, QueryType.REGEX);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		// look for sequence of 3-2-4
@@ -2169,16 +1879,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		// look for sequence of 3-2-4
 		q = "first\\sbook";
-		docs = li.luceneLookupDocs(q, QueryType.REGEX);
+		docs = li.lookupDocs(q, QueryType.REGEX);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
         q = "ssn";
         int numHits = li.getTotalHits(q, false, QueryType.FULL);
         System.err.println("Number of hits for: " + q + " is " + numHits);
 
-		Indexer.readPresetQueries();
-        q = "k[0-9]{7}";
-		docs = li.luceneLookupDocs(q, QueryType.REGEX);
+        q = "[A-Za-z][0-9]{7}";
+		docs = li.lookupDocs(q, QueryType.REGEX);
 		System.out.println("hits for: " + q + " = " + docs.size());
 
 		li.analyzer = null;

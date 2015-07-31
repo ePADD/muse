@@ -141,7 +141,7 @@ public class Temp {
 			//	 	if((x&EmailDocument.SENT_MASK)==0)
 			//	 		continue;
 
-			String content = indexer.getContents(ed, false);
+			String content = archive.getContents(ed, false);
 			content = content.replaceAll("^>+.*", "");
 			content = content.replaceAll("\\n\\n", ". ");
 			content = content.replaceAll("\\n", " ");

@@ -15,152 +15,461 @@
 */
 package edu.stanford.muse.datacache;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.net.URL;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-/** a blob store which accepts blob objects.
-each blob can have multiple views associated with it (views
-are keyed by strings, e.g. "tn" for thumbnail)
-*/
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 
-abstract public class BlobStore implements Serializable {
+public class BlobStore implements Serializable {
 
-private static final long serialVersionUID = 1L;
+    public Set<Blob> uniqueBlobs = new LinkedHashSet<Blob>();
 
-public Set<Blob> uniqueBlobs = new LinkedHashSet<Blob>();
+    // mapping of each data item to a data id
+    protected Map<Blob, Integer> id_map = new LinkedHashMap<Blob, Integer>();
+    protected Map<Blob, URL> urlMap = new LinkedHashMap<Blob, URL>();
+    // data id's are just assigned sequentially starting from 0
+    protected int next_data_id = 0;
 
-// mapping of each data item to a data id
-protected Map<Blob, Integer> id_map = new LinkedHashMap<Blob, Integer>();
-protected Map<Blob, URL> urlMap = new LinkedHashMap<Blob, URL>();
-// data id's are just assigned sequentially starting from 0
-protected int next_data_id = 0;
+    // mapping of each data to its views
+    protected Map<Blob, Map<String,Object>> views = new LinkedHashMap<Blob, Map<String,Object>>();
 
-// mapping of each data to its views
-protected Map<Blob, Map<String,Object>> views = new LinkedHashMap<Blob, Map<String,Object>>();
+    private static Log log = LogFactory.getLog(BlobStore.class);
+    private final static long serialVersionUID = 1L;
 
-/** add a new piece of data. should not already have been added */
-public synchronized void add (Blob b)
-{
-    Util.ASSERT (!this.contains(b));
-   
-    uniqueBlobs.add(b);
-    id_map.put (b, next_data_id);
-    views.put (b, new LinkedHashMap<String,Object>());
-    next_data_id++;
-}
+    private String dir; // base dir where this data store keeps it files
+    private static final String META_DATA_FILENAME = ".MetaData"; // filename where meta data is kept
 
-public synchronized void add(Blob b, URL u)
-{
-    add(b);
-    urlMap.put (b, u);
-}
+    private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 
-/** remove a piece of data, has to be the last one added. */
-protected synchronized void remove (Blob b)
-{
-    Util.ASSERT (this.contains(b));
-    uniqueBlobs.remove(b);
-    id_map.remove(b); // leaves a hole in id_map, but that's ok
-    views.remove (b);
-    next_data_id--;
-}
+    //remove final later if we want this to be user configurable
+//pdfbox sometimes crashes the VM mysteriously on Macs
+    final static boolean NO_CONVERT_PDFS = System.getProperty("pdf.thumbnails") == null;
 
-/** add o with the supplied key to the map of views for object d */
-public synchronized void addView (Blob b, String key, Object o)
-{
-    Util.ASSERT (this.contains(b));
-    views.get(b).put(key, o);
-}
+    /**
+     * @param dir directory where this store keeps its data
+     */
+    public BlobStore(String dir) throws IOException {
+        log.info("Opening file repository in " + dir);
+        this.dir = dir;
+        File dir_file = new File(dir);
+        if (!dir_file.exists())
+            dir_file.mkdirs();
+        else {
+            // could also lock the dir to make sure no other data store object uses this dir inadvertently
+            File f = new File(this.dir + File.separatorChar + META_DATA_FILENAME);
+            if (f.exists()) {
+                unpack();
+                log.info("File repository in " + dir + " has " + uniqueBlobs.size() + " entries");
+            }
+        }
+    }
 
-/** return the view for data d with the given key */
-public synchronized Object getView (Blob b, String view)
-{
-	Map<String,Object> map = views.get(b);
-	if (map == null)
-		return null;
-    return map.get(view);
-}
+    /**
+     * use with care!
+     */
+    public void setDir(String dir) {
+        this.dir = dir;
+    }
 
-/** return the view for data d with the given key */
-public synchronized boolean hasView (Blob b, String view)
-{
-	Map<String,Object> map = views.get(b);
-	if (map == null)
-		return false;
-    return map.get(view) != null;
-}
+    /**
+     * copies the selected blobs to a new file blobstore at the given path
+     */
+    public BlobStore createCopy(String path, Collection<Blob> blobs) throws IOException {
+        BlobStore fbs = new BlobStore(path); // no owner field
+        for (Blob b : blobs) {
+            try {
+                // path can be something like E:\/Users/xyz
+                // get_URL(b) can return something like file:E:\/Users\hangal\ePADD archive of hangal@gmail.com\blobs
+                String urlString = get_URL(b); // .replaceAll("\\\\", "/");
+                // urlString can be something like file:E://Users/hangal/ePADD archive of hangal@gmail.com/blobs
+                // very importantly, the E:/Users/... needs to be made E://
+                //	    urlString = urlString.replaceAll(":/", "://"); //
+                URL url = new URL(urlString); // replaceAll expects a regex, so it needs to get a \\, so we need to write \\\\ !
+                fbs.add(b, url.openStream()); // get_URL returns things with \ sometimes
+            /* this code is causing trouble, so drop these views. openstreams are not serializable, dunno why they are kept with the views
+			for (String view: getViews(b))
+				fbs.addView(b, view, new URL(getViewURL(b, view)).openStream());
+				*/
+            } catch (Exception e) {
+                Util.print_exception(e, log);
+            }
+        }
+        fbs.pack();
+        return fbs;
+    }
 
-public synchronized boolean contains (Blob b)
-{
-    return uniqueBlobs.contains(b);
-}
+    /**
+     * directory where this store keeps it data
+     */
+    public String getDir() {
+        return dir;
+    }
 
-/** returns the index of the given data item in this store */
-protected int index(Blob b)
-{
-    Integer i = id_map.get(b);
-    if (i == null)
-        return -1;
-    else
-        return i.intValue();
-}
+    private synchronized void unpack() throws IOException {
+        String f = this.dir + File.separatorChar + META_DATA_FILENAME;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
+            unpack_from_stream(ois);
+            ois.close();
+        } catch (ClassNotFoundException cnfe) {
+            log.warn("Unable to read existing metadata file for blobstore: " + f + "\nDeleting it...");
+            boolean b = new File(f).delete();
+            log.warn("delete succeeded:" + b);
+        }
+    }
 
-abstract public byte[] getViewData(Blob b, String key) throws Exception;
+    public synchronized void pack() throws IOException {
+        // write to a tmp file first, then rename -- we don't want to trash the if there is a disk full or disk error or something....
+        String f = this.dir + File.separatorChar + META_DATA_FILENAME;
+        String tmp = f + ".tmp";
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(tmp));
+        pack_to_stream(oos);
+        oos.close();
 
-/** returns list of views for b. never returns null */
-public Collection<String> getViews(Blob b) 
-{ 
-	Map<String, Object> map = views.get(b);
-	if (map == null)
-		map = new LinkedHashMap<String, Object>(); // return empty set
-	return map.keySet();
-}
+        File F = new File(f);
+        if (F.exists()) {
+            boolean b = F.delete();
+            if (!b)
+                log.warn("Failed to delete blobs metadata file");
+        }
 
-abstract public long add(Blob b, InputStream istream) throws IOException;
-abstract public void generate_thumbnail(Blob b) throws IOException;
-abstract public byte[] getDataBytes(Blob b) throws IOException;
-abstract public String get_URL(Blob b);
-abstract public String getRelativeURL(Blob b);
-abstract public String getViewURL(Blob b, String key);
-abstract public InputStream getInputStream (Blob b) throws IOException;
-abstract public void pack() throws IOException;
-public int uniqueBlobs() { return uniqueBlobs.size(); }
+        boolean success = new File(tmp).renameTo(new File(f));
+        if (!success)
+            log.warn("Metadata rename failed... packing may be incomplete!");
 
-protected synchronized void pack_to_stream (ObjectOutputStream oos) throws IOException
-{
-   oos.writeObject(uniqueBlobs);
-   oos.writeObject(id_map);
-   oos.writeObject(views);
-   oos.writeInt(next_data_id);
-}
+        log.info("packed datastore: " + this);
+    }
 
-protected synchronized void unpack_from_stream (ObjectInputStream ois) throws IOException, ClassNotFoundException
-{
-    uniqueBlobs = (Set<Blob>) ois.readObject();
-    id_map = (Map<Blob, Integer>) ois.readObject();
-    views = (Map<Blob, Map<String,Object>>) ois.readObject();
-    next_data_id = ois.readInt();
-}
+    /**
+     * full filename for data
+     */
+    public String full_filename(Blob b) {
+        if (urlMap.get(b) != null)
+            return b.filename;
+        else {
+            int x = index(b);
+            if (x == -1)
+                return null;
+            return x + "." + b.filename;
+        }
+    }
 
-public String toString()
-{
-    StringBuilder sb = new StringBuilder();
-    sb.append ("Data store with " + uniqueBlobs.size() + " unique blobs");
-	//int count = 0;
-	//for (Data d : unique_datas)
-	//    sb.append (count++ + ". " + d + "\n");
-    return sb.toString();
-}
+    /**
+     * full filename for an arbitrary file associated with d
+     */
+    public String full_filename(Blob b, String fname) {
+        if (urlMap.get(b) != null)
+            return fname;
+        else
+            return index(b) + "." + fname;
+    }
+
+    /**
+     * add a new piece of data with content copied from is.
+     * if owner is not set on the data, we will set it to this data store's owner.
+     * computes content hash and sets it.
+     * will close the stream when done.
+     * Performance critical!
+     * returns # of bytes in inputstream
+     */
+    public long add(Blob blob, InputStream is) throws IOException {
+        long nBytes = -1;
+        synchronized (this) {
+            if (this.contains(blob)) {
+                log.info("Item is already present: " + blob);
+                return nBytes;
+            }
+
+            add(blob);
+            Util.ASSERT(this.contains(blob));
+        }
+
+        // release the lock here because we dont want a long op like reading the object's stream
+        // and storing the file to be serialized across threads.
+
+        // copy the stream, if it throws IOException, then we cancel the item
+        try {
+            DigestInputStream din = new DigestInputStream(is, MessageDigest.getInstance("SHA-1"));
+            log.info(" adding file to blob store = " + Util.blurKeepingExtension(full_filename(blob)));
+            nBytes = Util.copy_stream_to_file(din, dir + File.separatorChar + full_filename(blob));
+//        byte b[] = din.getMessageDigest().digest();
+//        blob.setContentHash(b);
+            //       blob.setContentHashString(Util.byteArrayToHexString(b));
+        } catch (IOException ioe) {
+            // we couldn't copy the stream to the data store, so undo everything
+            remove(blob);
+            Util.ASSERT(!this.contains(blob));
+            throw ioe;
+        } catch (NoSuchAlgorithmException nsae) {
+            // we couldn't copy the stream to the data store, so undo everything
+            remove(blob);
+            Util.ASSERT(!this.contains(blob));
+            throw new RuntimeException(nsae);
+        }
+
+        Util.ASSERT(this.contains(blob));
+
+        // packing needs to be done more efficiently (batch mode or incremental)
+        if ((uniqueBlobs.size() % 100) == 0)
+            pack();
+
+        return nBytes;
+    }
+
+    public void add(Blob b, URL u) {
+        synchronized (this) {
+            if (this.contains(b)) {
+                log.info("Item is already present: " + b);
+                return;
+            }
+
+            add(b);
+            Util.ASSERT(this.contains(b));
+        }
+    }
+
+    protected synchronized void pack_to_stream (ObjectOutputStream oos) throws IOException
+    {
+        oos.writeObject(uniqueBlobs);
+        oos.writeObject(id_map);
+        oos.writeObject(views);
+        oos.writeInt(next_data_id);
+    }
+
+    protected synchronized void unpack_from_stream (ObjectInputStream ois) throws IOException, ClassNotFoundException
+    {
+        uniqueBlobs = (Set<Blob>) ois.readObject();
+        id_map = (Map<Blob, Integer>) ois.readObject();
+        views = (Map<Blob, Map<String,Object>>) ois.readObject();
+        next_data_id = ois.readInt();
+    }
+
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append ("Data store with " + uniqueBlobs.size() + " unique blobs");
+        //int count = 0;
+        //for (Data d : unique_datas)
+        //    sb.append (count++ + ". " + d + "\n");
+        return sb.toString();
+    }
+
+    /** returns the index of the given data item in this store */
+    protected int index(Blob b)
+    {
+        Integer i = id_map.get(b);
+        if (i == null)
+            return -1;
+        else
+            return i.intValue();
+    }
+
+    public synchronized boolean contains (Blob b) {
+        return uniqueBlobs.contains(b);
+    }
+
+    /** return the view for data d with the given key */
+    public synchronized boolean hasView (Blob b, String view)
+    {
+        Map<String,Object> map = views.get(b);
+        if (map == null)
+            return false;
+        return map.get(view) != null;
+    }
+
+    public synchronized void add (Blob b)
+    {
+        Util.ASSERT (!this.contains(b));
+
+        uniqueBlobs.add(b);
+        id_map.put (b, next_data_id);
+        views.put (b, new LinkedHashMap<String,Object>());
+        next_data_id++;
+    }
+
+    /** remove a piece of data, has to be the last one added. */
+    protected synchronized void remove (Blob b)
+    {
+        Util.ASSERT (this.contains(b));
+        uniqueBlobs.remove(b);
+        id_map.remove(b); // leaves a hole in id_map, but that's ok
+        views.remove (b);
+        next_data_id--;
+    }
+
+    /** add o with the supplied key to the map of views for object d */
+    public synchronized void addView (Blob b, String key, Object o)
+    {
+        Util.ASSERT (this.contains(b));
+        views.get(b).put(key, o);
+    }
+
+    /** return the view for data d with the given key */
+    public synchronized Object getView (Blob b, String view)
+    {
+        Map<String,Object> map = views.get(b);
+        if (map == null)
+            return null;
+        return map.get(view);
+    }
+    /**
+     * add a view to the primary data with the given key. the data is stored with the given filename in the store
+     */
+    public synchronized void addView(Blob primary_data, String filename, String view, InputStream is) throws IOException {
+        // for file data store, the object stored for the View is the file name
+        addView(primary_data, view, filename);
+        Util.copy_stream_to_file(is, dir + File.separatorChar + full_filename(primary_data, filename));
+    }
+
+    public InputStream getInputStream(Blob b) throws FileNotFoundException, IOException {
+        URL u = urlMap.get(b);
+        if (u == null)
+            return new FileInputStream(dir + File.separatorChar + full_filename(b));
+        else
+            return u.openStream();
+    }
+
+    private String get_cache_URL(String filename) {
+        String nullURL = "file://null";
+        if (filename == null)
+            return nullURL;
+        try {
+            // important: this can be tricky, esp. on windows (and has led to bugs), so rely on the platform's toURI.toURL()
+            // e.g. see http://stackoverflow.com/questions/9942033/java-urlfile-doesnt-work-on-windows-xp
+            return new File(dir + File.separator + filename).toURI().toURL().toString();
+        } catch (MalformedURLException e) {
+            // TODO Auto-generated catch block
+            Util.print_exception(e, log);
+            log.warn("ERROR trying to get URL for filename: " + filename + "  under " + dir);
+            return nullURL;
+        }
+    }
+
+    public String get_URL(Blob b) {
+        URL u = urlMap.get(b);
+        if (u != null)
+            return u.toString();
+        else
+            return get_cache_URL(full_filename(b));
+    }
+
+    public String getRelativeURL(Blob b) {
+        URL u = urlMap.get(b);
+        if (u != null)
+            return u.toString();
+        else
+            return full_filename(b);
+    }
+
+    public String getViewURL(Blob b, String key) {
+        String filename = (String) getView(b, key);
+        if (filename == null)
+            return null;
+        else
+            return get_cache_URL(full_filename(b, filename));
+    }
+
+    public byte[] getDataBytes(Blob b) throws IOException {
+        URL u = urlMap.get(b);
+        if (u == null) {
+            String filename = dir + File.separatorChar + full_filename(b);
+            return Util.getBytesFromFile(filename);
+        } else {
+            return Util.getBytesFromStream(u.openStream());
+        }
+    }
+
+    public byte[] getViewData(Blob b, String key) throws IOException {
+        String filename = (String) getView(b, key);
+        return Util.getBytesFromFile(dir + File.separatorChar + full_filename(b, filename));
+    }
+
+    /**
+     * generates thumbnail for the given image and adds it as a "tn" supplement
+     */
+    public void generate_thumbnail(Blob b) throws IOException {
+        if (this.hasView(b, "tn")) {
+            log.info("Already have thumbnail for blob " + b);
+            return;
+        }
+
+        String filename = "tn." + b.filename;
+        String tmp_filename = TMP_DIR + File.separatorChar + filename;
+        String tnFilename = null;
+        boolean noThumb = false;
+        String MOGRIFY = "/opt/local/bin/mogrify";
+        if (Util.is_image_filename(b.filename) && new File(MOGRIFY).exists()) {
+            // mogrify will update tmp_filename in place, creating a thumbnail
+            tnFilename = tmp_filename;
+            createBlobCopy(b, tmp_filename);
+            try {
+                Util.run_command(new String[]{MOGRIFY, "-geometry", "160x120", tmp_filename});
+            } catch (Exception e) {
+                log.warn("mogrify failed: " + e.getMessage() + "\n" + Util.stackTrace(e));
+                noThumb = true;
+            }
+        } else if (!NO_CONVERT_PDFS && Util.is_pdf_filename(b.filename)) {
+//    	tnFilename = tmp_filename + ".jpg";
+//    	// [0] converts only page 0
+//    	// only works on mac, after port install imagemagick
+//    	Util.run_command(new String[] {"/opt/local/bin/convert", tmp_filename + "[0]", tnFilename});
+//    	Util.run_command(new String[] {"/opt/local/bin/mogrify", "-geometry", "160x120", tnFilename});
+            try {
+                // pdfToImage will create x1.png from x.pdf
+                tnFilename = tmp_filename.substring(0, tmp_filename.length() - ".pdf".length()); // strip the ".pdf"
+                tnFilename += "1.png";
+                String[] args = new String[]{"-imageType", "png", "-startPage", "1", "-endPage", "1", tmp_filename};
+                org.apache.pdfbox.PDFToImage.main(args);
+                log.info("Saving PDF thumbnail to " + tnFilename);
+                filename = filename + ".png"; // make sure the suffix for the thumbnail is named with a .png suffix in the cache
+            } catch (Throwable e) {
+                // make sure to catch Throwable and not just Exception because the PDF can throw a
+                // java.lang.NoClassDefFoundError: org/bouncycastle/jce/provider/BouncyCastleProvider for password protected PDFs
+                log.warn("PDF to image got exception: " + e.getMessage() + "\n" + Util.stackTrace(e));
+                tnFilename = null;
+                noThumb = true;
+            }
+        } else {
+            noThumb = true;
+            // log.info ("No thumbnail for attachment file named: " + b.filename);
+        }
+
+        if (!noThumb) {
+            // add thumbnail to data store
+            if (tnFilename != null)
+                this.addView(b, filename, "tn", new FileInputStream(tnFilename));
+
+            log.info("Generating thumbnail for data with tn filename: " + tnFilename);
+
+            // best effort to delete the intermediate files, dont worry too much if we fail.
+            if (!new File(tmp_filename).delete())
+                log.warn("REAL WARNING: Unable to delete file: " + tmp_filename);
+            if (tnFilename != null && !(tmp_filename == tnFilename) && !new File(tnFilename).delete())
+                log.warn("REAL WARNING: Unable to delete file: " + tnFilename);
+        }
+    }
+
+    private String createBlobCopy(Blob b, String tmp_filename) throws IOException {
+        // create a copy of the image first in tmp_filename
+        InputStream is = null;
+        String url = this.get_URL(b);
+        url = url.replace("%", "%25");
+
+        try {
+            is = new URL(url).openStream();
+        } catch (MalformedURLException me) {
+            Util.report_exception_and_rethrow(me, log);
+        }
+
+        Util.copy_stream_to_file(is, tmp_filename);
+        return url;
+    }
 
 }

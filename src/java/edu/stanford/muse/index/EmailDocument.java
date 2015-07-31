@@ -34,11 +34,11 @@ import java.util.Set;
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
+import edu.stanford.muse.datacache.BlobStore;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import edu.stanford.muse.datacache.Blob;
-import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.CalendarUtil;
 import edu.stanford.muse.email.Contact;
