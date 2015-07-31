@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.index;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.StatusProvider;
@@ -1448,7 +1449,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
     private Collection<String> luceneLookupAsDocIds (String q, int threshold, IndexSearcher searcher, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
-        Pair<Collection<String>,Integer> p = luceneLookupAsDocIdsWithTotalHits(q, threshold, searcher, qt, 10000);
+        Pair<Collection<String>,Integer> p = luceneLookupAsDocIdsWithTotalHits(q, threshold, searcher, qt, Config.MAX_DOCS_PER_QUERY);
         return p.first;
     }
 

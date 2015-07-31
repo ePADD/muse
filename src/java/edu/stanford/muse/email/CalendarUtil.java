@@ -25,11 +25,15 @@ import java.util.List;
 
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /** bunch of utils for manipulating date ranges and splitting them
  up into intervals based on exchanges with contacts etc. */
 public class CalendarUtil {
-	private static String[] monthStrings = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+    public static Log log = LogFactory.getLog(CalendarUtil.class);
+
+    private static String[] monthStrings = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 	//private static String[] monthStrings = new DateFormatSymbols().getMonths();
 	private final static int nMonthPerYear = monthStrings.length;
 
@@ -135,14 +139,30 @@ public class CalendarUtil {
 		return result;
 	}
 
-	/** intervals must be sorted, start from before the earliest date, and end after the latest date */
-	public static int[] computeHistogram(List<Date> dates, List<Date> intervals)
+    public static int[] computeHistogram(List<Date> dates, List<Date> intervals) { return computeHistogram(dates, intervals, false); }
+
+    /** intervals must be sorted, start from before the earliest date, and end after the latest date */
+	public static int[] computeHistogram(List<Date> dates, List<Date> intervals, boolean ignoreInvalidDates)
 	{
 		if (intervals == null || intervals.size() == 0)
 			return new int[0];
 
 		int nIntervals = intervals.size()-1;
 		int[] counts = new int[nIntervals];
+
+		if (ignoreInvalidDates) {
+			int count = 0;
+			List<Date> newDates = new ArrayList<Date>();
+			for (Date d : dates)
+				if (!EmailFetcherThread.INVALID_DATE.equals(d))
+					newDates.add(d);
+				else
+					count++;
+			dates = newDates;
+			if (count > 0)
+				log.info (count + " invalid date(s) ignored");
+		}
+
 		if (dates.size() == 0)
 			return counts;
 
