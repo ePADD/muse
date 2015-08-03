@@ -326,7 +326,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 				if (!found)
 					continue;
 
-				List<String> names = archive.indexer.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);
+				List<String> names = archive.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);
 				for (String me : matchingEntities) {
 					if (!contextMap.containsKey(me))
 						contextMap.put(me, new HashSet<String>());

@@ -79,7 +79,7 @@ public class NameTypesMemory {
 		for (EmailDocument ed: allDocs)
 		{
 			String id = ed.getUniqueId();
-			List<String> names = archive.indexer.getNamesForDocId(id, qt);
+			List<String> names = archive.getNamesForDocId(id, qt);
 			for (String name: names)
 			{
 				String cTitle = name.trim().toLowerCase().replaceAll(" ", "_"); // canonical title
@@ -147,7 +147,7 @@ public class NameTypesMemory {
 		for (EmailDocument ed: allDocs)
 		{
 			String id = ed.getUniqueId();
-			List<String> names = archive.indexer.getNamesForDocId(id, qt);
+			List<String> names = archive.getNamesForDocId(id, qt);
 			List<Address> mentionedAddresses = ed.getToCCBCC();
 			Set<String> sentimentsForDoc = new LinkedHashSet<String>();
 			for (String sentiment :sentimentToDocs.keySet()){

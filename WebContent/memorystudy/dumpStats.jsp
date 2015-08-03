@@ -40,9 +40,10 @@ text-align:right;
 		return;
 	}	
 	String newline = "<br>";
-	
+
+    Indexer.IndexStats stats = study.archive.getIndexStats();
 	if (!csv) {
-	Pair<String, String> indexStats = Util.fieldsToHTMLTD(study.archive.indexer.stats, true);
+	Pair<String, String> indexStats = Util.fieldsToHTMLTD(stats, true);
 	Pair<String, String> addressBookStats = Util.fieldsToHTMLTD(study.archive.addressBook.getStats(), true);
 	Pair<String, String> studyStats = Util.fieldsToHTMLTD(study.stats, true);
 	Pair<String, String> archiveStats = Util.fieldsToHTMLTD(archive.stats, true);
@@ -57,7 +58,7 @@ text-align:right;
 	</table>
 	<%
 	} else {
-		Pair<String, String> indexStats = Util.fieldsToCSV(study.archive.indexer.stats, true);
+		Pair<String, String> indexStats = Util.fieldsToCSV(stats, true);
 		Pair<String, String> addressBookStats = Util.fieldsToCSV(study.archive.addressBook.getStats(), true);
 		Pair<String, String> studyStats = Util.fieldsToCSV(study.stats, true);
 		  Pair<String, String> archiveStats = Util.fieldsToCSV(archive.stats, true);

@@ -124,6 +124,20 @@ public class Archive implements Serializable {
         return indexer.links;
     }
 
+    public Set<Blob> blobsForQuery(String term){return indexer.blobsForQuery(term);}
+
+    /**
+     * @param q - query
+     * @param qt - query type
+     * @return number of hits for the query*/
+    public int countHitsForQuery(String q, Indexer.QueryType qt) {
+        return indexer.countHitsForQuery(q, qt);
+    }
+
+    public int countHitsForQuery(String q) {
+        return indexer.countHitsForQuery(q, Indexer.QueryType.FULL);
+    }
+
     public String getLoadedDirectoryInfo(){
         return indexer.directory.toString();
     }
@@ -150,6 +164,14 @@ public class Archive implements Serializable {
         public String toString() {
             return types.toString();
         }
+    }
+
+    public String getTitle(org.apache.lucene.document.Document doc){
+        return indexer.getTitle(doc);
+    }
+
+    public Indexer.IndexStats getIndexStats(){
+        return indexer.stats;
     }
 
     private static Log log = LogFactory.getLog(Archive.class);
@@ -1135,11 +1157,21 @@ public class Archive implements Serializable {
         return sb.toString();
     }
 
+    private Set<String> getNames(edu.stanford.muse.index.Document d, Indexer.QueryType qt)
+    {
+        try {
+            return new LinkedHashSet<String>(getNamesForDocId(d.getUniqueId(), qt));
+        } catch (Exception e) {
+            Util.print_exception(e, log);
+            return new LinkedHashSet<String>();
+        }
+    }
+
     //returns a map of names recognised by NER to frequency
     private Map<String, Integer> countNames() {
         Map<String, Integer> name_count = new LinkedHashMap<String, Integer>();
         for (Document d : getAllDocs()) {
-            Set<String> names = indexer.getNames(d, Indexer.QueryType.FULL);
+            Set<String> names = getNames(d, Indexer.QueryType.FULL);
             // log.info("Names = " + Util.joinSort(names, "|"));
             for (String n : names) {
                 n = n.trim();
@@ -1156,6 +1188,21 @@ public class Archive implements Serializable {
         // log.info("NameCount:" + e.getKey() + "|" + e.getValue());
         // }
         return name_count;
+    }
+
+    public List<String> getNamesForDocId(String id, Indexer.QueryType qt) throws IOException
+    {
+        // get this doc from the index first...
+        org.apache.lucene.document.Document docForThisId = indexer.getLDoc(id);
+        return indexer.getNamesForLuceneDoc(docForThisId, qt);
+    }
+
+    public List<List<String>> getAllNames(Collection<String> ids, Indexer.QueryType qt) throws IOException
+    {
+        List<List<String>> result = new ArrayList<>();
+        for (String id : ids)
+            result.add(getNamesForDocId(id, qt));
+        return result;
     }
 
     /**

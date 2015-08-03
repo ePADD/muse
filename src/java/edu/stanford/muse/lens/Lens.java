@@ -199,7 +199,7 @@ public class Lens {
 			int NAME_IN_ADDRESS_BOOK_WEIGHT = 100;
 			// look up term in 2 places -- AB and in the index
 			int hitsInAddressBook = IndexUtils.selectDocsByPersons(ab, allDocs, new String[]{term}).size();
-			int hitsInMessageContent = indexer.countHitsForQuery("\"" + term + "\""); // To check: does this include subject line also...
+			int hitsInMessageContent = archive.countHitsForQuery("\"" + term + "\""); // To check: does this include subject line also...
 			// weigh any docs for name in addressbook hugely more!
 			double termScore = hitsInAddressBook * NAME_IN_ADDRESS_BOOK_WEIGHT + hitsInMessageContent;
 			json.put ("indexScore", termScore);

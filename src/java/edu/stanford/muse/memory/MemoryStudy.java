@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import edu.stanford.muse.index.Indexer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -189,7 +190,8 @@ public class MemoryStudy implements Serializable{
 
 		// get the top names and name infos
 		Map<String, NameInfo> nameMap = NameTypes.computeNameMap(archive, allDocs);
-		archive.indexer.stats.nUniqueNamesOriginal = nameMap.size();
+        Indexer.IndexStats stats = archive.getIndexStats();
+		stats.nUniqueNamesOriginal = nameMap.size();
 		ArrayList<NameInfo> topNameInfos = new ArrayList<NameInfo>(nameMap.values());
 		Collections.sort(topNameInfos);
 		List<String> topNames = new ArrayList<String>();
@@ -425,8 +427,9 @@ public class MemoryStudy implements Serializable{
 	/** writes out csv stats as an encrypted file in RESULTS_DIR/<userid>/filename */
 	public void logStats(String filename)
 	{
+        Indexer.IndexStats stats = archive.getIndexStats();
 		StringBuilder statsLog = new StringBuilder();
-		Pair<String, String> indexStats = Util.fieldsToCSV(archive.indexer.stats, true);
+		Pair<String, String> indexStats = Util.fieldsToCSV(stats, true);
 		Pair<String, String> addressBookStats = Util.fieldsToCSV(archive.addressBook.getStats(), true);
 		Pair<String, String> studyStats = Util.fieldsToCSV(stats, true);
 		Pair<String, String> archiveStats = Util.fieldsToCSV(archive.stats, true);

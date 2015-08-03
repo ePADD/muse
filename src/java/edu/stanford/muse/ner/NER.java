@@ -297,7 +297,7 @@ public class NER implements StatusProvider {
             //TODO: @bug -> should also recognise names in the subject
 			String originalContent = archive.getContents(ldoc, true);
 			String content = archive.getContents(ldoc, false);
-            String title = li.getTitle(ldoc);
+            String title = archive.getTitle(ldoc);
 			//original content is substring of content;
             Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
             Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);

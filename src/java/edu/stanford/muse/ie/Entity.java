@@ -777,9 +777,8 @@ public class Entity extends EntityFeature {
 		Set<edu.stanford.muse.index.Document> docs = new HashSet<edu.stanford.muse.index.Document>();
 		for (String name : names) {
 			try {
-				Set<EmailDocument> ldocs = indexer.lookupDocs("\"" + name + "\"");
 				System.err.println("Looking up: " + name);
-				docs.addAll(ldocs);
+				//docs.addAll(ldocs);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

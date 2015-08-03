@@ -191,7 +191,7 @@ public class NameTypes {
 		for (EmailDocument ed : allDocs)
 		{
 			String id = ed.getUniqueId();
-			List<String> names = archive.indexer.getNamesForDocId(id, Indexer.QueryType.FULL);
+			List<String> names = archive.getNamesForDocId(id, Indexer.QueryType.FULL);
 			List<Address> mentionedAddresses = ed.getToCCBCC();
 			Set<String> sentimentsForDoc = new LinkedHashSet<String>();
 			for (String sentiment : sentimentToDocs.keySet()) {

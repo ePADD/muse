@@ -59,9 +59,8 @@ import java.util.*;
  * The index can be looked up with specific terms, and returns subdocs that
  * contain the term.
  *
- * Methods of one or more of this type are set public
- * 1. Those that deal with lucene document fields, like getNamesInDoc.
- * 2. Lookup methods that does the query on the indexer, I feel this class is a better place for them
+ * Ideally, no method/field should be set to visibility higher than protected in this class
+ * Any method/field in this class should be strictly accessible only through Archive class, not even from the same package.
  */
 public class Indexer implements StatusProvider, java.io.Serializable {
 
@@ -181,15 +180,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		public int					nUniqueNames			= 0, nUniqueNamesOriginal = 0;
 	}
 
-	public IndexStats			stats					= new IndexStats();
+	protected IndexStats			stats					= new IndexStats();
 
 	protected List<MultiDoc>	docClusters;
     // mapping of non-zero time cluster index to actual time cluster index
     Map<Integer, Integer>		nonEmptyTimeClusterMap	= new LinkedHashMap<Integer, Integer>();
 
 	List<Document>				docs					= new ArrayList<Document>();
-	List<Document>				subdocs					= new ArrayList<Document>();
-	public Summarizer			summarizer				= new Summarizer(this);
+	 public Summarizer			summarizer				= new Summarizer(this);
 
 	protected Indexer(IndexOptions io) throws IOException
 	{
@@ -219,7 +217,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		iwriter_blob = openIndexWriter(directory_blob);
 	}
 
-	public interface FilterFunctor {
+	protected interface FilterFunctor {
 		boolean filter(org.apache.lucene.document.Document doc); // can modify doc and return whether the result should be included
 	}
 
@@ -440,7 +438,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	long	currentJobStartTimeMillis	= 0L;
-	public int	currentJobDocsetSize, currentJobDocsProcessed, currentJobErrors;
+	private int	currentJobDocsetSize, currentJobDocsProcessed, currentJobErrors;
 
 	public void cancel()
 	{
@@ -503,16 +501,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * we're done indexing, optimize for storage, and prepare for queries, if
 	 * applicable
 	 */
-
-	public Set<Document> docsForQuery(String term, int cluster, QueryType qt)
-	{
-		return docsForQuery(term, cluster, 1, qt);
-	}
-
-	public Set<Document> docsForQuery(int cluster, QueryType qt)
-	{
-		return docsForQuery(null, cluster, 1, qt);
-	}
 
 	//	public String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, String[] searchTerms, Boolean isRegexSearch, Set<String> stemmedTermsToHighlight,
 	//			Set<String> unstemmedTermsToHighlight, Map<String, Map<String, Short>> entitiesWithId) throws Exception
@@ -1117,15 +1105,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return docIdToEmailDoc.get(id);
 	}
 
-	public List<List<String>> getAllNames(Collection<String> ids, QueryType qt) throws IOException
-	{
-		List<List<String>> result = new ArrayList<List<String>>();
-		for (String id : ids)
-			result.add(getNamesForDocId(id, qt));
-		return result;
-	}
-
-	public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, QueryType qt)
+	protected Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, QueryType qt)
 	{
 		//doesn't need term for preset regex
 		if (qt != QueryType.PRESET_REGEX && Util.nullOrEmpty(term))
@@ -1156,7 +1136,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-	public Set<Blob> blobsForQuery(String term)
+	protected Set<Blob> blobsForQuery(String term)
 	{
 		Set<Blob> result = new LinkedHashSet<Blob>();
 
@@ -1181,12 +1161,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-	public int countHitsForQuery(String q) {
-		return countHitsForQuery(q, QueryType.FULL);
-	}
-
-	public int countHitsForQuery(String q, QueryType qt)
-	{
+    protected int countHitsForQuery(String q, QueryType qt) {
 		if (Util.nullOrEmpty(q))
 			return 0;
 
@@ -1216,14 +1191,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return 0;
 	}
 
-	public List<String> getNamesForDocId(String id, QueryType qt) throws IOException
-	{
-		// get this doc from the index first...
-		org.apache.lucene.document.Document docForThisId = getLDoc(id);
-		return getNamesForLuceneDoc(docForThisId, qt);
-	}
-
-	private List<String> getNamesForLuceneDoc(org.apache.lucene.document.Document doc, QueryType qt)
+	protected List<String> getNamesForLuceneDoc(org.apache.lucene.document.Document doc, QueryType qt)
 	{
 		List<String> result = new ArrayList<String>();
 		if (doc == null)
@@ -1246,7 +1214,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return p.first;
     }
 
-    public Integer getTotalHits(String q, boolean isAttachments, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
+    protected Integer getTotalHits(String q, boolean isAttachments, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
         Pair<Collection<String>,Integer> p = null;
         if (!isAttachments)
             p = luceneLookupAsDocIdsWithTotalHits(q, 1, isearcher, qt, 1);
@@ -1413,19 +1381,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/** returns collection of docId's that hit, at least threshold times */
-	public Collection<String> lookupAsDocIds(String q, int threshold, IndexSearcher searcher, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	private Collection<String> lookupAsDocIds(String q, int threshold, IndexSearcher searcher, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		// get as documents, then convert to ids
 		return luceneLookupAsDocIds(q, threshold, searcher, qt);
 	}
 
-	public Set<EmailDocument> lookupDocs(String q) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
-	{
-		return lookupDocs(q, QueryType.FULL);
-	}
-
 	/** returns collection of EmailDocs that hit */
-	public Set<EmailDocument> lookupDocs(String q, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	private Set<EmailDocument> lookupDocs(String q, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		Collection<String> docIds = luceneLookupAsDocIds(q, 1, isearcher, qt);
 		Set<EmailDocument> result = new LinkedHashSet<EmailDocument>();
@@ -1634,18 +1597,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	protected Set<String> getNames(edu.stanford.muse.index.Document d, QueryType qt)
-	{
-		try {
-			return new LinkedHashSet<String>(getNamesForDocId(d.getUniqueId(), qt));
-		} catch (Exception e) {
-			Util.print_exception(e, log);
-			return new LinkedHashSet<String>();
-		}
-	}
-
-	public org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException
-	{
+	protected org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
 		return getLDoc(d.getUniqueId());
 	}
 
@@ -1694,22 +1646,9 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return getLDoc(docId, true);
 	}
 
-	private org.apache.lucene.document.Document getLDoc(String docId) throws IOException{
+	protected org.apache.lucene.document.Document getLDoc(String docId) throws IOException{
 		return getLDoc(docId, false);
 	}
-
-//	//TODO: This method is not consistent in args with the next method.
-//	public static List<String> getAllEntitiesInLuceneDoc(org.apache.lucene.document.Document doc) {
-//		List<String> result = new ArrayList<String>();
-//		String[] types = new String[] { "person", "organization", "location" };
-//		for (String type : types) {
-//			String field = doc.get(type);
-//			List<String> e = Util.tokenize(field, NAMES_FIELD_DELIMITER);
-//			if (e != null && e.size() > 0)
-//				result.addAll(e);
-//		}
-//		return result;
-//	}
 
 	protected String getContents(edu.stanford.muse.index.Document d, boolean originalContentOnly)
 	{
@@ -1725,7 +1664,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return getContents(doc, originalContentOnly);
 	}
 
-    public String getTitle(org.apache.lucene.document.Document doc){
+    protected String getTitle(org.apache.lucene.document.Document doc) {
         if(doc == null)
             return null;
         return doc.get("title");
@@ -1874,7 +1813,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		// look for sequence of 3-2-4
 		//q = "[0-9]{3}[ \\-]*[0-9]{2}[ \\-]*[0-9]{4}";
 		q = "123-45[ \\-]*[0-9]{4}";
-		System.out.println("hits for: " + q + " = " + li.docsForQuery(q, -1, QueryType.REGEX).size());
+		System.out.println("hits for: " + q + " = " + li.lookupDocs(q, QueryType.REGEX).size());
 
 		// look for sequence of 3-2-4
 		q = "first\\sbook";
