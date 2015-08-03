@@ -304,7 +304,7 @@ public class Lexicon implements Serializable {
 	public Set<String> getAvailableLanguages()	{ return Collections.unmodifiableSet(languageToLexicon.keySet()); }
 	
 	// identify all the langs in the docs, and the corresponding lexicons
-	private Collection<Lexicon1Lang> getRelevantLexicon1Langs(Indexer indexer, Collection<Document> docs)
+	private Collection<Lexicon1Lang> getRelevantLexicon1Langs(Collection<Document> docs)
 	{
 		if (docs == null)
 			return languageToLexicon.values(); // just return all lexicons
@@ -326,7 +326,7 @@ public class Lexicon implements Serializable {
     //TODO: It is possible to write a generic accumulator that accumulates sum over all the languages
     public Map<String, Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly){
         List<Document> docs = indexer.docs;
-        Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(indexer, docs);
+        Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(docs);
         Map<String, Integer> result = new LinkedHashMap<String, Integer>();
         Set<Document> docs_set = Util.castOrCloneAsSet(docs);
         // aggregate results for each lang into result
@@ -354,7 +354,7 @@ public class Lexicon implements Serializable {
 	 * @param captions (null/none = all) */
 	public Map<String, Set<Document>> getEmotions (Indexer indexer, Collection<Document> docs, boolean doNota, boolean originalContentOnly, String... captions)
 	{	
-		Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(indexer, docs);
+		Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(docs);
 		Map<String, Set<Document>> result = new LinkedHashMap<String, Set<Document>>();
 		Set<Document> docs_set = Util.castOrCloneAsSet(docs);
 		// aggregate results for each lang into result

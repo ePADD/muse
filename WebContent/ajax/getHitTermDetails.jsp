@@ -85,7 +85,7 @@ try {
 		if(allDocs == null){
 			   JSPHelper.log.warn("Alldocs object is null");
 		}
-		obj = Lens.detailsForTerm (term, pageScore, indexer, ab, baseURL, allDocs);
+		obj = Lens.detailsForTerm (term, pageScore, archive, ab, baseURL, allDocs);
 		end = System.currentTimeMillis();
 		//JSPHelper.log.info ("quick get hits " + (end - start) + " ms");
 	} catch (Exception e) {

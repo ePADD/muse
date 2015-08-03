@@ -267,7 +267,7 @@ public class EmailRenderer {
 						{
 							// d.hashCode() is just something to identify this
 							// page/message
-							page.append("<a rel=\"page" + d.hashCode() + "\" title=\"" + attachment.filename + "\" href=\"" + attachmentURL + "\">");
+							page.append("<a rel=\"page" + d.hashCode() + "\" title=\"" + attachment.filename + "\" class=\"" + (highlight?"highlight":"") + "\" href=\"" + attachmentURL + "\">");
 							page.append(leader + "href=\"" + attachmentURL + "\" src=\"" + thumbnailURL + "\"></img>\n");
 							page.append("<a>\n");
 						}

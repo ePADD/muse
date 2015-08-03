@@ -85,7 +85,7 @@ try {
 				session.setAttribute("lensPrefs", lensPrefs);
 			}
 		}
-		list = Lens.getHits (names, lensPrefs, indexer, ab, baseURL, allDocs);	
+		list = Lens.getHits (names, lensPrefs, archive, ab, baseURL, allDocs);
 		JSPHelper.log.info (list.size() + " hits after sorting");
 	}
 	JSONArray jsonArray = new JSONArray();

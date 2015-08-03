@@ -126,6 +126,23 @@ public class Archive implements Serializable {
 
     public Set<Blob> blobsForQuery(String term){return indexer.blobsForQuery(term);}
 
+    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, Indexer.QueryType qt){
+        return indexer.docsForQuery(term, cluster, threshold, qt);
+    }
+
+    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold) {
+        return indexer.docsForQuery(term, cluster, threshold, Indexer.QueryType.FULL);
+    }
+
+    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, Indexer.QueryType qt) {
+        return indexer.docsForQuery(term, cluster, -1, qt);
+    }
+
+    //query can be ommitted if the querytype is ORESET_REGEX
+    public Set<edu.stanford.muse.index.Document> docsForQuery(int cluster, Indexer.QueryType qt) {
+        return indexer.docsForQuery(null, cluster, -1, qt);
+    }
+
     /**
      * @param q - query
      * @param qt - query type
@@ -1155,6 +1172,10 @@ public class Archive implements Serializable {
         } else
             sb.append("Null indexer");
         return sb.toString();
+    }
+
+    public org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
+        return indexer.getDoc(d);
     }
 
     private Set<String> getNames(edu.stanford.muse.index.Document d, Indexer.QueryType qt)

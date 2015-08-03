@@ -220,7 +220,7 @@ public class Lens {
 	}
 	
 	/** gets details from index for the given term */
-	public static JSONObject detailsForTerm(String term, float pageScore, Indexer indexer, AddressBook ab, String baseURL, Collection<EmailDocument> allDocs) throws JSONException, IOException, GeneralSecurityException
+	public static JSONObject detailsForTerm(String term, float pageScore, Archive archive, AddressBook ab, String baseURL, Collection<EmailDocument> allDocs) throws JSONException, IOException, GeneralSecurityException
 	{
 		if (term.length() <= 2)
 			return null;
@@ -234,7 +234,7 @@ public class Lens {
 		int NAME_IN_ADDRESS_BOOK_WEIGHT = 100;
 		// look up term in 2 places -- AB and in the index
 		List<EmailDocument> docsForNameInAddressBook = (List) IndexUtils.selectDocsByPersonsAsList(ab, allDocs, new String[]{term});
-		List<EmailDocument> docsForTerm = (List) new ArrayList<Document>(indexer.docsForQuery("\"" + term + "\"", -1, Indexer.QueryType.FULL));
+		List<EmailDocument> docsForTerm = (List) new ArrayList<Document>(archive.docsForQuery("\"" + term + "\"", -1, Indexer.QueryType.FULL));
 		// weigh any docs for name in addressbook hugely more!
 		double termScore = docsForNameInAddressBook.size() * NAME_IN_ADDRESS_BOOK_WEIGHT + docsForTerm.size();
 		json.put ("indexScore", termScore);
@@ -310,15 +310,15 @@ public class Lens {
 	}
 	
 	/** looks up given names in the index and returns a json of scores. lensPrefs has the user's term preferences */
-	public static List<JSONObject> getHits(List<Pair<String, Float>> names, LensPrefs lensPrefs, Indexer indexer, AddressBook ab, String baseURL, Collection<EmailDocument> allDocs) throws JSONException, IOException, GeneralSecurityException
+	public static List<JSONObject> getHits(List<Pair<String, Float>> names, LensPrefs lensPrefs, Archive archive, AddressBook ab, String baseURL, Collection<EmailDocument> allDocs) throws JSONException, IOException, GeneralSecurityException
 	{
 		List<JSONObject> list = new ArrayList<JSONObject>();
 		
-		if (indexer == null)
+		if (archive == null)
 			return list;
 		for (Pair<String, Float> pair: names)
 		{
-			JSONObject json = detailsForTerm(pair.getFirst(), pair.getSecond(), indexer, ab, baseURL, allDocs);
+			JSONObject json = detailsForTerm(pair.getFirst(), pair.getSecond(), archive, ab, baseURL, allDocs);
 			if (json != null)
 				list.add (json);				
 		}

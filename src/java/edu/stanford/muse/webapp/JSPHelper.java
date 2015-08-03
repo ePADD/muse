@@ -915,8 +915,9 @@ public class JSPHelper {
 		if (Util.nullOrEmpty(allDocs))
 			return new Pair<Set<Document>, Set<Blob>>(new LinkedHashSet<Document>(), new LinkedHashSet<Blob>());
 
-		Indexer sentiIndexer, indexer;
-		indexer = sentiIndexer = archive.indexer;
+        //why are there two vars for sentiment and content indexer repns?
+//		Indexer sentiIndexer, indexer;
+//		indexer = sentiIndexer = archive.indexer;
 
 		// the raw request param val is in 8859 encoding, interpret the bytes as utf instead
 
@@ -948,10 +949,10 @@ public class JSPHelper {
 				else
 					qt = Indexer.QueryType.FULL;
 
-				docsForTerm = indexer.docsForQuery(term, cluster, qt);
+				docsForTerm = archive.docsForQuery(term, cluster, qt);
 				// also search blobs and merge result, but not for subject/corr. search
 				if (!"correspondents".equals(searchType) && !"subject".equals(searchType)) {
-					blobsForTerm = indexer.blobsForQuery(term);
+					blobsForTerm = archive.blobsForQuery(term);
 					Set<Document> blobDocsForTerm = (Set<Document>) EmailUtils.getDocsForAttachments((Collection) allDocs, blobsForTerm);
 					log.info("Blob docs for term: "+term+", "+blobDocsForTerm.size()+", blobs: "+blobsForTerm.size());
 					docsForTerm = Util.setUnion(docsForTerm, blobDocsForTerm);
@@ -962,7 +963,7 @@ public class JSPHelper {
 		if ("true".equals(request.getParameter("sensitive"))) {
 			Indexer.QueryType qt = null;
 			qt = Indexer.QueryType.PRESET_REGEX;
-			docsForRegex = indexer.docsForQuery(cluster, qt);
+			docsForRegex = archive.docsForQuery(cluster, qt);
 		}
 
 		if (foldersSet.size() > 0)
@@ -1029,7 +1030,7 @@ public class JSPHelper {
 		if (sentiments != null && sentiments.length > 0)
 		{
 			Lexicon lex = (Lexicon) getSessionAttribute(session, "lexicon");
-			docsForSentiments = lex.getDocsWithSentiments(sentiments, indexer, allDocs, cluster, request.getParameter("originalContentOnly") != null, sentiments);
+			docsForSentiments = lex.getDocsWithSentiments(sentiments, archive.indexer, allDocs, cluster, request.getParameter("originalContentOnly") != null, sentiments);
 		}
 
 		// if (!Util.nullOrEmpty(tag))
@@ -1038,7 +1039,7 @@ public class JSPHelper {
 			docsForTag = Document.selectDocByTag(allDocs, tag, true);
 		}
 		if (cluster >= 0) {
-			docsForCluster = new ArrayList<Document>(indexer.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
+			docsForCluster = new ArrayList<Document>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
 		}
 
 		if (persons != null || contact_ids != null)
@@ -1312,7 +1313,7 @@ public class JSPHelper {
 		if (!initialized)
 		{
 			if (cluster >= 0)
-				resultDocs = sentiIndexer.docsForQuery(null, cluster, Indexer.QueryType.FULL); // means all docs in cluster x
+				resultDocs = archive.docsForQuery(null, cluster, Indexer.QueryType.FULL); // means all docs in cluster x
 			else
 			{
 				resultDocs = new LinkedHashSet<Document>();
@@ -1368,7 +1369,7 @@ public class JSPHelper {
 				//assert(false);
 				return null;
 			} else {
-				blobsForTerm = indexer.blobsForQuery(term);
+				blobsForTerm = archive.blobsForQuery(term);
 			}
 		}
 
