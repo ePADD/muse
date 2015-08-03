@@ -547,6 +547,12 @@ public class Highlighter {
 
 				for (int k = prev_j; k <= span_j; k++) {
 					elt = elts.get(k);
+                    //dont annotate nested tags
+                    if(elt.parent().tag().getName().toLowerCase().equals("span")) {
+                        System.err.println("Skipping: "+elt.text());
+                        continue;
+                    }
+
 					String cc = elt.attr("class");
 					elt.attr("class", cc + " " + cssclass);
 					elt.attr("title", title);
@@ -613,6 +619,7 @@ public class Highlighter {
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             EmailDocument doc = archive.docForId("/Users/vihari/epadd-data/Bush small 2/Top of Outlook data file.mbox-64");
             String text = archive.getContents(doc, false);
+            text = "On Tue, Jun 24, 2014 at 11:56 AM, Aparna Vaidik <aparna.vaidik@ashoka.edu.in> wrote:\n";
 			Set<String> highlightTerms = new HashSet<String>();
 			highlightTerms.add("poetry");
 			highlightTerms.add("yours");
@@ -623,26 +630,27 @@ public class Highlighter {
             Set<String> hyperlinkTerms = new HashSet<String>();
 			hyperlinkTerms.add("Robert");
 			hyperlinkTerms.add("Hammond Guthrie");
-			String str = Highlighter.highlight(text, new String[] { "\"tanmai gopal\"", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" }, false, "<B >", "</B>", true);
+			String str = Highlighter.highlight(text, new String[] { "Aparna Vaidik", "\"tanmai gopal\"", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" }, false, "<B >", "</B>", true);
+            System.err.println("Highlight: "+str);
 
-			SimpleAnalyzer sn1 = new SimpleAnalyzer(Indexer.LUCENE_VERSION);
-			SimpleNumberAnalyzer sn2 = new SimpleNumberAnalyzer(Indexer.LUCENE_VERSION);
-			Analyzer ans[] = new Analyzer[] { sn1, sn2 };
-			try {
-				for (Analyzer analyzer : ans) {
-					TokenStream stream = analyzer.tokenStream(null, new StringReader(text));
-					CharTermAttribute cattr = stream.addAttribute(CharTermAttribute.class);
-					stream.reset();
-					while (stream.incrementToken()) {
-						System.out.println(cattr.toString());
-					}
-					stream.end();
-					stream.close();
-					System.out.println("--------------------------");
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+//			SimpleAnalyzer sn1 = new SimpleAnalyzer(Indexer.LUCENE_VERSION);
+//			SimpleNumberAnalyzer sn2 = new SimpleNumberAnalyzer(Indexer.LUCENE_VERSION);
+//			Analyzer ans[] = new Analyzer[] { sn1, sn2 };
+//			try {
+//				for (Analyzer analyzer : ans) {
+//					TokenStream stream = analyzer.tokenStream(null, new StringReader(text));
+//					CharTermAttribute cattr = stream.addAttribute(CharTermAttribute.class);
+//					stream.reset();
+//					while (stream.incrementToken()) {
+//						System.out.println(cattr.toString());
+//					}
+//					stream.end();
+//					stream.close();
+//					System.out.println("--------------------------");
+//				}
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
 
 			//			String docId = "/Users/viharipiratla/Library/Thunderbird/Profiles/t60o06sr.default/Mail/Local Folders/Sent messages-141";
 			//			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-vihari";

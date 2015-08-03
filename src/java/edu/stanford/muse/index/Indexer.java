@@ -62,6 +62,10 @@ import java.util.*;
  *
  * Ideally, no method/field should be set to visibility higher than protected in this class
  * Any method/field in this class should be strictly accessible only through Archive class, not even from the same package.
+ *
+ * there are two reasons for delegations of methods here
+ * 1. Some classes in the index package are so tightly using Indexer (For example Cluer, Lexicon, Summarizer), that to make them all go through archive is a lot of code changes
+ * 2. The method really belongs to this Class
  */
 public class Indexer implements StatusProvider, java.io.Serializable {
 
@@ -1106,6 +1110,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return docIdToEmailDoc.get(id);
 	}
 
+    protected Set<EmailDocument> convertToED(Set<Document> docs) {
+        if(docs == null)
+            return null;
+        Set<EmailDocument> eds = new LinkedHashSet<>();
+        for(Document doc: docs)
+            eds.add((EmailDocument)doc);
+        return eds;
+    }
+
 	protected Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, QueryType qt)
 	{
 		//doesn't need term for preset regex
@@ -1213,6 +1226,12 @@ public class Indexer implements StatusProvider, java.io.Serializable {
     private Collection<String> luceneLookupAsDocIds (String q, int threshold, IndexSearcher searcher, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
         Pair<Collection<String>,Integer> p = luceneLookupAsDocIdsWithTotalHits(q, threshold, searcher, qt, Config.MAX_DOCS_PER_QUERY);
         return p.first;
+    }
+
+    protected List<String> getNamesForDocId(String id, Indexer.QueryType qt) throws IOException{
+        // get this doc from the index first...
+        org.apache.lucene.document.Document docForThisId = getLDoc(id);
+        return getNamesForLuceneDoc(docForThisId, qt);
     }
 
     protected Integer getTotalHits(String q, boolean isAttachments, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
@@ -1382,14 +1401,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/** returns collection of docId's that hit, at least threshold times */
-	private Collection<String> lookupAsDocIds(String q, int threshold, IndexSearcher searcher, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	private Collection<String> lookupAsDocIds(String q, int threshold, IndexSearcher searcher, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		// get as documents, then convert to ids
 		return luceneLookupAsDocIds(q, threshold, searcher, qt);
 	}
 
 	/** returns collection of EmailDocs that hit */
-	private Set<EmailDocument> lookupDocs(String q, QueryType qt) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException
+	protected Set<EmailDocument> lookupDocs(String q, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
 		Collection<String> docIds = luceneLookupAsDocIds(q, 1, isearcher, qt);
 		Set<EmailDocument> result = new LinkedHashSet<EmailDocument>();

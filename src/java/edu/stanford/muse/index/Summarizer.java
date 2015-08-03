@@ -186,7 +186,7 @@ public class Summarizer implements java.io.Serializable {
 			if (tct.lookupTerm.indexOf("@") >= 0) // we don't allow any embedded @ in terms - because often this is a long email address
 				continue;
 
-			Collection<Document> docsForLookupTerm = (Collection) indexer.docsForQuery(tct.lookupTerm, clusterNum, Indexer.QueryType.FULL);
+			Collection<Document> docsForLookupTerm = (Collection) indexer.docsForQuery(tct.lookupTerm, clusterNum, -1, Indexer.QueryType.FULL);
 			boolean selectTerm = false;
 
 			// do any docs for this term have a count < MAX_TERMS_PER_DOC. if so selectTerm = true
@@ -296,7 +296,7 @@ public class Summarizer implements java.io.Serializable {
 				int color = tct.bestColor();
 				if (color != -1)
 				{
-					Set<Document> docsWithPhrase = indexer.docsForQuery(tct.lookupTerm, -1, Indexer.QueryType.FULL);
+					Set<Document> docsWithPhrase = indexer.docsForQuery(tct.lookupTerm, -1, -1, Indexer.QueryType.FULL);
 					docsCoveredByColors.addAll(docsWithPhrase);
 				}
 
@@ -376,8 +376,8 @@ public class Summarizer implements java.io.Serializable {
 	/** recompute top terms (n per month) based on the given docs 
 	 * @throws ClassNotFoundException 
 	 * @throws IOException 
-	 * @throws GeneralSecurityException 
-	 * @throws ParseException */
+	 * @throws GeneralSecurityException
+     * */
 	public synchronized List<Card> recomputeCards(Collection<edu.stanford.muse.index.Document> docs, int n, Set<String> tabooTerms) throws IOException, ClassNotFoundException, GeneralSecurityException
 	{
 		// reset state first

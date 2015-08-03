@@ -133,13 +133,13 @@ public class ArchiveCluer extends Cluer {
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
-		Set<EmailDocument> docs = archive.indexer.lookupDocs("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+		Set<Document> docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
 	    boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
 
 	    // find all messages with the answer in them (original content only)
-	    List<EmailDocument> docsWithAnswer = new ArrayList<EmailDocument>();
-		for (EmailDocument ed: docs)
-			docsWithAnswer.add(ed);
+	    List<Document> docsWithAnswer = new ArrayList<>();
+		for (Document doc: docs)
+			docsWithAnswer.add(doc);
 
 		// note: docsWithAnswer is not sorted by time
 		
@@ -147,8 +147,9 @@ public class ArchiveCluer extends Cluer {
 
 		// compute #threads with answer
 		Set<Long> set = new LinkedHashSet<Long>();
-		for (EmailDocument ed: docsWithAnswer)
+		for (Document doc: docsWithAnswer)
 		{
+            EmailDocument ed = (EmailDocument)doc;
 			if (ed.threadID != 0)
 				set.add(ed.threadID);
 		}
@@ -178,8 +179,9 @@ public class ArchiveCluer extends Cluer {
 		int N_DOCS_TO_CHECK_FOR_CLUES = 50;
 		int docCount = 0;
 		int nValidClueCandidates = 0;
-		for (EmailDocument ed: docsWithAnswer)
+		for (Document doc: docsWithAnswer)
 		{
+            EmailDocument ed = (EmailDocument)doc;
 			try {
 
 				if (filteredIds != null && !filteredIds.contains(ed.getUniqueId()))
@@ -198,7 +200,7 @@ public class ArchiveCluer extends Cluer {
 				// check the # of names in this doc, drastic penalty in doc score if 
 				// 1) there are a lot of names in it (typically a complete news article)
 				// 2) the answer does not occur as a name within it
-				List<String> namesInMessage = archive.indexer.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);			
+				List<String> namesInMessage = archive.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);
 				if (namesInMessage.size() > 10)
 					docSentimentScore /= namesInMessage.size(); 
 	
@@ -359,8 +361,8 @@ public class ArchiveCluer extends Cluer {
 				bestClue.clueStats.nThreadsWithAnswer = nThreadsWithAnswer;
 
 				Collections.sort(docsWithAnswer);
-				EmailDocument firstMentionDoc = docsWithAnswer.get(0);
-				EmailDocument lastMentionDoc = docsWithAnswer.get(docsWithAnswer.size()-1);
+				EmailDocument firstMentionDoc = (EmailDocument)docsWithAnswer.get(0);
+				EmailDocument lastMentionDoc = (EmailDocument)docsWithAnswer.get(docsWithAnswer.size()-1);
 				daysSinceFirstMention = (int) ((new Date().getTime() - firstMentionDoc.date.getTime())/EmailUtils.MILLIS_PER_DAY);
 				daysSinceLastMention = (int) ((new Date().getTime() - lastMentionDoc.date.getTime())/EmailUtils.MILLIS_PER_DAY);
 				bestClue.clueStats.daysSinceFirstMention = daysSinceFirstMention;
@@ -368,8 +370,10 @@ public class ArchiveCluer extends Cluer {
 				
 				// compute mention frequency for each of the last 12 months
 				List<Date> dates = new ArrayList<Date>();
-				for (EmailDocument ed: docs)
-					dates.add(ed.date);
+				for (Document doc: docs) {
+                    EmailDocument ed = (EmailDocument)doc;
+                    dates.add(ed.date);
+                }
 				 List<Integer> hist = EmailUtils.histogram(dates, new Date().getTime(), MemoryStudy.INTERVAL_MILLIS);
 
 				 // copy over histogram to dates, up to the first 12 intervals (hist might possibly have more?)

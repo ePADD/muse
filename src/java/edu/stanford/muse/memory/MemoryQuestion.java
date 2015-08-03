@@ -1,5 +1,6 @@
 package edu.stanford.muse.memory;
 
+import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.Util;
@@ -117,10 +118,10 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		if (!correctAnswer.toLowerCase().equals(cAnswer)) {
 			// do further lookups on user answer if its wrong
 			try {
-				Indexer li = study.archive.indexer;
-				Set<EmailDocument> docs = li.lookupDocs("\"" + cAnswer + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+				Archive archive = study.archive;
+				Set<EmailDocument> docs = archive.convertToED(archive.docsForQuery("\"" + cAnswer + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
 				stats.nMessagesWithUserAnswer = docs.size();
-				Set<EmailDocument> correctAnswerDocs = li.lookupDocs("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+				Set<EmailDocument> correctAnswerDocs = archive.convertToED(archive.docsForQuery("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
 			} catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }			

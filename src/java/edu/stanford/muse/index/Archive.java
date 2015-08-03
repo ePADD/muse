@@ -138,10 +138,19 @@ public class Archive implements Serializable {
         return indexer.docsForQuery(term, cluster, -1, qt);
     }
 
-    //query can be ommitted if the querytype is ORESET_REGEX
+    //query term can be ommitted if the querytype is PRESET_REGEX
     public Set<edu.stanford.muse.index.Document> docsForQuery(int cluster, Indexer.QueryType qt) {
         return indexer.docsForQuery(null, cluster, -1, qt);
     }
+
+    public Set<EmailDocument> convertToED(Set<Document> docs) {
+        return indexer.convertToED(docs);
+    }
+
+    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, Indexer.QueryType qt) {
+        return indexer.docsForQuery(term, -1, -1, qt);
+    }
+
 
     /**
      * @param q - query
@@ -1213,9 +1222,7 @@ public class Archive implements Serializable {
 
     public List<String> getNamesForDocId(String id, Indexer.QueryType qt) throws IOException
     {
-        // get this doc from the index first...
-        org.apache.lucene.document.Document docForThisId = indexer.getLDoc(id);
-        return indexer.getNamesForLuceneDoc(docForThisId, qt);
+        return indexer.getNamesForDocId(id, qt);
     }
 
     public List<List<String>> getAllNames(Collection<String> ids, Indexer.QueryType qt) throws IOException
