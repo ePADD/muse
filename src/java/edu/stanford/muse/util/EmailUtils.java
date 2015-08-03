@@ -17,10 +17,7 @@ package edu.stanford.muse.util;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
-import edu.stanford.muse.email.AddressBook;
-import edu.stanford.muse.email.CalendarUtil;
-import edu.stanford.muse.email.Contact;
-import edu.stanford.muse.email.EmailThread;
+import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
@@ -584,8 +581,10 @@ public class EmailUtils {
 			System.out.println(s + " lastname is: " + getLastName(s));
 	}
 
+	public static Pair<Date, Date> getFirstLast(Collection<? extends DatedDocument> allDocs) { return getFirstLast(allDocs, false); }
+
 	// compute the begin and end date of the corpus
-	public static Pair<Date, Date> getFirstLast(Collection<? extends DatedDocument> allDocs)
+	public static Pair<Date, Date> getFirstLast(Collection<? extends DatedDocument> allDocs, boolean ignoreInvalidDates)
 	{
 		// compute the begin and end date of the corpus
 		Date first = null;
@@ -598,10 +597,17 @@ public class EmailUtils {
 		{
 			Date d = ed.date;
 			if (d == null)
-			{ // drop this ed
+			{
+				// drop this $ed$
 				EmailUtils.log.warn("Warning: null date on email: " + ed.getHeader());
 				continue;
 			}
+
+			// ignore invalid date if asked
+			if (ignoreInvalidDates)
+				if (EmailFetcherThread.INVALID_DATE.equals(d))
+					continue;
+
 			if (first == null || d.before(first))
 				first = d;
 			if (last == null || d.after(last))
