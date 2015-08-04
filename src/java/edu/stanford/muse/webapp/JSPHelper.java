@@ -1050,12 +1050,10 @@ public class JSPHelper {
 
 		if (end_yy >= 1970 && yy >= 1970) // date range
 		{
-			persons = JSPHelper.convertRequestParamsToUTF8(persons);
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, end_yy, end_mm);
 		}
 		else if (yy >= 1970) // single month or year
 		{
-			persons = JSPHelper.convertRequestParamsToUTF8(persons);
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm);
 		}
 

@@ -35,61 +35,60 @@ import edu.stanford.muse.webapp.ModeConfig;
  * computed lazily and cached.
  */
 public class DataSet {
-	List<String>					pages	= new ArrayList<String>();
-	List<Document>					docs	= new ArrayList<Document>();
-	private Indexer					indexer;
-	private AddressBook				addressBook;
-	private GroupAssigner			groupAssigner;
-	String							datasetTitle;
-	Archive							archive;
-	BlobStore attachmentsStore;
-	Set<String>						highlightTermsStemmed;
-	Set<String>						highlightTermsUnstemmed;
-	Set<Blob>						highlightAttachments;
-	//String -> <dbId -> dbType>
-	Map<String, Map<String, Short>>	authorisedEntities;
+    List<String> pages = new ArrayList<String>();
+    List<Document> docs = new ArrayList<Document>();
+    private Indexer indexer;
+    private AddressBook addressBook;
+    private GroupAssigner groupAssigner;
+    String datasetTitle;
+    Archive archive;
+    BlobStore attachmentsStore;
+    Set<Integer> highlightContactIds;
+    Set<String> highlightTermsStemmed;
+    Set<String> highlightTermsUnstemmed;
+    Set<Blob> highlightAttachments;
+    //String -> <dbId -> dbType>
+    Map<String, Map<String, Short>> authorisedEntities;
 
-	public Boolean					sensitive;
+    public Boolean sensitive;
 
-	public DataSet(List<Document> docs, Archive archive, String datasetTitle, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
-			Set<Blob> highlightAttachments)
-	{
-		this.docs = docs;
-		this.archive = archive;
-		this.indexer = archive.indexer;
-		this.addressBook = archive.addressBook;
-		this.groupAssigner = archive.groupAssigner;
-		this.datasetTitle = datasetTitle;
-		this.attachmentsStore = archive.blobStore;
-		this.highlightTermsStemmed = highlightTermsStemmed;
-		this.highlightTermsUnstemmed = highlightTermsUnstemmed;
-		this.highlightAttachments = highlightAttachments;
-		for (@SuppressWarnings("unused")
-		Document d : docs)
-			pages.add(null);
-	}
+    public DataSet(List<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+                   Set<Blob> highlightAttachments) {
+        this.docs = docs;
+        this.archive = archive;
+        this.indexer = archive.indexer;
+        this.addressBook = archive.addressBook;
+        this.groupAssigner = archive.groupAssigner;
+        this.datasetTitle = datasetTitle;
+        this.attachmentsStore = archive.blobStore;
+        this.highlightContactIds = highlightContactIds;
+        this.highlightTermsStemmed = highlightTermsStemmed;
+        this.highlightTermsUnstemmed = highlightTermsUnstemmed;
+        this.highlightAttachments = highlightAttachments;
+        for (@SuppressWarnings("unused")
+        Document d : docs)
+            pages.add(null);
+    }
 
-	public void clear() {
-		pages.clear();
-		docs.clear();
-	}
+    public void clear() {
+        pages.clear();
+        docs.clear();
+    }
 
-	public int size() {
-		return docs.size();
-	}
+    public int size() {
+        return docs.size();
+    }
 
-	public List<Document> getDocs()
-	{
-		return docs;
-	}
+    public List<Document> getDocs() {
+        return docs;
+    }
 
-	public String toString() {
-		return "Data set with " + docs.size() + " documents";
-	}
+    public String toString() {
+        return "Data set with " + docs.size() + " documents";
+    }
 
-	/* returns html for doc i. Caches the html once computed. */
-	public String getPage(int i, boolean IA_links, boolean inFull, boolean debug)
-	{
+    /* returns html for doc i. Caches the html once computed. */
+    public String getPage(int i, boolean IA_links, boolean inFull, boolean debug) {
 //		if (authorisedEntities == null && !ModeConfig.isPublicMode()) {
 //			String filename = archive.baseDir + java.io.File.separator + edu.stanford.muse.Config.AUTHORITIES_FILENAME;
 //			try {
@@ -101,29 +100,29 @@ public class DataSet {
 //                JSPHelper.log.warn("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
 //			}
 //		}
-		try {
-			if (inFull || pages.get(i) == null) // inFull==true now means it
-												// previously was inFull==false
-												// and needs refresh
-			{
-				// we are assuming one one page per doc for now. (true for
-				// emails)
-				Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightTermsStemmed,
-						highlightTermsUnstemmed, highlightAttachments, authorisedEntities, IA_links, inFull, debug);
-				boolean overflow = htmlResut.second;
-				Util.ASSERT(!(inFull && overflow));
-				String pageContent = htmlResut.first
-						+
-						(overflow ? "<br><span class='nojog' style='color:#500050;text-decoration:underline;font-size:12px' onclick=\"$('#more_spinner').show(); $.fn.jog_page_reload("
-								+ i
-								+ ", '&inFull=1');\">More<img id='more_spinner' src='/muse/images/spinner3-greenie.gif' style='width:16px;display:none;'/></span><br/>\n"
-								: "");
-				pages.set(i, pageContent);
-			}
-			return pages.get(i);
-		} catch (Exception e) {
-			Util.print_exception(e);
-			return "Page unavailable";
-		}
-	}
+        try {
+            if (inFull || pages.get(i) == null) // inFull==true now means it
+            // previously was inFull==false
+            // and needs refresh
+            {
+                // we are assuming one one page per doc for now. (true for
+                // emails)
+                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightContactIds, highlightTermsStemmed,
+                        highlightTermsUnstemmed, highlightAttachments, authorisedEntities, IA_links, inFull, debug);
+                boolean overflow = htmlResut.second;
+                Util.ASSERT(!(inFull && overflow));
+                String pageContent = htmlResut.first
+                        +
+                        (overflow ? "<br><span class='nojog' style='color:#500050;text-decoration:underline;font-size:12px' onclick=\"$('#more_spinner').show(); $.fn.jog_page_reload("
+                                + i
+                                + ", '&inFull=1');\">More<img id='more_spinner' src='/muse/images/spinner3-greenie.gif' style='width:16px;display:none;'/></span><br/>\n"
+                                : "");
+                pages.set(i, pageContent);
+            }
+            return pages.get(i);
+        } catch (Exception e) {
+            Util.print_exception(e);
+            return "Page unavailable";
+        }
+    }
 }

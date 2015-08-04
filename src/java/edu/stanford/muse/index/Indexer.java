@@ -1110,12 +1110,16 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return docIdToEmailDoc.get(id);
 	}
 
+    /**
+     * @returns an empty set if the none of the docs are instance of EmailDocument*/
     protected Set<EmailDocument> convertToED(Set<Document> docs) {
         if(docs == null)
             return null;
         Set<EmailDocument> eds = new LinkedHashSet<>();
-        for(Document doc: docs)
-            eds.add((EmailDocument)doc);
+        for(Document doc: docs) {
+            if(doc instanceof EmailDocument)
+                eds.add((EmailDocument) doc);
+        }
         return eds;
     }
 

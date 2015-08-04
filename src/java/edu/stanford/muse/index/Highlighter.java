@@ -549,7 +549,6 @@ public class Highlighter {
 					elt = elts.get(k);
                     //dont annotate nested tags
                     if(elt.parent().tag().getName().toLowerCase().equals("span")) {
-                        System.err.println("Skipping: "+elt.text());
                         continue;
                     }
 

@@ -9,6 +9,7 @@ import javax.mail.internet.InternetAddress;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
+import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
@@ -28,7 +29,7 @@ public class EmailRenderer {
 	 * jog frame. indexer clusters are used to
 	 */
 	public static Pair<DataSet, String> pagesForDocuments(Collection<? extends Document> ds, Archive archive, String datasetTitle,
-			Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments)
+			Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments)
 			throws Exception
 	{
 		StringBuilder html = new StringBuilder();
@@ -113,7 +114,7 @@ public class EmailRenderer {
 			html.append("</div>\n"); // section
 		}
 
-		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments);
+		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments);
 
 		return new Pair<DataSet, String>(dataset, html.toString());
 	}
@@ -124,7 +125,7 @@ public class EmailRenderer {
 	 * 
 	 * @param addressBook
 	 */
-	public static String formatAddressesAsHTML(Address addrs[], AddressBook addressBook, int lineWrap)
+	public static String formatAddressesAsHTML(Address addrs[], AddressBook addressBook, int lineWrap, Set<String> highlightUnstemmed, Set<String> highlightNames, Set<String> highlightAddresses)
 	{
 		StringBuilder sb = new StringBuilder();
 		int outputLineLength = 0;
@@ -139,8 +140,25 @@ public class EmailRenderer {
 				Pair<String, String> p = JSPHelper.getNameAndURL((InternetAddress) a, addressBook);
 				String url = p.getSecond();
 				String str = ia.toString();
-				thisAddrStr = ("<a href=\"" + url + "\">" + Util.escapeHTML(str) + "</a>");
-				outputLineLength += str.length();
+                String addr = ia.getAddress();
+                String name = ia.getPersonal();
+                boolean match = false;
+                if(highlightUnstemmed!=null)
+                    if(highlightUnstemmed.contains(name))
+                        match = true;
+                if(!match && highlightNames!=null)
+                    if(highlightNames.contains(name))
+                        match = true;
+                if(!match && highlightAddresses!=null)
+                    if(highlightAddresses.contains(addr))
+                        match = true;
+
+                if(match)
+                    thisAddrStr = ("<a href=\"" + url + "\"><span class=\"hilitedTerm rounded\">" + Util.escapeHTML(str) + "</span></a>");
+                else
+                    thisAddrStr = ("<a href=\"" + url + "\">" + Util.escapeHTML(str) + "</a>");
+
+                outputLineLength += str.length();
 			}
 			else
 			{
@@ -172,7 +190,7 @@ public class EmailRenderer {
 	 * @throws Exception
 	 */
 	public static Pair<String, Boolean> htmlForDocument(Document d, Archive archive, String datasetTitle, BlobStore attachmentsStore,
-			Boolean sensitive, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
+			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
 			boolean IA_links, boolean inFull, boolean debug) throws Exception
 	{
 		JSPHelper.log.debug("Generating HTML for document: " + d);
@@ -187,7 +205,7 @@ public class EmailRenderer {
 			page.append("<div class=\"muse-doc\">\n");
 
 			page.append("<div class=\"muse-doc-header\">\n");
-			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightTermsStemmed, highlightTermsUnstemmed, IA_links, debug));
+			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, IA_links, debug));
 			page.append("</div>"); // muse-doc-header
 
 			/*
@@ -254,10 +272,10 @@ public class EmailRenderer {
 						// overflows the tn
 						if (s.length() > 25)
 							s = s.substring(0, 22) + "...";
-						page.append("&nbsp;" + s + "&nbsp;");
+                        boolean highlight = highlightAttachments != null && highlightAttachments.contains(attachment);
+                        page.append("&nbsp;" + "<span class='" + (highlight?"highlight":"") + "'>"+ s + "</span>&nbsp;");
 						page.append("<br/>");
 
-						boolean highlight = highlightAttachments != null && highlightAttachments.contains(attachment);
 						String css_class = "attachment-preview" + (is_image ? " img" : "") + (highlight ? " highlight" : "");
 						String leader = "<img class=\"" + css_class + "\" ";
 
@@ -327,11 +345,23 @@ public class EmailRenderer {
 	 *            on preset regexs
 	 * @throws IOException
 	 */
-	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
 			boolean IA_links, boolean debug) throws IOException
 	{
 		AddressBook addressBook = archive.addressBook;
 		GroupAssigner groupAssigner = archive.groupAssigner;
+        Set<String> contactNames = new LinkedHashSet<>();
+        Set<String> contactAddresses = new LinkedHashSet<>();
+        if(highlightContactIds!=null)
+            for(Integer hci: highlightContactIds) {
+                if(hci == null)
+                    continue;
+                Contact c = archive.addressBook.getContact(hci);
+                if(c==null)
+                    continue;
+                contactNames.addAll(c.names);
+                contactAddresses.addAll(c.emails);
+            }
 
 		StringBuilder result = new StringBuilder();
 		// header table
@@ -350,27 +380,27 @@ public class EmailRenderer {
 		Address[] addrs = ed.from;
 		if (addrs != null)
 		{
-			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH));
+			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses));
 		}
 
 		result.append(style + "To: </td><td align=\"left\">");
 		addrs = ed.to;
 		if (addrs != null)
-			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH) + "");
+			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
 
 		result.append("\n</td></tr>\n");
 
 		if (ed.cc != null && ed.cc.length > 0)
 		{
 			result.append(style + "Cc: </td><td align=\"left\">");
-			result.append(formatAddressesAsHTML(ed.cc, addressBook, TEXT_WRAP_WIDTH) + "");
+			result.append(formatAddressesAsHTML(ed.cc, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
 			result.append("\n</td></tr>\n");
 		}
 
 		if (ed.bcc != null && ed.bcc.length > 0)
 		{
 			result.append(style + "Bcc: </td><td align=\"left\">");
-			result.append(formatAddressesAsHTML(ed.bcc, addressBook, TEXT_WRAP_WIDTH) + "");
+			result.append(formatAddressesAsHTML(ed.bcc, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
 			result.append("\n</td></tr>\n");
 		}
 
