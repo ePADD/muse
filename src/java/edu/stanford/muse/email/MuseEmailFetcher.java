@@ -568,8 +568,10 @@ public class MuseEmailFetcher {
 		if (fetchers == null)
 			return result;
 
-		for (MTEmailFetcher fetcher: fetchers)
-			result.addAll(fetcher.getDataErrors());
+		for (MTEmailFetcher fetcher: fetchers) {
+            if(fetcher!=null && fetcher.getDataErrors()!=null && result!=null)
+                result.addAll(fetcher.getDataErrors());
+        }
 		return result;
 	}
 

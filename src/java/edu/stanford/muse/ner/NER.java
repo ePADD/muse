@@ -498,7 +498,7 @@ public class NER implements StatusProvider {
 //            System.err.println();
 //        }
         try {
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-jeb";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
         } catch(Exception e){
             e.printStackTrace();

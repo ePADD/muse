@@ -748,6 +748,26 @@ public class EmailUtils {
 		return result;
 	}
 
+    public static Set<Document> getDocsForEAs(Collection<Document> docs, Set<String> eAs){
+        Set<Document> mdocs = new LinkedHashSet<>();
+        if(eAs == null)
+            return mdocs;
+        for(Document doc: docs){
+            if(!(doc instanceof EmailDocument))
+                continue;
+            EmailDocument ed = (EmailDocument) doc;
+            List<String> addrs = ed.getAllAddrs();
+            for(String addr: addrs) {
+                if(eAs.contains(addr)) {
+                    mdocs.add(ed);
+                    break;
+                }
+            }
+        }
+
+        return mdocs;
+    }
+
 	/**
 	 * little util method get an array of all own addrs, given 1 addr and some alternate ones.
 	 * alternateaddrs could have multiple addrs, separated by whitespace or commas
