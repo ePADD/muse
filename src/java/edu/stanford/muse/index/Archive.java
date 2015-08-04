@@ -258,31 +258,16 @@ public class Archive implements Serializable {
     public AddressBook addressBook;
     public GroupAssigner groupAssigner;
     transient private Map<String, Lexicon> lexiconMap = null;
-    private List<Document> allDocs;                                                    // this
-    // is
-    // the
-    // equivalent
-    // of
-    // fullEmailDocs
-    // earlier
+    private List<Document> allDocs;                                                    // this is the equivalent of fullEmailDocs earlier
     transient private Set<Document> allDocsAsSet = null;
-    private Set<FolderInfo> fetchedFolderInfos = new LinkedHashSet<FolderInfo>();    // keep
-    // this
-    // private
-    // since
-    // its
-    // updated
-    // in
-    // a
-    // controlled
-    // way
+    private Set<FolderInfo> fetchedFolderInfos = new LinkedHashSet<FolderInfo>();    // keep this private since its updated in a controlled way
     transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
     public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();
     Map<String, NameInfo> nameMap;
 
     public ProcessingMetadata processingMetadata = new ProcessingMetadata();
     public List<String> allAccessions = new ArrayList<String>();
-    public List<MuseEmailFetcher.FetchStats> allStats = new ArrayList<MuseEmailFetcher.FetchStats>(); // multiple stats because usually there is 1 per import
+    public List<FetchStats> allStats = new ArrayList<FetchStats>(); // multiple stats because usually there is 1 per import
 
 	/*
 	 * baseDir is used loosely... it may not be fully reliable, e.g. when the
@@ -1367,14 +1352,14 @@ public class Archive implements Serializable {
         return Collections.unmodifiableSet(lexiconMap.keySet());
     }
 
-    public void addStats(MuseEmailFetcher.FetchStats as) {
+    public void addStats(FetchStats as) {
         allStats.add(as);
     }
 
     public Collection<String> getDataErrors() {
         Collection<String> result = new LinkedHashSet<String>();
 
-        for (MuseEmailFetcher.FetchStats as : allStats) {
+        for (FetchStats as : allStats) {
             Collection<String> asErrors = as.dataErrors;
             if (asErrors != null)
                 result.addAll(asErrors);

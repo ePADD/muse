@@ -484,18 +484,24 @@ public class NER implements StatusProvider {
 		}
 	}
 
-    public static void main(String[] args){
-        String cacheDir = "/Users/vihari/sandbox/cache";
-        String mwl = "/Users/vihari/sandbox/SVMModel-full.ser";
-        SVMModelTrainer.TrainingParam params = SVMModelTrainer.TrainingParam.initialize(cacheDir, mwl);
-        NERModel model = trainArchiveIndependentModel(params);
-        String text = "Hi, My name is Vihari. I work with Amuse Labs. I code in Macbook Pro, a product of Apple";
-        Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
-        for(Short type: ret.getFirst().keySet()) {
-            System.err.print("Type: " + type);
-            for (String str : ret.getFirst().get(type))
-                System.err.print(":::" + str + ":::");
-            System.err.println();
+    public static void main(String[] args) {
+//        String cacheDir = "/Users/vihari/sandbox/cache";
+//        String mwl = "/Users/vihari/sandbox/SVMModel-full.ser";
+//        SVMModelTrainer.TrainingParam params = SVMModelTrainer.TrainingParam.initialize(cacheDir, mwl);
+//        NERModel model = trainArchiveIndependentModel(params);
+//        String text = "Hi, My name is Vihari. I work with Amuse Labs. I code in Macbook Pro, a product of Apple";
+//        Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
+//        for(Short type: ret.getFirst().keySet()) {
+//            System.err.print("Type: " + type);
+//            for (String str : ret.getFirst().get(type))
+//                System.err.print(":::" + str + ":::");
+//            System.err.println();
+//        }
+        try {
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+        } catch(Exception e){
+            e.printStackTrace();
         }
     }
 }
