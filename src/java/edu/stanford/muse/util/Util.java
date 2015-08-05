@@ -2668,6 +2668,20 @@ public class Util
 		// return Sets.intersection(castOrCloneAsSet(s1), castOrCloneAsSet(s2));
 	}
 
+    //retains the indices in the first list
+    //null is treated as all
+    public static <E> List<E> listIntersection(Collection<E> list1, Collection<E> list2)
+    {
+        if(list1 == null && list2 == null) return null;
+        if(list1 == null)
+            return new ArrayList<>(list2);
+        if(list2 == null)
+            return new ArrayList<>(list1);
+        List<E> cloneList = new ArrayList<E>(list1);
+        cloneList.retainAll(list2);
+        return cloneList;
+    }
+
 	/**
 	 * Returns a union as Set
 	 */
@@ -2680,6 +2694,19 @@ public class Util
 		return result;
 		// return Sets.union(castOrCloneAsSet(s1), castOrCloneAsSet(s2));
 	}
+
+    public static <E> List<E> listUnion(Collection<E> s1, Collection<E> s2){
+        if(s1 == null && s2 == null)
+            return null;
+        if(s1 == null)
+            return new ArrayList<>(s2);
+        if(s2 == null)
+            return new ArrayList<>(s1);
+
+        List<E> result = new ArrayList<>(s1);
+        result.addAll(s2);
+        return result;
+    }
 
 	/**
 	 * Returns an intersection as Set, treating null as universal. Returns null
@@ -2706,6 +2733,15 @@ public class Util
 			return castOrCloneAsSet(s1);
 		return setUnion(s1, s2);
 	}
+
+    public static <E> List<E> listUnionNullIsEmpty(Collection<E> s1, Collection<E> s2)
+    {
+        if (s1 == null)
+            return new ArrayList<E>(s2);
+        if (s2 == null)
+            return new ArrayList<E>(s1);
+        return listUnion(s1, s2);
+    }
 
     /**Cleans names by
      * removing any return chars, replaces consecutive spaces with single space, removes HTML tags,

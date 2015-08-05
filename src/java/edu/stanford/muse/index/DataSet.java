@@ -15,10 +15,7 @@
  */
 package edu.stanford.muse.index;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.Map;
+import java.util.*;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
@@ -52,9 +49,14 @@ public class DataSet {
 
     public Boolean sensitive;
 
-    public DataSet(List<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
-                   Set<Blob> highlightAttachments) {
-        this.docs = docs;
+    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+                   Collection<Blob> highlightAttachments) {
+        if(docs!=null) {
+            //calling assigning new ArrayList<>(docs) is calling sort on docs by default
+            this.docs = new ArrayList<>();
+            for(Document d: docs)
+                this.docs.add(d);
+        }
         this.archive = archive;
         this.indexer = archive.indexer;
         this.addressBook = archive.addressBook;
@@ -64,7 +66,8 @@ public class DataSet {
         this.highlightContactIds = highlightContactIds;
         this.highlightTermsStemmed = highlightTermsStemmed;
         this.highlightTermsUnstemmed = highlightTermsUnstemmed;
-        this.highlightAttachments = highlightAttachments;
+        if(highlightAttachments!=null)
+            this.highlightAttachments = new LinkedHashSet<>(highlightAttachments);
         for (@SuppressWarnings("unused")
         Document d : docs)
             pages.add(null);

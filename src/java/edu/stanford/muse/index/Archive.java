@@ -126,29 +126,47 @@ public class Archive implements Serializable {
 
     public Set<Blob> blobsForQuery(String term){return indexer.blobsForQuery(term);}
 
-    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, Indexer.QueryType qt){
-        return indexer.docsForQuery(term, cluster, threshold, qt);
+    public Collection<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, Indexer.QueryType qt){
+        Indexer.QueryOptions options = new Indexer.QueryOptions();
+        options.setQueryType(qt);
+        options.setCluster(cluster);
+        options.setThreshold(threshold);
+        return indexer.docsForQuery(term, options);
     }
 
-    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold) {
-        return indexer.docsForQuery(term, cluster, threshold, Indexer.QueryType.FULL);
+    public Collection<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold) {
+        Indexer.QueryOptions options = new Indexer.QueryOptions();
+        options.setCluster(cluster);
+        options.setThreshold(threshold);
+        return indexer.docsForQuery(term, options);
     }
 
-    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, Indexer.QueryType qt) {
-        return indexer.docsForQuery(term, cluster, -1, qt);
+    public Collection<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, Indexer.QueryType qt) {
+        Indexer.QueryOptions options = new Indexer.QueryOptions();
+        options.setCluster(cluster);
+        return indexer.docsForQuery(term, options);
     }
 
     //query term can be ommitted if the querytype is PRESET_REGEX
-    public Set<edu.stanford.muse.index.Document> docsForQuery(int cluster, Indexer.QueryType qt) {
-        return indexer.docsForQuery(null, cluster, -1, qt);
+    public Collection<Document> docsForQuery(int cluster, Indexer.QueryType qt) {
+        Indexer.QueryOptions options = new Indexer.QueryOptions();
+        options.setCluster(cluster);
+        options.setQueryType(qt);
+        return indexer.docsForQuery(null, options);
     }
 
-    public Set<EmailDocument> convertToED(Set<Document> docs) {
+    public Collection<EmailDocument> convertToED(Collection<Document> docs) {
         return indexer.convertToED(docs);
     }
 
-    public Set<edu.stanford.muse.index.Document> docsForQuery(String term, Indexer.QueryType qt) {
-        return indexer.docsForQuery(term, -1, -1, qt);
+    public Collection<edu.stanford.muse.index.Document> docsForQuery(String term, Indexer.QueryType qt) {
+        Indexer.QueryOptions options = new Indexer.QueryOptions();
+        options.setQueryType(qt);
+        return indexer.docsForQuery(term, options);
+    }
+
+    public Collection<Document> docsForQuery(String term, Indexer.QueryOptions options){
+        return indexer.docsForQuery(term, options);
     }
 
 
@@ -529,7 +547,7 @@ public class Archive implements Serializable {
         return indexer;
     }
 
-    public Map<String, Set<Document>> getSentimentMap(Lexicon lex, boolean originalContentOnly, String... captions) {
+    public Map<String, Collection<Document>> getSentimentMap(Lexicon lex, boolean originalContentOnly, String... captions) {
         return lex.getEmotions(indexer, getAllDocsAsSet(), false /* doNota */, originalContentOnly, captions);
     }
 
@@ -1105,17 +1123,20 @@ public class Archive implements Serializable {
         return new Pair<StringBuilder, Boolean>(sb, overflow);
     }
 
-    /* break up docs into clusters, based on existing docClusters */
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs) {
+        return clustersForDocs(docs, MultiDoc.ClusteringType.MONTHLY);
+    }
+    /* break up docs into clusters, based on existing docClusters
+    * Note: Clustering Type MONTHLY and YTEARLY not supported*/
+    public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs, MultiDoc.ClusteringType ct) {
         //TODO: whats the right thing to do when docClusters is null?
-        if (docClusters == null) {
+        if (docClusters == null || (ct == MultiDoc.ClusteringType.NONE)) {
             List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
-            new_mDocs.add(null);
+            MultiDoc md = new MultiDoc(0,"all");
             for (Document d : docs) {
-                MultiDoc new_mDoc = new MultiDoc(-1, "dummy");
-                new_mDoc.add(d);
-                new_mDocs.set(0, new_mDoc);
+                md.add(d);
             }
+            new_mDocs.add(md);
             return new_mDocs;
         }
 

@@ -183,11 +183,7 @@ public class NameTypes {
 		if (allDocs == null)
 			allDocs = (List) archive.getAllDocs();
 		// compute name -> nameInfo
-		Map<String, Set<Document>> sentimentToDocs = archive.getSentimentMap(lex, true /*
-																						 * original
-																						 * content
-																						 * only
-																						 */);
+		Map<String, Collection<Document>> sentimentToDocs = archive.getSentimentMap(lex, true /** original content only*/);
 		for (EmailDocument ed : allDocs)
 		{
 			String id = ed.getUniqueId();

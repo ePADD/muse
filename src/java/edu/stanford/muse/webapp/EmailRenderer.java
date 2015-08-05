@@ -24,12 +24,21 @@ public class EmailRenderer {
 												// around too soon. 120 is too
 												// much with courier font.
 
+    public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
+                                                          Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments)
+            throws Exception{
+        return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
+    }
+
 	/*
 	 * returns pages and html for a collection of docs, which can be put into a
 	 * jog frame. indexer clusters are used to
+	 *
+	 * Changed the first arg type from: Collection<? extends EmailDocument> to Collection<Document>, as we get Collection<Document> in browse page or from docsforquery, its a hassle to make them all return EmailDocument
+	 * especially when no other document type is used anywhere
 	 */
-	public static Pair<DataSet, String> pagesForDocuments(Collection<? extends Document> ds, Archive archive, String datasetTitle,
-			Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments)
+	public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
+			Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments, MultiDoc.ClusteringType coptions)
 			throws Exception
 	{
 		StringBuilder html = new StringBuilder();
@@ -39,12 +48,12 @@ public class EmailRenderer {
 		// need clusters which map to sections in the browsing interface
 		List<MultiDoc> clusters;
 
-		// indexer may or may not have indexed all the docs in ds
+        // indexer may or may not have indexed all the docs in ds
 		// if it has, use its clustering (could be yearly or monthly or category
 		// wise)
 		// if (indexer != null && indexer.clustersIncludeAllDocs(ds))
 		// if (indexer != null)
-		clusters = archive.clustersForDocs(ds);
+		clusters = archive.clustersForDocs(ds, coptions);
 		/*
 		 * else { // categorize by month if the docs have dates if
 		 * (EmailUtils.allDocsAreDatedDocs(ds)) clusters =
@@ -53,7 +62,7 @@ public class EmailRenderer {
 		 * CategoryDocument.clustersDocsByCategoryName((Collection) ds); }
 		 */
 
-		List<Document> datasetDocs = new ArrayList<Document>();
+		List<Document> datasetDocs = new ArrayList<>();
 
 		// we build up a hierarchy of <section, document, page>
 		for (MultiDoc md : clusters)

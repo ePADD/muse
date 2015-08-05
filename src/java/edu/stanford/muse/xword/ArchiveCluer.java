@@ -51,7 +51,7 @@ public class ArchiveCluer extends Cluer {
 
 	// note: sentimentToDocs captures all docs in index, not just the filterDocIds
 	// createClue will first filter 
-	public Map<String, Set<Document>> sentimentToDocs = new LinkedHashMap<String, Set<Document>>();
+	public Map<String, Collection<Document>> sentimentToDocs = new LinkedHashMap<>();
 
 	// https://stacks.stanford.edu/file/druid:fm335ct1355/Dissertation_Schnoebelen_final_8-29-12-augmented.pdf page ~199
 	private static String[] smileys = new String[]{":D", ":-D", ":)", "=D", "=]", "=)", "(:", ":')", ":]", ":-)", ";)", ";D", ";-)", ";P", "=P", ":P", ":-P", "=(", ":(", ":-(", ":'(", ":O"}; // don't have "XD".. could be noisy?. ideally should make sure they are not followed by a letter
@@ -71,7 +71,7 @@ public class ArchiveCluer extends Cluer {
 			// store only the "good sentiments" in the archive's stats because we want the same stats per user
 			for (String sentiment: goodSentiments)
 			{
-				Set<Document> docs = sentimentToDocs.get(sentiment);
+				Collection<Document> docs = sentimentToDocs.get(sentiment);
 				int count = (docs == null) ? 0 : docs.size();
 				archiveSentimentCounts.put(sentiment, count);
 			}
@@ -110,7 +110,7 @@ public class ArchiveCluer extends Cluer {
 		// scoring: big boost for goodSentiments, small boost for other sentiments
 		for (String sentiment: sentimentToDocs.keySet())
 		{
-			Set<Document> set = sentimentToDocs.get(sentiment);
+			Collection<Document> set = sentimentToDocs.get(sentiment);
 			if (set != null && set.contains(d))
 			{
 				if (goodSentiments.contains(sentiment)) {
@@ -133,7 +133,7 @@ public class ArchiveCluer extends Cluer {
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
-		Set<Document> docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+		Collection<Document> docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
 	    boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
 
 	    // find all messages with the answer in them (original content only)

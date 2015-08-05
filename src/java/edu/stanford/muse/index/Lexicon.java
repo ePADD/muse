@@ -175,9 +175,9 @@ public class Lexicon implements Serializable {
          * vihari
          * This is a weird name for a method that returns documents with emotions instead of emotions.
 		 */
-		public Map<String, Set<Document>> getEmotions (Indexer indexer, Collection<Document> docs, boolean originalContentOnly, String... captions)
+		public Map<String, Collection<Document>> getEmotions (Indexer indexer, Collection<Document> docs, boolean originalContentOnly, String... captions)
 		{
-			Map<String, Set<Document>> result = new LinkedHashMap<String, Set<Document>>();
+			Map<String, Collection<Document>> result = new LinkedHashMap<String, Collection<Document>>();
 			Set<Document> docs_set = Util.castOrCloneAsSet(docs);
 //			for (String[] emotion: emotionsData)
 			String[] selected_captions = captions.length > 0 ? captions : captionToExpandedQuery.keySet().toArray(new String[0]);
@@ -192,7 +192,10 @@ public class Lexicon implements Serializable {
 				// query is simply word1|word2|word3 etc for that sentiment
 				// the -1 indicates that we want all docs in the indexer that match the query
 				int threshold = 1;
-				Set<Document> docsForCaption = indexer.docsForQuery(query, -1, threshold, Indexer.QueryType.ORIGINAL);
+                Indexer.QueryOptions options = new Indexer.QueryOptions();
+                options.setThreshold(threshold);
+                options.setQueryType(Indexer.QueryType.ORIGINAL);
+				Collection<Document> docsForCaption = indexer.docsForQuery(query, options);
 				/*
 				log.info (docsForCaption.size() + " before");
 				threshold = 2;
@@ -203,7 +206,7 @@ public class Lexicon implements Serializable {
 				// if @param docs is present, retain only those docs that match, otherwise retain all
 				if (!Util.nullOrEmpty(docs_set))
 					//docsForCaption.retainAll(docs_set);
-					docsForCaption = Util.setIntersection(docsForCaption, docs_set);
+					docsForCaption = Util.listIntersection(docsForCaption, docs_set);
 
 				// put it in the result only if at least 1 doc matches
 				if (docsForCaption.size() > 0)
@@ -214,7 +217,7 @@ public class Lexicon implements Serializable {
 		
 		/** NOTA = None of the above. like getEmotions but also returns a category called None for docs that don't match any sentiment.
 		 */
-		public Map<String, Set<Document>> getEmotionsWithNOTA (Indexer indexer, Collection<Document> docs, boolean originalContentOnly)
+		public Map<String, Collection<Document>> getEmotionsWithNOTA (Indexer indexer, Collection<Document> docs, boolean originalContentOnly)
 		{
 			Collection<Document> allDocs;
 			if (docs == null)
@@ -222,7 +225,7 @@ public class Lexicon implements Serializable {
 			else
 				allDocs = docs;
 			
-			Map<String, Set<Document>> map = getEmotions (indexer, docs, originalContentOnly);
+			Map<String, Collection<Document>> map = getEmotions (indexer, docs, originalContentOnly);
 
 			// collects docs with any sentiments
 			Set<Document> docsWithAnySentiment = new LinkedHashSet<Document>();
@@ -247,7 +250,7 @@ public class Lexicon implements Serializable {
 			else
 				allDocs = docs;
 			
-			Map<String, Set<Document>> map = getEmotions (indexer, docs, originalContentOnly);
+			Map<String, Collection<Document>> map = getEmotions (indexer, docs, originalContentOnly);
 
 			// collects docs with any sentiments
 			Set<Document> docsWithAnySentiment = new LinkedHashSet<Document>();
@@ -352,22 +355,22 @@ public class Lexicon implements Serializable {
 	
 	/** Core sentiment detection method. doNota = none of the above 
 	 * @param captions (null/none = all) */
-	public Map<String, Set<Document>> getEmotions (Indexer indexer, Collection<Document> docs, boolean doNota, boolean originalContentOnly, String... captions)
+	public Map<String, Collection<Document>> getEmotions (Indexer indexer, Collection<Document> docs, boolean doNota, boolean originalContentOnly, String... captions)
 	{	
 		Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(docs);
-		Map<String, Set<Document>> result = new LinkedHashMap<String, Set<Document>>();
+		Map<String, Collection<Document>> result = new LinkedHashMap<>();
 		Set<Document> docs_set = Util.castOrCloneAsSet(docs);
 		// aggregate results for each lang into result
 		for (Lexicon1Lang lex: lexicons)
 		{
-			Map<String, Set<Document>> resultsForThisLang = (doNota? lex.getEmotionsWithNOTA(indexer, docs_set, originalContentOnly) : lex.getEmotions(indexer, docs_set, originalContentOnly, captions));
+			Map<String, Collection<Document>> resultsForThisLang = (doNota? lex.getEmotionsWithNOTA(indexer, docs_set, originalContentOnly) : lex.getEmotions(indexer, docs_set, originalContentOnly, captions));
 			if (resultsForThisLang == null)
 				continue;
 
 			for (String caption: resultsForThisLang.keySet())
 			{
-				Set<Document> resultDocsThisLang = resultsForThisLang.get(caption);
-				Set<Document> resultDocs = result.get(caption);
+				Collection<Document> resultDocsThisLang = resultsForThisLang.get(caption);
+				Collection<Document> resultDocs = result.get(caption);
 				// if caption doesn't exist already, create a new entry, or else add to the existing set of docs that match this caption
 				if (resultDocs == null)
 					result.put(caption, resultDocsThisLang);
@@ -383,8 +386,8 @@ public class Lexicon implements Serializable {
 	{
 		Set<Document> result = new LinkedHashSet<Document>();
 		// return all docs that have at least one sentiment
-		Map<String, Set<Document>> map = getEmotions(indexer, docs, originalContentOnly, false);
-		for (Set<Document> values: map.values())
+		Map<String, Collection<Document>> map = getEmotions(indexer, docs, originalContentOnly, false);
+		for (Collection<Document> values: map.values())
 			result.addAll(values);
 		return result;
 	}
@@ -400,9 +403,9 @@ public class Lexicon implements Serializable {
 	 * special cases: sentiments can be an array of length 1 and be "None", in which case all documents with no sentiments are returned.
 	 * special cases: sentiments can be an array of length 1 and be "all", in which case all documents with any sentiments are returned. 
 	 * @param captions */
-	public Set<Document> getDocsWithSentiments (String sentiments[], Indexer indexer, Collection<Document> docs, int cluster, boolean originalContentOnly, String... captions)
+	public Collection<Document> getDocsWithSentiments (String sentiments[], Indexer indexer, Collection<Document> docs, int cluster, boolean originalContentOnly, String... captions)
 	{
-		Set<Document> result = null;
+		Collection<Document> result = null;
 		// note: multiple sentiments are possible, they are ANDED
 		if (sentiments == null || sentiments.length == 0)
 			return result;
@@ -413,10 +416,10 @@ public class Lexicon implements Serializable {
 
 		// note: we'll pass in null for docs, and intersect with the given set of docs later
 		// otherwise we'd just be doing it again and again for each category and lexer
-		Map<String, Set<Document>> map = getEmotions(indexer, null, false, originalContentOnly, captions);
+		Map<String, Collection<Document>> map = getEmotions(indexer, null, false, originalContentOnly, captions);
 		for (int i = 0; i < sentiments.length; i++)
 		{
-			Set<Document> temp1 = ("None".equalsIgnoreCase(sentiments[i])) ? getDocsWithNoEmotions(indexer, docs_set, originalContentOnly) : map.get(sentiments[i]);
+			Collection<Document> temp1 = ("None".equalsIgnoreCase(sentiments[i])) ? getDocsWithNoEmotions(indexer, docs_set, originalContentOnly) : map.get(sentiments[i]);
 			if (temp1 == null)
 			{    // no matches, just return
 				result = new LinkedHashSet<Document>();

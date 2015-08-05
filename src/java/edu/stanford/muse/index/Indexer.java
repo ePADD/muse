@@ -185,6 +185,43 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		public int					nUniqueNames			= 0, nUniqueNamesOriginal = 0;
 	}
 
+    public enum SortBy{
+      RELEVANCE, CHRONOLOGICAL_ORDER, RECENT_FIRST;
+    };
+
+    public static class QueryOptions{
+        int cluster = -1, threshold = -1;
+        QueryType qt = QueryType.FULL;
+        //filter options
+        Date startDate, endDate;
+        SortBy sortBy = SortBy.CHRONOLOGICAL_ORDER;
+
+        public void setCluster(int cluster){
+            this.cluster = cluster;
+        }
+        public void setThreshold(int threshold){
+            this.threshold = threshold;
+        }
+        public void setQueryType(QueryType qt){
+            this.qt = qt;
+        }
+        public void setStartDate(Date d){
+            this.startDate = d;
+        }
+        public void setEndDate(Date d){
+            this.endDate = d;
+        }
+        public void setSortBy(SortBy sortBy){
+            this.sortBy = sortBy;
+        }
+        public int getThreshold(){return threshold;}
+        public int getCluster(){return cluster;}
+        public QueryType getQueryType(){return qt;}
+        public Date getStartDate(){return startDate;}
+        public Date getEndDate(){return endDate;}
+        public SortBy getSortBy(){return sortBy;}
+    }
+
 	protected IndexStats			stats					= new IndexStats();
 
 	protected List<MultiDoc>	docClusters;
@@ -1112,7 +1149,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
     /**
      * @returns an empty set if the none of the docs are instance of EmailDocument*/
-    protected Set<EmailDocument> convertToED(Set<Document> docs) {
+    protected Collection<EmailDocument> convertToED(Collection<Document> docs) {
         if(docs == null)
             return null;
         Set<EmailDocument> eds = new LinkedHashSet<>();
@@ -1123,17 +1160,22 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return eds;
     }
 
-	protected Set<edu.stanford.muse.index.Document> docsForQuery(String term, int cluster, int threshold, QueryType qt)
-	{
+	protected Collection<edu.stanford.muse.index.Document> docsForQuery(String term, QueryOptions options)
+    {
+        log.info("Options for docs selection: "+term+", "+options.getEndDate()+","+options.getSortBy()+", "+options.getStartDate());
+        QueryType qt = options.getQueryType();
+        int cluster = options.getCluster();
+        int threshold = options.getThreshold();
 		//doesn't need term for preset regex
 		if (qt != QueryType.PRESET_REGEX && Util.nullOrEmpty(term))
-			return new LinkedHashSet<edu.stanford.muse.index.Document>((Collection) getDocsInCluster(cluster));
+			return new ArrayList<>(getDocsInCluster(cluster));
 
 		Set<edu.stanford.muse.index.Document> docs_in_cluster = null;
 		if (cluster != -1)
 			docs_in_cluster = new LinkedHashSet<edu.stanford.muse.index.Document>((Collection) getDocsInCluster(cluster));
 
-		Set<edu.stanford.muse.index.Document> result = new LinkedHashSet<edu.stanford.muse.index.Document>();
+        //should retain the lucene returned order
+		List<edu.stanford.muse.index.Document> result = new ArrayList<edu.stanford.muse.index.Document>();
 		try {
 			Collection<String> hitDocIds = lookupAsDocIds(term, threshold, isearcher, qt);
 			for (String d : hitDocIds)
@@ -1150,6 +1192,16 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		} catch (Exception e) {
 			Util.print_exception(e);
 		}
+
+        //sort
+        SortBy sb = options.getSortBy();
+        if(sb == null || sb == SortBy.CHRONOLOGICAL_ORDER)
+            Collections.sort(result);
+        else if(sb == SortBy.RECENT_FIRST) {
+            Collections.sort(result);
+            Collections.reverse(result);
+        }
+        //already in the relevance order
 
 		return result;
 	}

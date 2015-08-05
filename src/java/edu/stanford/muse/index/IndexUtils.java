@@ -903,7 +903,9 @@ public class IndexUtils {
 			for (String sentiment : captionToQueryMap.keySet())
 			{
 				String query = captionToQueryMap.get(sentiment);
-				Set<Document> docsForTerm = indexer.docsForQuery(query, -1, -1, Indexer.QueryType.ORIGINAL);
+                Indexer.QueryOptions options = new Indexer.QueryOptions();
+                options.setQueryType(Indexer.QueryType.ORIGINAL);
+				Collection<Document> docsForTerm = indexer.docsForQuery(query, options);
 				docsForTerm.retainAll(docSet);
 				sentimentItems.add(new DetailedFacetItem(sentiment, captionToQueryMap.get(sentiment), new ArrayList<Document>(docsForTerm), "sentiment", sentiment));
 			}
@@ -1277,7 +1279,10 @@ public class IndexUtils {
 		Map<Integer, Float> colorWeights;
 		if (groupAssigner != null)
 		{
-			Collection<Document> list = archive.indexer.docsForQuery(tct.lookupTerm, cloudNum, -1, Indexer.QueryType.ORIGINAL);
+            Indexer.QueryOptions options = new Indexer.QueryOptions();
+            options.setCluster(cloudNum);
+            options.setQueryType(Indexer.QueryType.ORIGINAL);
+			Collection<Document> list = archive.indexer.docsForQuery(tct.lookupTerm, options);
 			colorWeights = groupAssigner.getAssignedColors(list);
 		}
 		else

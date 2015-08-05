@@ -848,7 +848,7 @@ public class JSPHelper {
 	 * these extra blobs will not be seen since we only use this info for
 	 * highlighting blobs in resultDocs.
 	 */
-	public static Pair<Set<Document>, Set<Blob>> selectDocsWithHighlightAttachments(HttpServletRequest request, HttpSession session, boolean only_apply_to_filtered_docs, boolean or_not_and) throws UnsupportedEncodingException
+	public static Pair<Collection<Document>, Collection<Blob>> selectDocsWithHighlightAttachments(HttpServletRequest request, HttpSession session, boolean only_apply_to_filtered_docs, boolean or_not_and) throws UnsupportedEncodingException
 	{
 		// below are all the controls for selecting docs 
 		String term = request.getParameter("term"); // search term
@@ -890,11 +890,21 @@ public class JSPHelper {
 		boolean direction_in = directionsSet.contains("in");
 		boolean direction_out = directionsSet.contains("out");
 
-		int yy = HTMLUtils.getIntParam(request, "year", -1);
-		int mm = HTMLUtils.getIntParam(request, "month", -1); // be careful: 1-based, NOT 0-based
-		int end_yy = HTMLUtils.getIntParam(request, "endYear", -1);
-		int end_mm = HTMLUtils.getIntParam(request, "endMonth", -1);
+        int yy = -1, end_yy = -1;
+        int mm = -1, end_mm = -1;
 
+        String sd = request.getParameter("start_date");
+		if(sd != null && sd.matches("[0-9]{2}/[0-9]{4}")) {
+            String[] ss =  sd.split("/");
+            yy = HTMLUtils.getIntParam(request, ss[1], -1);
+            mm = HTMLUtils.getIntParam(request, ss[0], -1); // be careful: 1-based, NOT 0-based
+        }
+        String end_date = request.getParameter("end_date");
+        if(end_date != null && end_date.matches("[0-9]{2}/[0-9]{4}")) {
+            String[] ss =  sd.split("/");
+            end_yy = HTMLUtils.getIntParam(request, ss[1], -1);
+            end_mm = HTMLUtils.getIntParam(request, ss[0], -1);
+        }
 		String[] sentiments = request.getParameterValues("sentiment");
 		int cluster = HTMLUtils.getIntParam(request, "timeCluster", -1);
 		/** usually, there is 1 time cluster per month */
@@ -913,7 +923,7 @@ public class JSPHelper {
 
 		Collection<Document> allDocs = getAllDocsAsSet(session, only_apply_to_filtered_docs);
 		if (Util.nullOrEmpty(allDocs))
-			return new Pair<Set<Document>, Set<Blob>>(new LinkedHashSet<Document>(), new LinkedHashSet<Blob>());
+			return new Pair<Collection<Document>, Collection<Blob>>(new ArrayList<Document>(), new ArrayList<Blob>());
 
         //why are there two vars for sentiment and content indexer repns?
 //		Indexer sentiIndexer, indexer;
@@ -926,8 +936,8 @@ public class JSPHelper {
 		 * probably datasetIds can be got rid of?
 		 */
 		List<Document> docsForGroup = null, docsForDateRange = null, docsForNumbers = null, docsForFolder = null, docsForDirection = null, docsForCluster = null, docsForDocIds = null;
-		Set<Document> docsForTerm = null, docsForPersons = null, docsForSentiments = null, docsForTag = null, docsForAttachments = null, docsForAttachmentTypes = null, docsForDoNotTransfer = null, docsForTransferWithRestrictions = null, docsForReviewed = null, docsForRegex = null;
-		Set<Blob> blobsForAttachments = null, blobsForAttachmentTypes = null, blobsForTerm = null;
+		Collection<Document> docsForTerm = null, docsForPersons = null, docsForSentiments = null, docsForTag = null, docsForAttachments = null, docsForAttachmentTypes = null, docsForDoNotTransfer = null, docsForTransferWithRestrictions = null, docsForReviewed = null, docsForRegex = null;
+		Collection<Blob> blobsForAttachments = null, blobsForAttachmentTypes = null, blobsForTerm = null;
 
 		if (!Util.nullOrEmpty(term))
 		{
@@ -949,7 +959,38 @@ public class JSPHelper {
 				else
 					qt = Indexer.QueryType.FULL;
 
-				docsForTerm = archive.docsForQuery(term, cluster, qt);
+                Indexer.QueryOptions options = new Indexer.QueryOptions();
+                options.setQueryType(qt);
+                if(yy>0 || mm>0) {
+                    Date date = new Date();
+                    if(mm>0)
+                        date.setMonth(mm);
+                    if(yy>0)
+                        date.setYear(yy);
+                    options.setStartDate(date);
+                }
+                if(end_yy>0 || end_mm>0) {
+                    Date date = new Date();
+                    if(end_mm>0)
+                        date.setMonth(end_mm);
+                    if(end_yy>0)
+                        date.setYear(end_yy);
+                    options.setEndDate(date);
+                }
+                String sortBy = request.getParameter("sort_by");
+                if(sortBy!=null) {
+                    if ("relevance".equals(sortBy.toLowerCase()))
+                        options.setSortBy(Indexer.SortBy.RELEVANCE);
+                    else if ("recent".equals(sortBy.toLowerCase()))
+                        options.setSortBy(Indexer.SortBy.RECENT_FIRST);
+                    else if ("chronological".equals(sortBy.toLowerCase()))
+                        options.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
+                    else {
+                        log.info("Unknown sort by option: " + sortBy);
+                    }
+                }
+
+				docsForTerm = archive.docsForQuery(term, options);
 				// also search blobs and merge result, but not for subject/corr. search
 				if (!"correspondents".equals(searchType) && !"subject".equals(searchType)) {
 					blobsForTerm = archive.blobsForQuery(term);
@@ -1107,8 +1148,8 @@ public class JSPHelper {
 
 		// apply the OR or AND of the filters
 		boolean initialized = false;
-		Set<Document> resultDocs;
-		Set<Blob> resultBlobs;
+		Collection<Document> resultDocs;
+		List<Blob> resultBlobs;
 
 		// if its an AND selection, and we are applying only to filtered docs, start with it and intersect with the docs for each facet.
 		// otherwise, start with nothing as an optimization, since there's no need to intersect with it.
@@ -1116,10 +1157,10 @@ public class JSPHelper {
 		if (only_apply_to_filtered_docs && !or_not_and && allDocs != null)
 		{
 			initialized = true;
-			resultDocs = new LinkedHashSet<Document>(allDocs);
+			resultDocs = new ArrayList<>(allDocs);
 		}
 		else
-			resultDocs = new LinkedHashSet<Document>();
+			resultDocs = new ArrayList<>();
 
 		if (docsForTerm != null)
 		{
@@ -1151,7 +1192,7 @@ public class JSPHelper {
 				resultDocs.addAll(docsForSentiments);
 			}
 			else
-				resultDocs = Util.setIntersection(resultDocs, docsForSentiments);
+				resultDocs = Util.listIntersection(resultDocs, docsForSentiments);
 		}
 		if (docsForTag != null)
 		{
@@ -1161,7 +1202,7 @@ public class JSPHelper {
 				resultDocs.addAll(docsForTag);
 			}
 			else
-				resultDocs = Util.setIntersection(resultDocs, docsForTag);
+				resultDocs = Util.listIntersection(resultDocs, docsForTag);
 		}
 
 		if (docsForCluster != null)
@@ -1194,7 +1235,7 @@ public class JSPHelper {
 				resultDocs.addAll(docsForPersons);
 			}
 			else
-				resultDocs = Util.setIntersection(resultDocs, docsForPersons);
+				resultDocs = Util.listIntersection(resultDocs, docsForPersons);
 		}
 
 		if (docsForDateRange != null)
@@ -1314,24 +1355,24 @@ public class JSPHelper {
 				resultDocs = archive.docsForQuery(null, cluster, Indexer.QueryType.FULL); // means all docs in cluster x
 			else
 			{
-				resultDocs = new LinkedHashSet<Document>();
+				resultDocs = new ArrayList<Document>();
 				resultDocs.addAll(allDocs); // if no filter, all docs are selected
 			}
 		}
 
 		// compute resultBlobs
 		if (or_not_and) {
-			resultBlobs = NLP.setUnionNullIsEmpty(blobsForAttachments, blobsForAttachmentTypes);
-			resultBlobs = NLP.setUnionNullIsEmpty(resultBlobs, blobsForTerm);
+			resultBlobs = Util.listUnion(blobsForAttachments, blobsForAttachmentTypes);
+			resultBlobs = Util.listUnion(resultBlobs, blobsForTerm);
 		} else {
-			resultBlobs = NLP.setIntersectionNullIsUniversal(blobsForAttachments, blobsForAttachmentTypes);
-			resultBlobs = NLP.setIntersectionNullIsUniversal(resultBlobs, blobsForTerm);
+			resultBlobs = Util.listIntersection(blobsForAttachments, blobsForAttachmentTypes);
+			resultBlobs = Util.listIntersection(resultBlobs, blobsForTerm);
 		}
 
 		// convert set back to a list 
 		//List<Document> docList = new ArrayList<Document>(resultDocs);
 		//Collections.sort(docList);
-		return new Pair<Set<Document>, Set<Blob>>(resultDocs, resultBlobs);
+		return new Pair<Collection<Document>, Collection<Blob>>(resultDocs, resultBlobs);
 	}
 
 	// currently, only lookup by term and attachment url tails
@@ -1436,7 +1477,7 @@ public class JSPHelper {
 		return (docs.size() < archive.getAllDocs().size());
 	}
 
-	public static Set<Document> selectDocs(HttpServletRequest request, HttpSession session, boolean only_apply_to_filtered_docs, boolean or_not_and) throws UnsupportedEncodingException
+	public static Collection<Document> selectDocs(HttpServletRequest request, HttpSession session, boolean only_apply_to_filtered_docs, boolean or_not_and) throws UnsupportedEncodingException
 	{
 		return selectDocsWithHighlightAttachments(request, session, only_apply_to_filtered_docs, or_not_and).first;
 	}

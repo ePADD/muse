@@ -8,6 +8,7 @@ import edu.stanford.muse.xword.Clue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.util.Collection;
 import java.util.Set;
 
 public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Serializable {
@@ -119,9 +120,9 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 			// do further lookups on user answer if its wrong
 			try {
 				Archive archive = study.archive;
-				Set<EmailDocument> docs = archive.convertToED(archive.docsForQuery("\"" + cAnswer + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
+				Collection<EmailDocument> docs = archive.convertToED(archive.docsForQuery("\"" + cAnswer + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
 				stats.nMessagesWithUserAnswer = docs.size();
-				Set<EmailDocument> correctAnswerDocs = archive.convertToED(archive.docsForQuery("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
+				Collection<EmailDocument> correctAnswerDocs = archive.convertToED(archive.docsForQuery("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
 			} catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }			

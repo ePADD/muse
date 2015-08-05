@@ -20,6 +20,9 @@ import java.util.List;
 
 /** a doc with a bunch of sub-docs */
 public class MultiDoc extends Document {
+    public enum ClusteringType{
+        MONTHLY, YEARLY, NONE;
+    };
 	private final static long serialVersionUID = 1L;
 
 	public List<Document> docs = new ArrayList<Document>();

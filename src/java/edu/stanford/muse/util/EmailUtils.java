@@ -727,7 +727,7 @@ public class EmailUtils {
 	}
 
 	/** returns set of all messages that have one of these attachments */
-	public static Set<? super EmailDocument> getDocsForAttachments(Collection<EmailDocument> docs, Set<Blob> blobs)
+	public static Set<? super EmailDocument> getDocsForAttachments(Collection<EmailDocument> docs, Collection<Blob> blobs)
 	{
 		Set<EmailDocument> result = new LinkedHashSet<EmailDocument>();
 		if (docs == null || blobs == null)
