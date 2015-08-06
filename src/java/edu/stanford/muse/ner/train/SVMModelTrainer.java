@@ -10,10 +10,7 @@ import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
 import edu.stanford.muse.ner.model.SVMModel;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.ner.util.ArchiveContent;
-import edu.stanford.muse.util.DictUtils;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Triple;
-import edu.stanford.muse.util.Util;
+import edu.stanford.muse.util.*;
 import libsvm.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,6 +57,7 @@ import java.util.*;
         }
     }
     String status;
+    double pctComplete = 0;
     boolean cancelled;
     public static Log log = LogFactory.getLog(NER.class);
 
@@ -70,7 +68,7 @@ import java.util.*;
 
     @Override
     public String getStatusMessage(){
-        return status;
+        return JSONUtils.getStatusJSON(status, (int) pctComplete, -1, -1);
     }
 
     @Override
@@ -214,6 +212,7 @@ import java.util.*;
         long st = System.currentTimeMillis(), time = 0;
         SVMModel model = new SVMModel();
 
+        status = "Reading your address book and DBpedia";
         //build a feature dictionary
         FeatureDictionary dictionary = new FeatureDictionary(gazzs, fgs);
         model.dictionary = dictionary;
@@ -252,9 +251,11 @@ import java.util.*;
             }
             if ((++di) % 1000 == 0)
                 log.info("Analysed " + di + "/" + ds + " to find known instances");
+            pctComplete = 10 + ((double)i/ds)*30;
         }
         for (int iti = 0; iti < types.size(); iti++) {
             Short iType = types.get(iti);
+            status = "Learning " + iType + " type names";
             log.info("Training for type: " + iType);
             String[] aType = FeatureDictionary.aTypes.get(iType);
             List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();
@@ -274,7 +275,7 @@ import java.util.*;
                 fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
             }
             if (iType == FeatureDictionary.PERSON) {
-                NER.log.info("Adding from internal gazette #" + internalGazz.size());
+                log.info("Adding from internal gazette #" + internalGazz.size());
 
                 for (String cname : internalGazz.keySet()) {
                     numC++;
@@ -288,6 +289,7 @@ import java.util.*;
 
             //try to equalize number of vectors of each class.
             int x = 0;
+            int hi=0, total = hits.size();
             log.info("Adding some dummy names to balance the address book");
             for (String h : hits.keySet()) {
                 if (x > numC)
@@ -321,6 +323,8 @@ import java.util.*;
                     //log.warn("Adding: " + h + ", number-of-words-in-dictionary/total-number-of-words: (" + num + "/" + tokens.length + "), maximum chance of being a name: " + maxp);
                     x++;
                 }
+                hi++;
+                pctComplete += ((double)hi/total)*20;
             }
             log.info("Wrote external #" + numExternal + ", internal #" + numC + ", to balance: " + x);
 
@@ -366,7 +370,6 @@ import java.util.*;
             param.probability = 1;
             param.shrinking = 0;
 
-            status = "Learning " + iType + " model...";
             log.info(status);
             svm_print_interface svm_print_logger = new svm_print_interface() {
                 public void print(String s) {
@@ -386,12 +389,18 @@ import java.util.*;
             log.info("Wrote training file to : " + new File(CACHE_DIR + File.separator + iType + ".train").getAbsolutePath());
             status = "Done learning for type: " + iType;
             model.models.put(iType, svmModel);
+            pctComplete = 40 + (iType+1)*20;
         }
         time += System.currentTimeMillis() - st;
         st = System.currentTimeMillis();
         status = "Done learning... dumping model";
         log.info("Dumping model for reuse");
         try {
+            File f = new File(tparams.modelWriteLocation);
+            //when f be null?
+            if(f != null && !f.exists())
+                f.mkdir();
+
             model.writeModel(new File(tparams.modelWriteLocation + File.separator + SVMModel.modelFileName));
         } catch (IOException e) {
             Util.print_exception("Fatal! Could not write the trained model to " + tparams.modelWriteLocation, e, log);

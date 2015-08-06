@@ -43,6 +43,7 @@ public class NER implements StatusProvider {
 	long						time				= -1, eta = -1;
 	static FieldType			ft;
 	int[]						pcts				= new int[] { 16, 32, 50, 100 };
+    StatusProvider statusProvider =  null;
 
 	public static class NERStats {
 		//non-repeating number of instances of each type
@@ -223,6 +224,7 @@ public class NER implements StatusProvider {
 
     public NERModel trainModel() {
         NERTrainer trainer = new SVMModelTrainer();
+        statusProvider = (SVMModelTrainer)trainer;
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
         Map<String,String> addressbook =  EmailUtils.getNames(archive.addressBook.allContacts());
         addressbook = FeatureDictionary.cleanAB(addressbook, dbpedia);
@@ -257,7 +259,6 @@ public class NER implements StatusProvider {
 	//main method trains the model, recognizes the entities and updates the doc.
 	public void trainAndRecognise() throws CancelledException, IOException {
 		time = 0;
-		Indexer li = archive.indexer;
 		archive.openForRead();
 		archive.setupForWrite();
 
@@ -368,7 +369,7 @@ public class NER implements StatusProvider {
 			di++;
 
 			totalTime += System.currentTimeMillis() - st1;
-			pctComplete = 10 + ((double)di/(double)ds) * 90;
+			pctComplete = 30 + ((double)di/(double)ds) * 70;
 			double ems = (double) (totalTime * (ds-di)) / (double) (di*1000);
 			status = "Recognized entities in " + Util.commatize(di) + " of " + Util.commatize(ds) + " emails ";
 			//Util.approximateTimeLeft((long)ems/1000);
@@ -442,17 +443,22 @@ public class NER implements StatusProvider {
 
 	@Override
 	public String getStatusMessage() {
-		return JSONUtils.getStatusJSON(status, (int) pctComplete, time, eta);
+		if(statusProvider!=null)
+            return statusProvider.getStatusMessage();
+
+        return JSONUtils.getStatusJSON(status, (int) pctComplete, time, eta);
 	}
 
 	@Override
 	public void cancel() {
-		cancelled = true;
+        cancelled = true;
+        if(statusProvider!=null)
+            statusProvider.cancel();
 	}
 
 	@Override
 	public boolean isCancelled() {
-		return cancelled;
+		return cancelled || statusProvider.isCancelled();
 	}
 
 	public static void main1(String[] args) {
@@ -496,11 +502,14 @@ public class NER implements StatusProvider {
 //                System.err.print(":::" + str + ":::");
 //            System.err.println();
 //        }
-        try {
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-jeb";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-        } catch(Exception e){
-            e.printStackTrace();
-        }
+//        try {
+//            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-jeb";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//        } catch(Exception e){
+//            e.printStackTrace();
+//        }
+        String end_date = "10/02/1995";
+        String[] ss =  end_date.split("/");
+        System.err.println(ss.length);
     }
 }

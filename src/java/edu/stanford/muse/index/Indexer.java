@@ -1042,7 +1042,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		int originalTextLength = bodyOriginal.length();
 		Set<String> namesOriginal = null;
 
-		log.info("Length of body :" + body.length() + ", body original: " + bodyOriginal.length());
 		int ns = 0;
 
 		if(edu.stanford.muse.Config.OPENNLP_NER) {

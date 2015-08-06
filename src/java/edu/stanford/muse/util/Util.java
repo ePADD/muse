@@ -2982,4 +2982,12 @@ public class Util
 			return null;
 	}
 
+    public static int getIntParam(String txt, int num){
+        try{
+            return Integer.parseInt(txt);
+        } catch(Exception e){
+            return num;
+        }
+    }
+
 }

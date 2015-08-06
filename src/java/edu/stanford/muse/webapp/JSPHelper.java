@@ -383,8 +383,8 @@ public class JSPHelper {
 			//train an epadd ner ; recognise the entities and dd it to the index
 			NER ner = new NER(archive);
 			session.setAttribute("statusProvider", ner);
-			System.err.println("Base dir: " + getBaseDir(m, request));
-			ner.trainAndRecognise();
+			log.info("Base dir: " + getBaseDir(m, request));
+            ner.trainAndRecognise();
 			archive.processingMetadata.entityCounts = ner.stats.counts;
 			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
 			log.info(ner.stats);
@@ -898,22 +898,22 @@ public class JSPHelper {
 		if(sd != null) {
             String[] ss =  sd.split("/");
             if(ss.length == 3) {
-                dd = HTMLUtils.getIntParam(request, ss[0], -1);
-                mm = HTMLUtils.getIntParam(request, ss[1], -1); // be careful: 1-based, NOT 0-based
-                yy = HTMLUtils.getIntParam(request, ss[2], -1);
+                dd = Util.getIntParam(ss[0], -1);
+                mm = Util.getIntParam(ss[1], -1); // be careful: 1-based, NOT 0-based
+                yy = Util.getIntParam(ss[2], -1);
             }
         }
         String end_date = request.getParameter("end_date");
         if(end_date != null) {
             String[] ss =  end_date.split("/");
             if(ss.length == 3) {
-                end_dd = HTMLUtils.getIntParam(request, ss[0], -1);
-                end_mm = HTMLUtils.getIntParam(request, ss[1], -1);
-                end_yy = HTMLUtils.getIntParam(request, ss[2], -1);
+                end_dd = Util.getIntParam(ss[0], -1);
+                end_mm = Util.getIntParam( ss[1], -1);
+                end_yy = Util.getIntParam(ss[2], -1);
             }
         }
-        System.err.println("Update Dates: "+dd+", "+mm+", "+yy+", "+sd);
-        System.err.println("update Dates: "+end_dd+", "+end_mm+", "+end_yy+", "+end_date);
+        System.err.println("Dates: "+dd+", "+mm+", "+yy+", "+sd);
+        System.err.println("Dates: "+end_dd+", "+end_mm+", "+end_yy+", "+end_date);
         String[] sentiments = request.getParameterValues("sentiment");
 		int cluster = HTMLUtils.getIntParam(request, "timeCluster", -1);
 		/** usually, there is 1 time cluster per month */
