@@ -459,7 +459,7 @@ public class Archive implements Serializable {
 
         f_dir.mkdirs();
         // copy lexicons over to the muse dir
-        String[] lexicons = {"sensitive.english.lex.txt", "general.english.lex.txt", "default.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
+        String[] lexicons = {"sensitive.english.lex.txt", "general.english.lex.txt", "sentiments.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
         log.info(lexicons.length + " lexicons copied to " + dir);
         for (String l : lexicons) {
             try {
