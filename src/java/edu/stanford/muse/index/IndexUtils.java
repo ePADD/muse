@@ -1047,12 +1047,19 @@ public class IndexUtils {
 		return result;
 	}
 
-	// month is 1-based NOT 0-based
+    public static <D extends DatedDocument> List<D> selectDocsByDateRange(Collection<D> c, int year, int month)
+    {
+        return selectDocsByDateRange(c, year, month, -1);
+    }
+
+    // date, month is 1-based NOT 0-based
 	// if month is < 0, it is ignored
-	public static <D extends DatedDocument> List<D> selectDocsByDateRange(Collection<D> c, int year, int month)
+	public static <D extends DatedDocument> List<D> selectDocsByDateRange(Collection<D> c, int year, int month, int date)
 	{
+        --date;
 		--month; // adjust month to be 0 based because thats what calendar gives us
 		boolean invalid_month = month < 0 || month > 11;
+        boolean invalid_date = date<0 || date>30;
 		List<D> result = new ArrayList<D>();
 		for (D d : c)
 		{
@@ -1060,7 +1067,8 @@ public class IndexUtils {
 			cal.setTime(d.date);
 			int doc_year = cal.get(Calendar.YEAR);
 			int doc_month = cal.get(Calendar.MONTH);
-			if (year == doc_year && (invalid_month || month == doc_month))
+            int doc_date = cal.get(Calendar.DATE);
+			if (year == doc_year && (invalid_month || month == doc_month) && (invalid_date || date == doc_date))
 				result.add(d);
 		}
 		return result;
@@ -1072,9 +1080,9 @@ public class IndexUtils {
 	 * if month is < 0, it is ignored, i.e. effectively 1 for the start year and
 	 * 12 for the end year
 	 */
-	public static List<Document> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int endY, int endM)
+	public static List<Document> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
 	{
-		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, endY, endM - 1);
+		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, startD - 1, endY, endM - 1, endD -1);
 		Date startDate = p.getFirst(), endDate = p.getSecond();
 
 		List<Document> result = new ArrayList<Document>();

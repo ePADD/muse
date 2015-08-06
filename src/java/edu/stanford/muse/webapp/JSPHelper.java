@@ -892,20 +892,29 @@ public class JSPHelper {
 
         int yy = -1, end_yy = -1;
         int mm = -1, end_mm = -1;
+        int dd = -1, end_dd = -1;
 
         String sd = request.getParameter("start_date");
-		if(sd != null && sd.matches("[0-9]{2}/[0-9]{4}")) {
+		if(sd != null) {
             String[] ss =  sd.split("/");
-            yy = HTMLUtils.getIntParam(request, ss[1], -1);
-            mm = HTMLUtils.getIntParam(request, ss[0], -1); // be careful: 1-based, NOT 0-based
+            if(ss.length == 3) {
+                dd = HTMLUtils.getIntParam(request, ss[0], -1);
+                mm = HTMLUtils.getIntParam(request, ss[1], -1); // be careful: 1-based, NOT 0-based
+                yy = HTMLUtils.getIntParam(request, ss[2], -1);
+            }
         }
         String end_date = request.getParameter("end_date");
-        if(end_date != null && end_date.matches("[0-9]{2}/[0-9]{4}")) {
-            String[] ss =  sd.split("/");
-            end_yy = HTMLUtils.getIntParam(request, ss[1], -1);
-            end_mm = HTMLUtils.getIntParam(request, ss[0], -1);
+        if(end_date != null) {
+            String[] ss =  end_date.split("/");
+            if(ss.length == 3) {
+                end_dd = HTMLUtils.getIntParam(request, ss[0], -1);
+                end_mm = HTMLUtils.getIntParam(request, ss[1], -1);
+                end_yy = HTMLUtils.getIntParam(request, ss[2], -1);
+            }
         }
-		String[] sentiments = request.getParameterValues("sentiment");
+        System.err.println("Update Dates: "+dd+", "+mm+", "+yy+", "+sd);
+        System.err.println("update Dates: "+end_dd+", "+end_mm+", "+end_yy+", "+end_date);
+        String[] sentiments = request.getParameterValues("sentiment");
 		int cluster = HTMLUtils.getIntParam(request, "timeCluster", -1);
 		/** usually, there is 1 time cluster per month */
 
@@ -961,20 +970,24 @@ public class JSPHelper {
 
                 Indexer.QueryOptions options = new Indexer.QueryOptions();
                 options.setQueryType(qt);
-                if(yy>0 || mm>0) {
+                if(yy>0 || mm>0 || dd>0) {
                     Date date = new Date();
                     if(mm>0)
                         date.setMonth(mm);
                     if(yy>0)
                         date.setYear(yy);
+                    if(dd>0)
+                        date.setDate(dd);
                     options.setStartDate(date);
                 }
-                if(end_yy>0 || end_mm>0) {
+                if(end_yy>0 || end_mm>0 || end_dd>0) {
                     Date date = new Date();
                     if(end_mm>0)
                         date.setMonth(end_mm);
                     if(end_yy>0)
                         date.setYear(end_yy);
+                    if(end_dd>0)
+                        date.setDate(end_dd);
                     options.setEndDate(date);
                 }
                 String sortBy = request.getParameter("sort_by");
@@ -1091,11 +1104,11 @@ public class JSPHelper {
 
 		if (end_yy >= 1970 && yy >= 1970) // date range
 		{
-			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, end_yy, end_mm);
+			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
 		}
 		else if (yy >= 1970) // single month or year
 		{
-			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm);
+			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd);
 		}
 
 		if (groupIdx != Integer.MAX_VALUE)

@@ -221,7 +221,7 @@ public class FeatureDictionary implements Serializable {
         Map<String, Pair<String, Double>> scoredAB = new LinkedHashMap<String, Pair<String, Double>>();
         for (String name : abNames.keySet()) {
             double val = wfs.getFeatureValue(name, "words", iType);
-            scoredAB.put(name, new Pair<String, Double>(abNames.get(name), val));
+            scoredAB.put(name, new Pair<>(abNames.get(name), val));
         }
         return scoredAB;
     }
@@ -235,7 +235,7 @@ public class FeatureDictionary implements Serializable {
 
         Map<String, Pair<String, Double>> scoredAddressBook = scoreAB(abNames, dbpedia);
 
-        Map<String, String> cleanAB = new LinkedHashMap<String, String>();
+        Map<String, String> cleanAB = new LinkedHashMap<>();
         for (String entry : scoredAddressBook.keySet()) {
             Pair<String, Double> p = scoredAddressBook.get(entry);
             if (p.second > 0.5)

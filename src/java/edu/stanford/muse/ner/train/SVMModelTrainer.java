@@ -184,6 +184,8 @@ import java.util.*;
         status = "Done learning... dumping model";
         log.info("Dumping model for reuse");
         try {
+            if (!new File(tparams.modelWriteLocation).exists())
+                new File(tparams.modelWriteLocation).mkdir();
             model.writeModel(new File(tparams.modelWriteLocation + File.separator + SVMModel.modelFileName));
         } catch (IOException e) {
             Util.print_exception("Fatal! Could not write the trained model to " + tparams.modelWriteLocation, e, log);

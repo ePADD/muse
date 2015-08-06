@@ -5,7 +5,6 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.*;
 import edu.stanford.muse.ner.model.NERModel;
@@ -53,9 +52,9 @@ public class NER implements StatusProvider {
 		public Map<Short, Set<String>>	all;
 
 		NERStats() {
-			counts = new LinkedHashMap<Short, Integer>();
-			rcounts = new LinkedHashMap<Short, Integer>();
-			all = new LinkedHashMap<Short, Set<String>>();
+			counts = new LinkedHashMap<>();
+			rcounts = new LinkedHashMap<>();
+			all = new LinkedHashMap<>();
 		}
 
 		//a map of entity-type key and value list of entities

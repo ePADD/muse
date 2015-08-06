@@ -247,51 +247,62 @@ public class CalendarUtil {
 	/** returns date object for the first day of the given month. m is 0 based */
 	public static Date convertYYMMToDate(int y, int m, boolean beginning_of_day)
 	{
-		// if m is out of range, its equiv to 0
-		if (m < 0 || m > 11)
-			m = 0;
-		GregorianCalendar c = new GregorianCalendar();
-		c.set(Calendar.YEAR, y);
-		c.set(Calendar.MONTH, m);
-		c.set(Calendar.DATE, 1);
-		if (beginning_of_day)
-		{
-			c.set(Calendar.HOUR_OF_DAY, 0);
-			c.set(Calendar.MINUTE, 0);
-			c.set(Calendar.SECOND, 0);
-		}
-		else
-		{
-			c.set(Calendar.HOUR_OF_DAY, 23);
-			c.set(Calendar.MINUTE, 59);
-			c.set(Calendar.SECOND, 59);
-		}
-		return c.getTime();
+		return convertYYMMDDToDate(y, m, 1, beginning_of_day);
 	}
+
+    public static Date convertYYMMDDToDate(int y, int m, int d, boolean beginning_of_day)
+    {
+        // if m is out of range, its equiv to 0
+        if (m < 0 || m > 11)
+            m = 0;
+        if (d<0 || d>30)
+            d = 0;
+        GregorianCalendar c = new GregorianCalendar();
+        c.set(Calendar.YEAR, y);
+        c.set(Calendar.MONTH, m);
+        c.set(Calendar.DATE, d);
+        if (beginning_of_day)
+        {
+            c.set(Calendar.HOUR_OF_DAY, 0);
+            c.set(Calendar.MINUTE, 0);
+            c.set(Calendar.SECOND, 0);
+        }
+        else
+        {
+            c.set(Calendar.HOUR_OF_DAY, 23);
+            c.set(Calendar.MINUTE, 59);
+            c.set(Calendar.SECOND, 59);
+        }
+        return c.getTime();
+    }
 	
 	/** convert a pair of <yy, mm> specs to a date range. startM, endM are 0-based. if startM is < 0, considered as 0 and if endM is < 0, considered as 11. 
 	 * no handling of time zone. */
-	public static Pair<Date, Date> getDateRange(int startY, int startM, int endY, int endM)
-	{				
-		if (startM < 0)
-			startM = 0;
-		if (endM < 0)
-			endM = 11;
-		
-		Date startD = convertYYMMToDate(startY, startM, true);
+    public static Pair<Date, Date> getDateRange(int startY, int startM, int endY, int endM){
+        return getDateRange(startY, startM, 1, endY, endM, 1);
+    }
 
-		// get date for one month beyond endY, endM, and adjust date back by 1 ms
-		endM++;
-		if (endM >= 12)
-		{
-			endY++;
-			endM = 0;
-		}
-		Date beyond_end = convertYYMMToDate(endY, endM, true);
-		Date endD = new Date(beyond_end.getTime()-1001L);
+    public static Pair<Date, Date> getDateRange(int startY, int startM, int startD, int endY, int endM, int endD)
+    {
+        if (startM < 0)
+            startM = 0;
+        if (endM < 0)
+            endM = 11;
 
-		return new Pair<Date, Date>(startD, endD);
-	}
+        Date startDate = convertYYMMDDToDate(startY, startM, startD, true);
+
+        // get date for one month beyond endY, endM, and adjust date back by 1 ms
+        endM++;
+        if (endM >= 12)
+        {
+            endY++;
+            endM = 0;
+        }
+        Date beyond_end = convertYYMMDDToDate(endY, endM, endD, true);
+        Date endDate = new Date(beyond_end.getTime()-1001L);
+
+        return new Pair<Date, Date>(startDate, endDate);
+    }
 
 	/** the quarter beginning just before this d */
 	public static Date quarterBeginning(Date d)
