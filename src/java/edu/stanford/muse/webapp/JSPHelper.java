@@ -859,6 +859,39 @@ public class JSPHelper {
 		String datasetId = request.getParameter("datasetId");
 		String[] docIds = request.getParameterValues("docId");
 		String[] folders = request.getParameterValues("folder");
+		String sortByStr = request.getParameter("sort_by");
+		Indexer.SortBy sortBy = Indexer.SortBy.RELEVANCE;
+		if (!Util.nullOrEmpty(sortByStr)) {
+			if ("relevance".equals(sortByStr.toLowerCase()))
+				sortBy = Indexer.SortBy.RELEVANCE;
+			else if ("recent".equals(sortByStr.toLowerCase()))
+				sortBy = Indexer.SortBy.RECENT_FIRST;
+			else if ("chronological".equals(sortByStr.toLowerCase()))
+				sortBy = Indexer.SortBy.CHRONOLOGICAL_ORDER;
+			else {
+				log.warn("Unknown sort by option: " + sortBy);
+			}
+		}
+
+
+        // compute date requirements. start/end_date are in yyyy/mm/dd format
+        int yy = -1, end_yy = -1, mm = -1, end_mm = -1, dd = -1, end_dd = -1;
+
+        String start_date = request.getParameter("start_date");
+        if (!Util.nullOrEmpty(start_date)) {
+            String[] ss =  start_date.split("/");
+            if (ss.length > 0) { yy = Util.getIntParam(ss[0], -1); }
+            if (ss.length > 1) { mm = Util.getIntParam(ss[1], -1); }
+            if (ss.length > 2) { dd = Util.getIntParam(ss[2], -1); }
+        }
+
+        String end_date = request.getParameter("end_date");
+        if (!Util.nullOrEmpty(end_date)) {
+            String[] ss =  end_date.split("/");
+            if (ss.length > 0) { end_yy = Util.getIntParam(ss[0], -1); }
+            if (ss.length > 1) { end_mm = Util.getIntParam(ss[1], -1); }
+            if (ss.length > 2) { end_dd = Util.getIntParam(ss[2], -1); }
+        }
 
 		//key to large array of docids in session
 		//it possible to pass this array as the get request parameter, but is not scalable due to the post and get size limits of tomcat
@@ -890,30 +923,7 @@ public class JSPHelper {
 		boolean direction_in = directionsSet.contains("in");
 		boolean direction_out = directionsSet.contains("out");
 
-        int yy = -1, end_yy = -1;
-        int mm = -1, end_mm = -1;
-        int dd = -1, end_dd = -1;
 
-        String sd = request.getParameter("start_date");
-		if(sd != null) {
-            String[] ss =  sd.split("/");
-            if(ss.length == 3) {
-                dd = Util.getIntParam(ss[0], -1);
-                mm = Util.getIntParam(ss[1], -1); // be careful: 1-based, NOT 0-based
-                yy = Util.getIntParam(ss[2], -1);
-            }
-        }
-        String end_date = request.getParameter("end_date");
-        if(end_date != null) {
-            String[] ss =  end_date.split("/");
-            if(ss.length == 3) {
-                end_dd = Util.getIntParam(ss[0], -1);
-                end_mm = Util.getIntParam( ss[1], -1);
-                end_yy = Util.getIntParam(ss[2], -1);
-            }
-        }
-        System.err.println("Dates: "+dd+", "+mm+", "+yy+", "+sd);
-        System.err.println("Dates: "+end_dd+", "+end_mm+", "+end_yy+", "+end_date);
         String[] sentiments = request.getParameterValues("sentiment");
 		int cluster = HTMLUtils.getIntParam(request, "timeCluster", -1);
 		/** usually, there is 1 time cluster per month */
@@ -970,38 +980,7 @@ public class JSPHelper {
 
                 Indexer.QueryOptions options = new Indexer.QueryOptions();
                 options.setQueryType(qt);
-                if(yy>0 || mm>0 || dd>0) {
-                    Date date = new Date();
-                    if(mm>0)
-                        date.setMonth(mm);
-                    if(yy>0)
-                        date.setYear(yy);
-                    if(dd>0)
-                        date.setDate(dd);
-                    options.setStartDate(date);
-                }
-                if(end_yy>0 || end_mm>0 || end_dd>0) {
-                    Date date = new Date();
-                    if(end_mm>0)
-                        date.setMonth(end_mm);
-                    if(end_yy>0)
-                        date.setYear(end_yy);
-                    if(end_dd>0)
-                        date.setDate(end_dd);
-                    options.setEndDate(date);
-                }
-                String sortBy = request.getParameter("sort_by");
-                if(sortBy!=null) {
-                    if ("relevance".equals(sortBy.toLowerCase()))
-                        options.setSortBy(Indexer.SortBy.RELEVANCE);
-                    else if ("recent".equals(sortBy.toLowerCase()))
-                        options.setSortBy(Indexer.SortBy.RECENT_FIRST);
-                    else if ("chronological".equals(sortBy.toLowerCase()))
-                        options.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
-                    else {
-                        log.info("Unknown sort by option: " + sortBy);
-                    }
-                }
+				options.setSortBy(sortBy);
 
 				docsForTerm = archive.docsForQuery(term, options);
 				// also search blobs and merge result, but not for subject/corr. search
@@ -1161,7 +1140,7 @@ public class JSPHelper {
 
 		// apply the OR or AND of the filters
 		boolean initialized = false;
-		Collection<Document> resultDocs;
+		List<Document> resultDocs;
 		List<Blob> resultBlobs;
 
 		// if its an AND selection, and we are applying only to filtered docs, start with it and intersect with the docs for each facet.
@@ -1365,7 +1344,7 @@ public class JSPHelper {
 		if (!initialized)
 		{
 			if (cluster >= 0)
-				resultDocs = archive.docsForQuery(null, cluster, Indexer.QueryType.FULL); // means all docs in cluster x
+				resultDocs = new ArrayList<Document>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // means all docs in cluster x
 			else
 			{
 				resultDocs = new ArrayList<Document>();
@@ -1382,9 +1361,18 @@ public class JSPHelper {
 			resultBlobs = Util.listIntersection(resultBlobs, blobsForTerm);
 		}
 
-		// convert set back to a list 
-		//List<Document> docList = new ArrayList<Document>(resultDocs);
-		//Collections.sort(docList);
+		// we need to sort again if needed. by default, we're here assuming relevance based sort.
+		// can't rely on indexer sort.
+		// for 2 reasons:
+		// 1. blobs vs. docs may not be sorted by date as they are retrieved separately from the index.
+		// 2. there may be no search term -- the user can use this as a way to list all docs, but may still want sort by time
+		if (sortBy == Indexer.SortBy.CHRONOLOGICAL_ORDER)
+			Collections.sort(resultDocs);
+		else if (sortBy == Indexer.SortBy.RECENT_FIRST) {
+			Collections.sort(resultDocs);
+			Collections.reverse(resultDocs);
+		}
+
 		return new Pair<Collection<Document>, Collection<Blob>>(resultDocs, resultBlobs);
 	}
 

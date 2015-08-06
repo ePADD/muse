@@ -276,31 +276,82 @@ public class CalendarUtil {
         return c.getTime();
     }
 	
-	/** convert a pair of <yy, mm> specs to a date range. startM, endM are 0-based. if startM is < 0, considered as 0 and if endM is < 0, considered as 11. 
-	 * no handling of time zone. */
     public static Pair<Date, Date> getDateRange(int startY, int startM, int endY, int endM){
-        return getDateRange(startY, startM, 1, endY, endM, 1);
+		return getDateRange(startY, startM, -1, endY, endM, -1);
     }
 
-    public static Pair<Date, Date> getDateRange(int startY, int startM, int startD, int endY, int endM, int endD)
+	/** cool method to convert a pair of <yy, mm, dd> specs per Gregorian calendar to a date range.
+	 * Note: startM, endM are 0-based, startD, endD are 1-based.
+	 * startY/endY must be valid (>= 0), otherwise a null is returned for start / end dates.
+	 * Note: all months are 0-based, but days-of-month start from 1.
+	 * startM/endM/startD/endD can be invalid (< 0, or also > 11 in the case of months) in which case they are treated as "*".
+	 * i.e. put to their min values for start, or to max values for end.
+	 * if startM is invalid, startD is ignored and also considered invalid. likewise for endM/endD.
+	 * no handling of time zone, default TZ is assumed.
+	 * */
+	public static Pair<Date, Date> getDateRange(int startY, int startM, int startD, int endY, int endM, int endD)
     {
-        if (startM < 0)
-            startM = 0;
-        if (endM < 0)
-            endM = 11;
+		Date startDate = null;
+		// Calendar.JANUARY is 0, and Calendar.DECEMBER is 11
+		if (startY >= 0) {
+			// check startM
+			if (startM < Calendar.JANUARY || startM > Calendar.DECEMBER) {
+				// invalid startM, assign M and D to Jan 1
+				startM = Calendar.JANUARY;
+				startD = 1;
+			} else {
+				if (startD <= 0) // invalid startD
+					startD = 1;
+			}
+			startDate = convertYYMMDDToDate(startY, startM, startD, true);
+		}
 
-        Date startDate = convertYYMMDDToDate(startY, startM, startD, true);
+		// endM/endD will be set to be BEYOND the end of the desired day/month/year.
+		// e.g. if the end y/m/d params are 2001/-1/<whatever>, we want end y/m/d to correspond to 2002 1st Jan
+		// and we'll compute endDate back to EOD 2001 31st Dec.
+		// if the end y/m/d params are 2001/5/-1, we want y/m/d to become correspond to 2001, 1st June and we'll set endDate back to
+		// EOD on 2001, 31st May.
+		Date endDate = null;
 
-        // get date for one month beyond endY, endM, and adjust date back by 1 ms
-        endM++;
-        if (endM >= 12)
-        {
-            endY++;
-            endM = 0;
-        }
-        Date beyond_end = convertYYMMDDToDate(endY, endM, endD, true);
-        Date endDate = new Date(beyond_end.getTime()-1001L);
+		if (endY >= 0) {
+			if (endM < Calendar.JANUARY || endM > Calendar.DECEMBER) {
+				// invalid endM (and endD), therefore set to end
+				endM = Calendar.JANUARY;
+				endD = 1;
+				endY++;
+			} else {
+				if (endD <= 0) {
+					// no date provided, so just bump month.
+					endD = 1;
+					endM++;
+					if (endM > Calendar.DECEMBER) {
+						// obviously account for rollovers. so 2001/11/-1 sets end y/m/d to 2002/0/1
+						endY++;
+						endM = Calendar.JANUARY;
+					}
+				} else {
+					endD++;
+					// bump day, but need to check if its more than the allowed days for that month. misery!
+					// http://stackoverflow.com/questions/8940438/number-of-days-in-particular-month-of-particular-year
+					Calendar tmp = new GregorianCalendar(endY, endM, 1);
+					int maxDays = tmp.getActualMaximum(Calendar.DAY_OF_MONTH);
+					if (endD > maxDays) {
+						endD = 1;
+						// bump month
+						endM++;
+						if (endM > Calendar.DECEMBER) {
+							// obviously account for rollovers. so 2001/11/-1 sets end y/m/d to 2002/0/1
+							endY++;
+							endM = Calendar.JANUARY;
+						}
+					}
+				}
+			}
+			Date beyond_end = convertYYMMDDToDate(endY, endM, endD, true);
+			endDate = new Date(beyond_end.getTime()-1001L);
+		}
 
+		log.info ("date range: " + startDate + "-" + endDate);
         return new Pair<Date, Date>(startDate, endDate);
     }
 
@@ -324,13 +375,44 @@ public class CalendarUtil {
 	public static void main (String args[])
 	{
 		// tests for get date range
-		Pair<Date, Date> p = getDateRange(2010, 10, 2011, 5);
-		System.out.println(p.getFirst() + " - " + p.getSecond());		
-		p = getDateRange(2010, 10, 2011, -1);
-		System.out.println(p.getFirst() + " - " + p.getSecond());		
-		p = getDateRange(2010, -1, 2011, -1);
-		System.out.println(p.getFirst() + " - " + p.getSecond());		
-		p = getDateRange(2010, -1, 2010, -1);
+
+		Pair<Date, Date> p = getDateRange(2010, 10, 2011, 5); // 2010 nov through june 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, 10, 2011, -1); // 2010 Nov through end 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, 2011, -1); // all of 2010 and 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, 2010, -1); // all of 2010
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, -1, 2010, -1, -1); // all of 2010
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2007, -1, -1, 2007, 1, -1); // begin 2007 through end Feb (28th)
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2008, -1, -1, 2008, 1, -1); // begin 2008 through end Feb (29th)
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, 10, -1, 2011, 5, -1); // begin 2010 through end June 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, 5, 2011, -1, 5); //begin 2010 through end of 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, 5, 2011, 11, 25); //begin 2010 through end of 25th dec 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, 5, 2011, 11, -1); // begin 2010 through end of 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(2010, -1, 5, 2011, 11, 31); //begin 2010 through end of 2011
+		System.out.println(p.getFirst() + " - " + p.getSecond());
+
+		p = getDateRange(-1, 1, 1, -1, 1, 1); // invalid years, returns null, null;
 		System.out.println(p.getFirst() + " - " + p.getSecond());
 
 		Date d = new Date();

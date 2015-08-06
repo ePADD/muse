@@ -905,6 +905,7 @@ public class IndexUtils {
 				String query = captionToQueryMap.get(sentiment);
                 Indexer.QueryOptions options = new Indexer.QueryOptions();
                 options.setQueryType(Indexer.QueryType.ORIGINAL);
+				options.setSortBy(Indexer.SortBy.RELEVANCE); // to avoid unnecessary sorting
 				Collection<Document> docsForTerm = indexer.docsForQuery(query, options);
 				docsForTerm.retainAll(docSet);
 				sentimentItems.add(new DetailedFacetItem(sentiment, captionToQueryMap.get(sentiment), new ArrayList<Document>(docsForTerm), "sentiment", sentiment));
@@ -1076,13 +1077,14 @@ public class IndexUtils {
 
 	/*
 	 * return docs in given date range (inclusive), sorted by date
-	 * month is 1-based not 0-based
+	 * month is 1-based NOT 0-based. Date is 1 based.
+	 * see calendarUtil.getDateRange specs for handling of the y/m/d fields.
 	 * if month is < 0, it is ignored, i.e. effectively 1 for the start year and
 	 * 12 for the end year
 	 */
 	public static List<Document> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
 	{
-		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, startD - 1, endY, endM - 1, endD -1);
+		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, startD, endY, endM - 1, endD);
 		Date startDate = p.getFirst(), endDate = p.getSecond();
 
 		List<Document> result = new ArrayList<Document>();
@@ -1091,7 +1093,7 @@ public class IndexUtils {
 			if (!startDate.after(d.date) && !endDate.before(d.date))
 				result.add(d);
 		}
-		Collections.sort(result);
+		// Collections.sort(result);
 		return result;
 	}
 

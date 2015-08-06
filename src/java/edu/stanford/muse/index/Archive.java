@@ -1464,7 +1464,7 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String docId = "/Users/sidharthanandan/Downloads/palin.mbox-1020";
+            String docId = "/Users/.../Downloads/palin.mbox-1020";
             String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             Document doc = archive.indexer.docForId(docId);
