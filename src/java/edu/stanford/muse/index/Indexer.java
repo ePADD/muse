@@ -1231,8 +1231,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
     protected int countHitsForQuery(String q, QueryType qt) {
-		if (Util.nullOrEmpty(q))
-			return 0;
+		if (Util.nullOrEmpty(q)) {
+            if(qt!=QueryType.PRESET_REGEX)
+                return 0;
+            //either we have to count the number of hits for every query in the preset file and take union to find the total number of hits or this
+            QueryOptions options = new QueryOptions();
+            options.setQueryType(qt);
+            Collection<Document> docs = docsForQuery(q, options);
+            return docs.size();
+        }
 
 		try {
 			QueryParser parserToUse;
