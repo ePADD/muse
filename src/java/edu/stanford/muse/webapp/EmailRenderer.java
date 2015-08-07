@@ -441,9 +441,9 @@ public class EmailRenderer {
 		x = ed.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
-        List<String> cpeople = archive.getAllEntitiesInLuceneDoc(ed, NER.EPER_TITLE);
-        List<String> corgs = archive.getAllEntitiesInLuceneDoc(ed, NER.EORG_TITLE);
-        List<String> cplaces = archive.getAllEntitiesInLuceneDoc(ed, NER.ELOC_TITLE);
+        List<String> cpeople = archive.getEntitiesInDoc(ed, NER.EPER_TITLE, true);
+        List<String> corgs = archive.getEntitiesInDoc(ed, NER.EORG_TITLE, true);
+        List<String> cplaces = archive.getEntitiesInDoc(ed, NER.ELOC_TITLE, true);
         List<String> entities = new ArrayList<String>();
         entities.addAll(cpeople);
         entities.addAll(cplaces);
