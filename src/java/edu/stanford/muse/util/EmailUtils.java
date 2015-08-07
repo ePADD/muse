@@ -748,24 +748,32 @@ public class EmailUtils {
 		return result;
 	}
 
-    public static Set<Document> getDocsForEAs(Collection<Document> docs, Set<String> eAs){
-        Set<Document> mdocs = new LinkedHashSet<>();
-        if(eAs == null)
-            return mdocs;
+	/** given a set of emailAddress's, returns a map of email address -> docs containing it from within the given docs.
+     * email addrs not present also contain an entry with the count 0
+	 * emailAddress should all be lower case. */
+    public static Map<String, Set<Document>> getDocsForEAs(Collection<Document> docs, Set<String> emailAddresses){
+        Map<String, Set<Document>> map = new LinkedHashMap<String, Set<Document>>();
+        if (emailAddresses == null)
+            return map;
+
+        for (String email: emailAddresses)
+            map.put(email, new LinkedHashSet<Document>());
+
         for(Document doc: docs){
             if(!(doc instanceof EmailDocument))
                 continue;
             EmailDocument ed = (EmailDocument) doc;
-            List<String> addrs = ed.getAllAddrs();
-            for(String addr: addrs) {
-                if(eAs.contains(addr)) {
-                    mdocs.add(ed);
-                    break;
+            List<String> docAddrs = ed.getAllAddrs();
+            for(String addr: docAddrs) {
+				String cAddr = addr.toLowerCase(); // canonical addr
+                if (emailAddresses.contains(cAddr)) {
+					Set<Document> set = map.get(cAddr); // can't be null as we've already created a hash entry for each address
+					set.add(doc);
                 }
             }
         }
 
-        return mdocs;
+        return map;
     }
 
 	/**

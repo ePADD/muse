@@ -47,7 +47,9 @@ import java.util.*;
 /* import javax.servlet.jsp.JspWriter; */
 
 /**
+
  * helper code that would otherwise clutter JSPs. its ok for this file to handle
+
  * HTML/HTTP.
  * All HTML/HTTP and presentation Java code must be present only in this file,
  * because the rest of the Muse code can be used in other, non-web apps.
