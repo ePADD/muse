@@ -72,11 +72,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	static Log					log					= LogFactory.getLog(Indexer.class);
 	private static final long	serialVersionUID	= 1L;
 
+	/** these enums should move out of this class if Indexer is to be made protected because they are part of the API -sgh */
 	public enum QueryType {
 		FULL, ORIGINAL, CORRESPONDENTS, SUBJECT, REGEX, PRESET_REGEX, META;
 	};
+	public enum SortBy{
+		RELEVANCE, CHRONOLOGICAL_ORDER, RECENT_FIRST;
+	};
 
-    // weight given to email subject; 2 means subject is given 2x weight
+	// weight given to email subject; 2 means subject is given 2x weight
     static final int			DEFAULT_SUBJECT_WEIGHT			= 2;
 	public static final int		MAX_MAILING_LIST_NAME_LENGTH	= 20;
 	private static final String	LANGUAGE_FIELD_DELIMITER	= "|";								    // warning: make sure this is a single char, not a string because StringTokenizer constructor with "AB" will split on A or B
@@ -184,10 +188,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         //# of unique names in entire corpus, # of unique names in original content
 		public int					nUniqueNames			= 0, nUniqueNamesOriginal = 0;
 	}
-
-    public enum SortBy{
-      RELEVANCE, CHRONOLOGICAL_ORDER, RECENT_FIRST;
-    };
 
     public static class QueryOptions{
         int cluster = -1, threshold = -1;

@@ -459,7 +459,7 @@ public class Archive implements Serializable {
 
         f_dir.mkdirs();
         // copy lexicons over to the muse dir
-        String[] lexicons = {"sensitive.english.lex.txt", "general.english.lex.txt", "default.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
+        String[] lexicons = {"sensitive.english.lex.txt", "general.english.lex.txt", "sentiments.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
         log.info(lexicons.length + " lexicons copied to " + dir);
         for (String l : lexicons) {
             try {
@@ -1464,7 +1464,7 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String docId = "/Users/sidharthanandan/Downloads/palin.mbox-1020";
+            String docId = "/Users/.../Downloads/palin.mbox-1020";
             String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             Document doc = archive.indexer.docForId(docId);
