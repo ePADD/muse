@@ -405,8 +405,10 @@ public class NER implements StatusProvider {
 		});
 	}
 
-	public static String retainOnlyNames(String text, List<Triple<String, Integer, Integer>> offsets) {
-		if (offsets == null) {
+    //retains only filtered entities
+	public static String retainOnlyNames(String text, org.apache.lucene.document.Document doc) {
+        List<Triple<String,Integer, Integer>> offsets = edu.stanford.muse.ner.NER.getNameOffsets(doc, true);
+        if (offsets == null) {
 		    //mask the whole content
             offsets = new ArrayList<Triple<String, Integer, Integer>>();
             log.warn("Retain only names method received null offset, redacting the entire text");
@@ -419,8 +421,22 @@ public class NER implements StatusProvider {
 
 		//make sure the offsets are in order, i.e. the end offsets are in increasing order
 		arrangeOffsets(offsets);
-        for (Triple<String, Integer, Integer> t : offsets)
-		{
+        List<String> people = Archive.getEntitiesInLuceneDoc(doc, NER.EPER, true);
+        List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, NER.EORG, true);
+        List<String> places = Archive.getEntitiesInLuceneDoc(doc, NER.ELOC, true);
+        Set<String> allEntities = new LinkedHashSet<>();
+        if (people!=null)
+            allEntities.addAll(people);
+        if (orgs!=null)
+            allEntities.addAll(orgs);
+        if (places!=null)
+            allEntities.addAll(places);
+
+        for (Triple<String, Integer, Integer> t : offsets) {
+            String entity = t.first;
+            if(!allEntities.contains(entity))
+                continue;
+
           	int begin_pos = t.second();
 			int end_pos = t.third();
 			if (begin_pos > len || end_pos > len) {

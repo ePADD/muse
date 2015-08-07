@@ -231,6 +231,17 @@ public class Util {
 		boolean inDict = false;
 		if (cws.contains(e.toLowerCase()) || tcws.contains(e.toLowerCase()))
 			inDict = true;
+        String lc = e.toLowerCase();
+        List<String> noise = Arrays.asList("jan","feb","mar","apr","jul","aug","oct","nov","dec","sun","mon","tue","wed","thur","fri","sat","thu");
+        {
+            String[] words = lc.split("\\s+");
+            for(String word: words)
+                if(noise.contains(word)) {
+                    inDict = true;
+                    break;
+                }
+        }
+
 		//for orgs reject the entity if it is all caps or is in common words dictionary
 		if (ti == 2) {
 			if (inDict)
@@ -246,7 +257,7 @@ public class Util {
 								|| word.equals("As") || word.equals("On") || word.equals("will") || word.equals("if")) || word.equals("At")
 						|| word.equals("But") || word.equals("By") || word.equals("If") || word.equals("as") | word.equals("When") || word.equals("With"))
 					containsKP = true;
-			if (e.contains("City of") || e.contains("As a") || e.contains("As an"))
+			if (e.contains("City of") || e.contains("As a") || e.contains("As an")|| e.toLowerCase().contains("original message"))
 				containsKP = true;
 
 			if (containsKP)
@@ -260,7 +271,7 @@ public class Util {
 					break;
 				}
 			}
-			if (ac || inDict)//||words.length==1)
+			if (ac || inDict)
 				return false;
 		}
 
@@ -299,13 +310,14 @@ public class Util {
 	}
 
 	public static void main(String[] args) {
-		String[] context = new String[] { "ivan allen college", "art history/fine arts", "general accounting office", "asia minor", "barbara bono", "aauw legal advocacy fund progress", "behar", "house", "ny", "department of labor", "sex equity awards", "dos", "andreas baader", "center", "pakistan", "hillary clinton", "natural sciences", "suzanne laychock", "new look", "barbara lazarus", "rainer werner fassbinder", "graduate student symposium on gender state university of new york", "peter cloos", "asm international", "electronic packaging", "national humanities center", "pratt institute", "science &amp; tech stubborn equation keeps women", "hirschhorn museum", "greece every", "aauw", "gao", "rolling stone", "irewg distinguished women speakers series &amp; modern languages", "brooklyn", "buffalo state college", "red army faction", "america", "john dingell editor", "bosmat alon", "allen college", "medical strategies", "allen hall", "department of classics", "block", "center for the arts cas spring lecture series alexis deveaux", "william egginton", "atlantic", "institute for research and education", "daemen college", "spring", "new mexico", "center for the study of diversity", "block de behar", "dawn bracely", "harold levy", "carolyn maloney", "student union student activism fair", "india", "elaine proctor britain/south africa", "buffalo", "arcade film &amp; arts centre", "mechanical &amp; aerospace engineering wed", "deborah chung at", "gross domestic product", "state college", "earth", "cleveland", "national academy of engineering", "senate campaign", "lisa block de behar", "lgbt alliance", "senate", "stories", "technology international hall of fame", "film fest", "irewg networking lunch", "western reserve university", "main st.", "block de", "arcade film &amp; arts centre int", "south africa", "hillary rodham clinton", "quick", "school of social work", "center for the arts irewg annual distinguished faculty lecture susan cole", "associated press", "kent state university", "surface mount technology association", "irewg", "h-technologies group", "center for the arts zodiaque dance company", "aauw legal advocacy fund", "pie", "women", "rekha menon", "quick list/aauw sex equity awards", "shea", "center for the arts" };
-		String wikiUrl = "http://en.wikipedia.org/wiki/Washington,_D.C.";
-		//String[] context = new String[] { "joseph m. conte", "bruce jackson", "barbara bono", "stanford", "ed dorn", "search", "assistant marshall dear joseph-- i", "research institute on addictions phone", "neil mcgillicuddy", "angelica huston", "center for tomorrow", "buffalo buffalo", "hollywood", "christina ricci", "student union", "new york state health insurance program", "robert creeley", "february", "harvard", "sarah campbell", "albright-knox art gallery", "chair department of english suny", "wisconsin", "department of english suny", "new mexico", "bob creeley", "suny", "nyperl", "search meeting", "professional staff senate", "gene jarrett", "gallery", "washington street", "roger livesey", "vincent gallo", "anna kedzierski", "dundon", " liz", "joseph conte", "robert duncan", "bono sent", "ub", "barbara christy", "arcade", "red cross campus blood drives", "medical examination", "ezra pound", "mafac", "ben gazarra", "mexico", "stahura", " glenda", "thursday", "loss pequeño glazier", "anna maria kedzierski assistant", "senate", "hershini bhana", "care insurance program", "assistant marshall dear colleagues", "new york state public employee", "classics", "st louis", "cas", "betty stone", "ub blood drive committee", "second call", "department commencement", "arcade film and arts center", "employee assistance program", "chris salem", "rd", "ub medical school", "al gelpi", "england", "stanford univ.", "research university", "new york state", "public high school", "confidential", "service center road", "employee assistance program ub blood drive committee list", "national science foundation", "kristin herman", "new york times photo archives", "ub english department list", "maine", "paramount", "occupational &amp; environmental safety phone", "agency", "university online directory", "retiree long-term care insurance plan", "new york", "jonathan skinner", "marilyn kramer", "assistant marshall", "civil service", "assistant marshalls", "richard lobaugh", "you.", "university commencement", "tom raworth" };
-		//String wikiUrl = "http://en.wikipedia.org/wiki/index.html?curid=3985";
-		Pair<String, Double> res = Util.scoreWikiPage(wikiUrl, context);
-		System.err.println("The score is: " + res.second + "<br>");
-		System.err.println(Util.getConfidenceBar(res.second, res.first));
+//		String[] context = new String[] { "ivan allen college", "art history/fine arts", "general accounting office", "asia minor", "barbara bono", "aauw legal advocacy fund progress", "behar", "house", "ny", "department of labor", "sex equity awards", "dos", "andreas baader", "center", "pakistan", "hillary clinton", "natural sciences", "suzanne laychock", "new look", "barbara lazarus", "rainer werner fassbinder", "graduate student symposium on gender state university of new york", "peter cloos", "asm international", "electronic packaging", "national humanities center", "pratt institute", "science &amp; tech stubborn equation keeps women", "hirschhorn museum", "greece every", "aauw", "gao", "rolling stone", "irewg distinguished women speakers series &amp; modern languages", "brooklyn", "buffalo state college", "red army faction", "america", "john dingell editor", "bosmat alon", "allen college", "medical strategies", "allen hall", "department of classics", "block", "center for the arts cas spring lecture series alexis deveaux", "william egginton", "atlantic", "institute for research and education", "daemen college", "spring", "new mexico", "center for the study of diversity", "block de behar", "dawn bracely", "harold levy", "carolyn maloney", "student union student activism fair", "india", "elaine proctor britain/south africa", "buffalo", "arcade film &amp; arts centre", "mechanical &amp; aerospace engineering wed", "deborah chung at", "gross domestic product", "state college", "earth", "cleveland", "national academy of engineering", "senate campaign", "lisa block de behar", "lgbt alliance", "senate", "stories", "technology international hall of fame", "film fest", "irewg networking lunch", "western reserve university", "main st.", "block de", "arcade film &amp; arts centre int", "south africa", "hillary rodham clinton", "quick", "school of social work", "center for the arts irewg annual distinguished faculty lecture susan cole", "associated press", "kent state university", "surface mount technology association", "irewg", "h-technologies group", "center for the arts zodiaque dance company", "aauw legal advocacy fund", "pie", "women", "rekha menon", "quick list/aauw sex equity awards", "shea", "center for the arts" };
+//		String wikiUrl = "http://en.wikipedia.org/wiki/Washington,_D.C.";
+//		//String[] context = new String[] { "joseph m. conte", "bruce jackson", "barbara bono", "stanford", "ed dorn", "search", "assistant marshall dear joseph-- i", "research institute on addictions phone", "neil mcgillicuddy", "angelica huston", "center for tomorrow", "buffalo buffalo", "hollywood", "christina ricci", "student union", "new york state health insurance program", "robert creeley", "february", "harvard", "sarah campbell", "albright-knox art gallery", "chair department of english suny", "wisconsin", "department of english suny", "new mexico", "bob creeley", "suny", "nyperl", "search meeting", "professional staff senate", "gene jarrett", "gallery", "washington street", "roger livesey", "vincent gallo", "anna kedzierski", "dundon", " liz", "joseph conte", "robert duncan", "bono sent", "ub", "barbara christy", "arcade", "red cross campus blood drives", "medical examination", "ezra pound", "mafac", "ben gazarra", "mexico", "stahura", " glenda", "thursday", "loss pequeño glazier", "anna maria kedzierski assistant", "senate", "hershini bhana", "care insurance program", "assistant marshall dear colleagues", "new york state public employee", "classics", "st louis", "cas", "betty stone", "ub blood drive committee", "second call", "department commencement", "arcade film and arts center", "employee assistance program", "chris salem", "rd", "ub medical school", "al gelpi", "england", "stanford univ.", "research university", "new york state", "public high school", "confidential", "service center road", "employee assistance program ub blood drive committee list", "national science foundation", "kristin herman", "new york times photo archives", "ub english department list", "maine", "paramount", "occupational &amp; environmental safety phone", "agency", "university online directory", "retiree long-term care insurance plan", "new york", "jonathan skinner", "marilyn kramer", "assistant marshall", "civil service", "assistant marshalls", "richard lobaugh", "you.", "university commencement", "tom raworth" };
+//		//String wikiUrl = "http://en.wikipedia.org/wiki/index.html?curid=3985";
+//		Pair<String, Double> res = Util.scoreWikiPage(wikiUrl, context);
+//		System.err.println("The score is: " + res.second + "<br>");
+//		System.err.println(Util.getConfidenceBar(res.second, res.first));
+        System.err.println(filterEntity("On Feb"));
 	}
 
     /**

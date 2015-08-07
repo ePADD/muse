@@ -255,7 +255,16 @@ import java.util.*;
         }
         for (int iti = 0; iti < types.size(); iti++) {
             Short iType = types.get(iti);
-            status = "Learning " + iType + " type names";
+            {
+                String type = "";
+                if (iType == 0)
+                    type = "person";
+                else if (iType == 1)
+                    type = "place";
+                else if (iType == 2)
+                    type = "organization";
+                status = "Learning to recognise " + type + " names";
+            }
             log.info("Training for type: " + iType);
             String[] aType = FeatureDictionary.aTypes.get(iType);
             List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();

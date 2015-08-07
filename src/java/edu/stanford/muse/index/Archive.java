@@ -805,7 +805,7 @@ public class Archive implements Serializable {
                 // Collections.sort(names);
                 // d.description = Util.join(names,
                 // Indexer.NAMES_FIELD_DELIMITER);
-                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, edu.stanford.muse.ner.NER.getNameOffsets(d, archive, false));
+                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getDoc(d));
             }
         }
     }
@@ -893,7 +893,7 @@ public class Archive implements Serializable {
                     doc.removeFields("body_original");
 
                     if (text != null) {
-                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, edu.stanford.muse.ner.NER.getNameOffsets(doc, true));
+                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
                         doc.add(new Field("body", redacted_text, Indexer.full_ft)); // this
                         // uses
                         // standard
@@ -910,7 +910,7 @@ public class Archive implements Serializable {
                     String title = doc.get("title");
                     doc.removeFields("title");
                     if (title != null) {
-                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(text, edu.stanford.muse.ner.NER.getNameOffsets(doc, true));
+                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
                         doc.add(new Field("title", redacted_title, Indexer.full_ft));
                     }
                 }
@@ -1031,20 +1031,19 @@ public class Archive implements Serializable {
                 entitiesWithId, IA_links, showDebugInfo);
     }
 
-    // need to remove current dependency on indexer (only for debug).
     public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed,
                                                            Set<String> highlightTermsUnstemmed, Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
         String type = "person", otype = "organization", ptype = "location";
         //not using filtered entities here as it looks weird especially in the redaction mode not to
         // have a word not masked annotated. It is counter-intuitive.
-        List<String> cpeople = getAllEntitiesInLuceneDoc(d, NER.EPER);
-        List<String> corgs = getAllEntitiesInLuceneDoc(d, NER.EORG);
-        List<String> cplaces = getAllEntitiesInLuceneDoc(d, NER.ELOC);
+        List<String> cpeople = getEntitiesInDoc(d, NER.EPER, true);
+        List<String> corgs = getEntitiesInDoc(d, NER.EORG, true);
+        List<String> cplaces = getEntitiesInDoc(d, NER.ELOC, true);
         Set<String> acrs = CICTokenizer.getAcronyms(indexer.getContents(d, false));
 
-        List<String> e = getAllEntitiesInLuceneDoc(d, type);
-        List<String> orgs = getAllEntitiesInLuceneDoc(d, otype);
-        List<String> places = getAllEntitiesInLuceneDoc(d, ptype);
+        List<String> e = getEntitiesInDoc(d, type, true);
+        List<String> orgs = getEntitiesInDoc(d, otype, true);
+        List<String> places = getEntitiesInDoc(d, ptype, true);
         String contents = indexer.getContents(d, false);
         org.apache.lucene.document.Document ldoc = indexer.getDoc(d);
         if (ldoc == null)
@@ -1436,20 +1435,16 @@ public class Archive implements Serializable {
 
     //type should be one of strings EPER, ELOC, EORG, as set in NER.java
     //returns filtered list of all names
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type, Boolean filter) {
-        org.apache.lucene.document.Document doc = null;
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
+        org.apache.lucene.document.Document ldoc = null;
         try {
-            doc = indexer.getDoc(d);
+            ldoc = indexer.getDoc(doc);
         } catch (IOException e) {
-            log.warn("Unable to obtain document " + d.getUniqueId() + " from index");
+            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
             e.printStackTrace();
             return null;
         }
-        String field = doc.get(type);
-        if(filter)
-            return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, indexer.NAMES_FIELD_DELIMITER), type);
-        else
-            return Util.tokenize(field, indexer.NAMES_FIELD_DELIMITER);
+        return getEntitiesInLuceneDoc(ldoc, type, filter);
     }
 
     /**@return a list of names filtered to remove dictionary matches*/
@@ -1458,8 +1453,12 @@ public class Archive implements Serializable {
     }
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
-    public List<String> getAllEntitiesInLuceneDoc(edu.stanford.muse.index.Document d, String type) {
-        return getEntitiesInDoc(d, type, false);
+    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type, Boolean filter) {
+        String field = ldoc.get(type);
+        if(filter)
+            return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
+        else
+            return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
     }
 
     public static void main(String[] args) {
