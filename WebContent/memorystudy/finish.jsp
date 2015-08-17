@@ -45,7 +45,7 @@ and your comments will be very useful to us. Please also indicate if you would l
 
 <div align="center">
 <form method="post" action="http://prpl.stanford.edu/report/field_report.php">
-<input type="hidden" name="to" id="to" value="hangal@cs.stanford.edu"></input>
+< type="hidden" name="to" id="to" value="hangal@cs.stanford.edu"/>
 
 <table>
 <tr><td align="left">
@@ -57,7 +57,7 @@ Comments:<br/>
 <textarea style="padding:5px" rows="25" cols="60" name="message" id="message"></textarea>
 </td></tr>
 
-<tr><td><input type="submit" value="Submit"></input></td></tr>
+<tr><td><input type="submit" value="Submit"/></td></tr>
 
 </table>
 </form>

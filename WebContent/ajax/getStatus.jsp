@@ -22,7 +22,8 @@
 			try {
 				json.put("error", jsone.toString());	
 			} catch (Exception e) { Util.report_exception(e); }
-		}    }
+		}
+	}
     else
         out.println (obj.getStatusMessage());
 //JSPHelper.logRequestComplete(request);

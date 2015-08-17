@@ -73,7 +73,7 @@ try {
 			session.setAttribute("statusProvider", new StaticStatusProvider("Generating questions"));
 			Pair<String, String> p1 = Util.fieldsToCSV(currentStudy.stats, false);
 			Pair<String, String> p2 = Util.fieldsToCSV(archive.addressBook.getStats(), false);
-			Pair<String, String> p3 = Util.fieldsToCSV(archive.indexer.stats, false);
+			Pair<String, String> p3 = Util.fieldsToCSV(archive.getStats(), false);
 			JSPHelper.log.info("STUDYSTATS-1: " + p1.getFirst() + "," + p2.getFirst() + "," + p3.getFirst());
 			JSPHelper.log.info("STUDYSTATS-2: " + p1.getSecond() + "," + p2.getSecond() + "," + p3.getSecond());
 
