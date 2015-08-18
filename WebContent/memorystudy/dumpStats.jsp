@@ -96,6 +96,10 @@ text-align:right;
 		idx = idx + 1;
 	} 
 	if (!csv) { out.println("</table>"); }
+
+	// For each contact, we should print out the last date of communication with them, going backwards in time (visually separated by month)
+	// Similarly, for each entity (all types, as well as broken down by P/L/O
+
 	%>
 <p>
 </body>
