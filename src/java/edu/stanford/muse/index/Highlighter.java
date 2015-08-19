@@ -267,7 +267,7 @@ public class Highlighter {
 		m.appendTail(sb);
 		contents = sb.toString();
 
-		if (sensitive) {
+		if (sensitive!=null && sensitive) {
 			//log.info("Annotating sensitive stuff");
 			contents = annotateSensitive(contents, preHighlightTag, postHighlightTag);
 		}

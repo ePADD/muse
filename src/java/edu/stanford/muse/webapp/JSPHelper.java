@@ -875,7 +875,6 @@ public class JSPHelper {
 			}
 		}
 
-
         // compute date requirements. start/end_date are in yyyy/mm/dd format
         int yy = -1, end_yy = -1, mm = -1, end_mm = -1, dd = -1, end_dd = -1;
 

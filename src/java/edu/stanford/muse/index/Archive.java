@@ -1433,6 +1433,29 @@ public class Archive implements Serializable {
         }
     }
 
+    public List<String> filterOriginalContent(edu.stanford.muse.index.Document doc, List<String> names) {
+        List<String> originalAllNames = getEntitiesInDoc(doc, NER.NAMES_ORIGINAL);
+        List<String> originalNames = new ArrayList<>();
+        for(String str: names)
+            if(originalAllNames.contains(str))
+               originalNames.add(str);
+        return originalNames;
+    }
+
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
+        if(originalContentOnly)
+            return filterOriginalContent(doc, getEntitiesInDoc(doc, type, filter));
+        else
+            return getEntitiesInDoc(doc, type, filter);
+    }
+
+    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
+        if(originalContentOnly)
+            return filterOriginalContent(doc, getQualityEntitiesInDoc(doc, type, filter));
+        else
+            return getQualityEntitiesInDoc(doc, type, filter);
+    }
+
     //type should be one of strings EPER, ELOC, EORG, as set in NER.java
     //returns filtered list of all names
     public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {

@@ -14,9 +14,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 
@@ -179,29 +177,51 @@ public class Util {
 	static String[]					TYPE_SPECIFIC_COMMON_WORDS_FILE	= new String[] { edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "per-kill.txt", edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "loc-kill.txt", edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "org-kill.txt" };
 
 	static Set<String> readFile(String fileName) {
-		if (files.containsKey(fileName))
-			return files.get(fileName);
-		Set<String> words = new HashSet<String>();
-		try {
-			BufferedReader br = new BufferedReader(new FileReader(new File(fileName)));
-			String line = null;
-			int li = 0;
-			while ((line = br.readLine()) != null) {
-				line = line.trim().toLowerCase();
-				words.add(line);
-				li++;
-			}
-			log.info("Read: " + li + " words from " + fileName);
-
-			br.close();
-			files.put(fileName, words);
-			return words;
+        if (files.containsKey(fileName))
+            return files.get(fileName);
+        try {
+			InputStream in = new FileInputStream(fileName);
+            return readFile(in, fileName);
 		} catch (Exception e) {
-			log.info("Did not find the common words file: " + fileName);
-			files.put(fileName, words);
-			return words;
+            files.put(fileName, new LinkedHashSet<String>());
+            log.info("Did not find the common words file: " + fileName);
+			return new LinkedHashSet<>();
 		}
 	}
+
+    static Set<String> readFileFromResource(String fileName) {
+        if (files.containsKey(fileName))
+            return files.get(fileName);
+        try {
+            InputStream in = Util.class.getClassLoader().getResourceAsStream(fileName);
+            return readFile(in, fileName);
+        } catch (Exception e) {
+            files.put(fileName, new LinkedHashSet<String>());
+            log.info("Did not find the common words file: " + fileName);
+            return new LinkedHashSet<>();
+        }
+    }
+
+    static Set<String> readFile(InputStream in, String fileName){
+        if (files.containsKey(fileName))
+            return files.get(fileName);
+        Set<String> words = new LinkedHashSet<String>();
+        try{
+            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim().toLowerCase();
+                words.add(line);
+            }
+            br.close();
+            log.info("Read "+words.size()+" from "+fileName);
+            files.put(fileName, words);
+            return words;
+        }catch(Exception e){
+            files.put(fileName, words);
+            return words;
+        }
+    }
 
 
     public static boolean filterEntity(String e){
@@ -223,7 +243,19 @@ public class Util {
 			ti = 1;
 		else if (NER.EORG.equals(type))
 			ti = 2;
-		Set<String> cws = readFile(COMMON_WORDS_FILE);
+		Set<String> cws = new LinkedHashSet<>();
+        Set<String> temp = readFile(COMMON_WORDS_FILE);
+        if(temp!=null)
+            cws.addAll(temp);
+        try {
+            Set<String> dws = readFileFromResource("dict.words.full");
+            if(dws!=null)
+                cws.addAll(dws);
+            else
+                log.warn("Could not read the dict.words.full file");
+        }catch(Exception e1){
+            log.warn("Could not read the dict.words.full file");
+        }
 		Set<String> tcws = new HashSet<String>();
 		if (ti <= 2 && ti >= 0)
 			tcws = readFile(TYPE_SPECIFIC_COMMON_WORDS_FILE[ti]);
@@ -232,14 +264,23 @@ public class Util {
 		if (cws.contains(e.toLowerCase()) || tcws.contains(e.toLowerCase()))
 			inDict = true;
         String lc = e.toLowerCase();
+        boolean allDict = false;
         List<String> noise = Arrays.asList("jan","feb","mar","apr","jul","aug","oct","nov","dec","sun","mon","tue","wed","thur","fri","sat","thu");
         {
             String[] words = lc.split("\\s+");
-            for(String word: words)
-                if(noise.contains(word)) {
+            int numDict = 0;
+            for(String word: words) {
+                if (noise.contains(word)) {
                     inDict = true;
                     break;
                 }
+                if(cws.contains(word.toLowerCase()))
+                    numDict++;
+            }
+            if(numDict == words.length)
+                allDict = true;
+            if(allDict)
+                return false;
         }
 
 		//for orgs reject the entity if it is all caps or is in common words dictionary
