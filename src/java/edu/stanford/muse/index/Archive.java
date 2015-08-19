@@ -1447,6 +1447,33 @@ public class Archive implements Serializable {
         return getEntitiesInLuceneDoc(ldoc, type, filter);
     }
 
+    //puts an extra layer of filtering over entities by filtering out entities also recognised as other type
+    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
+        org.apache.lucene.document.Document ldoc = null;
+        try {
+            ldoc = indexer.getDoc(doc);
+        } catch (IOException e) {
+            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
+            e.printStackTrace();
+            return null;
+        }
+        List<String> thises = getEntitiesInLuceneDoc(ldoc, type, filter);
+        String[] types = new String[]{NER.EPER, NER.ELOC, NER.EORG};
+        List<String> otheres = new ArrayList<>();
+        for(String et: types) {
+            if (et.equals(type))
+                continue;
+            List<String> temp = getEntitiesInLuceneDoc(ldoc, et, filter);
+            if(temp!=null)
+                otheres.addAll(temp);
+        }
+        List<String> ret = new ArrayList<>();
+        for(String te: thises)
+            if(!otheres.contains(te))
+                ret.add(te);
+        return ret;
+    }
+
     /**@return a list of names filtered to remove dictionary matches*/
     public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type) {
         return getEntitiesInDoc(d, type, true);

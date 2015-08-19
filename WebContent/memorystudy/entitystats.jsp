@@ -8,38 +8,53 @@
 <title>Entity stats</title>
 </head>
 <%
-    try {
-        String type = request.getParameter("type");
-        List<Document> docs = archive.getAllDocs();
-        Map<String, Map<Date, Integer>> timeStamps = new LinkedHashMap<String, Map<Date, Integer>>();
-        //most recent date used on
-        Map<String, Date> recentDate = new LinkedHashMap<String, Date>();
-        for (Document doc : docs) {
-            List<String> entities = archive.getEntitiesInDoc(doc, type, true);
-            for (String e : entities) {
-                EmailDocument ed = (EmailDocument) doc;
-                if (!timeStamps.containsKey(e)) {
-                    timeStamps.put(e, new LinkedHashMap<Date, Integer>());
-
-                }
-                if (!timeStamps.get(e).containsKey(ed.getDate()))
-                    timeStamps.get(e).put(ed.getDate(), 0);
-                timeStamps.get(e).put(ed.getDate(), timeStamps.get(e).get(ed.getDate()) + 1);
-
-                if (!recentDate.containsKey(ed.getDate()))
-                    recentDate.put(e, ed.getDate());
-                Date d1 = ed.getDate();
-                Date d2 = recentDate.get(e);
-                if (d1.after(d2))
-                    recentDate.put(e, d1);
-            }
-        }
-        List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
-        for (Pair<String, Date> p : srds) {
-            out.println(p.getFirst()+"&nbsp:&nbsp"+p.getSecond() + "&nbsp #"+timeStamps.get(p.getFirst()).size()+"<br>");
-        }
+    String type = request.getParameter("type");
+    if(type==null){
+        out.println("<a href='entitystats.jsp?type=en_people' target='_blank'>People</a><br>");
+        out.println("<a href='entitystats.jsp?type=en_loc' target='_blank'>Locations</a><br>");
+        out.println("<a href='entitystats.jsp?type=en_org' target='_blank'>Organization</a><br>");
+        out.println("<a href='entitystats.jsp?type=corr' target='_blank'>Correspondents</a><br>");
     }
-    catch(Throwable e){
-        e.printStackTrace();
+    else {
+        try {
+            List<Document> docs = archive.getAllDocs();
+            Map<String, Map<Date, Integer>> timeStamps = new LinkedHashMap<String, Map<Date, Integer>>();
+            //most recent date used on
+            Map<String, Date> recentDate = new LinkedHashMap<String, Date>();
+            for (Document doc : docs) {
+                EmailDocument ed = (EmailDocument) doc;
+                List<String> entities;
+                if(!"corr".equals(type)) {
+                    if("en_people".equals(type))
+                        entities = archive.getEntitiesInDoc(doc, type, true);
+                    else
+                        entities = archive.getQualityEntitiesInDoc(doc, type, true);
+                }
+                else
+                    entities = ed.getAllNames();
+                for (String e : entities) {
+                    if (!timeStamps.containsKey(e)) {
+                        timeStamps.put(e, new LinkedHashMap<Date, Integer>());
+
+                    }
+                    if (!timeStamps.get(e).containsKey(ed.getDate()))
+                        timeStamps.get(e).put(ed.getDate(), 0);
+                    timeStamps.get(e).put(ed.getDate(), timeStamps.get(e).get(ed.getDate()) + 1);
+
+                    if (!recentDate.containsKey(ed.getDate()))
+                        recentDate.put(e, ed.getDate());
+                    Date d1 = ed.getDate();
+                    Date d2 = recentDate.get(e);
+                    if (d1.after(d2))
+                        recentDate.put(e, d1);
+                }
+            }
+            List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
+            for (Pair<String, Date> p : srds) {
+                out.println(p.getFirst() + "&nbsp:&nbsp" + p.getSecond() + "&nbsp #" + timeStamps.get(p.getFirst()).size() + "<br>");
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 %>
