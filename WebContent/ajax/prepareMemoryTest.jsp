@@ -1,9 +1,6 @@
 <%@page language="java" contentType="text/javascript; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page import="java.text.ParseException"%>
 <%@page language="java" import="java.util.*"%>
-<%@page language="java" import="javax.mail.*"%>
-<%@page language="java" import="java.io.*"%>
 <%@page language="java" import="org.json.*"%>
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>

@@ -16,7 +16,7 @@
 </head>
 <body>
 <jsp:include page="header.jsp"/>
-<div style="panel rounded">
+<div class="panel rounded">
 
 <%
 	String text = request.getParameter("refText");
@@ -52,7 +52,7 @@
 	String url = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath() + "/browse?term=\"" + name + "\"";
 	float times = pair.getSecond();
 	name = JSPHelper.convertRequestParamToUTF8(name);
-	List<Document> docsForName = new ArrayList<Document>(indexer.docsForQuery(name, -1, Indexer.QueryType.FULL));
+	List<Document> docsForName = new ArrayList<Document>(archive.docsForQuery(name, -1, Indexer.QueryType.FULL));
 	if (docsForName.size() > 0)
 		// note: using single quotes here because href has double quotes
 		out.println ("<a href='" + url +  "'>" + name + "</a> " + docsForName.size() + " messages (Reftext: " + times + " mention" + ((times>1) ?"s":"") + ")<br/>\n");			

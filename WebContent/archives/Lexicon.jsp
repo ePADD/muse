@@ -45,7 +45,7 @@ if (!Util.nullOrEmpty(allDocs))
 		empty_graph_message = "No categories are defined for this archive";
 	} else {
 		session.setAttribute("lexicon", lex);
-		Map<String, Set<Document>> map = lex.getEmotions(driver.indexer, (Collection) allDocs, trackNOTA, false /* original content only */); // too heavyweight -- we just want to find if the damn graph is empty...
+		Map<String, Set<Document>> map = (Map<String, Set<Document>>) lex.getEmotions(driver.indexer, (Collection) allDocs, trackNOTA, false /* original content only */); // too heavyweight -- we just want to find if the damn graph is empty...
 		for (String key: map.keySet())
 		{
 	Set<Document> set = map.get(key);			
