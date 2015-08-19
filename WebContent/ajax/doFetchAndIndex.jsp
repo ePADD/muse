@@ -1,20 +1,14 @@
 <%@page language="java" contentType="text/javascript; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page import="java.text.ParseException"%>
 <%@page language="java" import="java.util.*"%>
-<%@page language="java" import="javax.mail.*"%>
-<%@page language="java" import="java.io.*"%>
 <%@page language="java" import="org.json.*"%>
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.datacache.*"%>
 <%@page language="java" import="edu.stanford.muse.exceptions.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="edu.stanford.muse.groups.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.slant.*"%>
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
 <%
 	// core JSP that does fetch, grouping and indexing
@@ -132,7 +126,7 @@
 				Pair<String, String> p = Util.fieldsToCSV(archive.addressBook.getStats(), false);
 				JSPHelper.log.info("ADDRESSBOOKSTATS-1: " + p.getFirst());
 				JSPHelper.log.info("ADDRESSBOOKSTATS-2: " + p.getSecond());
-				p = Util.fieldsToCSV(archive.indexer.stats, false);
+				p = Util.fieldsToCSV(archive.getStats(), false);
 				JSPHelper.log.info("INDEXERSTATS-1: " + p.getFirst());
 				JSPHelper.log.info("INDEXERSTATS-2: " + p.getSecond());
 			} catch (Exception e) { }

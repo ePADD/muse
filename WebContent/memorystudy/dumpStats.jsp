@@ -3,7 +3,6 @@
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="edu.stanford.muse.index.Archive"%>
 <%@page language="java" import="edu.stanford.muse.index.Indexer"%>
-<%@page language="java" import="edu.stanford.muse.index.Indexer.IndexStats"%>
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <!DOCTYPE html>

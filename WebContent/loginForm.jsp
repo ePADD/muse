@@ -1,12 +1,8 @@
 <%@page contentType="text/html; charset=UTF-8"%>
-<%@page language="java" import="java.io.*"%>
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="com.google.gson.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="org.apache.commons.logging.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
-<%@page language="java" import="edu.stanford.muse.exceptions.*"%>
 
 <script type="text/javascript" src="js/jquery/jquery.js"></script>
 <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>

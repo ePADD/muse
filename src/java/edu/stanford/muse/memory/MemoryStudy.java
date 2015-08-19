@@ -322,7 +322,15 @@ public class MemoryStudy implements Serializable{
 		
 		// ... and copy the types back into the mq's
 		for (MemoryQuestion mq: questions)
-			try { mq.clue.clueStats.answerCategory = nameMap.get(mq.correctAnswer.toLowerCase().trim().replaceAll(" ", "_")).type; } catch (Exception e) { Util.print_exception("Error reading types for question: " + mq, e, log); }
+			try {
+                if(mq!=null && mq.correctAnswer!=null) {
+                    NameInfo ni = nameMap.get(mq.correctAnswer.toLowerCase().trim().replaceAll(" ", "_"));
+                    if (ni != null)
+                        mq.clue.clueStats.answerCategory = ni.type;
+                }
+            } catch (Exception e) {
+                Util.print_exception("Error reading types for question: " + mq, e, log);
+            }
 	}
 	
 	public boolean checkQuestionListSize(int N){

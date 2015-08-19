@@ -24,7 +24,19 @@ public class EmailRenderer {
 												// around too soon. 120 is too
 												// much with courier font.
 
-	public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
+    public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
+                                                          Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed)
+            throws Exception{
+        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTermsStemmed, highlightTermsUnstemmed, null, MultiDoc.ClusteringType.MONTHLY);
+    }
+
+    public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
+                                                          Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments)
+            throws Exception{
+        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
+    }
+
+    public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
 														  Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed)
 			throws Exception{
 		return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, null, MultiDoc.ClusteringType.MONTHLY);

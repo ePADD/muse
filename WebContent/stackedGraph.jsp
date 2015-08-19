@@ -3,7 +3,6 @@
 	JSPHelper.checkContainer(request); // do this early on so we are set up
   request.setCharacterEncoding("UTF-8");
 %>
-<%@page language="java" import="java.io.*"%>
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="org.json.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
@@ -75,7 +74,7 @@ public String scriptForGroupsGraph(List<Date> intervals, GroupAssigner groupAssi
 }
 %>
 <%!
-public String scriptForSentimentsGraph(Map<String, Set<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
+public String scriptForSentimentsGraph(Map<String, Collection<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
 {
 	String totalMessageVolume = JSONUtils.arrayToJson(allMessagesHistogram);
 
@@ -85,7 +84,7 @@ public String scriptForSentimentsGraph(Map<String, Set<Document>> map, List<Date
 	StringBuilder json = new StringBuilder("[");
 	for (String caption: map.keySet())
 	{
-		Set<DatedDocument> docs = (Set) map.get(caption);
+		Collection<DatedDocument> docs = (Collection)map.get(caption);
 		int[] hist = CalendarUtil.computeHistogram(EmailUtils.datesForDocs(docs), intervals);
 		String sentimentVolume = JSONUtils.arrayToJson(hist);
 		if (json.length() > 2)
@@ -102,7 +101,7 @@ public String scriptForSentimentsGraph(Map<String, Set<Document>> map, List<Date
 	+ "</script>\n";
 }
 %>
-<%!public String emitScriptForSentimentsByGroupGraph(HttpServletRequest request, Archive archive, Set<DatedDocument> docsToPlot, int w, int h, HttpSession session)
+<%!public String emitScriptForSentimentsByGroupGraph(HttpServletRequest request, Archive archive, Collection<DatedDocument> docsToPlot, int w, int h, HttpSession session)
 {
 	// normalizer is the max # of documents in a single intervals
 	GroupAssigner groupAssigner = archive.groupAssigner;
@@ -110,14 +109,14 @@ public String scriptForSentimentsGraph(Map<String, Set<Document>> map, List<Date
 //	groupAssigner.orderIndividualsBeforeMultiPersonGroups();
 	List<SimilarGroup<String>> groups =  groupAssigner.getSelectedGroups();
 	Lexicon lex = (Lexicon) JSPHelper.getSessionAttribute(session, "lexicon");
-	Map<String, Set<Document>> map = lex.getEmotions(archive.indexer, (Set) docsToPlot, false, request.getParameter("originalContentOnly") != null, null);
+	Map<String, Collection<Document>> map = lex.getEmotions(archive.indexer, (Set) docsToPlot, false, request.getParameter("originalContentOnly") != null, null);
 
 //	Map<String, Set<Document>> map = Sentiments.getEmotions(Sentiments.captionToQueryMap, archive.indexer, (Set) docsToPlot);
 	List<Set<DatedDocument>> sentimentDocs = new ArrayList<Set<DatedDocument>>();
 	StringBuilder json = new StringBuilder("[");
 	for (String caption: map.keySet())
 	{
-		Set<DatedDocument> docs = (Set) map.get(caption);
+		Collection<DatedDocument> docs = (Collection) map.get(caption);
 		// mapForSentiment is group -> docs set for this sentiment
 		Map<String, Set<EmailDocument>> mapForSentiment = IndexUtils.partitionDocsByGroup((Collection) docs, groups, addressBook, true);
 		int[] hist = new int[mapForSentiment.size()];
@@ -162,8 +161,8 @@ public String scriptForSentimentsGraph(Map<String, Set<Document>> map, List<Date
 		System.err.println ("Error: session has timed out, archive is null.");
 		return;
 	}
-	
-	Set<DatedDocument> allDocs = (Set) JSPHelper.selectDocs(request, session, true /* only apply to filtered docs */, false);
+
+    Collection<DatedDocument> allDocs = (Collection) JSPHelper.selectDocs(request, session, true /* only apply to filtered docs */, false);
 
 	AddressBook addressBook = archive.addressBook;
 	Lexicon lex = (Lexicon) JSPHelper.getSessionAttribute(session, "lexicon");
@@ -534,10 +533,10 @@ else if (doSentiments  && !Util.nullOrEmpty(groups)) // see sentiments over time
 		graph_is_empty = true;
 		if (!Util.nullOrEmpty(allDocs))
 		{
-			Map<String, Set<Document>> map = lex.getEmotions(archive.indexer, (Set) allDocs, trackNOTA, request.getParameter("originalContentOnly") != null); // too heavyweight -- we just want to find if the damn graph is empty...
+			Map<String, Collection<Document>> map = lex.getEmotions(archive.indexer, (Collection) allDocs, trackNOTA, request.getParameter("originalContentOnly") != null); // too heavyweight -- we just want to find if the damn graph is empty...
 			for (String key: map.keySet())
 			{
-				Set<Document> set = map.get(key);			
+				Collection<Document> set = map.get(key);
 				if (set != null && set.size() > 0)
 				{
 					graph_is_empty = false;

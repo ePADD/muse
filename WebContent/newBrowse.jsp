@@ -163,10 +163,10 @@ function redirect_to(url) { if (top === self) { window.location = url; } else { 
  // nofilter is used in some cases like browse with a specific docids where we don't want to apply to docs in current filter, but to all docs in archive
  boolean onlyFilteredDocs = request.getParameter("nofilter") == null;
  
- Pair<Set<Document>,Set<Blob>> search_result = JSPHelper.selectDocsWithHighlightAttachments(request, session, onlyFilteredDocs, false);
+ Pair<Collection<Document>,Collection<Blob>> search_result = JSPHelper.selectDocsWithHighlightAttachments(request, session, onlyFilteredDocs, false);
  List<Document> docs = new ArrayList<Document>(search_result.first);
  Collections.sort(docs);//order by time
- Set<Blob> highlightAttachments = search_result.second;
+ Collection<Blob> highlightAttachments = search_result.second;
  Lexicon lexicon = (Lexicon) JSPHelper.getSessionAttribute(session, "lexicon");
  if (lexicon == null)
  {
@@ -433,7 +433,7 @@ int nAttachments = EmailUtils.countAttachmentsInDocs((Collection) docs);
 	if (filter != null && filter.isRegexSearch()) {
 		highlightTermsUnstemmed.add(filter.get("term"));
 	}
-	Pair<DataSet, String> pair = EmailRenderer.pagesForDocuments (docs, archive, datasetName, selectedPrefixes, highlightTermsUnstemmed, highlightAttachments);
+    Pair<DataSet, String> pair = EmailRenderer.pagesForDocuments (docs, archive, datasetName, selectedPrefixes, highlightTermsUnstemmed, highlightAttachments);
 	DataSet browseSet = pair.getFirst();
 	String html = pair.getSecond();
 
