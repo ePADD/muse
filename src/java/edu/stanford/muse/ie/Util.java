@@ -243,19 +243,7 @@ public class Util {
 			ti = 1;
 		else if (NER.EORG.equals(type))
 			ti = 2;
-		Set<String> cws = new LinkedHashSet<>();
-        Set<String> temp = readFile(COMMON_WORDS_FILE);
-        if(temp!=null)
-            cws.addAll(temp);
-        try {
-            Set<String> dws = readFileFromResource("dict.words.full");
-            if(dws!=null)
-                cws.addAll(dws);
-            else
-                log.warn("Could not read the dict.words.full file");
-        }catch(Exception e1){
-            log.warn("Could not read the dict.words.full file");
-        }
+		Set<String> cws = readFileFromResource("dict.words.full");
 		Set<String> tcws = new HashSet<String>();
 		if (ti <= 2 && ti >= 0)
 			tcws = readFile(TYPE_SPECIFIC_COMMON_WORDS_FILE[ti]);

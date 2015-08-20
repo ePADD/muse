@@ -1,16 +1,18 @@
 package edu.stanford.muse.ner.featuregen;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
+import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm_parameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -37,6 +39,7 @@ public class FeatureDictionary implements Serializable {
     //This can get quite depending on the archive and is not a scalable solution
 
     //this data-structure is only used for Segmentation which itself is not employed anywhere
+    //not populated, retained so as not to break to code
     public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
 
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
@@ -95,10 +98,12 @@ public class FeatureDictionary implements Serializable {
      */
     public FeatureDictionary(Map<String, String> gazettes, FeatureGenerator[] featureGens) {
         this.featureGens = featureGens;
+        addGazz(gazettes);
+    }
 
+    public FeatureDictionary addGazz(Map<String,String> gazettes){
         long start_time = System.currentTimeMillis();
-        long timeToComputeFeatures = 0, timeOther = 0;
-        long tms;
+        long timeToComputeFeatures = 0, tms;
         log.info("Analysing gazettes");
 
         int g = 0, nume = 0;
@@ -133,6 +138,8 @@ public class FeatureDictionary implements Serializable {
 
         log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
+
+        return this;
     }
 
     public FeatureVector getVector(String cname, Short iType) {
@@ -140,7 +147,7 @@ public class FeatureDictionary implements Serializable {
         return new FeatureVector(this, iType, featureGens, features);
     }
 
-    //dictionary should not be built anywhere without this method
+    //should not try to build dictionry outside of this method
     private void add(Map<String, List<String>> wfeatures, String type, Short iType) {
         for (String dim : wfeatures.keySet()) {
             if (!features.containsKey(dim))
@@ -164,6 +171,41 @@ public class FeatureDictionary implements Serializable {
                     hm.get(val).put(iType, p);
                 }
             features.put(dim, hm);
+        }
+    }
+
+    private static FeatureDictionary buildAndDumpDictionary(Map<String,String> gazz, String fn){
+        try {
+            FeatureDictionary dictionary = new FeatureDictionary(gazz, new FeatureGenerator[]{new WordSurfaceFeature()});
+            //dump this
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fn));
+            oos.writeObject(dictionary);
+            oos.close();
+            return dictionary;
+        }catch(Exception e){
+            log.info("Could not build/write feature dictionary");
+            Util.print_exception(e, log);
+            return null;
+        }
+    }
+
+    public static FeatureDictionary loadDefaultDictionary() {
+        String fn = Config.SETTINGS_DIR + File.separator + "dictionary.ser";
+        ObjectInputStream ois = null;
+        try {
+            ois = new ObjectInputStream(new FileInputStream(fn));
+            FeatureDictionary model = (FeatureDictionary) ois.readObject();
+            return model;
+        } catch (Exception e) {
+            Util.print_exception(e, log);
+            if (e instanceof FileNotFoundException || e instanceof IOException) {
+                log.info("Failed to load default dictionary file, building one");
+                Map<String, String> dbpedia = EmailUtils.readDBpedia();
+                return buildAndDumpDictionary(dbpedia, fn);
+            } else {
+                log.error("Failed to load default dictionary file, building one");
+                return null;
+            }
         }
     }
 
@@ -241,6 +283,21 @@ public class FeatureDictionary implements Serializable {
             if (p.second > 0.5)
                 cleanAB.put(entry, p.first);
         }
+        return cleanAB;
+    }
+
+    public static Map<String, String> cleanAB(Map<String, String> abNames, FeatureDictionary dictionary) {
+        if (abNames == null)
+            return abNames;
+
+        Short iType = FeatureDictionary.PERSON;
+        Map<String, String> cleanAB = new LinkedHashMap<>();
+        for (String name : abNames.keySet()) {
+            double val = dictionary.getFeatureValue(name, "words", iType);
+            if(val > 0.5)
+                cleanAB.put(name, abNames.get(name));
+        }
+
         return cleanAB;
     }
 

@@ -6,6 +6,8 @@
 <%@ page import="edu.stanford.muse.email.AddressBook" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
 <%@ page import="edu.stanford.muse.ner.NER" %>
+<%@ page import="com.google.common.collect.*" %>
+
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@include file="../getArchive.jspf" %>
 <html>
@@ -22,8 +24,9 @@
     <script type="text/javascript" src="js/muse.js"></script>
     <script type="text/javascript" src="js/ops.js"></script>
     <title>Entity stats</title>
+    <style> td { padding: 2px 10px 2px 10px} </style>
 </head>
-<h2>Entity listing by most recent mention (for testing only)</h2>
+<b>Entity listing by most recent mention (for testing only)</b><br/>
 <%
     String type = request.getParameter("type");
     if(type==null){
@@ -52,9 +55,21 @@
                     else
                         entities = archive.getQualityEntitiesInDoc(doc, type, true, originalOnly);
                 }
-                else
+                else {
                     entities = ed.getAllAddrs();
+                    Multimap<Contact, Date> solos = HashMultimap.create();
+                    Collection<Contact> contacts = ed.getParticipatingContactsExceptOwn(ab);
+                    if (contacts.size() == 1) {
+                        // solos
+                        for (Contact c: contacts) {
+                            solos.put(ab.getContactId(contacts.iterator().next()), ed.getDate());
+                        }
+                    }
+                }
+
                 for (String e : entities) {
+                    if(e == null)
+                        continue;
                     if (!"corr".equals(type))
                         links.put(e, "../browse?term=\"" + e + "\"&sort_by=recent&searchType=original");
                     else {
@@ -88,10 +103,11 @@
                 c.setTime(p.getSecond());
                 String month = new SimpleDateFormat("MMM-YYYY").format(c.getTime());
                 if (!month.equals(prevMonth))
-                    out.println ("<hr/><h2>" + month + "</h2>");
+                    out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Name</i></th><th><i>Last message</i></th><th><i>Total Messages</i></th>");
                 prevMonth = month;
-                out.println("<a href='"+links.get(p.getFirst())+"' target='_blank'>"+p.getFirst() + "</a>&nbsp:&nbsp" + p.getSecond() + "&nbsp #" + timeStamps.get(p.getFirst()).size() + " message(s)<br>");
+                out.println("<tr><td><a href='"+links.get(p.getFirst())+"' target='_blank'>" + Util.ellipsize(p.getFirst(), 30) + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td style=\"text-align:right\">" + timeStamps.get(p.getFirst()).size() + "</td></tr>");
             }
+            out.println ("</table>");
         } catch (Throwable e) {
             e.printStackTrace();
         }

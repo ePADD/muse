@@ -386,7 +386,12 @@ public class JSPHelper {
 			NER ner = new NER(archive);
 			session.setAttribute("statusProvider", ner);
 			log.info("Base dir: " + getBaseDir(m, request));
-            ner.trainAndRecognise();
+            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
+            if("memorytest".equals(mode)) {
+                log.info("Setting dump model to false for NER");
+                ner.trainAndRecognise(false);
+            }else
+                ner.trainAndRecognise(true);
 			archive.processingMetadata.entityCounts = ner.stats.counts;
 			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
 			log.info(ner.stats);
