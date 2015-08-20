@@ -10,6 +10,7 @@
 <title>Entity stats</title>
 </head>
 <%
+    JSPHelper.logRequest(request);
     String type = request.getParameter("type");
     if(type==null){
         out.println("<a href='entitystats.jsp?type=en_people' target='_blank'>People</a><br>");
@@ -18,6 +19,8 @@
         out.println("<a href='entitystats.jsp?type=corr' target='_blank'>Correspondents</a><br>");
     }
     else {
+        out.println ("Running...");
+
         try {
             boolean originalOnly = true;
             AddressBook ab = archive.addressBook;
@@ -32,7 +35,7 @@
                 List<String> entities;
                 if(!"corr".equals(type)) {
                     if("en_people".equals(type))
-                        entities = archive.getEntitiesInDoc(doc, type, true, originalOnly);
+                        entities = archive.getEntitiesInDoc(doc, type, false, originalOnly);
                     else
                         entities = archive.getQualityEntitiesInDoc(doc, type, true, originalOnly);
                 }
@@ -61,8 +64,8 @@
                     if (d1.after(d2))
                         recentDate.put(e, d1);
                 }
-                if((di++)%100==0)
-                    System.err.println(di+" of "+docs.size());
+                if((++di)%100==0)
+                    break;
             }
             List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
             for (Pair<String, Date> p : srds) {

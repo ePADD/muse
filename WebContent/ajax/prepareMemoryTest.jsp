@@ -51,6 +51,8 @@ try {
 		session.removeAttribute("emailDocs");
 
 		JSPHelper.fetchAndIndexEmails(archive, m, request, session, downloadMessageText, downloadAttachments, true /* simpleFlow */); // download message text, maybe attachments, use default folders
+
+		SimpleSessions.saveArchive(session);
 		archive.assignThreadIds();
 		archive.postProcess();
 		archive.close();

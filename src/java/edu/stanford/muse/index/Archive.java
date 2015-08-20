@@ -545,6 +545,10 @@ public class Archive implements Serializable {
     }
 
     public Map<String, Collection<Document>> getSentimentMap(Lexicon lex, boolean originalContentOnly, String... captions) {
+        if (lex == null) {
+            log.warn ("Warning: lexicon is null!");
+            return new LinkedHashMap<>();
+        }
         return lex.getEmotions(indexer, getAllDocsAsSet(), false /* doNota */, originalContentOnly, captions);
     }
 
