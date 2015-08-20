@@ -22,10 +22,7 @@ import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.util.EmailUtils;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Triple;
-import edu.stanford.muse.util.Util;
+import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.io.FileUtils;
@@ -459,7 +456,7 @@ public class Archive implements Serializable {
 
         f_dir.mkdirs();
         // copy lexicons over to the muse dir
-        String[] lexicons = {"sensitive.english.lex.txt", "general.english.lex.txt", "sentiments.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
+        String[] lexicons = Version.appName.equalsIgnoreCase("epadd") ? new String[]{"sensitive.english.lex.txt", "general.english.lex.txt", "sentiments.english.lex.txt"} : new String[]{"default.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
         log.info(lexicons.length + " lexicons copied to " + dir);
         for (String l : lexicons) {
             try {

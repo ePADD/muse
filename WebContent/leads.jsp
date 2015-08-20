@@ -16,7 +16,7 @@
 </head>
 <body>
 <jsp:include page="header.jsp"/>
-<div style="panel rounded">
+<div class="panel rounded">
 
 <%
 	String text = request.getParameter("refText");

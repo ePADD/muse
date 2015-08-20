@@ -2,14 +2,14 @@
 <div class="db-hint">
 	Showing top <%=nResults%> results per month.
 	(<a href="?<%=archiveUrlParam%>&n=<%=nResults*2%>">More</a> terms, or <a href="?<%=archiveUrlParam%>&n=<%=nResults/2%>">fewer</a>).
-	<% if (!edu.stanford.muse.webapp.ModeConfig.isPublicMode()) { %>
+	<% if (!Config.isPublicMode()) { %>
 	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="info">Back to summary</a>
 	<% } %>
 
 	<br/>
 	<span class="helpcue">CLICK</span> on a term to open a tab with related messages, or on the month's title to view all messages for that month.<br/>
 <!-- <span class="helpcue">Shift-click</span> to copy it to the diary.  -->
-	<% if (!edu.stanford.muse.webapp.ModeConfig.isPublicMode()) { %>
+	<% if (!Config.isPublicMode()) { %>
 	Terms are colored by the group with which they are most closely associated in that month. Terms not associated with any group are <span class="colorClass0">colored blue</span>.
 	<% } %>
 	<br/>
