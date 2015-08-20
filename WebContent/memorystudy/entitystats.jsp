@@ -41,8 +41,10 @@
                         entities = archive.getQualityEntitiesInDoc(doc, type, true, originalOnly);
                 }
                 else
-                    entities = ed.getAllNames();
+                    entities = ed.getAllAddrs();
                 for (String e : entities) {
+                    if(e == null)
+                        continue;
                     if (!"corr".equals(type))
                         links.put(e, "../newBrowse.jsp?term=\"" + e + "\"&sort_by=recent&searchType=original");
                     else {
