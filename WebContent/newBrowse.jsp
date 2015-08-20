@@ -11,7 +11,6 @@
 <%@page language="java" import="edu.stanford.muse.groups.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.util.Pair"%>
-<% 	JSPHelper.logRequest(request);
 String title = request.getParameter("title");
 String loginUrl = ModeConfig.isPublicMode() ? "/muse/archives" : "/muse";
 

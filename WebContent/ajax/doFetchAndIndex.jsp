@@ -14,7 +14,6 @@
 	// core JSP that does fetch, grouping and indexing
 	// sets up archive in the session at the end
 
-	JSPHelper.logRequest(request);
 	session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));
 
 	boolean cancelled = false;
@@ -159,5 +158,4 @@
 
 	// resultPage is set up to where we want to go next
 	session.removeAttribute("statusProvider");
-	JSPHelper.logRequestComplete(request);
 %>

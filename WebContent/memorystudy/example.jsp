@@ -1,7 +1,6 @@
 <%@page trimDirectiveWhitespaces="true"%>
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%JSPHelper.logRequest(request);%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -139,4 +138,3 @@ Example
 	</script>	
 </body>
 </html>
-<%JSPHelper.logRequestComplete(request);%>

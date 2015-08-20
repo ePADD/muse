@@ -12,7 +12,6 @@
 <title>Entity stats</title>
 </head>
 <%
-    JSPHelper.logRequest(request);
     String type = request.getParameter("type");
     if(type==null){
         out.println("<a href='entitystats.jsp?type="+NER.EPER+"' target='_blank'>People</a><br>");
@@ -67,8 +66,8 @@
                     if (d1.after(d2))
                         recentDate.put(e, d1);
                 }
-                if((++di)%1000==0)
-                    System.err.println(di+" of "+docs.size());
+                if((++di)%100==0)
+                    out.println(di+" of "+docs.size() + " <br/>");
             }
             List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
             for (Pair<String, Date> p : srds) {

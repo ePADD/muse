@@ -11,7 +11,6 @@
 <%@page language="java" import="java.util.Calendar"%>
 <%@page language="java" import="java.text.SimpleDateFormat"%>
 <%
-JSPHelper.logRequest(request); 
 JSPHelper.setPageUncacheable(response);
 	// https://developer.mozilla.org/en/http_access_control
 response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
@@ -117,6 +116,5 @@ try {
 	Util.print_exception (e, JSPHelper.log);
 } finally { 
 	out.println (result.toString(4));
-	JSPHelper.logRequestComplete(request); 
 }
 %>

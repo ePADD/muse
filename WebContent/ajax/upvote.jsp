@@ -9,7 +9,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="edu.stanford.muse.lens.*"%>
 <%
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 
 //https://developer.mozilla.org/en/http_access_control
@@ -32,5 +31,4 @@ if (lensPrefs != null)
 	lensPrefs.boostTerm(url, term);
 	lensPrefs.boostTerm("GLOBAL", term);  // #boost. right now, we are going to ignore url and just use a global boost score
 }
-JSPHelper.logRequestComplete(request);
 %>

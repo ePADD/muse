@@ -41,7 +41,6 @@ $(document).ready(function() {
 <jsp:include page="header.jsp"/>
 
 <%
-	JSPHelper.logRequest(request);
 	List<Document> docs = JSPHelper.selectDocsAsList(request, session);	
 	List<LinkInfo> links = EmailUtils.getLinksForDocs(docs);
 %>

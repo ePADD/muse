@@ -8,7 +8,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>    
 <%   
 // does a login for a particular account, and adds the emailStore to the session var emailStores (list of stores for the current doLogin's)
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 
 boolean incremental = request.getParameter("incremental") != null;
@@ -30,5 +29,4 @@ int accountIdx = Integer.parseInt(idx_str);
 JSONObject obj = Accounts.login(request, accountIdx);
     	
 out.println (obj);
-JSPHelper.logRequestComplete(request);
 %>   

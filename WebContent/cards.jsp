@@ -6,7 +6,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 
 <%
-	JSPHelper.logRequest(request);
 
 	String archiveUrlParam = "";
 

@@ -11,7 +11,6 @@
 <%
 	// this JSP is like doFetchAndIndex. it sets up the archive in prep. for the memory test.
 	
-	JSPHelper.logRequest(request);
 	session.setAttribute("statusProvider", new StaticStatusProvider("Setting up the memory test..."));
 			
 	// simple flow means we're running off the login page and that we'll just use sent folders
@@ -112,5 +111,4 @@ try {
 
 	// resultPage is set up to where we want to go next
 	session.removeAttribute("statusProvider");
-	JSPHelper.logRequestComplete(request);
 %>

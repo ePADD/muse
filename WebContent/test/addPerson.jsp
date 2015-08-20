@@ -9,7 +9,6 @@
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="java.util.zip.*"%>
 <%@page language="java" import="java.io.*"%>
-<% 	JSPHelper.logRequest(request);
 String title = "Advanced Search";
 %>
 

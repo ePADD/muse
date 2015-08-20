@@ -148,7 +148,6 @@ public String scriptForSentimentsGraph(Map<String, Collection<Document>> map, Li
 	+ "</script>\n";
 }%>
 <%
-	JSPHelper.logRequest(request);
 	Archive archive = JSPHelper.getArchive(session);
 
 	if (archive == null)
@@ -604,6 +603,3 @@ The message view is initialized to the approximate point in time that you click 
 <jsp:include page="footer.jsp"/>
 </body>
 </html>
-<%
-	JSPHelper.logRequestComplete(request);
-%>

@@ -5,7 +5,6 @@
 
   
 <%
-JSPHelper.logRequest(request);
 String filename = request.getParameter("attachmentName");
 String qvpDirectory = (String) JSPHelper.getSessionAttribute(session, "qvpDir");
 String baseDir = (String) JSPHelper.getSessionAttribute(session, "cacheDir");

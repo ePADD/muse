@@ -7,7 +7,6 @@
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%
-JSPHelper.logRequest(request);
 try {
 	// wipe out the whole dirs and then create them afresh
 	// in future, may consider ways to delete parts of cache
@@ -34,5 +33,4 @@ try {
 	o.put("error", e.toString()); 
 	out.print(o.toString());
 }
-JSPHelper.logRequestComplete(request);
 %>

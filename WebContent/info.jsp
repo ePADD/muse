@@ -9,7 +9,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="org.json.*"%>
 <%
-	JSPHelper.logRequest(request); 
 
 // if archive not in session, nothing can be done
 Archive archive = JSPHelper.getArchive(session);
@@ -250,7 +249,6 @@ if (visits < 5) { %>
 	<% 
 } 	
 
-	JSPHelper.logRequestComplete(request); 
 %>
 
 </div> <!--  main -->

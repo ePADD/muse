@@ -21,7 +21,6 @@
 <h3>Mailing Lists</h3>
 
 <%
-	JSPHelper.logRequest(request);
 	Archive archive = JSPHelper.getArchive(session);
 
 	if (archive == null)

@@ -4,14 +4,12 @@
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<% JSPHelper.logRequest(request); %>
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
 <jsp:include page="css/css.jsp"/>
 </head>
 <% 
-JSPHelper.logRequest(request);
 boolean underWebstart = System.getProperty("javawebstart.version") != null;
 if (!underWebstart)
 {

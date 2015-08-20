@@ -7,7 +7,6 @@
 <%@page language="java" import="com.google.gson.reflect.*"%>
 <%@page language="java" import="java.lang.reflect.*"%>
 <%
-	JSPHelper.logRequest(request, false); // don't print params, leaks sensitive data
 	String jsonForGroups = request.getParameter("groups");
 	Gson gson = new GsonBuilder().setPrettyPrinting().create();
 	Type groupListType = new TypeToken<List<JSONGroup>>() {}.getType();

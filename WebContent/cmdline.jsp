@@ -14,7 +14,6 @@
 <body>
 <%
 // consider converting this to an ajax call so we can reflect better status
-JSPHelper.logRequest(request);
 
 //if (!ModeConfig.isAdminMode()) {
 //	throw new AccessControlException("Command-line interface is only available in admin mode");
@@ -36,7 +35,6 @@ else
 	message = "Unknown command " + cmd;
 
 out.println(message);
-JSPHelper.logRequestComplete(request);
 %>
 </body>
 </html>

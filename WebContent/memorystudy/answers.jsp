@@ -5,7 +5,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%JSPHelper.logRequest(request);%>
 
 <!DOCTYPE html>
 <html>
@@ -101,4 +100,3 @@ You are welcome to save or print a copy of this page for your records.
 </div>
 </body>
 </html>
-<%JSPHelper.logRequestComplete(request);%>

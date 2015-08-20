@@ -48,7 +48,6 @@ function get_date_change_func(chart_canvas, below_data, above_data, w, h, startY
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 
 <%
-	JSPHelper.logRequest(request);
 
 	String archiveUrlParam = "''";
 
@@ -290,4 +289,3 @@ $("a[rel^='subchart']").prettyPhoto({
 <%@include file="footer.jsp"%>
 </body>
 </html>
-<% JSPHelper.logRequestComplete(request); %>

@@ -7,7 +7,6 @@
 <%@page language="java" import="java.util.*"%>
 <%
 	// jsp to handle save/load of groups
-	JSPHelper.logRequest(request);
 	JSPHelper.setPageUncacheable(response);
 	boolean success = true;
 	

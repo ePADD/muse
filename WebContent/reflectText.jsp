@@ -6,7 +6,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%
-JSPHelper.logRequest(request);
 if (ModeConfig.isPublicMode()) {
 	// this browse page is also used by Public mode where the following set up may be requried. 
 	String archiveId = request.getParameter("aId");

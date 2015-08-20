@@ -3,7 +3,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <% 
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 response.setContentType("application/json; charset=utf-8");
 
@@ -18,6 +17,5 @@ else
 	session.removeAttribute(datasetId);
 	out.println("{status: 'ok'}");
 }
-JSPHelper.logRequestComplete(request);
 
 %>

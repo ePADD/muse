@@ -13,7 +13,7 @@ public class Config {
 	public static Log log = LogFactory.getLog(Config.class);
 
 	// we may want to set this differently when running as muse vs. epadd
-	public static String	SETTINGS_DIR		= System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
+	public static String	SETTINGS_DIR		= System.getProperty("user.home") + File.separator + ("epadd".equalsIgnoreCase(Version.appName) ? "epadd-settings" : "muse-settings") + File.separator;
 	public static String	FAST_FILE = SETTINGS_DIR + "cnameToFASTPersons.db.gz";
 
 	public static String	NER_MODEL_FILE, WORD_FEATURES;

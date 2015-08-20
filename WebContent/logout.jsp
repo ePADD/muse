@@ -2,7 +2,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
-<% 	JSPHelper.logRequest(request);
 	Archive archive = (Archive) session.getAttribute("archive");
 
 	try {
@@ -37,5 +36,4 @@
 <script type="text/javascript">window.location = "index.jsp"; </script>
 <% 	
 JSPHelper.log.info ("Memory status: " + Util.getMemoryStats());
-JSPHelper.logRequestComplete(request); 
 %>

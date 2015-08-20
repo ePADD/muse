@@ -15,7 +15,6 @@
 /// NOTE **********************************
 // This page is fragile, it can be invoked on ANY web page through the lens 
 
-	JSPHelper.logRequest(request);
 
 //https://developer.mozilla.org/en/http_access_control
 response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
@@ -354,4 +353,3 @@ function saveFilter()
 </div>
 </body>
 </html>
-<%JSPHelper.logRequestComplete(request);%>

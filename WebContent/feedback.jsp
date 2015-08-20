@@ -1,5 +1,4 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<% 	JSPHelper.logRequest(request); %>
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
