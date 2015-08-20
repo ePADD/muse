@@ -5,7 +5,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="ISO-8859-1">
+<meta charset="UTF-8">
 <title>Study Complete</title>
 <link rel="stylesheet" href="css/memory.css" type="text/css" />
 <link rel="icon" href="images/stanford-favicon.gif">

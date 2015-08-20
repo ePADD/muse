@@ -5,10 +5,9 @@
 <%@ page import="edu.stanford.muse.util.Util" %>
 <%@ page import="edu.stanford.muse.email.AddressBook" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
-<%@ page import="edu.stanford.muse.memory.MemoryStudy" %>
 <%@ page import="edu.stanford.muse.ner.NER" %>
 <%@include file="../getArchive.jspf" %>
-
+<html>
 <head>
 <title>Entity stats</title>
 </head>
