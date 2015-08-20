@@ -62,8 +62,7 @@ if (session.getAttribute("archive") != null && request.getParameter("noredirect"
 </script>
 
 <%
-ServletContext c = getServletContext();
-Object o = c . getAttribute("noblur"); // check blur state. c is not HttpSession
+Object o = session.getAttribute("noblur"); // check blur state. c is not HttpSession
 if (o != null && "true".equals(o.toString()))
 {
 	JSPHelper.log.info ("blurring turned off, all details will be logged");

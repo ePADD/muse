@@ -114,8 +114,8 @@ path {
 			<%
 			String xml_fname = Sessions.getArchivesIndexFilename();
 			if (Sessions.parseArchivesXml(xml_fname)) {
-				String xsl_fname = getServletContext().getRealPath("css/archives_list.xsl");
-				JSPHelper.xsltTransform(xml_fname, xsl_fname, out);
+				//String xsl_fname = getServletContext().getRealPath("css/archives_list.xsl");
+				//JSPHelper.xsltTransform(xml_fname, xsl_fname, out);
 			} else {
 				out.println("No archives.");
 			}

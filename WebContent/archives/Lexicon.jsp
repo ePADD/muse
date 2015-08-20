@@ -45,10 +45,10 @@ if (!Util.nullOrEmpty(allDocs))
 		empty_graph_message = "No categories are defined for this archive";
 	} else {
 		session.setAttribute("lexicon", lex);
-		Map<String, Set<Document>> map = lex.getEmotions(driver.indexer, (Collection) allDocs, trackNOTA, false /* original content only */); // too heavyweight -- we just want to find if the damn graph is empty...
+		Map<String, Collection<Document>> map = lex.getEmotions(driver.indexer, (Collection) allDocs, trackNOTA, false /* original content only */); // too heavyweight -- we just want to find if the damn graph is empty...
 		for (String key: map.keySet())
 		{
-	Set<Document> set = map.get(key);			
+	Collection<Document> set = map.get(key);
 	if (set != null && set.size() > 0)
 	{
 		graph_is_empty = false;
@@ -71,7 +71,7 @@ if (graph_is_empty && Util.nullOrEmpty(empty_graph_message))
 %>
 
 <%!
-public String scriptForSentimentsGraph(Map<String, Set<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
+public String scriptForSentimentsGraph(Map<String, Collection<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
 {
 	String totalMessageVolume = JSONUtils.arrayToJson(allMessagesHistogram);
 

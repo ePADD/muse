@@ -1,7 +1,4 @@
-<%@page language="java" import="javax.mail.*"%>
 <%@page language="java" import="java.util.*"%>
-<%@page language="java" import="java.io.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="org.apache.log4j.*"%>
@@ -14,8 +11,6 @@
 	  // for prev. op prints stale status till new one is put in the session
       if (JSPHelper.getSessionAttribute(session, "statusProvider") != null)
 		  session.removeAttribute("statusProvider");
-
-      int numFoldersPerRow = 4;
 %>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
   "http://www.w3.org/TR/html4/loose.dtd">
