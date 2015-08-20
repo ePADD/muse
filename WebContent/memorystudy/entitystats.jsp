@@ -6,11 +6,24 @@
 <%@ page import="edu.stanford.muse.email.AddressBook" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
 <%@ page import="edu.stanford.muse.ner.NER" %>
+<%@ page import="java.text.SimpleDateFormat" %>
 <%@include file="../getArchive.jspf" %>
 <html>
 <head>
-<title>Entity stats</title>
+    <link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
+    <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
+    <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+    <link rel="icon" href="memorystudy/images/stanford-favicon.gif">
+    <jsp:include page="../css/css.jsp"/>
+    <script type="text/javascript" src="js/jquery/jquery.js"></script>
+    <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
+    <script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>
+    <script type="text/javascript" src="js/statusUpdate.js"></script>
+    <script type="text/javascript" src="js/muse.js"></script>
+    <script type="text/javascript" src="js/ops.js"></script>
+    <title>Entity stats</title>
 </head>
+<h2>Entity listing by most recent mention (for testing only)</h2>
 <%
     String type = request.getParameter("type");
     if(type==null){
@@ -40,14 +53,15 @@
                         entities = archive.getQualityEntitiesInDoc(doc, type, true, originalOnly);
                 }
                 else
-                    entities = ed.getAllNames();
+                    entities = ed.getAllAddrs();
                 for (String e : entities) {
                     if (!"corr".equals(type))
-                        links.put(e, "../newBrowse.jsp?term=\"" + e + "\"&sort_by=recent&searchType=original");
+                        links.put(e, "../browse?term=\"" + e + "\"&sort_by=recent&searchType=original");
                     else {
                         Contact c = ab.lookupByEmailOrName(e);
-                        e = c.pickBestName();
-                        links.put(e, "../newBrowse.jsp?contactid=" + ab.getContactId(c) + "&sort_by=recent&searchType=original");
+                        if (c != null)
+                            e = c.pickBestName();
+                        links.put(e, "../browse?contact=" + ab.getContactId(c) + "&sort_by=recent&searchType=original");
                     }
 
                     if (!timeStamps.containsKey(e)) {
@@ -64,12 +78,19 @@
                     if (d1.after(d2))
                         recentDate.put(e, d1);
                 }
-                if((++di)%100==0)
-                    out.println(di+" of "+docs.size() + " <br/>");
+                if ((++di)%1000==0)
+                    out.println(di + " of " + docs.size() + " messages processed...<br/>");
             }
             List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
+            String prevMonth = null;
             for (Pair<String, Date> p : srds) {
-                out.println("<a href='"+links.get(p.getFirst())+"' target='_blank'>"+p.getFirst() + "</a>&nbsp:&nbsp" + p.getSecond() + "&nbsp #" + timeStamps.get(p.getFirst()).size() + "<br>");
+                Calendar c = new GregorianCalendar();
+                c.setTime(p.getSecond());
+                String month = new SimpleDateFormat("MMM-YYYY").format(c.getTime());
+                if (!month.equals(prevMonth))
+                    out.println ("<hr/><h2>" + month + "</h2>");
+                prevMonth = month;
+                out.println("<a href='"+links.get(p.getFirst())+"' target='_blank'>"+p.getFirst() + "</a>&nbsp:&nbsp" + p.getSecond() + "&nbsp #" + timeStamps.get(p.getFirst()).size() + " message(s)<br>");
             }
         } catch (Throwable e) {
             e.printStackTrace();
