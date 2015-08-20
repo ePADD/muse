@@ -1,6 +1,7 @@
 package edu.stanford.muse;
 
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.util.Version;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 

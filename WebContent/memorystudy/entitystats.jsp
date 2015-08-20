@@ -71,6 +71,13 @@
                 for (String e : entities) {
                     if(e == null)
                         continue;
+                    if(NER.EPER.equals(type)){
+                        Contact c = ab.lookupByName(e);
+                        //filter away all the contacts from people names
+                        if(c!=null)
+                            continue;
+                    }
+
                     if (!"corr".equals(type))
                         links.put(e, "../browse?term=\"" + e + "\"&sort_by=recent&searchType=original");
                     else {
