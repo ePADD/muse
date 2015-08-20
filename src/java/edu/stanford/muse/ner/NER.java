@@ -35,7 +35,7 @@ public class NER implements StatusProvider {
     public static String		EPER_TITLE			= "en_person_title", ELOC_TITLE = "en_loc_title", EORG_TITLE = "en_org_title";
     public static String		NAMES_OFFSETS		= "en_names_offsets", TITLE_NAMES_OFFSETS = "en_names_offsets_title";
 
-	String						status				= "";
+	String						status;
 	double						pctComplete			= 0;
 	boolean						cancelled			= false;
 	Archive						archive				= null;
@@ -224,9 +224,11 @@ public class NER implements StatusProvider {
 
     public NERModel trainModel() {
         NERTrainer trainer = new SVMModelTrainer();
-        statusProvider = (SVMModelTrainer)trainer;
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        status = "Loading DBpedia and address book";
         Map<String,String> addressbook =  EmailUtils.getNames(archive.addressBook.allContacts());
+        pctComplete = 2;
+        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        pctComplete = 10;
         addressbook = FeatureDictionary.cleanAB(addressbook, dbpedia);
         Tokenizer tokenizer = new CICTokenizer();
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
@@ -251,6 +253,7 @@ public class NER implements StatusProvider {
                 return archive.getContents(doc, true);
             }
         };
+        statusProvider = (SVMModelTrainer)trainer;
         NERModel nerModel = trainer.train(archiveContent, dbpedia, addressbook,types, aTypes, fgs, tokenizer, tparams);
         return nerModel;
     }

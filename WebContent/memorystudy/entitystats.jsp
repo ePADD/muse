@@ -5,7 +5,10 @@
 <%@ page import="edu.stanford.muse.util.Util" %>
 <%@ page import="edu.stanford.muse.email.AddressBook" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
+<%@ page import="edu.stanford.muse.memory.MemoryStudy" %>
+<%@ page import="edu.stanford.muse.ner.NER" %>
 <%@include file="../getArchive.jspf" %>
+
 <head>
 <title>Entity stats</title>
 </head>
@@ -13,14 +16,12 @@
     JSPHelper.logRequest(request);
     String type = request.getParameter("type");
     if(type==null){
-        out.println("<a href='entitystats.jsp?type=en_people' target='_blank'>People</a><br>");
-        out.println("<a href='entitystats.jsp?type=en_loc' target='_blank'>Locations</a><br>");
-        out.println("<a href='entitystats.jsp?type=en_org' target='_blank'>Organization</a><br>");
+        out.println("<a href='entitystats.jsp?type="+NER.EPER+"' target='_blank'>People</a><br>");
+        out.println("<a href='entitystats.jsp?type="+NER.ELOC+"' target='_blank'>Locations</a><br>");
+        out.println("<a href='entitystats.jsp?type="+NER.EORG+"' target='_blank'>Organization</a><br>");
         out.println("<a href='entitystats.jsp?type=corr' target='_blank'>Correspondents</a><br>");
     }
     else {
-        out.println ("Running...");
-
         try {
             boolean originalOnly = true;
             AddressBook ab = archive.addressBook;
@@ -34,8 +35,9 @@
                 EmailDocument ed = (EmailDocument) doc;
                 List<String> entities;
                 if(!"corr".equals(type)) {
-                    if("en_people".equals(type))
-                        entities = archive.getEntitiesInDoc(doc, type, false, originalOnly);
+                    if(NER.EPER.equals(type)) {
+                        entities = archive.getEntitiesInDoc(doc, type, true, originalOnly);
+                    }
                     else
                         entities = archive.getQualityEntitiesInDoc(doc, type, true, originalOnly);
                 }
@@ -65,7 +67,7 @@
                         recentDate.put(e, d1);
                 }
                 if((++di)%100==0)
-                    break;
+                    System.err.println(di+" of "+docs.size());
             }
             List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
             for (Pair<String, Date> p : srds) {

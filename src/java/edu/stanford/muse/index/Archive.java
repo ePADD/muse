@@ -1514,13 +1514,19 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String docId = "/Users/.../Downloads/palin.mbox-1020";
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            Document doc = archive.indexer.docForId(docId);
-            Pair<StringBuilder, Boolean> p = archive.getHTMLForContents(doc, null, docId, false, null, null, null, false, false, true);
-            System.err.println("<link rel='stylesheet' href='epadd.css'>" + p.first);
-            //System.err.println(li.getContents(li.docForId(docId), true) + "<br>");
+            List<Document> docs = archive.getAllDocs();
+            int i=0;
+            for(Document doc: docs) {
+                org.apache.lucene.document.Document ld = archive.getDoc(doc);
+                //Pair<StringBuilder, Boolean> p = archive.getHTMLForContents(doc, null, docId, false, null, null, null, false, false, true);
+                //System.err.println("<link rel='stylesheet' href='epadd.css'>" + p.first);
+                //System.err.println(ld);
+                System.err.println(archive.getEntitiesInDoc(doc, "en_person",true).size());
+                if(i++>10)
+                break;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

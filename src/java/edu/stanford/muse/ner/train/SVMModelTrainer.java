@@ -57,7 +57,7 @@ import java.util.*;
         }
     }
     String status;
-    double pctComplete = 0;
+    double pctComplete = 10;
     boolean cancelled;
     public static Log log = LogFactory.getLog(NER.class);
 

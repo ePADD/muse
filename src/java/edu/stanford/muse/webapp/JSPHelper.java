@@ -398,23 +398,25 @@ public class JSPHelper {
 			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
 		}
 
-		//one final step of building entity feature index to build context for every entity
-		try{
-			InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-			session.setAttribute("statusProvider", assignauthorities);
-			assignauthorities.initialize(archive);
-			if(!assignauthorities.isCancelled())
-				request.getSession().setAttribute("authorities", assignauthorities);
-			else
-				assignauthorities = null;
-			boolean success = assignauthorities.checkFeaturesIndex(archive,true);
-			if(!success){
-				log.warn("Could not build context features for entities");
-			}else
-				log.info("Successfully built context features for entities");
-		}catch(Exception e){
-			log.warn("Exception while building context features", e);
-		}
+        if(!"muse".equals(Version.appName)) {
+            //one final step of building entity feature index to build context for every entity
+            try {
+                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+                session.setAttribute("statusProvider", assignauthorities);
+                assignauthorities.initialize(archive);
+                if (!assignauthorities.isCancelled())
+                    request.getSession().setAttribute("authorities", assignauthorities);
+                else
+                    assignauthorities = null;
+                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+                if (!success) {
+                    log.warn("Could not build context features for entities");
+                } else
+                    log.info("Successfully built context features for entities");
+            } catch (Exception e) {
+                log.warn("Exception while building context features", e);
+            }
+        }
 		// add the new stores
 	}
 
