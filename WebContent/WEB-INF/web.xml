@@ -11,6 +11,25 @@
 		<welcome-file>default.jsp</welcome-file>
 	</welcome-file-list>
 
+	<filter>
+		<filter-name>LoggingFilter</filter-name>
+		<filter-class>
+			edu.stanford.muse.webapp.LoggingFilter
+		</filter-class>
+		<init-param>
+			<param-name>test-param</param-name>
+			<param-value>This parameter is for testing.</param-value>
+		</init-param>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>LoggingFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<listener>
+		<listener-class>edu.stanford.muse.webapp.SessionListener</listener-class>
+	</listener>
   <!-- @FOR_JETTY_ONLY - This conflicts with Tomcat when run on Eclipse.
   <servlet>
 	<servlet-name>default</servlet-name>
