@@ -1,7 +1,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <% 	JSPHelper.logRequest(request); %>
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-  "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <html lang="en">
 <head>
 <link rel="icon" type="image/png" href="images/muse-favicon.png">
@@ -22,7 +21,7 @@ or follow our Facebook page by clicking on the "Like" button at the bottom of th
 
 <div align="center">
 <form method="post" action="http://prpl.stanford.edu/report/field_report.php">
-<input type="hidden" name="to" id="to" value="hangal@cs.stanford.edu"></input>
+<input type="hidden" name="to" id="to" value="hangal@cs.stanford.edu"/>
 
 <table>
 <tr><td align="left">
@@ -34,7 +33,7 @@ Comments:<br/>
 <textarea style="padding:5px" rows="25" cols="60" name="message" id="message"></textarea>
 </td></tr>
 
-<tr><td><input type="submit" value="Submit"></input></td></tr>
+<tr><td><input type="submit" value="Submit"/></td></tr>
 
 </table>
 </form>

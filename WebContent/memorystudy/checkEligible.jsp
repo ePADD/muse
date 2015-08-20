@@ -1,4 +1,4 @@
-<%@page language="java" contentType="text/html; charset=utf-8"%>
+<%@page language="java" contentType="text/html; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
@@ -50,7 +50,7 @@ session.setAttribute("profession", profession);
 String ethnicity = (String) request.getParameter("ethnicity");
 session.setAttribute("ethnicity", ethnicity);
 %>
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html>
 <head>
 <link rel="stylesheet" href="css/memoryjsp.css" type="text/css" />

@@ -1,3 +1,4 @@
+<%@ page contentType="text/html; charset=UTF-8"%>
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="javax.mail.*"%>
 <%@page language="java" import="java.io.*"%>
@@ -9,7 +10,6 @@
 <%@page language="java" import="edu.stanford.muse.datacache.*"%>
 <%@page language="java" import="java.awt.image.*"%>
 <%@page language="java" import="javax.imageio.*"%>
-<%@ page contentType="text/html; charset=UTF-8"%>
 
 <% JSPHelper.logRequest(request); %>
 <%@include file="getArchive.jspf" %>

@@ -1,10 +1,10 @@
-<%@page language="java" contentType="text/html; charset=utf-8"%>
+<%@page language="java" contentType="text/html; charset=UTF-8"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <title>Full Informed Consent Form</title>
 <link rel="stylesheet" href="css/consentform.css" type="text/css" />
 <link rel="icon" href="images/stanford-favicon.gif">

@@ -40,8 +40,7 @@ String title_tooltip = title;
 if (me != null)
 	title_tooltip = "a.k.a." + me.toTooltip();
 %>
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-  "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <html lang="en">
 <head>
 <link rel="icon" type="image/png" href="images/muse-favicon.png">
