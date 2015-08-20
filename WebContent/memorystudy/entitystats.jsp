@@ -58,13 +58,13 @@
                 }
                 else {
                     entities = ed.getAllAddrs();
-                    Multimap<Contact, Date> solos = HashMultimap.create();
+//                    Multimap<Contact, Date> solos = HashMultimap.create();
                     Collection<Contact> contacts = ed.getParticipatingContactsExceptOwn(ab);
                     if (contacts.size() == 1) {
                         // solos
-                        for (Contact c: contacts) {
-                            solos.put(contacts.iterator().next(), ed.getDate());
-                        }
+//                        for (Contact c: contacts) {
+ //                           solos.put(contacts.iterator().next(), ed.getDate());
+                       // }
                     }
                 }
 
