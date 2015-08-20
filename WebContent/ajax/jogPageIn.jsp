@@ -11,7 +11,6 @@
 <%@page contentType="text/html; charset=UTF-8"%>
 
 <%
-JSPHelper.logRequest(request);
 String datasetId = request.getParameter("datasetId");
 DataSet dataset = (DataSet) JSPHelper.getSessionAttribute(session, datasetId);
 boolean error = (dataset == null);
@@ -50,6 +49,5 @@ for (int i = startPage; i <= endPage; i++) // note: start and end page inclusive
 	out.println ("</div>");
 }
 out.println ("</div>");
-JSPHelper.logRequestComplete(request);
 
 %>

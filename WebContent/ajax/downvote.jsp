@@ -9,7 +9,6 @@
 <%@page language="java" import="edu.stanford.muse.lens.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 
 //https://developer.mozilla.org/en/http_access_control
@@ -36,5 +35,4 @@ try {
 } catch (Exception e) {
 	JSPHelper.log.warn ("Exception while cancelling term: " + Util.stackTrace(e));	
 }
-JSPHelper.logRequestComplete(request);
 %>

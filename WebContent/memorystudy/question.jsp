@@ -8,7 +8,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
 <%
-JSPHelper.logRequest(request);
 
 	Integer numQ = (Integer) session.getAttribute("numQuestions");
 	if (numQ == null)
@@ -229,4 +228,3 @@ JSPHelper.logRequest(request);
 	</div>
 </body>
 </html>
-<%JSPHelper.logRequestComplete(request);%>

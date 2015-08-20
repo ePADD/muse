@@ -7,7 +7,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 // prevent caching of this page - sometimes the ajax seems to show stale status
 

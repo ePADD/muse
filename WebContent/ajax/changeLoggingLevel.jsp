@@ -6,7 +6,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 
 <%
-JSPHelper.logRequest(request);
 
 String logClass = request.getParameter("logger");
 String level = request.getParameter("level");
@@ -28,5 +27,4 @@ if (!Util.nullOrEmpty(logClass) && !Util.nullOrEmpty(level))
 	String message = "Changed logging level to " + level;
 	JSPHelper.log.info (message);
 }
-JSPHelper.logRequestComplete(request);
 %>

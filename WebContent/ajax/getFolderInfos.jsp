@@ -6,7 +6,6 @@
 <%
 // little jsp to return jsp for folderinfos for the selected account.
 // read of folders and accounts inthe selected account may be in progress
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response); // important! it was getting falsely cached earlier
 
 MuseEmailFetcher m = (MuseEmailFetcher) JSPHelper.getSessionAttribute(session, "museEmailFetcher");
@@ -33,7 +32,6 @@ if (accountIdx != -1)
  //   	}
 		String json = m.getFolderInfosAsJson(accountIdx);
 		out.println (json);
-		JSPHelper.logRequestComplete(request);
 		return;
 	} catch (Exception e)
 	{
@@ -42,6 +40,5 @@ if (accountIdx != -1)
 }
 // if we reach here, its an error
 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR); // 404.
-JSPHelper.logRequestComplete(request);
 
 %>

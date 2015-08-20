@@ -1,5 +1,4 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<% 	JSPHelper.logRequest(request); %>
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="java.io.*"%>
 <%@page language="java" import="java.net.*"%>
@@ -7,7 +6,6 @@
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%
-	JSPHelper.logRequest(request);
 
 	session.setMaxInactiveInterval(-1);
     response.setHeader("Cache-Control","no-cache"); //HTTP 1.1

@@ -11,7 +11,6 @@
 <%@page language="java" import="java.util.Calendar"%>
 <%@page language="java" import="java.text.SimpleDateFormat"%>
 <%
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 	/** returns details for a single hit term */
 // https://developer.mozilla.org/en/http_access_control
@@ -21,7 +20,6 @@ response.setHeader("Access-Control-Allow-Credentials", "true");
 response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
 response.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
-JSPHelper.logRequest(request);
 
 JSONObject result = new JSONObject();
 try {	
@@ -106,6 +104,5 @@ try {
 	Util.print_exception (e, JSPHelper.log);
 } finally { 
 	out.println (result.toString(4));
-	JSPHelper.logRequestComplete(request); 
 }
 %>

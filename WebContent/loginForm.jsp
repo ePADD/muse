@@ -60,7 +60,6 @@ $(document).ready(function() {
 <div class="simple-login">
 
 <%
-JSPHelper.logRequest(request);
 session.setMaxInactiveInterval(-1);
 List<List<String>> tbirdAccounts = ThunderbirdUtils.getThunderbirdAccounts();
 String linkAfterLoadSession = ("search".equals(JSPHelper.getSessionAttribute(session, "mode"))) ? "createEmailLinksCSE.jsp" : "info";

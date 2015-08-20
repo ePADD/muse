@@ -10,7 +10,6 @@
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
 
 <%
-JSPHelper.logRequest(request);
 
 if (!MemoryStudy.anyCodesAvailable()) { 
 	MemoryStudy.UserStats stats = new MemoryStudy.UserStats();
@@ -108,7 +107,6 @@ $(document).ready(function() {
 <body class="graded"> 
 
 <%
-JSPHelper.logRequest(request);
 session.setMaxInactiveInterval(-1);
 String linkAfterLoadSession = ("search".equals(JSPHelper.getSessionAttribute(session, "mode"))) ? "createEmailLinksCSE.jsp" : "info";
 
@@ -243,7 +241,6 @@ This should only take a minute or two.
 <div style="clear:both"></div>
 </div> <!-- id=main -->
 <!-- main -->
-<% JSPHelper.logRequestComplete(request); %>
 
 </body>
 </html>

@@ -6,7 +6,6 @@
 <%@page language="java" import="edu.stanford.muse.slant.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%
-JSPHelper.logRequest(request);
 // returns an html fragment that will be stuck into the status box.
 List<Document> docs = JSPHelper.selectDocsAsList(request, session);	
 List<LinkInfo> links = EmailUtils.getLinksForDocs(docs);
@@ -43,5 +42,4 @@ else
 		out.println ("</table>\n");
 	}		
 }
-JSPHelper.logRequestComplete(request);
 %>

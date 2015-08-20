@@ -7,7 +7,6 @@
 <%@page language="java" import="java.util.*"%>
 <%
 	// this is for abhinay's stuff
-JSPHelper.logRequest(request);
 JSPHelper.setPageUncacheable(response);
 response.setContentType("application/x-javascript; charset=utf-8");
 Archive archive = JSPHelper.getArchive(session);

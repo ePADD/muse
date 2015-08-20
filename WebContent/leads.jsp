@@ -5,7 +5,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
-<% 	JSPHelper.logRequest(request); %>
 <!DOCTYPE html>
 <html>
 <head>

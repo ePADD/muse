@@ -8,7 +8,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
 <%
-//JSPHelper.logRequest(request);
 	// prevent caching of this page - sometimes the ajax seems to show stale status
 	JSPHelper.setPageUncacheable(response);
     response.setContentType("application/json; charset=utf-8");
@@ -26,6 +25,5 @@
 	}
     else
         out.println (obj.getStatusMessage());
-//JSPHelper.logRequestComplete(request);
 
 %>

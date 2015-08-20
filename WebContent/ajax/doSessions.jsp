@@ -6,7 +6,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="java.util.*"%>
 <%
-	JSPHelper.logRequest(request);
 	response.setHeader("Cache-Control","no-cache"); 
 	response.setHeader("Pragma","no-cache"); 
 	response.setDateHeader ("Expires", -1); 

@@ -2,7 +2,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
 <%
-JSPHelper.logRequest(request);
 int nWrongAnswers = 0;
 MemoryStudy study = (MemoryStudy) session.getAttribute("study");
 
@@ -84,4 +83,3 @@ function handle_submit() {
 </script>
 </body>
 </html>
-<%JSPHelper.logRequestComplete(request);%>

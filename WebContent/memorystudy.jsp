@@ -3,7 +3,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
 <%
-		JSPHelper.logRequest(request);
 //browser check
 String ua = request.getHeader("User-Agent");
 if (ua != null) 
@@ -306,5 +305,4 @@ function go_button() {
 
 </body>
 </html>
-<% JSPHelper.logRequestComplete(request); %>
 

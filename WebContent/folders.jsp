@@ -11,7 +11,6 @@
 <%
 	JSPHelper.checkContainer(request); // do this early on so we are set up
   request.setCharacterEncoding("UTF-8");
-JSPHelper.logRequest(request);
 MuseEmailFetcher m = (MuseEmailFetcher) JSPHelper.getSessionAttribute(session, "museEmailFetcher");
 if (m == null)
 {
@@ -172,7 +171,6 @@ Accounts.updateUserInfo(request);
   	    }
 	} // end of fetcher loop
 
-    JSPHelper.logRequestComplete(request);
     %>
 
 <script type="text/javascript">

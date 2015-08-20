@@ -13,7 +13,6 @@
 <%@page language="java" import="edu.stanford.muse.groups.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%
-JSPHelper.logRequest(request);
 
 Collection<Document> allDocs = (Collection<Document>) JSPHelper.getSessionAttribute(session, "emailDocs");
 Archive archive = JSPHelper.getArchive(session);
@@ -47,5 +46,4 @@ if (indexer != null && indexer.summarizer != null)
 	indexer.summarizer.nukeCards(); // we have to nuke cards, since they are no longer valid
 NewFilter f = NewFilter.createFilterFromRequest(request);
 session.setAttribute("currentFilter", f);
-JSPHelper.logRequestComplete(request);
 %>

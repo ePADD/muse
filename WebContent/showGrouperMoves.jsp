@@ -9,7 +9,6 @@
 <%@ page contentType="text/html; charset=UTF-8"%>
 
 <%
-	JSPHelper.logRequest(request);
 	Archive archive = JSPHelper.getArchive(session);
 	if (archive == null)
 	{

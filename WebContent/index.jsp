@@ -3,7 +3,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%
-JSPHelper.logRequest(request);
 
 Util.ASSERT(!ModeConfig.isPublicMode()); // this page should not be present in public mode
 
@@ -33,7 +32,6 @@ if ("search".equals(mode) || "search".equals(session_mode))
 // if we already have an archive, no point spending time on this page (unless we've been told noredirect)
 if (session.getAttribute("archive") != null && request.getParameter("noredirect") == null)
 {
-	JSPHelper.logRequestComplete(request);
 	response.sendRedirect("info");
 	return;	
 }
@@ -68,7 +66,6 @@ if (o != null && "true".equals(o.toString()))
 	Util.setBlur(false);
 }
 	
-JSPHelper.logRequest (request);
 String browserType=(String)request.getHeader("User-Agent");
 JSPHelper.log.info ("browser = " + browserType);
 if (browserType.indexOf("MSIE") >= 0) {
@@ -93,7 +90,6 @@ function textFieldClicked(field)
 
 <jsp:include page="loginForm.jsp"/>
 
-<% JSPHelper.logRequestComplete(request); %>
 
 <%@include file="footer.jsp"%>
 

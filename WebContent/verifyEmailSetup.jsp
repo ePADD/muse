@@ -4,7 +4,6 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%	
-JSPHelper.logRequest(request); 
 JSPHelper.setPageUncacheable(response);
 %>
 <!DOCTYPE html>
@@ -47,4 +46,3 @@ else
 
 </body>
 </html>
-<%	JSPHelper.logRequestComplete(request); %>

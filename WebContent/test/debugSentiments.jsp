@@ -74,7 +74,6 @@
 <body>
 
 <%
-	JSPHelper.logRequest(request);
 
 	if (archive == null)
 	{

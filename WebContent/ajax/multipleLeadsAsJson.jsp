@@ -12,7 +12,6 @@
 <%@page language="java" import="edu.stanford.muse.lens.*"%>
 
 <%
-JSPHelper.logRequest(request); 
 JSPHelper.setPageUncacheable(response);
 
 JSONObject result = new JSONObject();
@@ -110,5 +109,4 @@ try {
 	JSPHelper.log.warn ("Error: " + e);
 	return;	
 }
-finally { JSPHelper.logRequestComplete(request); }
 %>

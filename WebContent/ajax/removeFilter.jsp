@@ -14,7 +14,6 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%
 	// simple call to remove a filter
-JSPHelper.logRequest(request);
 Archive archive = JSPHelper.getArchive(session);
 Collection<Document> fullEmailDocs = archive.getAllDocs();
 JSONObject j = new JSONObject();
@@ -32,5 +31,4 @@ else
 	j.put("status", 1);
 
 out.println (j.toString());
-JSPHelper.logRequestComplete(request);
 %>

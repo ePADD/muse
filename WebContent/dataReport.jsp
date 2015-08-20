@@ -13,7 +13,6 @@
 <%
 // we are already logged into all accounts at the point this is called
 // we may not have finished reading the folders though.
-	JSPHelper.logRequest(request);
 	session.setMaxInactiveInterval(-1);
     // never let session expire
 

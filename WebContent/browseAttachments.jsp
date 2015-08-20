@@ -26,7 +26,6 @@
 <body>
 <jsp:include page="header.jsp"/>
 <%
-	JSPHelper.logRequest(request);
 	String userKey = "user";
 	String rootDir = JSPHelper.getRootDir(request);
 	String cacheDir = (String) JSPHelper.getSessionAttribute(session, "cacheDir");

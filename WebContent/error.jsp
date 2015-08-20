@@ -7,7 +7,6 @@ if ("memorytest".equals(session.getAttribute("mode"))) {
 	response.sendRedirect("/muse/memorystudy/error.jsp");
 	return;
 }
-JSPHelper.logRequest(request);
 ErrorData err = pageContext.getErrorData();
 if (err != null)
 {
@@ -92,7 +91,6 @@ if (e instanceof TimedOutException)
 }
 session.removeAttribute("errorMessage");
 session.removeAttribute("exception");
-JSPHelper.logRequestComplete(request);
 
 %>
 <br/>

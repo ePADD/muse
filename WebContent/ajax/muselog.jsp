@@ -1,7 +1,6 @@
 <%@page trimDirectiveWhitespaces="true"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%
-// JSPHelper.logRequest(request);
 String message = request.getParameter("message");
 if (message != null)
 	message = message.trim();

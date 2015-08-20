@@ -12,7 +12,6 @@
 <%@page language="java" import="edu.stanford.muse.xword.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%
-JSPHelper.logRequest(request);
 
 // allow access since it may be invoked by a bookmarklet
 response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
@@ -157,4 +156,3 @@ out.println("var cross = " + json + "; is_creator = true;");
 <br/>
 </body>
 </html>
-<% JSPHelper.logRequestComplete(request); %>

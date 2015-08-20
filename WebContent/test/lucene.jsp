@@ -38,7 +38,6 @@ $(document).ready(function() {
 <h1>Lucene index</h1>
 
 <%	
-	JSPHelper.logRequest(request);
 	Collection<EmailDocument> emailDocs = (Collection<EmailDocument>) JSPHelper.getSessionAttribute(session, "emailDocs");
 %>
 

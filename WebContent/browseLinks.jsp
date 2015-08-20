@@ -11,7 +11,6 @@
 <%@page language="java" import="java.awt.image.*"%>
 <%@page language="java" import="javax.imageio.*"%>
 
-<% JSPHelper.logRequest(request); %>
 <%@include file="getArchive.jspf" %>
 	
 <html lang="en">

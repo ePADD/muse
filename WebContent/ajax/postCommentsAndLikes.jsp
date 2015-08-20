@@ -7,7 +7,6 @@
 <%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%
-JSPHelper.logRequest(request);
 String docset = request.getParameter("docset"); // this is actually docs-docset-NNN
 String comment = request.getParameter("comment");
 boolean like = request.getParameter("like") != null;
@@ -46,6 +45,5 @@ else
 	else
 		d.setComment(comment);
 }
-JSPHelper.logRequestComplete(request);
 
 %>
