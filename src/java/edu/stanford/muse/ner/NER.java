@@ -27,7 +27,9 @@ import java.io.*;
 import java.util.*;
 
 /**
- * This is the only class dependent on ePADD in this package and has all the interfacing functionality*/
+ * This is the only class dependent on ePADD in this package and has all the interfacing functionality
+ *
+ * TODO: trainAndrecognise and train methods should take proper options argument and there should be a class that represents training options*/
 public class NER implements StatusProvider {
 	public static Log		    log					= LogFactory.getLog(NER.class);
     //names and names_original should include all the names in the title
@@ -218,18 +220,17 @@ public class NER implements StatusProvider {
                 FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
                 FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION)
         );
-        NERModel model = trainer.trainArchiveIndependent(dbpedia, types, aTypes, fgs, tokenizer, params);
+        NERModel model = trainer.trainArchiveIndependent(dbpedia, types, fgs, tokenizer, params);
         return model;
     }
 
-    public NERModel trainModel() {
+    public NERModel trainModel(boolean dumpModel) {
         NERTrainer trainer = new SVMModelTrainer();
         status = "Loading DBpedia and address book";
         Map<String,String> addressbook =  EmailUtils.getNames(archive.addressBook.allContacts());
         pctComplete = 2;
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
         pctComplete = 10;
-        addressbook = FeatureDictionary.cleanAB(addressbook, dbpedia);
         Tokenizer tokenizer = new CICTokenizer();
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
         List<Short> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
@@ -240,7 +241,7 @@ public class NER implements StatusProvider {
         );
         String CACHE_DIR = archive.baseDir + File.separator + Config.CACHE_FOLDER;
         String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
-        SVMModelTrainer.TrainingParam tparams = SVMModelTrainer.TrainingParam.initialize(CACHE_DIR, MODEL_DIR);
+        SVMModelTrainer.TrainingParam tparams = SVMModelTrainer.TrainingParam.initialize(CACHE_DIR, MODEL_DIR, dumpModel);
         ArchiveContent archiveContent = new ArchiveContent() {
             @Override
             public int getSize() {
@@ -260,7 +261,7 @@ public class NER implements StatusProvider {
 
 	//TODO: Consider using Atomic reader for accessing the index, if it improves performance
 	//main method trains the model, recognizes the entities and updates the doc.
-	public void trainAndRecognise() throws CancelledException, IOException {
+	public void trainAndRecognise(boolean dumpModel) throws CancelledException, IOException {
 		time = 0;
 		archive.openForRead();
 		archive.setupForWrite();
@@ -276,7 +277,7 @@ public class NER implements StatusProvider {
         if(nerModel == null) {
             status = "Did not find ner model in " + modelFile;
             status = "Building model";
-            nerModel = trainModel();
+            nerModel = trainModel(dumpModel);
         }
 
 		if (cancelled) {
@@ -297,8 +298,7 @@ public class NER implements StatusProvider {
 			//Its possible to improve the performance further by using linear kernel
 			// instead of RBF kernel and classifier instead of a regression model
 			// (the confidence scores of regression model can be useful in segmentation)
-            //TODO: @bug -> should also recognise names in the subject
-			String originalContent = archive.getContents(ldoc, true);
+         	String originalContent = archive.getContents(ldoc, true);
 			String content = archive.getContents(ldoc, false);
             String title = archive.getTitle(ldoc);
 			//original content is substring of content;
@@ -487,7 +487,7 @@ public class NER implements StatusProvider {
             NER ner = new NER(archive);
             System.err.println("Loading model...");
             long start = System.currentTimeMillis();
-            NERModel model = ner.trainModel();
+            NERModel model = ner.trainModel(false);
             System.err.println("Trained model in: " + (System.currentTimeMillis() - start));
             System.err.println("Done loading model");
             String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};

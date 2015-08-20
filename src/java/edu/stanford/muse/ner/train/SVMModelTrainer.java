@@ -21,13 +21,14 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Trains an SVM model with surface features and gazettes
+ * Trains an SVM model with surface features on the supplied gazettes
  */
  public class SVMModelTrainer implements NERTrainer, StatusProvider {
     public static class TrainingParam {
         svm_parameter svmParam = new svm_parameter();
         String cacheDir;
         String modelWriteLocation;
+        boolean dumpModel = false;
 
         public static TrainingParam getDefaultParam () {
             TrainingParam param = new TrainingParam();
@@ -49,10 +50,11 @@ import java.util.*;
             return param;
         }
 
-        public static TrainingParam initialize(String cacheDir, String mwl){
+        public static TrainingParam initialize(String cacheDir, String mwl, boolean dumpModel){
             TrainingParam tp = getDefaultParam();
             tp.cacheDir = cacheDir;
             tp.modelWriteLocation = mwl;
+            tp.dumpModel = dumpModel;
             return tp;
         }
     }
@@ -79,7 +81,7 @@ import java.util.*;
     /**
      * Archive independent way of building models
      * TODO: test this routine*/
-    public SVMModel trainArchiveIndependent(Map<String,String> externalGazz, List<Short> types, List<String[]> aTypes,
+    public SVMModel trainArchiveIndependent(Map<String,String> externalGazz, List<Short> types,
                           FeatureGenerator[] fgs, Tokenizer tokenizer, Object params){
         TrainingParam tparams = (TrainingParam) params;
         String CACHE_DIR = tparams.cacheDir;
@@ -203,10 +205,14 @@ import java.util.*;
     @Override
     public SVMModel train(ArchiveContent archiveContent, Map<String,String> externalGazz, Map<String,String> internalGazz, List<Short> types, List<String[]> aTypes,
                    FeatureGenerator[] fgs, Tokenizer tokenizer, Object params) {
+        status = "Loading dictionary";
+        FeatureDictionary dictionary = FeatureDictionary.loadDefaultDictionary();
         //TODO: put some basic checkups to make sure al the arguments are compatible
         Map<String, String> gazzs = new LinkedHashMap<>();
         gazzs.putAll(externalGazz);
         gazzs.putAll(internalGazz);
+        status = "Cleaning address book";
+        internalGazz = FeatureDictionary.cleanAB(internalGazz, dictionary);
         TrainingParam tparams = (TrainingParam) params;
         String CACHE_DIR = tparams.cacheDir;
         long st = System.currentTimeMillis(), time = 0;
@@ -214,7 +220,7 @@ import java.util.*;
 
         status = "Reading your address book and DBpedia";
         //build a feature dictionary
-        FeatureDictionary dictionary = new FeatureDictionary(gazzs, fgs);
+        dictionary.addGazz(internalGazz);
         model.dictionary = dictionary;
         model.tokenizer = tokenizer;
         model.fgs = fgs;
@@ -402,17 +408,21 @@ import java.util.*;
         }
         time += System.currentTimeMillis() - st;
         st = System.currentTimeMillis();
-        status = "Done learning... dumping model";
-        log.info("Dumping model for reuse");
-        try {
-            File f = new File(tparams.modelWriteLocation);
-            //when f be null?
-            if(f != null && !f.exists())
-                f.mkdir();
+        if(tparams.dumpModel) {
+            status = "Done learning... dumping model";
+            log.info("Dumping model for reuse");
+            try {
+                File f = new File(tparams.modelWriteLocation);
+                //when f be null?
+                if (f != null && !f.exists())
+                    f.mkdir();
 
-            model.writeModel(new File(tparams.modelWriteLocation + File.separator + SVMModel.modelFileName));
-        } catch (IOException e) {
-            Util.print_exception("Fatal! Could not write the trained model to " + tparams.modelWriteLocation, e, log);
+                model.writeModel(new File(tparams.modelWriteLocation + File.separator + SVMModel.modelFileName));
+            } catch (IOException e) {
+                Util.print_exception("Fatal! Could not write the trained model to " + tparams.modelWriteLocation, e, log);
+            }
+        }else{
+            status = "Done learning";
         }
         return model;
     }

@@ -50,7 +50,7 @@
                     else {
                         Contact c = ab.lookupByEmailOrName(e);
                         e = c.pickBestName();
-                        links.put(e, "../newBrowse.jsp?contactid=" + ab.getContactId(c) + "&sort_by=recent&searchType=original");
+                        links.put(e, "../newBrowse.jsp?contact=" + ab.getContactId(c) + "&sort_by=recent&searchType=original");
                     }
 
                     if (!timeStamps.containsKey(e)) {
@@ -67,7 +67,7 @@
                     if (d1.after(d2))
                         recentDate.put(e, d1);
                 }
-                if((++di)%100==0)
+                if((++di)%1000==0)
                     System.err.println(di+" of "+docs.size());
             }
             List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
