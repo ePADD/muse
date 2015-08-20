@@ -94,12 +94,12 @@
                         timeStamps.get(e).put(ed.getDate(), 0);
                     timeStamps.get(e).put(ed.getDate(), timeStamps.get(e).get(ed.getDate()) + 1);
 
-                    if (!recentDate.containsKey(ed.getDate()))
-                        recentDate.put(e, ed.getDate());
-                    Date d1 = ed.getDate();
-                    Date d2 = recentDate.get(e);
-                    if (d1.after(d2))
-                        recentDate.put(e, d1);
+                    //if (!recentDate.containsKey(ed.getDate()))
+                    recentDate.put(e, ed.getDate());
+//                    Date d1 = ed.getDate();
+//                    Date d2 = recentDate.get(e);
+//                    if (d1.after(d2))
+//                        recentDate.put(e, d1);
                 }
                 if ((++di)%1000==0)
                     out.println(di + " of " + docs.size() + " messages processed...<br/>");
