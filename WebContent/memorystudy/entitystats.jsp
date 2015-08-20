@@ -45,6 +45,7 @@
             Map<String, Date> recentDate = new LinkedHashMap<String, Date>();
             Map<String, String> links = new LinkedHashMap<String,String>();
             int di = 0;
+            Collections.sort(docs);
             for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
                 List<String> entities;
@@ -62,7 +63,7 @@
                     if (contacts.size() == 1) {
                         // solos
                         for (Contact c: contacts) {
-                            solos.put(ab.getContactId(contacts.iterator().next()), ed.getDate());
+                            solos.put(contacts.iterator().next(), ed.getDate());
                         }
                     }
                 }
