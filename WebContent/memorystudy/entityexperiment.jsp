@@ -44,7 +44,7 @@
                 EmailDocument ed = (EmailDocument) doc;
                 List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
                 List<Triple<String,Integer,Integer>> triples = archive.getNamesOffsets(doc);
-                String contents = archive.getContents(doc, true);
+                String contents = archive.getContents(doc, false);
                 if(triples == null){
                     System.err.println("Triples null!");
                     continue;
@@ -67,14 +67,24 @@
                         if(start>=0 && end<contents.length() && end>=0 && start<contents.length() && start<=end)
                             text = contents.substring(start,end);
                     }
-                    //look for mentions
-                    if(text.length()>0){
-                        String[] words = text.split(" ");
-                        for(String w: words)
-                            if(pronouns.contains(w.toLowerCase())){
-                                withMentions.add(e);
-                                break;
-                            }
+                    else{
+                        int start = t.getThird();
+                        if((start>=0) && start<contents.length())
+                            text = contents.substring(start);
+                    }
+                    if(t.getSecond()<0 || t.getThird()>contents.length()){
+                        out.println("This is a strange tuple: ("+t.getFirst()+","+t.getSecond()+","+t.getThird()+")&nbsp"+contents.length()+"<br/>");
+                    }
+                    if(!withMentions.contains(e)){
+                        //look for mentions
+                        if(text.length()>0){
+                            String[] words = text.split("\\s+");
+                            for(String w: words)
+                                if(pronouns.contains(w.toLowerCase())){
+                                    withMentions.add(e);
+                                    break;
+                                }
+                        }
                     }
                     links.put(e, "../browse?term=\"" + e + "\"&sort_by=recent&searchType=original");
 
