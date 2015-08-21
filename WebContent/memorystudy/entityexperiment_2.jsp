@@ -8,6 +8,8 @@
 <%@ page import="edu.stanford.muse.ner.NER" %>
 <%@ page import="edu.stanford.muse.util.Triple" %>
 <%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="edu.stanford.muse.util.NLPUtils" %>
+<%@ page import="opennlp.tools.util.Span" %>
 <%@include file="../getArchive.jspf" %>
 <html>
 <head>
@@ -27,11 +29,11 @@
 </head>
 <b>Entity listing by most recent mention (for testing only)</b><br/>
     <%
-    /**TODO: This simple code looks for only third person pronouns after an entity mention.
-    * Does not even check if the teh pronoun is referring to the mention
-    * Would be cool to see if we can also recognise nominal mentions such as Google, <i>the company</i> my friend is working in.
+    /**This code just looks for entities mentioned in sentences that also have the mention of
+    * cue words like I, You, My
     * */
-    //considers only poeple names
+    //considers only people names
+
     try {
             boolean originalOnly = true;
             AddressBook ab = archive.addressBook;
@@ -43,12 +45,13 @@
             Set<String> withMentions = new LinkedHashSet<String>();
             int di = 0;
             Collections.sort(docs);
-            List<String> pronouns = Arrays.asList("he", "she", "his","hers", "him", "her", "they");
+            List<String> cues = Arrays.asList("you", "i", "my", "your");
             for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
                 List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
                 List<Triple<String,Integer,Integer>> triples = archive.getNamesOffsets(doc);
-                String contents = archive.getContents(doc, false);
+                String contents = archive.getContents(doc, true);
+                Span[] sents = NLPUtils.tokeniseSentencePos(contents);
                 if(triples == null){
                     continue;
                 }
@@ -62,33 +65,25 @@
                     if(c!=null)
                         continue;
 
-                    String text = "";
-                    if(ti<(triples.size()-1)){
-                        Triple<String,Integer,Integer> nt = triples.get(ti+1);
-                        int start = t.getThird();
-                        int end = nt.getSecond();
-                        if(start>=0 && end<contents.length() && end>=0 && start<contents.length() && start<=end)
-                            text = contents.substring(start,end);
-                    }
-                    else{
-                        int start = t.getThird();
-                        if((start>=0) && start<contents.length())
-                            text = contents.substring(start);
-                    }
-                    if(t.getSecond()<0 || t.getThird()>contents.length()){
-                        out.println("This is a strange tuple: ("+t.getFirst()+","+t.getSecond()+","+t.getThird()+")&nbsp"+contents.length()+"<br/>");
-                    }
                     if(!withMentions.contains(e)){
-                        //look for mentions
-                        if(text.length()>0){
-                            String[] words = text.split("\\s+");
+                        int start = t.getSecond();
+                        int end = t.getThird();
+                        String sentText = null;
+                        for(Span sp: sents){
+                            if(sp.getStart()<=start && sp.getEnd()>=end){
+                                sentText = sp.getCoveredText(contents).toString();
+                            }
+                        }
+                        if(sentText!=null){
+                            String[] words = sentText.split("\\s+");
                             for(String w: words)
-                                if(pronouns.contains(w.toLowerCase())){
+                                if(cues.contains(w.toLowerCase())){
                                     withMentions.add(e);
                                     break;
                                 }
                         }
                     }
+
                     links.put(e, "../browse?term=\"" + e + "\"&sort_by=recent&searchType=original");
 
                     if (!timeStamps.containsKey(e)) {
@@ -111,12 +106,12 @@
                 c.setTime(p.getSecond());
                 String month = new SimpleDateFormat("MMM-YYYY").format(c.getTime());
                 if (!month.equals(prevMonth))
-                    out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Name</i></th><th><i>Last message</i></th><th><i>Total Messages</i></th><th><i>With mention</i></th>");
+                    out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Name</i></th><th><i>Last message</i></th><th><i>Total Messages</i></th><th><i>Important</i></th>");
                 prevMonth = month;
                 out.println("<tr><td><a href='"+links.get(p.getFirst())+"' target='_blank'>" + Util.ellipsize(p.getFirst(), 30) + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td style=\"text-align:right\">" + timeStamps.get(p.getFirst()).size() + "</td><td>"+withMentions.contains(p.getFirst())+"</td></tr>");
             }
-            out.println ("</table>");
+        out.println ("</table>");
      } catch (Throwable e) {
-            e.printStackTrace();
-        }
+        e.printStackTrace();
+     }
 %>
