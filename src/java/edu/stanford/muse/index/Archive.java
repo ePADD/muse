@@ -44,6 +44,7 @@ import java.util.*;
  * up in multiple sessions simultaneously. one problem currently is that
  * summarizer is stored in indexer -- however, we should pull it out into
  * per-session state.
+ *
  */
 public class Archive implements Serializable {
 
@@ -1393,9 +1394,10 @@ public class Archive implements Serializable {
         indexer.updateDocument(doc);
     }
 
-    /**Reads offset field in the supplied lucene doc, derializes it and returns*/
+    /**Reads offset field in the supplied lucene doc, deserializes it and returns
+     */
     public static List<Triple<String, Integer, Integer>> getNamesOffsets(org.apache.lucene.document.Document doc) {
-        BytesRef bytesRef = doc.getBinaryValue("names_offsets");
+        BytesRef bytesRef = doc.getBinaryValue(NER.NAMES_OFFSETS);
         if (bytesRef == null)
             return null;
         byte[] data = bytesRef.bytes;
@@ -1409,13 +1411,24 @@ public class Archive implements Serializable {
             ois = new ObjectInputStream(bs);
             result = (List<Triple<String, Integer, Integer>>) ois.readObject();
         } catch (Exception e) {
-            log.warn("Failed to deserialize names_offsets");
+            log.info("Failed to deserialize names_offsets");
             e.printStackTrace();
             result = new ArrayList<Triple<String, Integer, Integer>>();
         }
 
         return result;
     }
+
+    public List<Triple<String, Integer, Integer>> getNamesOffsets(Document doc) {
+        try {
+            org.apache.lucene.document.Document ldoc = indexer.getLDoc(doc.getUniqueId());
+            return getNamesOffsets(ldoc);
+        }catch(Exception e){
+            log.info("Ldoc for "+doc.getUniqueId()+" not found");
+            return null;
+        }
+    }
+
 
     public void setupForWrite() throws IOException{
         indexer.setupForWrite();
@@ -1523,7 +1536,8 @@ public class Archive implements Serializable {
                 //Pair<StringBuilder, Boolean> p = archive.getHTMLForContents(doc, null, docId, false, null, null, null, false, false, true);
                 //System.err.println("<link rel='stylesheet' href='epadd.css'>" + p.first);
                 //System.err.println(ld);
-                System.err.println(archive.getEntitiesInDoc(doc, "en_person",true).size());
+                System.err.println(ld.getBinaryValue(NER.NAMES_OFFSETS)+", "+NER.NAMES_OFFSETS);
+                System.err.println("Offsets: " + archive.getNamesOffsets(ld).size());
                 if(i++>10)
                 break;
             }
