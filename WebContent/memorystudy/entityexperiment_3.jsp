@@ -30,86 +30,46 @@
 <b>Entity listing by most recent mention (for testing only)</b><br/>
     <%
     /**
-     * Crawls and collects that appear in the same sentence any correspondent in the address book */
+     * Crawls and collects entities that appear in the same sentence with any correspondent in the address book */
     //considers only people names
-
+    AddressBook ab = archive.addressBook;
+    Map<String,Integer> verbs = new LinkedHashMap<String,Integer>();
     try {
-            boolean originalOnly = true;
-            AddressBook ab = archive.addressBook;
-            List<Document> docs = archive.getAllDocs();
-            Map<String, Map<Date, Integer>> timeStamps = new LinkedHashMap<String, Map<Date, Integer>>();
-            //most recent date used on
-            Map<String, Date> recentDate = new LinkedHashMap<String, Date>();
-            Map<String, String> links = new LinkedHashMap<String,String>();
-            Set<String> withMentions = new LinkedHashSet<String>();
-            int di = 0;
-            Collections.sort(docs);
-            List<String> cues = Arrays.asList("you", "i", "my");
-            for (Document doc : docs) {
-                EmailDocument ed = (EmailDocument) doc;
-                List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
-                List<Triple<String,Integer,Integer>> triples = archive.getNamesOffsets(doc);
-                String contents = archive.getContents(doc, true);
-                Span[] sents = NLPUtils.tokeniseSentencePos(contents);
-                if(triples == null){
-                    continue;
-                }
-                int ti=0;
-                for(Triple<String,Integer,Integer> t: triples){
-                    String e = t.getFirst();
-                    if(e == null || !entities.contains(e))
-                        continue;
-                    Contact c = ab.lookupByName(e);
-                    //filter away all the contacts from people names
-                    if(c!=null)
-                        continue;
-
-                    if(!withMentions.contains(e)){
-                        int start = t.getSecond();
-                        int end = t.getThird();
-                        String sentText = null;
-                        for(Span sp: sents){
-                            if(sp.getStart()<=start && sp.getEnd()>=end){
-                                sentText = sp.getCoveredText(contents).toString();
-                            }
-                        }
-                        if(sentText!=null){
-                            String[] words = sentText.split("\\s+");
-                            for(String w: words)
-                                if(cues.contains(w.toLowerCase())){
-                                    withMentions.add(e);
-                                    break;
-                                }
-                        }
+        boolean originalOnly = true;
+        List<Document> docs = archive.getAllDocs();
+        int di = 0;
+        Collections.sort(docs);
+        List<String> cues = Arrays.asList("i", "my");
+        for (Document doc : docs) {
+            EmailDocument ed = (EmailDocument) doc;
+            String content = archive.getContents(doc, true);
+            String[] sents = NLPUtils.tokeniseSentence(content);
+            for(String sent: sents){
+                String[] tokens = NLPUtils.tokenise(sent);
+                boolean flag = false;
+                for(String t: tokens)
+                    if(cues.contains(t.toLowerCase())){
+                        flag = true;
+                        break;
                     }
-
-                    links.put(e, "../browse?term=\"" + e + "\"&sort_by=recent&searchType=original");
-
-                    if (!timeStamps.containsKey(e)) {
-                        timeStamps.put(e, new LinkedHashMap<Date, Integer>());
-                    }
-                    if (!timeStamps.get(e).containsKey(ed.getDate()))
-                        timeStamps.get(e).put(ed.getDate(), 0);
-                    timeStamps.get(e).put(ed.getDate(), timeStamps.get(e).get(ed.getDate()) + 1);
-
-                    recentDate.put(e, ed.getDate());
-                    ti++;
+                if(flag){
+                    String[] tags = NLPUtils.posTag(tokens);
+                    for(int i=0;i<tokens.length;i++)
+                        if(tags[i].startsWith("VB")){
+                            String token = tokens[i];
+                            if(!verbs.containsKey(token))
+                                verbs.put(token, 0);
+                            verbs.put(token, verbs.get(token)+1);
+                        }
                 }
-                if ((++di)%1000==0)
-                    out.println(di + " of " + docs.size() + " messages processed...<br/>");
             }
-            List<Pair<String, Date>> srds = Util.sortMapByValue(recentDate);
-            String prevMonth = null;
-            for (Pair<String, Date> p : srds) {
-                Calendar c = new GregorianCalendar();
-                c.setTime(p.getSecond());
-                String month = new SimpleDateFormat("MMM-YYYY").format(c.getTime());
-                if (!month.equals(prevMonth))
-                    out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Name</i></th><th><i>Last message</i></th><th><i>Total Messages</i></th><th><i>Important</i></th>");
-                prevMonth = month;
-                out.println("<tr><td><a href='"+links.get(p.getFirst())+"' target='_blank'>" + Util.ellipsize(p.getFirst(), 30) + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td style=\"text-align:right\">" + timeStamps.get(p.getFirst()).size() + "</td><td>"+withMentions.contains(p.getFirst())+"</td></tr>");
-            }
-        out.println ("</table>");
+            if ((++di)%1000==0)
+                out.println(di + " of " + docs.size() + " messages processed...<br/>");
+        }
+        List<Pair<String,Integer>> sps = Util.sortMapByValue(verbs);
+        for(Pair<String,Integer> p: sps){
+            out.println(p.getFirst()+" : "+p.getSecond()+"<br>");
+        }
      } catch (Throwable e) {
         e.printStackTrace();
      }

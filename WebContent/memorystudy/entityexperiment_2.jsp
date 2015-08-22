@@ -51,7 +51,7 @@
                 List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
                 List<Triple<String,Integer,Integer>> triples = archive.getNamesOffsets(doc);
                 String contents = archive.getContents(doc, true);
-                Span[] sents = NLPUtils.tokeniseSentencePos(contents);
+                Span[] sents = NLPUtils.tokeniseSentenceAsSpan(contents);
                 if(triples == null){
                     continue;
                 }

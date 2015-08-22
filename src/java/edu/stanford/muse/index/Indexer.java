@@ -235,12 +235,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	{
 		clear();
 		this.io = io;
-		try {
-			if (io != null && io.do_NER)
-				NER.initialize();
-		} catch (Exception e) {
-			Util.report_exception(e);
-		}
 	}
 
 	protected Indexer() throws IOException {

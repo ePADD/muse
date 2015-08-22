@@ -171,26 +171,36 @@ public class NER {
 		long startTimeMillis = System.currentTimeMillis();
 		log.info("Initializing NER models");
 
-		InputStream pis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-person.bin");
-		TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
-		pFinder = new NameFinderME(pmodel);
+        try {
+            InputStream pis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-person.bin");
+            TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
+            pFinder = new NameFinderME(pmodel);
 
-		InputStream lis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-location.bin");
-		TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
-		lFinder = new NameFinderME(lmodel);
+            InputStream lis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-location.bin");
+            TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
+            lFinder = new NameFinderME(lmodel);
 
-		InputStream ois = NER.class.getClassLoader().getResourceAsStream("models/en-ner-organization.bin");
-		TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
-		oFinder = new NameFinderME(omodel);
+            InputStream ois = NER.class.getClassLoader().getResourceAsStream("models/en-ner-organization.bin");
+            TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
+            oFinder = new NameFinderME(omodel);
+        }
+        //dont bother about this, instead try not to use it
+        catch(Exception e){
+            Util.print_exception(e, log);
+        }
+        try {
+            InputStream modelIn = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+            SentenceModel model = new SentenceModel(modelIn);
+            sFinder = new SentenceDetectorME(model);
 
-		InputStream modelIn = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
-		SentenceModel model = new SentenceModel(modelIn);
-		sFinder = new SentenceDetectorME(model);
+            InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("models/en-token.bin");
+            TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
+            tokenizer = new TokenizerME(modelTokenizer);
+        }catch(Exception e){
+            Util.print_exception(e);
+        }
 
-		InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("models/en-token.bin");
-		TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
-		tokenizer = new TokenizerME(modelTokenizer);
-		long endTimeMillis = System.currentTimeMillis();
+        long endTimeMillis = System.currentTimeMillis();
 		log.info("Done initializing NER model in " + Util.commatize(endTimeMillis - startTimeMillis) + "ms");
 	}
 

@@ -177,7 +177,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 				content += line + " ";
 		}
 
-		Span[] sentenceSpans = NLPUtils.tokeniseSentencePos(content);
+		Span[] sentenceSpans = NLPUtils.tokeniseSentenceAsSpan(content);
 		for (Span sentenceSpan : sentenceSpans) {
 			int sentenceStartOffset = sentenceSpan.getStart();
 			String sent = sentenceSpan.getCoveredText(content).toString();
