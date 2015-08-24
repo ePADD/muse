@@ -1,0 +1,34 @@
+This fle summarises experiments on question generation and their results.
+-------------------------------
+Experiment - 1:
+See memorystudy/entityexperiment.jsp
+If an entity is followed by its co-referring mention, then that is a signal that the entity is not casual mention.
+Problems/Conclusions:
+TBF
+-------------------------------
+Experiment - 2:
+See memorystudy/entityexperiment_2.jsp
+The entities mentioned in sentences with one of the words thar are some form of "I", "You" are important.
+Problems/Conclusions
+1. This relatively did better than experiment 1.
+   But, it may not be just about, selecting the right entities to ask question on.
+**TBF**
+
+-------------------------------
+Experiment - 3:
+See memorystudy/entityexperiment_3.jsp
+Most verbs are representative of the event.
+We define events as phrases that can be attributed a particular time
+For example "founded", "occurred", "traveled", "visited", "met" e.t.c.
+Reverb wikipedia extractions are used to isolate relations that appeared with Date/day/month as object.
+The jsp goes through every sentence in every doc and selects the sentence if it contains the word "I" and phrases from any of thr relations isolated in the previous step and in verb form in the sentence.
+Such phrases are highlighted in the output.
+Problems/conclusions
+1. Most verbs are indicative of events. We would like to see or make distinction between events that last longer than a day and those on which we can put a specific calender date.
+TBF
+
+-------------------------------
+Experiment - 4:
+See memorystudy/entityexperiment_4.jsp
+Documents with a mention of time forms are selected and shown.
+Temporal forms are recognised with Stanford's SUTime.

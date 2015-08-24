@@ -6,6 +6,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import opennlp.tools.chunker.Chunker;
+import opennlp.tools.chunker.ChunkerME;
+import opennlp.tools.chunker.ChunkerModel;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
@@ -24,6 +27,7 @@ public class NLPUtils {
     public static SentenceDetectorME	sentenceDetector;
     public static POSTagger posTagger;
     public static Tokenizer tokenizer;
+    public static Chunker chunker;
 
 	static {
 		InputStream sentStream = NLPUtils.class.getClassLoader()
@@ -33,6 +37,8 @@ public class NLPUtils {
                 .getResourceAsStream("models/en-pos-maxent.bin");
         InputStream tokenStream = NLPUtils.class.getClassLoader()
                 .getResourceAsStream("models/en-token.bin");
+        InputStream chunkerStream = NLPUtils.class.getClassLoader()
+                .getResourceAsStream("models/en-chunker.bin");
         POSModel posModel;
 		try {
 			if (sentStream == null) {
@@ -48,6 +54,9 @@ public class NLPUtils {
             posTagger = new POSTaggerME(posModel);
             TokenizerModel tokenizerModel = new TokenizerModel(tokenStream);
             tokenizer = new TokenizerME(tokenizerModel);
+
+            ChunkerModel chunkerModel = new ChunkerModel(chunkerStream);
+            chunker = new ChunkerME(chunkerModel);
         } catch (Exception e) {
 			e.printStackTrace();
 			log.warn("Exception in init'ing sentence model");
@@ -56,6 +65,7 @@ public class NLPUtils {
             close(sentStream);
             close(posStream);
             close(tokenStream);
+            close(chunkerStream);
         }
         sentenceDetector = new SentenceDetectorME(model);
 	}
@@ -96,4 +106,5 @@ public class NLPUtils {
             ret.add(new Pair<String,String>(tokens[i],tags[i]));
         return ret;
     }
+
 }

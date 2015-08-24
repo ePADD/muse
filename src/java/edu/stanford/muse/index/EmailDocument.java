@@ -537,7 +537,7 @@ public class EmailDocument extends DatedDocument implements Serializable
 		}
 		return sb.toString();
 	}
-	
+
 	/** returns result of checking if message was sent or received by owner.
 	 * @return int value with SENT_MASK and RECEIVED_MASK set appropriately. both or neither could also be set.
 	 */
