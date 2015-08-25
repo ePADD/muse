@@ -6,6 +6,7 @@
 <%@ page import="edu.stanford.muse.util.NLPUtils" %>
 <%@ page import="java.io.BufferedReader" %>
 <%@ page import="java.io.InputStreamReader" %>
+<%@ page import="edu.stanford.muse.util.Pair" %>
 <%@include file="../getArchive.jspf" %>
 <html>
 <head>
