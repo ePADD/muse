@@ -74,8 +74,8 @@ String googleClientId = null;
 if(request.getLocalPort() == 8043) {
 	googleClientId = "1072171428245-72o4t2f53c1ksrnefnh6amofj6d7h4op.apps.googleusercontent.com"; // Client ID for mem study
 } else {
-	if (!"localhost".equals(request.getServerName()) /* this part for debugging only, when running on localhost but with server mode */
-	 	&& !JSPHelper.runningOnLocalhost(request)) {
+	if (!"localhost".equals(request.getServerName())){ /* this part for debugging only, when running on localhost but with server mode */
+	 	//&& !JSPHelper.runningOnLocalhost(request)) {
         if (JSPHelper.runningOnMuseMachine(request)) {
             googleClientId = "1072171428245-lj239vjtemn7cgstafptk0c46c20kgih.apps.googleusercontent.com"; // this is for the muse installed at https://muse.stanford.edu:8443/muse
         }
