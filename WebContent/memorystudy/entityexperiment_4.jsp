@@ -1,14 +1,12 @@
 <%@ page import="edu.stanford.muse.index.Document" %>
 <%@ page import="java.util.*" %>
 <%@ page import="edu.stanford.muse.index.EmailDocument" %>
-<%@ page import="edu.stanford.muse.util.Util" %>
 <%@ page import="edu.stanford.muse.email.AddressBook" %>
 <%@ page import="edu.stanford.nlp.util.CoreMap" %>
 <%@ page import="edu.stanford.nlp.pipeline.Annotation" %>
 <%@ page import="edu.stanford.nlp.pipeline.StanfordCoreNLP" %>
 <%@ page import="edu.stanford.nlp.ling.CoreAnnotations" %>
 <%@ page import="edu.stanford.nlp.ling.CoreLabel" %>
-<%@ page import="edu.stanford.muse.util.Pair" %>
 <%@include file="../getArchive.jspf" %>
 <html>
 <head>
@@ -34,7 +32,6 @@
     /**
      * Crawls and collects entities that appear in the same sentence with any correspondent in the address book */
     //considers only people names
-    System.err.println("JAva version: "+System.getProperty("java.version"));
     AddressBook ab = archive.addressBook;
     try {
         boolean originalOnly = true;
@@ -70,11 +67,11 @@
                     CoreLabel token = tokens.get(ti);
                     String word = token.get(CoreAnnotations.TextAnnotation.class);
                     String ne = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
-                    if(ne.equals("DATE") || ne.equals("TIME") || ne.equals("DURATION")){
+                    if(ne.equals("DATE")){// || ne.equals("TIME") || ne.equals("DURATION")){
                         if((++ti)<tokens.size()){
                             token = tokens.get(ti);
                             ne = tokens.get(ti).get(CoreAnnotations.NamedEntityTagAnnotation.class);
-                            while(ti<tokens.size() && (ne.equals("DATE") || ne.equals("TIME") || ne.equals("DURATION"))){
+                            while(ti<tokens.size() && (ne.equals("DATE"))){ // || ne.equals("TIME") || ne.equals("DURATION"))){
                                 word += " "+token.get(CoreAnnotations.TextAnnotation.class);
                                 ti++;
                                 if(ti>=tokens.size())

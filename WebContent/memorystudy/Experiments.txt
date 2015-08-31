@@ -30,5 +30,21 @@ TBF
 -------------------------------
 Experiment - 4:
 See memorystudy/entityexperiment_4.jsp
-Documents with a mention of time forms are selected and shown.
+Sentences with a mention of time forms are selected and shown.
 Temporal forms are recognised with Stanford's SUTime.
+
+-------------------------------
+Experiment - 5:
+Normalise the dates and collect event specific words
+Sort the events by number of times a date is mentioned.
+
+-------------------------------
+Experiment - 6:
+If we generate list of pairs like <peron, location> or <person, organization>, it fun to solve it if two lists are shown and the user is asked to match them.
+But, there is a risk of probing only semantic memory here, unless the relation can be figured out if there is an episode associated with it.
+For example: Hi Richard, let meet for coffee in Coffee Aroma. <Richard, Coffee Aroma> is a good candidate as the relation is not obvious unless the user figures out the epidode.
+I think its hard to enforce this constraint.
+
+--------------------------------
+Another interesting idea is to train for event phrases by looking at all the sentences with a mention of time.
+Model if trained properly can then recognise sentences with no mention of date.
