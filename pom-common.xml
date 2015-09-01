@@ -179,35 +179,22 @@
 			<version>2.3</version>
 		</dependency>
 		
-		<!--For learning tasks in segmentation of NER-->
+		<!--For learning tasks in segmentation of NER, this could be removed-->
 		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-math3</artifactId>
-			<version>3.2</version>
+		  <groupId>org.apache.commons</groupId>
+		  <artifactId>commons-math3</artifactId>
+		  <version>3.2</version>
 		</dependency>
-
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>18.0</version>
-        </dependency>
-
-        <!--This is temporary dependency-->
-        <dependency>
-            <groupId>edu.stanford.nlp</groupId>
-            <artifactId>stanford-corenlp</artifactId>
-            <version>3.5.2</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.stanford.nlp</groupId>
-            <artifactId>stanford-corenlp</artifactId>
-            <version>3.5.2</version>
-            <classifier>models</classifier>
-        </dependency>
-
+		
+		<dependency>
+		  <groupId>com.google.guava</groupId>
+		  <artifactId>guava</artifactId>
+		  <version>18.0</version>
+		</dependency>
+		
 	</dependencies>
 	<build>
-		<defaultGoal>install</defaultGoal>
-		<sourceDirectory>src/java</sourceDirectory>
+	  <defaultGoal>install</defaultGoal>
+	  <sourceDirectory>src/java</sourceDirectory>
 	</build>
 </project>
