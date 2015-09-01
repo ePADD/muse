@@ -43,7 +43,7 @@
             Set<String> withMentions = new LinkedHashSet<String>();
             int di = 0;
             Collections.sort(docs);
-            List<String> pronouns = Arrays.asList("he", "she", "his","hers", "him", "her", "they");
+            List<String> pronouns = Arrays.asList("he", "she", "his","hers", "him", "her");
             for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
                 List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
@@ -68,12 +68,12 @@
                         int start = t.getThird();
                         int end = nt.getSecond();
                         if(start>=0 && end<contents.length() && end>=0 && start<contents.length() && start<=end)
-                            text = contents.substring(start,end);
+                            text = contents.substring(start, Math.min(end, start+200));
                     }
                     else{
                         int start = t.getThird();
                         if((start>=0) && start<contents.length())
-                            text = contents.substring(start);
+                            text = contents.substring(start, Math.min(contents.length(), start+200));
                     }
                     if(t.getSecond()<0 || t.getThird()>contents.length()){
                         out.println("This is a strange tuple: ("+t.getFirst()+","+t.getSecond()+","+t.getThird()+")&nbsp"+contents.length()+"<br/>");
