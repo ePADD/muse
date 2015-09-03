@@ -748,8 +748,8 @@ public class EmailUtils {
 		return result;
 	}
 
-	/** given a set of emailAddress's, returns a map of email address -> docs containing it from within the given docs.
-     * email addrs not present also contain an entry with the count 0
+	/** given a set of emailAddress's, returns a map of email address -> docs containing it, from within the given docs.
+     * return value also contains email addresses with 0 hits in the archive
 	 * emailAddress should all be lower case. */
     public static Map<String, Set<Document>> getDocsForEAs(Collection<Document> docs, Set<String> emailAddresses){
         Map<String, Set<Document>> map = new LinkedHashMap<String, Set<Document>>();
