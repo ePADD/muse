@@ -78,7 +78,7 @@
             Contact contact = p.getFirst();
             Calendar c = new GregorianCalendar();
             c.setTime(p.getSecond());
-            String month = new SimpleDateFormat("MMM-YYYY").format(c.getTime());
+            String month = new SimpleDateFormat("MMM-yyyy").format(c.getTime());
             if (!month.equals(prevMonth))
                 out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Contact name</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></th>");
             prevMonth = month;

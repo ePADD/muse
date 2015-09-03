@@ -76,9 +76,9 @@
             String ce = p.getFirst();
             Calendar c = new GregorianCalendar();
             c.setTime(p.getSecond());
-            String month = new SimpleDateFormat("MMM-YYYY").format(c.getTime());
+            String month = new SimpleDateFormat("MMM-yyyy").format(c.getTime());
             if (!month.equals(prevMonth))
-                out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Non person name</i></th><th><i>Person name</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></th>");
+                out.println ("</table><hr/><h2>" + month + "</h2><table><th><i>Non person name</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></th>");
             prevMonth = month;
             int nMessages = entityToMessages.get(ce).size();
             int nThreads = entityToThreads.get(ce).size();
@@ -86,7 +86,7 @@
             String link = "../browse?term=\"" + ce + "\"&sort_by=recent&searchType=original";
             String displayEntity = ceToDisplayEntity.get(ce).iterator().next();
             displayEntity = Util.ellipsize(displayEntity, 50);
-            out.println("<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>"+ entityToLastDate.get(ce) + "</td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td></tr>");
+            out.println("<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td></tr>");
         }
         out.println ("</table>");
     } catch (Throwable e) {
