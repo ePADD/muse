@@ -114,7 +114,7 @@ public static String canonicalize(String s) {
 
         Set<String> coreTokens = new LinkedHashSet<String>();
         for (String token: tokenToCE.keySet())
-            if (tokenToCE.get(token).size() > 1)
+            if (tokenToCE.get(token).size() > HTMLUtils.getIntParam(request, "max", 2))
                 coreTokens.add(token);
 
         List<Pair<String, Date>> srds = Util.sortMapByValue(entityToLastDate);
