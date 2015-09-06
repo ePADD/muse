@@ -33,6 +33,8 @@
 <p>
     <a target="_blank" href="entities-by-last-month.jsp">Browse non-person entities by month of last occurrence</a>
     <p>
+    <a target="_blank" href="entities-by-last-month.jsp?locations=">Browse non-person entities by month of last occurrence (locations only)</a>
+    <p>
     <a target="_blank" href="contacts-by-last-month.jsp">Browse contacts by month of last occurrence</a>
     <p>
     <a target="_blank" href="solo-contacts-by-last-month.jsp">Browse solo contacts by month of last occurrence</a>

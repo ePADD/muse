@@ -97,8 +97,10 @@ public static String canonicalize(String s) {
         for (Document doc : docs) {
             EmailDocument ed = (EmailDocument) doc;
             List<String> entities = new ArrayList<String>(), personEntities = new ArrayList<String>();
-            entities.addAll(archive.getEntitiesInDoc(doc, NER.EORG, true, originalOnly));
-            entities.addAll(archive.getEntitiesInDoc(doc, NER.ELOC, true, originalOnly));
+            if (Util.nullOrEmpty(request.getParameter("locations")))
+                entities.addAll(archive.getEntitiesInDoc(doc, NER.EORG, true, originalOnly));
+            if (Util.nullOrEmpty(request.getParameter("orgs")))
+                entities.addAll(archive.getEntitiesInDoc(doc, NER.ELOC, true, originalOnly));
 
             personEntities.addAll(archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly));
 
