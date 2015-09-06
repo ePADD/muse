@@ -150,6 +150,7 @@ public static String canonicalize(String s) {
 
             List<String> tokens = Util.tokenize(displayEntity);
             displayEntity = "";
+            String fullAnswer = "";
             for (String t: tokens) {
                 if (stopsSet.contains(t.toLowerCase()))
                     continue;
@@ -157,8 +158,10 @@ public static String canonicalize(String s) {
                     displayEntity += "<span style=\"color:red\">" + t + "</span> ";
                 else
                     displayEntity += t + " ";
+                fullAnswer += t + " ";
             }
             displayEntity = displayEntity.trim();
+            fullAnswer = fullAnswer.trim();
 
             Calendar c = new GregorianCalendar();
             c.setTime(p.getSecond());
@@ -169,10 +172,10 @@ public static String canonicalize(String s) {
             int nMessages = entityToMessages.get(ce).size();
             int nThreads = entityToThreads.get(ce).size();
 
-            String link = "../browse?term=\"" + displayEntity + "\"&sort_by=recent&searchType=original";
+            String link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";
 
             out.println("<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td></tr>");
-            Clue clue = cluer.createClue(displayEntity, new LinkedHashSet<String>(), nerModel);
+            Clue clue = cluer.createClue(fullAnswer, new LinkedHashSet<String>(), nerModel);
             out.println ("<tr><td style=\"color:brown\" colspan=\"5\">" + (clue != null ? (clue.clue + " stats: " + Util.fieldsToString(clue.clueStats, false)) : "No clue") + "<br/><br/></td></tr>");
         }
         out.println ("</table>");
