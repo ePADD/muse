@@ -4,8 +4,10 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.exceptions.ReadContentsException;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.memory.MemoryStudy;
+import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -124,12 +126,16 @@ public class ArchiveCluer extends Cluer {
 		return new Pair<Float, Map<String, Integer>>(score, map);
 	}
 
+	public Clue createClue(String answer, Set<String> tabooClues) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	{
+		return createClue(answer, tabooClues, null);
+	}
 	/** create clue for the given answer.
     cannot pick clue from sentences that have taboo clues
     if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
 	 * @throws ParseException 
 	 */
-	public Clue createClue(String answer, Set<String> tabooClues) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -281,7 +287,7 @@ public class ArchiveCluer extends Cluer {
 					Clue clue = new Clue(blankedSentence, originalSentence, unblankedLowerCaseSentence, blankedHint, url, ellipsisizedMessage, ed);
 					
 					Set<String> tabooNamesSet = archive.addressBook.getOwnNamesSet(); 
-					float clueScore = scoreClue(clue, answer, tabooNamesSet);
+					float clueScore = scoreClue(clue, answer, tabooNamesSet, nerModel);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
@@ -406,7 +412,7 @@ public class ArchiveCluer extends Cluer {
 	
 	// returns a score for the given string as a clue. this does not take into account the doc s is a part of. 
 	// note s is not lower-cased
-	public static float scoreClue(Clue clue, String answer, Set<String> tabooNames) throws ClassCastException, IOException, ClassNotFoundException
+	public static float scoreClue(Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) throws ClassCastException, IOException, ClassNotFoundException
 	{
 		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
 		String s = clue.getFullSentenceOriginal();
@@ -446,8 +452,17 @@ public class ArchiveCluer extends Cluer {
 		//		if (sChars < wChars + 20)
 		//			score = -10.0f;
 		// how many names does it have? more names is good.
-		List<Pair<String, Float>> names = NER.namesFromText(sOrig); // do NER on the original, not after lower-casing
-		float namesScore = 2 * (names.size());
+
+		List<String> names = new ArrayList<>();
+		if (nerModel != null) {
+			Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(sOrig);
+			Map<Short, List<String>> map = mapAndOffsets.first;
+			for (short x: map.keySet())
+				names.addAll(map.get(x));
+		}
+
+//		List<Pair<String, Float>> names = edu.stanford.muse.ner.NER.namesFromText(sOrig); // do NER on the original, not after lower-casing
+		float namesScore = 2 * names.size();
 
 		// compute total score, but penalize for the following
 		float score = 1.0f + namesScore + exclamationScore + smileyScore + lengthBoost;
@@ -457,8 +472,9 @@ public class ArchiveCluer extends Cluer {
 		}
 
 		boolean found = false;
-		for (Pair<String, Float> namePair : names){ //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
-			String name = (Util.canonicalizeSpaces(namePair.getFirst())).toLowerCase();
+//		for (Pair<String, Float> namePair : names){ //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
+//			String name = (Util.canonicalizeSpaces(namePair.getFirst())).toLowerCase();
+		for (String name : names) { //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
 			if (name.equals(canonicalizedanswer)) {
 				found = true;
 				break;

@@ -12,6 +12,13 @@
 <%@ page import="com.google.common.collect.Multimap" %>
 <%@ page import="com.google.common.collect.LinkedHashMultimap" %>
 <%@ page import="oracle.jrockit.jfr.StringConstantPool" %>
+<%@ page import="edu.stanford.muse.util.DictUtils" %>
+<%@ page import="org.w3c.tidy.Dict" %>
+<%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
+<%@ page import="edu.stanford.muse.xword.Clue" %>
+<%@ page import="java.io.File" %>
+<%@ page import="edu.stanford.muse.ner.model.SVMModel" %>
+<%@ page import="edu.stanford.muse.ner.model.NERModel" %>
 <%@include file="../getArchive.jspf" %>
 
 <%!
@@ -28,14 +35,19 @@ public static String canonicalize(String s) {
     if (Util.nullOrEmpty(tokens))
         return null;
 
-    // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
+    boolean allDict = true;
     for (String t: tokens) {
         if (t.startsWith("i'") || t.startsWith("you'")) // remove i've, you're, etc.
             return null;
         if (t.endsWith(".") && !allowedTitlesSet.contains(t))
             return null;
+        if (!(DictUtils.fullDictWords.contains(t) || (t.endsWith("s") && DictUtils.fullDictWords.contains(t.substring(0, t.length()-1)))))
+            allDict = false;
     }
+    if (allDict)
+        return null;
 
+    // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
     return Util.join(tokens, " ");
 }
 
@@ -60,6 +72,14 @@ public static String canonicalize(String s) {
     <%
     try {
         archive.assignThreadIds();
+        Lexicon lex = archive.getLexicon("default");
+
+        String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
+        out.println ("loading model...");
+        out.flush();
+		NERModel nerModel = SVMModel.loadModel(new File(modelFile));
+
+        ArchiveCluer cluer = new ArchiveCluer(null, archive, null, lex);
 
         boolean originalOnly = true;
         AddressBook ab = archive.addressBook;
@@ -76,9 +96,13 @@ public static String canonicalize(String s) {
 
         for (Document doc : docs) {
             EmailDocument ed = (EmailDocument) doc;
-            List<String> entities = new ArrayList<String>();
+            List<String> entities = new ArrayList<String>(), personEntities = new ArrayList<String>();
             entities.addAll(archive.getEntitiesInDoc(doc, NER.EORG, true, originalOnly));
             entities.addAll(archive.getEntitiesInDoc(doc, NER.ELOC, true, originalOnly));
+
+            personEntities.addAll(archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly));
+
+            entities.removeAll(personEntities);
 
             // get entities
 
@@ -126,11 +150,15 @@ public static String canonicalize(String s) {
 
             List<String> tokens = Util.tokenize(displayEntity);
             displayEntity = "";
-            for (String t: tokens)
+            for (String t: tokens) {
+                if (stopsSet.contains(t.toLowerCase()))
+                    continue;
                 if (coreTokens.contains(t.toLowerCase()))
                     displayEntity += "<span style=\"color:red\">" + t + "</span> ";
                 else
                     displayEntity += t + " ";
+            }
+            displayEntity = displayEntity.trim();
 
             Calendar c = new GregorianCalendar();
             c.setTime(p.getSecond());
@@ -144,6 +172,8 @@ public static String canonicalize(String s) {
             String link = "../browse?term=\"" + displayEntity + "\"&sort_by=recent&searchType=original";
 
             out.println("<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td></tr>");
+            Clue clue = cluer.createClue(displayEntity, new LinkedHashSet<String>(), nerModel);
+            out.println ("<tr><td style=\"color:brown\" colspan=\"5\">" + (clue != null ? (clue.clue + " stats: " + Util.fieldsToString(clue.clueStats, false)) : "No clue") + "<br/><br/></td></tr>");
         }
         out.println ("</table>");
         out.println ("<p><hr/><b>Core tokens</b><p>");
