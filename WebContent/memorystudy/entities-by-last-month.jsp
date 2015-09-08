@@ -20,6 +20,7 @@
 <%@ page import="edu.stanford.muse.ner.model.SVMModel" %>
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
 <%@include file="../getArchive.jspf" %>
+<%@include file="../getNERModel.jspf" %>
 
 <%!
 
