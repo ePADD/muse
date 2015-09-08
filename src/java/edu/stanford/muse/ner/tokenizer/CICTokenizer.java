@@ -4,15 +4,13 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.NLPUtils;
+import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +36,28 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		initPattern();
 	}
 
+    //keeps track of mapping between the tokens and sentences they are extracted from
+    public static class Sentences{
+        List<String> sents;
+        Map<Integer,Integer> mapping;
+        public void setSentences(List<String> sents){
+            this.sents = sents;
+        }
+        /**mapping from token offset to sentence*/
+        public void setMapping(Map<Integer,Integer> mapping){
+            this.mapping = mapping;
+        }
+
+        public String getSentence(int tokenStartOffset){
+            if(mapping.containsKey(tokenStartOffset))
+                return sents.get(mapping.get(tokenStartOffset));
+            else{
+                NER.log.warn("Did not find enclosing sentence for offset: "+tokenStartOffset);
+                return null;
+            }
+        }
+    }
+
 	public static String cleanEmailStuff(String content){
 		content = content.replaceAll("(Email:|To:|From:|Date:|Subject: Re:|Subject:)\\W+","");
 		return content;
@@ -46,9 +66,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	public static void initPattern() {
         //simplified this pattern: "[A-Z]+[A-Za-z]*(['\\-][A-Za-z]+)?"
         //nameP can end in funny chars this way
-		String nameP = "[A-Z][A-Za-z'\\-]*";
+        //ignoring period at he end of the name may not be desired, "Rockwell International Corp.", the period here is part of the name
+		String nameP = "[A-Z][A-Za-z'\\-\\.]*";
 		//comma is a terrible character to allow, it sometimes crawls in the full list the entity is contained in.
-		String allowedCharsOther = "\\s\\.", allowedCharsPerson = "\\s\\.";
+		String allowedCharsOther = "\\s", allowedCharsPerson = "\\s";
 
 		StringBuilder sp = new StringBuilder("");
 		int i = 0;
@@ -136,8 +157,16 @@ public class CICTokenizer implements Tokenizer, Serializable {
         return tokens.toArray(new String[tokens.size()]);
     }
 
+
     @Override
-	public List<Triple<String, Integer, Integer>> tokenize(String content, boolean pn) {
+    public List<Triple<String, Integer, Integer>> tokenize(String content, boolean pn) {
+        Pair<List<Triple<String,Integer, Integer>>, Sentences> ret = tokenizeWithSentences(content,pn);
+        if(ret == null)
+            return null;
+        return ret.getFirst();
+    }
+
+	public Pair<List<Triple<String, Integer, Integer>>,Sentences> tokenizeWithSentences(String content, boolean pn) {
 		List<Triple<String, Integer, Integer>> matches = new ArrayList<Triple<String, Integer, Integer>>();
 		if (content == null)
 			return null;
@@ -160,7 +189,6 @@ public class CICTokenizer implements Tokenizer, Serializable {
 			namePattern = entityPattern;
 
 		//we need a proper sentence splitter, as some of the names can contain period.
-		//String[] sents = content.split("[\\.\\n]+");
 		String[] lines = content.split("\\n");
 		//dont change the length of the content, so that the offsets are not messed up.
 		content = "";
@@ -177,10 +205,15 @@ public class CICTokenizer implements Tokenizer, Serializable {
 				content += line + " ";
 		}
 
+        List<String> sents = new ArrayList<>();
+        Map<Integer, Integer> smap = new LinkedHashMap<>();
 		Span[] sentenceSpans = NLPUtils.tokeniseSentenceAsSpan(content);
-		for (Span sentenceSpan : sentenceSpans) {
+		int si = 0;
+        for (Span sentenceSpan : sentenceSpans) {
+            si++;
 			int sentenceStartOffset = sentenceSpan.getStart();
 			String sent = sentenceSpan.getCoveredText(content).toString();
+            sents.add(sent);
             //TODO: sometimes these long sentences are actually long list of names, which we cannot afford to lose.
             //Is there an easy way to test with the sentence is good or bad quickly and easy way to tokenize it further if it is good?
             if(sent.length()>=2000)
@@ -190,7 +223,6 @@ public class CICTokenizer implements Tokenizer, Serializable {
 //			if(!content.substring(sentenceSpan.getStart(), sentenceSpan.getEnd()).equals(sent))
 //				NER.log.warn("Warning: Sentence offset wrong for sent:"+sent);
 			Matcher m = namePattern.matcher(sent);
-			Set<String> temp = new HashSet<String>();
 			while (m.find()) {
 				if (m.groupCount() > 0) {
 					String name = m.group(1);
@@ -208,8 +240,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
 						String tt = FeatureGeneratorUtil.tokenFeature(name);
 						if (tt.equals("ac")) {
 							matches.add(new Triple<String, Integer, Integer>(name, start, end));
-							temp.add(name);
-						}
+                            smap.put(start, si);
+                        }
 					}
 					else {
 						//if the name contains, person start markers, then trim the offset
@@ -224,19 +256,25 @@ public class CICTokenizer implements Tokenizer, Serializable {
 						//further cleaning to remove "'s" pattern
 						//@TODO: Can these "'s" be put to a good use?
 						String[] cns = tokeniseQuoteS(name);
-                        for(String cn: cns)
-                            matches.add(new Triple<String,Integer,Integer>(cn, start, end));
+                        for(String cn: cns) {
+                            matches.add(new Triple<String, Integer, Integer>(cn, start, end));
+                            smap.put(start, si);
+                        }
 					}
 				}
 			}
 		}
-		return matches;
+        Sentences sentences = new Sentences();
+        sentences.setSentences(sents);
+        sentences.setMapping(smap);
+		return new Pair<>(matches, sentences);
 	}
 
 	public static void main(String[] args) {
 		System.err.println(CICTokenizer.personNamePattern.pattern());
         Tokenizer tok = new CICTokenizer();
         Set<String> names = tok.tokenizeWithoutOffsets("Hello, I am Vihari, Piratla'. Some thing IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN", true);
+        names = tok.tokenizeWithoutOffsets("Rockwell International Corp.'s_POS Tulsa unit said it signed a tentative agreement extending its contract with Boeing Co. to provide structural parts for Boeing's 747 jetliners", true);
         for(String name: names)
             System.err.println(name);
 	}

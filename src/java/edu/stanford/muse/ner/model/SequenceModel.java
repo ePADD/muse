@@ -1,0 +1,219 @@
+package edu.stanford.muse.ner.model;
+
+import edu.stanford.muse.index.Archive;
+import edu.stanford.muse.index.Document;
+import edu.stanford.muse.index.IndexUtils;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureGenerator;
+import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
+import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Triple;
+import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.SimpleSessions;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.*;
+import java.util.*;
+
+/**
+ * Created by vihari on 07/09/15.
+ * This is a factor model, that ranks sub-strings and assigns likelihood of belonging to a certain type
+ * P(y,x) = P(y_i/x_{i})*P(x_{i+1}/x_{i})*P(y_{i+1}/y_i)
+ */
+public class SequenceModel implements Serializable{
+    public FeatureDictionary dictionary;
+    public Tokenizer tokenizer;
+    public static String modelFileName = "SeqModel.ser";
+    private static final long serialVersionUID = 1L;
+    static Log log = LogFactory.getLog(SequenceModel.class);
+    public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
+    public static FileWriter fdw = null;
+
+    public SequenceModel(FeatureDictionary dictionary, Tokenizer tokenizer) {
+        this.dictionary = dictionary;
+        this.tokenizer = tokenizer;
+    }
+
+    public SequenceModel(){
+
+    }
+
+    public Map<String,Double> find(String content) {
+        //check if the model is initialised
+
+        Map<String, Double> map = new LinkedHashMap<>();
+        //recognises only orgs
+        //labels = {O, B, I, E, S} null, beginning, in, end, solo
+        char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
+        List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, false);
+        for(Triple<String,Integer,Integer> cand: cands) {
+            try {
+                fdw.write(cand.first + "\n");
+                String[] words = cand.first.split("\\s+");
+                //brute force algorithm is O(2^n)
+                if(words.length>5){
+                    continue;
+                }
+
+                boolean atleastSeenOne = dictionary.numPattHits(cand.first)>0;
+                if(!atleastSeenOne)
+                    continue;
+
+                //look at all the sub strings and select a few with good score
+                //if its a single word, we assign S label
+                //if its multi word we assign B(I*)E labels.
+                //We can afford to do this, because we are just looking inside a CIC pattern
+                //In general, a search algorithm to find the subset with max probability should be employed
+                Set<String> substrs = IndexUtils.computeAllSubstrings(cand.getFirst());
+                Map<String, Double> ssubstrs = new LinkedHashMap<>();
+                for(String substr: substrs){
+                    int nph = dictionary.numPattHits(substr);
+                    if(nph == 0)
+                        continue;
+                    String[] swords = substr.split("\\s+");
+                    Character[] seqLabel = new Character[swords.length];
+                    if(swords.length == 1)
+                        seqLabel[0] = labels[4];
+                    else{
+                        seqLabel[0] = labels[1];
+                        if(swords.length==2)
+                            seqLabel[1] = labels[3];
+                        else{
+                            for(int i=1;i<seqLabel.length-1;i++)
+                                seqLabel[i] = labels[2];
+                            seqLabel[seqLabel.length-1] = labels[3];
+                        }
+                    }
+                    String prevW = null;
+                    double s = 0;
+                    for(int swi=0;swi<swords.length;swi++) {
+                        String word = swords[swi];
+                        Character l = seqLabel[swi];
+
+                        Double d = dictionary.getConditional(word, l, FeatureDictionary.ORGANISATION);
+                        if(Double.isNaN(d))
+                            System.err.println("Cond nan "+word+", "+l+", "+d);
+                        s += d;
+                        if(prevW!=null) {
+                            String currW = swords[swi];
+                            //P(x_i,x_i+1)
+                            //n(x_i) = n(x_i*)+n(*x_i*);
+                            d = dictionary.getMutualInformation(prevW, currW);
+                            if(Double.isNaN(d))
+                                System.err.println("Mi: nan "+prevW+", "+currW+", "+d);
+                            s += d;
+                        }
+                        prevW = swords[swi];
+                    }
+                    ssubstrs.put(substr, s);
+                }
+                List<Pair<String,Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
+                for(Pair<String,Double> p: sssubstrs) {
+                    fdw.write(p.getFirst() + " : " + p.getSecond() + "\n");
+                    //System.err.println(p.getFirst() + " : " + p.getSecond());
+                }
+                fdw.write("\n");
+                if(sssubstrs.size()>0)
+                    map.put(sssubstrs.get(0).first, sssubstrs.get(0).getSecond());
+            }catch(IOException e){
+                e.printStackTrace();
+            }
+        }
+        return map;
+    }
+
+    public void writeModel(File modelFile) throws IOException{
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(modelFile));
+        oos.writeObject(this);
+        oos.close();
+    }
+
+    public static SequenceModel loadModel(File modelFile) throws IOException{
+        ObjectInputStream ois = null;
+        try {
+            ois = new ObjectInputStream(new FileInputStream(modelFile));
+            SequenceModel model = (SequenceModel) ois.readObject();
+            ois.close();
+            return model;
+        } catch (Exception e) {
+            Util.print_exception("Exception while trying to load model from: " + modelFile, e, log);
+            return null;
+        }
+    }
+
+    public static SequenceModel train(){
+        SequenceModel nerModel = new SequenceModel();
+        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
+        FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
+        nerModel.dictionary = dictionary;
+        nerModel.tokenizer = new CICTokenizer();
+        String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+        String modelFile = mwl + SequenceModel.modelFileName;
+        try {
+            nerModel.writeModel(new File(modelFile));
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        return nerModel;
+    }
+
+    public static void main(String[] args){
+        try {
+            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
+            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+            String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+            String modelFile = mwl + SequenceModel.modelFileName;
+            if (fdw == null) {
+                try {
+                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            System.err.println("Loading model...");
+            SequenceModel nerModel = null;
+            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+            catch(IOException e){e.printStackTrace();}
+            if(nerModel == null)
+                nerModel = train();
+            List<Document> docs = archive.getAllDocs();
+            int di =0;
+            for(Document doc: docs) {
+                String content = archive.getContents(doc, true);
+                nerModel.find(content);
+                if(di++>10)
+                    break;
+            }
+            Character[] labels = new Character[]{'S','E','I','B','O'};
+
+            double p = 0;
+            for(Character l: labels) {
+                double x = nerModel.dictionary.getConditional("Company", l, FeatureDictionary.ORGANISATION);
+                System.err.println("Conditional: [" + l + "] " + x);
+                p+=x;
+            }
+            System.err.println("Peace project: " + nerModel.dictionary.counts.get("Peace:::Project"));
+
+            try {
+                fdw.close();
+            }catch(IOException e) {
+                e.printStackTrace();
+            }
+            System.err.println(nerModel.dictionary.features.get("words").get("*Company").get(FeatureDictionary.ORGANISATION));
+            System.err.println(nerModel.dictionary.features.get("words").get("Company*").get(FeatureDictionary.ORGANISATION));
+            System.err.println(nerModel.dictionary.features.get("words").get("*Company*").get(FeatureDictionary.ORGANISATION));
+            System.err.println(nerModel.dictionary.features.get("words").get("Company").get(FeatureDictionary.ORGANISATION));
+
+            System.err.println("Total: "+p);
+            System.err.println("Marginal: " + nerModel.dictionary.getMarginal("Company"));
+            System.err.println("MI: " + nerModel.dictionary.getMutualInformation("University", "of"));
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+}

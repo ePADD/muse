@@ -95,6 +95,32 @@ public class NLPUtils {
         return posTagger.tag(tokens);
     }
 
+    public static List<String> getAllProperNouns(String content){
+        String[] sents = tokeniseSentence(content);
+        List<String> properNouns = new ArrayList<>();
+        for(String sent: sents) {
+            String[] tokens = tokenise(sent);
+            String[] tags = posTag(tokens);
+            Span[] chunks = chunker.chunkAsSpans(tokens,tags);
+            for(Span chunk: chunks){
+                String chunkText = "";
+                if("NP".equals(chunk.getType())){
+                    boolean NNP = false;
+                    for(int s = chunk.getStart();s<chunk.getEnd();s++){
+                        if("NNP".equals(tags[s]))
+                            NNP = true;
+                        chunkText += tokens[s];
+                        if(s<(chunk.getEnd()-1))
+                            chunkText+=" ";
+                    }
+                    if(NNP)
+                        properNouns.add(chunkText);
+                }
+            }
+        }
+        return properNouns;
+    }
+
     public static List<Pair<String,String>> posTag(String sent){
         String[] tokens = tokenise(sent);
         String[] tags = posTag(tokens);

@@ -37,8 +37,10 @@ public class FeatureVector implements Serializable {
 				Short type = ft.getSecond();
 				if (features.get(dim) != null) {
 					if (type == FeatureDictionary.NOMINAL) {
-						double freq = 0, maxfreq = -1;
+						double freq = 0, maxfreq = -1, minfreq = 2;
 						int numWords = 0;
+                        //count corresponding to the maxpfreq
+                        int maxcount = 0;
 						Pair<Integer, Integer> p = null;
 						for (String val : features.get(dim)) {
 							if (dictionary.features.get(dim)!=null && dictionary.features.get(dim).containsKey(val))
@@ -47,17 +49,40 @@ public class FeatureVector implements Serializable {
                             if(p!=null && p.second>0) {
 								double ratio = (double) p.first / (double) p.second;
 								maxfreq = Math.max(maxfreq, ratio);
+                                minfreq = Math.min(minfreq, ratio);
+                                if(maxfreq==ratio)
+                                    maxcount = p.second;
 								freq += ratio;
 								numWords++;
 							}
+                            else minfreq = 0;
 						}
-						if(numWords>0)
+                        if(numWords == 0 || maxcount == 0) {
+                            fvList = null;
+                            featureIndices = null;
+                            return;
+                        }
+                        if(numWords>0)
 							freq /= numWords;
 						featureIndices.put(dim, fvList.size());
 						if(!FeatureDictionary.ORGANISATION.equals(iType))
 							fvList.add(freq);
-						else
-							fvList.add(freq);
+						else {
+                            if("words".equals(dim)) {
+                                fvList.add(maxfreq);
+
+                                featureIndices.put("freq", fvList.size());
+                                //2 million is just a normalizing factor, number of entries in DBpedia instance file
+                                //considered logarithm for scaling
+                                if(maxcount>0)
+                                    fvList.add((double)maxcount/2000000);
+                                else
+                                    fvList.add(0.0);
+
+                            }
+                            else
+                                fvList.add(freq);
+                        }
 					}
 					//pass as is
 					else {
@@ -78,6 +103,8 @@ public class FeatureVector implements Serializable {
 	}
 
 	public svm_node[] getSVMNode() {
+        if(fv == null || featureIndices == null)
+            return null;
 		int numDim = fv.length;
 		svm_node[] x = new svm_node[numDim];
 		for (int i = 0; i < numDim; i++) {
@@ -90,6 +117,8 @@ public class FeatureVector implements Serializable {
 
 	@Override
 	public String toString() {
+        if(fv == null || featureIndices == null)
+            return null;
 		int numDim = fv.length;
 		String str = "";
 		for (String dim: featureIndices.keySet()) {
@@ -102,6 +131,8 @@ public class FeatureVector implements Serializable {
 	}
 
 	public String toVector(){
+        if(fv == null || featureIndices == null)
+            return null;
 		String str = "";
 		int numDim = fv.length;
 		for (int i = 0; i < numDim; i++) {

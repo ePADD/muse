@@ -12,6 +12,7 @@ import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.ner.util.ArchiveContent;
 import edu.stanford.muse.util.*;
 import libsvm.*;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -100,6 +101,24 @@ import java.util.*;
             String[] aType = FeatureDictionary.aTypes.get(iType);
             List<Triple<String, FeatureVector, Integer>> fvs = new ArrayList<Triple<String, FeatureVector, Integer>>();
             int numC = 0;
+            int hi = 0;
+            Random rand = new Random();
+            double ratio = 0, r1 = 0, r2 = 0;
+            for (String h : hits.keySet()) {
+                int label = -1;
+                String type = hits.get(h);
+                if ("notype".equals(type) || FeatureDictionary.ignoreTypes.contains(type))
+                    continue;
+
+                for (String at : aType)
+                    if (type.endsWith(at))
+                        label = 1;
+                if(label == 1)
+                    r1++;
+                else r2++;
+            }
+            ratio = r1/r2;
+            log.info("Found "+r1+" of type: "+iType+" and "+r2+" other");
             for (String h : hits.keySet()) {
                 int label = -1;
                 String type = hits.get(h);
@@ -112,7 +131,17 @@ import java.util.*;
                     if (type.endsWith(at))
                         label = 1;
 
-                fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
+                if(label == -1){
+                    double r = rand.nextDouble();
+                    if(r<ratio)
+                        fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
+                }
+                else{
+                    fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
+                }
+                if(hi++%10000 == 0){
+                    log.info("Done ("+hi+"/"+hits.size()+")");
+                }
             }
             log.info("Wrote external #" + externalGazz.size());
 
@@ -132,16 +161,17 @@ import java.util.*;
             svm_problem prob = new svm_problem();
             //svm_node of this line and target
             log.info("Number of feature vectors for training: " + fvs.size());
-            prob.l = fvs.size();
-            prob.x = new svm_node[prob.l][];
-            prob.y = new double[prob.l];
+            List<svm_node[]> xs = new ArrayList<>();
+            List<Double> ys = new ArrayList<>();
             //for gamma computation.
             int max_dim = -1;
             int i = 0;
             for (Triple<String, FeatureVector, Integer> fv : fvs) {
-                prob.x[i] = fv.second.getSVMNode();
+                if(fv.second.getSVMNode() == null)
+                    continue;
+                xs.add(fv.second.getSVMNode());
                 //target
-                prob.y[i] = fv.third;
+                ys.add((double)fv.third);
                 if (fw1 != null && fw2 != null) {
                     try {
                         fw1.write(fv.third + " " + fv.second.toVector() + "\n");
@@ -152,10 +182,12 @@ import java.util.*;
                 max_dim = Math.max(max_dim, fv.second.NUM_DIM);
                 i++;
             }
+            prob.l = xs.size();
+            prob.x = xs.toArray(new svm_node[xs.size()][]);
+            prob.y = ArrayUtils.toPrimitive(ys.toArray(new Double[ys.size()]));
 
             svm_parameter param = FeatureDictionary.getDefaultSVMParam();
             param.gamma = 1.0 / max_dim;
-            param.probability = 1;
             param.shrinking = 0;
 
             status = "Learning " + iType + " model...";
@@ -234,6 +266,7 @@ import java.util.*;
             List<Triple<String, Integer, Integer>> cands = new ArrayList<Triple<String, Integer, Integer>>();
             cands.addAll(personLikeMentions);
             cands.addAll(nonPersonLikeMentions);
+            List<String> properNouns = null;
             for (Triple<String, Integer, Integer> cand : cands) {
                 String n = cand.getFirst();
                 Pair<String, Boolean> cleanname = WordSurfaceFeature.checkAndStrip(n, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON), true, true);
@@ -248,6 +281,21 @@ import java.util.*;
                     //if is a single word and is dictionary word, forget about this
                     if (!n.contains(" ") && DictUtils.fullDictWords.contains(n.toLowerCase()))
                         continue;
+
+                    //lazy extraction of proper nouns, this is a costly operation
+                    if(properNouns == null){
+                        properNouns = NLPUtils.getAllProperNouns(content);
+                        //if it is still null, i.e. extraction failed for some reason, we dont want to extract again.
+                        if(properNouns==null)
+                            properNouns = new ArrayList<>();
+                        log.info("Proper nouns in this message: "+new LinkedHashSet<>(properNouns));
+                    }
+
+                    //consider it as a hit only if it is a proper noun
+                    if(!properNouns.contains(n)) {
+                        log.info("Ignoring the mention: "+n+" as it is not a proper noun");
+                        continue;
+                    }
 
                     hits.put(n, type);
                     numExternal++;

@@ -457,8 +457,12 @@ public class ArchiveCluer extends Cluer {
 		if (nerModel != null) {
 			Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(sOrig);
 			Map<Short, List<String>> map = mapAndOffsets.first;
-			for (short x: map.keySet())
-				names.addAll(map.get(x));
+            //TODO: remove these logs
+            log.info("Found: "+mapAndOffsets.getSecond().size()+" names in sentences: "+sOrig);
+			for (short x: map.keySet()) {
+                log.info(x+":"+map.get(x));
+                names.addAll(map.get(x));
+            }
 		}
 
 //		List<Pair<String, Float>> names = edu.stanford.muse.ner.NER.namesFromText(sOrig); // do NER on the original, not after lower-casing

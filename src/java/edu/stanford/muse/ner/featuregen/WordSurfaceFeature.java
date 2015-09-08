@@ -3,6 +3,9 @@ package edu.stanford.muse.ner.featuregen;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.model.NERModel;
+import edu.stanford.muse.ner.model.SVMModel;
+import edu.stanford.muse.ner.train.SVMModelTrainer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -137,6 +140,8 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 	//computes the word feature.
 	//TODO: Some very common words like: William, mike etc. appear in the dictionary, bad?
 	public Map<String,List<String>> createFeatures(String name, Short iType) {
+        if(name == null || name.length()>200)
+            return null;
 		Map<String,List<String>> features = new LinkedHashMap<String, List<String>>();
 
 		String[] startMarkers = FeatureDictionary.startMarkersForType.get(iType);
@@ -272,21 +277,6 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 			//emit all the words or patterns
 			if(t!=null)
 				put(features, "words",t);
-//			if (p != null) {
-//				Integer freq = p.first;
-//				//System.err.println("Freq of : " + t + " is " + p.first + ", " + p.second);
-//				freqs += (double) freq / (double) (p.second);
-//				if (p.second > 0) {
-//					minfreq = Math.min(minfreq, freq);
-//					maxfreq = Math.max(maxfreq, freq);
-//				} else {
-//					minfreq = -1;
-//					maxfreq = 10;
-//				}
-//			} else {
-//				minfreq = -1;
-//				maxfreq = 10;
-//			}
 		}
 		//The performance over the test set without averaging and with averaging respectively are:
 		//Accuracy:0.9113924050632911, Recall:0.8648648648648649, F1:0.8875192604006163
@@ -326,9 +316,17 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 
 	public static void main(String[] args) {
 		try {
-			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-creeley2";
-			Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-			NER ner = new NER(archive);
+			WordSurfaceFeature wsf = new WordSurfaceFeature();
+            Map<String, List<String>> map = wsf.createFeatures("On Sunday",FeatureDictionary.ORGANISATION);
+            for(String k: map.keySet())
+                System.err.println(k+":"+new LinkedHashSet<>(map.get(k)));
+            String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
+            String modelFile = mwl + SVMModel.modelFileName;
+            SVMModel nerModel = SVMModel.loadModel(new File(modelFile));
+            Map<Short, Pair<Integer,Integer>> m = nerModel.dictionary.features.get("words").get("On Sunday");
+            for(Short k: m.keySet())
+                System.err.println(k+" : "+m.get(k));
+            System.err.println(nerModel.dictionary.getVector("Faculty",FeatureDictionary.ORGANISATION));
         }catch(Exception e){
 			e.printStackTrace();
 		}

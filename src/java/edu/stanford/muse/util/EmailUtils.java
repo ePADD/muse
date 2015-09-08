@@ -1370,6 +1370,7 @@ public class EmailUtils {
 						d++;
 						continue;
 					}
+                    r = r.replaceAll("_\\(.*?\\)","");
 					String title = r.replaceAll("_", " ");
 					if (st.hasMoreTokens())
 					{

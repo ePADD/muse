@@ -39,8 +39,11 @@ public class FeatureDictionary implements Serializable {
     //This can get quite depending on the archive and is not a scalable solution
 
     //this data-structure is only used for Segmentation which itself is not employed anywhere
-    //not populated, retained so as not to break to code
     public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
+    //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
+    public int totalcount = 0;
+    //total number of word patterns
+    public Integer numPatts=0, numPattsWithDuplicates=0;
 
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3;
@@ -51,7 +54,6 @@ public class FeatureDictionary implements Serializable {
     public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<Short, String[]>();
     public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<Short, String[]>();
     public static List<String> ignoreTypes = new ArrayList<String>();
-
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2, OTHER = 3;
 
@@ -76,16 +78,16 @@ public class FeatureDictionary implements Serializable {
          * leading to a drop of recall from 0.6 to 0.53*/
         //these types may contain tokens from this type
         //dont see why these ignoreTypes have to be type (i.e. person, org, loc) specific
-        ignoreTypes = Arrays.asList(
-                "Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
-                "SportsTeamMember|OrganisationMember|Person", "TelevisionShow|Work", "Book|WrittenWork|Work",
-                "Film|Work", "Album|MusicalWork|Work", "Band|Organisation", "SoccerClub|SportsTeam|Organisation",
-                "TelevisionEpisode|Work", "SoccerClubSeason|SportsTeamSeason|Organisation", "Album|MusicalWork|Work",
-                "Ship|MeanOfTransportation", "Newspaper|PeriodicalLiterature|WrittenWork|Work", "Single|MusicalWork|Work",
-                "FilmFestival|Event",
-                "SportsTeamMember|OrganisationMember|Person",
-                "SoccerClub|SportsTeam|Organisation"
-        );
+//        ignoreTypes = Arrays.asList(
+//                "Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
+//                "SportsTeamMember|OrganisationMember|Person", "TelevisionShow|Work", "Book|WrittenWork|Work",
+//                "Film|Work", "Album|MusicalWork|Work", "Band|Organisation", "SoccerClub|SportsTeam|Organisation",
+//                "TelevisionEpisode|Work", "SoccerClubSeason|SportsTeamSeason|Organisation", "Album|MusicalWork|Work",
+//                "Ship|MeanOfTransportation", "Newspaper|PeriodicalLiterature|WrittenWork|Work", "Single|MusicalWork|Work",
+//                "FilmFestival|Event",
+//                "SportsTeamMember|OrganisationMember|Person",
+//                "SoccerClub|SportsTeam|Organisation"
+//        );
     }
 
     public FeatureDictionary(FeatureGenerator[] featureGens) {
@@ -127,6 +129,16 @@ public class FeatureDictionary implements Serializable {
                         add(fg.createFeatures(str, null, null, iType), entityType, iType);
                 }
             }
+            String[] words = str.split("\\s+");
+            for(int ii=0;ii<words.length-1;ii++) {
+                String cstr = words[ii]+":::"+words[ii+1];
+                if(!counts.containsKey(cstr))
+                    counts.put(cstr, 0);
+                counts.put(cstr, counts.get(cstr)+1);
+                totalcount++;
+            }
+            numPattsWithDuplicates += words.length;
+
             timeToComputeFeatures += System.currentTimeMillis() - tms;
 
             if ((++gi) % 10000 == 0) {
@@ -138,6 +150,7 @@ public class FeatureDictionary implements Serializable {
 
         log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
+        numPatts = features.get("words").size();
 
         return this;
     }
@@ -149,6 +162,8 @@ public class FeatureDictionary implements Serializable {
 
     //should not try to build dictionry outside of this method
     private void add(Map<String, List<String>> wfeatures, String type, Short iType) {
+        if(wfeatures==null)
+            return;
         for (String dim : wfeatures.keySet()) {
             if (!features.containsKey(dim))
                 features.put(dim, new LinkedHashMap<String, Map<Short, Pair<Integer, Integer>>>());
@@ -301,6 +316,104 @@ public class FeatureDictionary implements Serializable {
         return cleanAB;
     }
 
+    //P(tag/x,type);
+    public double getConditional(String word, Character l, Short type){
+        char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
+        Map<Short,Pair<Integer,Integer>> pairMap;
+        double nw = getFreq(word);
+        if(l==labels[4]) {
+            pairMap = features.get("words").get(word);
+        }
+        else if(l == labels[1]){
+            pairMap = features.get("words").get(word+"*");
+        }
+        else if(l == labels[2]){
+            pairMap = features.get("words").get("*"+word+"*");
+        }
+        else if(l == labels[3])
+            pairMap = features.get("words").get("*"+word);
+        else {
+            int f = 0;
+            String[] patts = new String[]{word, word+"*","*"+word+"*","*"+word};
+            for (String patt: patts) {
+                pairMap = features.get("words").get(patt);
+                if(pairMap != null && pairMap.get(FeatureDictionary.ORGANISATION) != null)
+                    f += pairMap.get(type).second-pairMap.get(type).first;
+            }
+            return (double)(f+1)/nw;
+        }
+        Pair<Integer,Integer> p;
+        if(pairMap == null||pairMap.get(FeatureDictionary.ORGANISATION) == null)
+            p = new Pair<>(0,0);
+        else
+            p = pairMap.get(type);
+        return Math.log(p.getFirst()+1) - Math.log(nw);
+    }
+
+    //returns smoothed frequency
+    public Integer getFreq(String word){
+        //some dummy type;
+        Short type = FeatureDictionary.PERSON;
+        String[] patts = new String[]{word,word+"*","*"+word+"*","*"+word};
+        int n = 0;
+        for(String patt: patts){
+            Map<Short,Pair<Integer,Integer>> pairMap;
+            pairMap = features.get("words").get(patt);
+            Pair<Integer,Integer> p;
+            if(pairMap == null||pairMap.get(FeatureDictionary.ORGANISATION) == null)
+                p = new Pair<>(0,0);
+            else
+                p = pairMap.get(type);
+            n += p.getSecond();
+        }
+        //+5 for smoothing
+        return (n+5);
+    }
+
+    //P(x)
+    public double getMarginal(String word){
+        int n = getFreq(word);
+        return Math.log(n)-Math.log(numPatts + numPattsWithDuplicates);
+    }
+
+    /**
+     * @param fw - First word
+     * @param sw - Second word
+     * @returns P(sw/fw)*/
+    public double getMutualInformation(String fw, String sw){
+        return 1.0;
+//        //n(x)
+//        double pfw = getMarginal(fw);
+//        //double psw = getMarginal(sw);
+//        Integer nfsw = counts.get(fw+":::"+sw);
+//        if(nfsw == null)
+//            nfsw = 0;
+//        double tc = 2*Math.log(totalcount+counts.size());
+//        double psfw = Math.log(nfsw+1)-tc;
+//        return psfw - (pfw);
+    }
+
+    public int numPattHits(String phrase){
+        String[] words = phrase.split("\\s+");
+        int wi =0, numHits = 0;
+        for(String word: words) {
+            String patt = null;
+            if (words.length == 1)
+                patt = word;
+            else if (wi == 0)
+                patt = word + "*";
+            else if (wi == words.length - 1)
+                patt = "*" + word;
+            else if (wi < (words.length - 1))
+                patt = "*" + word + "*";
+            Map<Short, Pair<Integer, Integer>> pairMap = features.get("words").get(patt);
+            if (pairMap != null && pairMap.get(FeatureDictionary.ORGANISATION) != null)
+                numHits++;
+            wi++;
+        }
+        return numHits;
+    }
+
     @Override
     public String toString() {
         String res = "";
@@ -328,7 +441,6 @@ public class FeatureDictionary implements Serializable {
         param.eps = 1e-3;
         param.p = 0.1;
         param.shrinking = 1;
-        param.probability = 1;
         param.nr_weight = 0;
         param.weight_label = new int[0];
         param.weight = new double[0];

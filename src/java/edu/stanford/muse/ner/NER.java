@@ -5,6 +5,7 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
+import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.*;
 import edu.stanford.muse.ner.model.NERModel;
@@ -87,7 +88,7 @@ public class NER implements StatusProvider {
 	}
 
 	public static class NEROptions {
-		public boolean addressbook = true, dbpedia = true, segmentation = true, latentgroupexpansion = false;
+		public boolean addressbook = true, dbpedia = true, segmentation = true;
 		public String prefix = "";
 		public String wfsName = "WordFeatures.ser", modelName = "svm.model";
 		public String evaluatorName = "ePADD NER complete";
@@ -214,7 +215,10 @@ public class NER implements StatusProvider {
         Tokenizer tokenizer = new CICTokenizer();
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
         SVMModelTrainer trainer = new SVMModelTrainer();
-        List<Short> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
+        List<Short> types = Arrays.asList(
+                //FeatureDictionary.PERSON,
+                //FeatureDictionary.PLACE,
+                FeatureDictionary.ORGANISATION);
         List<String[]> aTypes = Arrays.asList(
                 FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
                 FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
@@ -512,8 +516,13 @@ public class NER implements StatusProvider {
         try {
             String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
+//            String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
+            String cacheDir = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache";
+            String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
+            SVMModelTrainer.TrainingParam tparam = SVMModelTrainer.TrainingParam.initialize(cacheDir, mwl, true);
+            String modelFile = mwl + SVMModel.modelFileName;
             NERModel nerModel = SVMModel.loadModel(new File(modelFile));
+            //NERModel nerModel = trainArchiveIndependentModel(tparam);
             String content = "\n" +
                     "\n" +
                     "    Import\n" +
@@ -580,15 +589,34 @@ public class NER implements StatusProvider {
                     "\n" +
                     "Jazz bassist Steve Swallow released the albums Home (ECM, 1979) and So There (ECM, 2005) featuring poems by Creeley put to music.\n" +
                     "\n" +
-                    "Early work by Creeley appeared in the avant garde little magazine Nomad at the beginning of the 1960s. Posthumous publications of Creeley's work have included the second volume of his Collected Poems, which was published in 2006, and The Selected Letters of Robert Creeley edited by Rod Smith, Kaplan Harris and Peter Baker, published in 2014 by the University of California Press.\n";
+                    "Early work by Creeley appeared in the avant garde little magazine Nomad at the beginning of the 1960s. Posthumous publications of Creeley's work have included the second volume of his Collected Poems, which was published in 2006, and The Selected Letters of Robert Creeley edited by Rod Smith, Kaplan Harris and Peter Baker, published in 2014 by the University of California Press.\n" +
+                    "\n";
+
+            content = "Faculty and Graduate Students";
             Pair<Map<Short,List<String>>,List<Triple<String,Integer,Integer>>> mapAndOffsets = nerModel.find(content);
             Map<Short, List<String>> map = mapAndOffsets.getFirst();
+
             for(Short k: map.keySet()){
                 List<String> names = map.get(k);
                 for(String n: names){
                     System.err.println("<" +k+":"+n+">");
                 }
             }
+            List<Document> docs = archive.getAllDocs();
+            FileWriter fw = new FileWriter(cacheDir+File.separator+"orgs.txt");
+            for(Document doc: docs){
+                String dc = archive.getContents(doc, true);
+                mapAndOffsets = nerModel.find(dc);
+                map = mapAndOffsets.getFirst();
+                fw.write(doc.getUniqueId());
+                for(Short k: map.keySet()){
+                    List<String> names = map.get(k);
+                    for(String n: names){
+                        fw.write(n + "\n");
+                    }
+                }
+            }
+            fw.close();
         }catch(Exception e){
             e.printStackTrace();
         }
