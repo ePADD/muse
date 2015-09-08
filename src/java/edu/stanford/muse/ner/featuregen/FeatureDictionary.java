@@ -39,7 +39,7 @@ public class FeatureDictionary implements Serializable {
     //This can get quite depending on the archive and is not a scalable solution
 
     //this data-structure is only used for Segmentation which itself is not employed anywhere
-    public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
+    //public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
     //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
     public int totalcount = 0;
     //total number of word patterns
@@ -132,9 +132,9 @@ public class FeatureDictionary implements Serializable {
             String[] words = str.split("\\s+");
             for(int ii=0;ii<words.length-1;ii++) {
                 String cstr = words[ii]+":::"+words[ii+1];
-                if(!counts.containsKey(cstr))
-                    counts.put(cstr, 0);
-                counts.put(cstr, counts.get(cstr)+1);
+//                if(!counts.containsKey(cstr))
+//                    counts.put(cstr, 0);
+//                counts.put(cstr, counts.get(cstr)+1);
                 totalcount++;
             }
             numPattsWithDuplicates += words.length;
