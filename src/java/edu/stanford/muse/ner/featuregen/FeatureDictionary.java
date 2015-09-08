@@ -78,6 +78,10 @@ public class FeatureDictionary implements Serializable {
          * leading to a drop of recall from 0.6 to 0.53*/
         //these types may contain tokens from this type
         //dont see why these ignoreTypes have to be type (i.e. person, org, loc) specific
+        ignoreTypes = Arrays.asList(
+                "RecordLabel|Company|Organisation",
+                "Band|Organisation"
+        );
 //        ignoreTypes = Arrays.asList(
 //                "Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
 //                "SportsTeamMember|OrganisationMember|Person", "TelevisionShow|Work", "Book|WrittenWork|Work",
@@ -178,7 +182,7 @@ public class FeatureDictionary implements Serializable {
                     Pair<Integer, Integer> p = hm.get(val).get(iType);
                     String[] allowT = aTypes.get(iType);
                     for (String at : allowT)
-                        if (type.contains(at)) {
+                        if (type.endsWith(at)) {
                             p.first++;
                             break;
                         }
@@ -407,8 +411,11 @@ public class FeatureDictionary implements Serializable {
             else if (wi < (words.length - 1))
                 patt = "*" + word + "*";
             Map<Short, Pair<Integer, Integer>> pairMap = features.get("words").get(patt);
-            if (pairMap != null && pairMap.get(FeatureDictionary.ORGANISATION) != null)
-                numHits++;
+            if (pairMap != null && pairMap.get(FeatureDictionary.ORGANISATION) != null) {
+                Pair<Integer, Integer> p = pairMap.get(FeatureDictionary.ORGANISATION);
+                if(p.getFirst()>0 && p.getSecond()>0)
+                    numHits++;
+            }
             wi++;
         }
         return numHits;

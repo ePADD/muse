@@ -317,16 +317,12 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 	public static void main(String[] args) {
 		try {
 			WordSurfaceFeature wsf = new WordSurfaceFeature();
-            Map<String, List<String>> map = wsf.createFeatures("On Sunday",FeatureDictionary.ORGANISATION);
+            Map<String, List<String>> map = wsf.createFeatures("Sunday",FeatureDictionary.ORGANISATION);
             for(String k: map.keySet())
                 System.err.println(k+":"+new LinkedHashSet<>(map.get(k)));
             String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
             String modelFile = mwl + SVMModel.modelFileName;
-            SVMModel nerModel = SVMModel.loadModel(new File(modelFile));
-            Map<Short, Pair<Integer,Integer>> m = nerModel.dictionary.features.get("words").get("On Sunday");
-            for(Short k: m.keySet())
-                System.err.println(k+" : "+m.get(k));
-            System.err.println(nerModel.dictionary.getVector("Faculty",FeatureDictionary.ORGANISATION));
+            //SVMModel nerModel = SVMModel.loadModel(new File(modelFile));
         }catch(Exception e){
 			e.printStackTrace();
 		}
