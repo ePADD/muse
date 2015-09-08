@@ -78,7 +78,6 @@ public static String canonicalize(String s) {
         String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
         out.println ("loading model...");
         out.flush();
-		NERModel nerModel = SVMModel.loadModel(new File(modelFile));
 
         ArchiveCluer cluer = new ArchiveCluer(null, archive, null, lex);
 

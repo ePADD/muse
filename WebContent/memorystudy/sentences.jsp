@@ -55,7 +55,8 @@
 				int sentenceNum = 0;
 
 				while (st.hasMoreSentences())
-                    out.println (++sentenceNum + ". " + Util.escapeHTML(st.nextSentence()) + "<br/>");
+                    out.println (Util.escapeHTML(st.nextSentence()) + "<br/>");
+//            out.println (++sentenceNum + ". " + Util.escapeHTML(st.nextSentence()) + "<br/>");
 
                 out.println ("<br/>");
         }
