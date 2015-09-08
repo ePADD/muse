@@ -18,6 +18,13 @@
 <%@ page import="java.io.FileWriter" %><%
     Archive archive = JSPHelper.getArchive(request.getSession());
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+    File f = new File(mwl);
+    if(!f.exists())
+        f.mkdir();
+    f = new File(mwl + "cache");
+    if(!f.exists())
+        f.mkdir();
+
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
     if(nerModel == null) {
@@ -40,7 +47,7 @@
         }
     }
     List<Document> docs = archive.getAllDocs();
-    Map<String,Double> all = new LinkedHashMap<>();
+    Map<String,Double> all = new LinkedHashMap<String, Double>();
     int i=0;
     for(Document doc: docs){
         String content = archive.getContents(doc, true);
