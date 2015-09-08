@@ -39,7 +39,7 @@ public class FeatureDictionary implements Serializable {
     //This can get quite depending on the archive and is not a scalable solution
 
     //this data-structure is only used for Segmentation which itself is not employed anywhere
-    //public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
+    public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
     //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
     public int totalcount = 0;
     //total number of word patterns
