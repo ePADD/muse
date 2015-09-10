@@ -253,26 +253,17 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		double freqs = 0, minfreq = 10, maxfreq = -1;
 		Pattern endClean = Pattern.compile("^\\W+|\\W+$");
 		/** Using patterns like this improved the accuracy in the case of orgs. */
-		int numLongWords = 0;
 		String t = null;
 		for (int i = 0; i < words.length; i++) {
 			String word = words[i];
-			if (word.length() < 3)
-				continue;
-			numLongWords++;
-			Matcher m = endClean.matcher(word);
-			word = m.replaceAll("");
-			if (iType.equals(FeatureDictionary.ORGANISATION)) {
-				if (i > 0 && i < (words.length - 1))
-					t = "*" + word + "*";
-				else if (i == 0 && words.length > 1)
-					t = word + "*";
-				else if (i == (words.length - 1) && words.length > 1)
-					t = "*" + word;
-				//references are generally made with first name and this may have continuation like Harvard University or Apple_Inc
-				else t = word;
-			} else
-				t = word;
+			if (i > 0 && i < (words.length - 1))
+			    t = "*" + word + "*";
+			else if (i == 0 && words.length > 1)
+			    t = word + "*";
+			else if (i == (words.length - 1) && words.length > 1)
+			    t = "*" + word;
+			//references are generally made with first name and this may have continuation like Harvard University or Apple_Inc
+			else t = word;
 
 			//emit all the words or patterns
 			if(t!=null)

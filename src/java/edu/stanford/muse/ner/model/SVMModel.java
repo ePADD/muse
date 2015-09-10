@@ -103,8 +103,8 @@ public class SVMModel implements NERModel, Serializable {
                                 if(dictionary.features.get("words").get(w)==null)
                                     r = 0;
                                 else {
-                                    Pair<Integer, Integer> p = dictionary.features.get("words").get(w).get(type);
-                                    r = (double) p.getFirst() / p.getSecond();
+                                    Pair<Double, Double> p = dictionary.features.get("words").get(w).get(type);
+                                    r = p.getFirst() / p.getSecond();
                                 }
                                 maxs = Math.max(r, maxs);
                                 mins = Math.min(r, mins);

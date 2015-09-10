@@ -40,8 +40,8 @@ public class FeatureVector implements Serializable {
 						double freq = 0, maxfreq = -1, minfreq = 2;
 						int numWords = 0;
                         //count corresponding to the maxpfreq
-                        int maxcount = 0;
-						Pair<Integer, Integer> p = null;
+                        double maxcount = 0;
+						Pair<Double, Double> p = null;
 						for (String val : features.get(dim)) {
 							if (dictionary.features.get(dim)!=null && dictionary.features.get(dim).containsKey(val))
 								p = dictionary.features.get(dim).get(val).get(iType);

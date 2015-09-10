@@ -2,6 +2,9 @@ package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.Config;
 import edu.stanford.muse.index.Archive;
+import edu.stanford.muse.index.Document;
+import edu.stanford.muse.ner.model.SVMModel;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
@@ -14,6 +17,8 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Probable improvements in train file generation are:
@@ -34,7 +39,7 @@ public class FeatureDictionary implements Serializable {
     private static final long serialVersionUID = 1L;
     //dimension -> instance -> entity type of interest -> #positive type, #negative type
     //patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
-    public Map<String, Map<String, Map<Short, Pair<Integer, Integer>>>> features = new LinkedHashMap<String, Map<String, Map<Short, Pair<Integer, Integer>>>>();
+    public Map<String, Map<String, Map<Short, Pair<Double, Double>>>> features = new LinkedHashMap<>();
     //contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
     //This can get quite depending on the archive and is not a scalable solution
 
@@ -56,7 +61,7 @@ public class FeatureDictionary implements Serializable {
     public static List<String> ignoreTypes = new ArrayList<String>();
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2, OTHER = 3;
-
+    static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
@@ -170,16 +175,16 @@ public class FeatureDictionary implements Serializable {
             return;
         for (String dim : wfeatures.keySet()) {
             if (!features.containsKey(dim))
-                features.put(dim, new LinkedHashMap<String, Map<Short, Pair<Integer, Integer>>>());
-            Map<String, Map<Short, Pair<Integer, Integer>>> hm = features.get(dim);
+                features.put(dim, new LinkedHashMap<String, Map<Short, Pair<Double, Double>>>());
+            Map<String, Map<Short, Pair<Double, Double>>> hm = features.get(dim);
             if (wfeatures.get(dim) != null)
                 for (String val : wfeatures.get(dim)) {
                     if (!hm.containsKey(val)) {
-                        hm.put(val, new LinkedHashMap<Short, Pair<Integer, Integer>>());
+                        hm.put(val, new LinkedHashMap<Short, Pair<Double, Double>>());
                         for (Short at : allTypes)
-                            hm.get(val).put(at, new Pair<Integer, Integer>(0, 0));
+                            hm.get(val).put(at, new Pair<>(0.0, 0.0));
                     }
-                    Pair<Integer, Integer> p = hm.get(val).get(iType);
+                    Pair<Double, Double> p = hm.get(val).get(iType);
                     String[] allowT = aTypes.get(iType);
                     for (String at : allowT)
                         if (type.endsWith(at)) {
@@ -191,6 +196,105 @@ public class FeatureDictionary implements Serializable {
                 }
             features.put(dim, hm);
         }
+    }
+
+    public static String[] getPatts(String phrase){
+        List<String> patts = new ArrayList<>();
+        String[] words = phrase.split("\\s+");
+        for (int i = 0; i < words.length; i++) {
+            String word = words[i];
+            String t;
+            if (i > 0 && i < (words.length - 1))
+                t = "*" + word + "*";
+            else if (i == 0 && words.length > 1)
+                t = word + "*";
+            else if (i == (words.length - 1) && words.length > 1)
+                t = "*" + word;
+                //references are generally made with first name and this may have continuation like Harvard University or Apple_Inc
+            else t = word;
+
+            //emit all the words or patterns
+            if(t!=null)
+               patts.add(t);
+        }
+        return patts.toArray(new String[patts.size()]);
+    }
+
+    public void EM(Map<String,String> gazettes){
+        Map<String, Map<Short,Pair<Double, Double>>> words = features.get("words");
+        Map<String, Map<Short,Pair<Double, Double>>> revisedwords = new LinkedHashMap<>();
+        int MAX_ITER = 5;
+        for(int i=0;i<MAX_ITER;i++) {
+            for (String phrase : gazettes.keySet()) {
+                String type = gazettes.get(phrase);
+                for (Short iType : allTypes) {
+                    String[] patts = getPatts(phrase);
+                    boolean allowed = false;
+                    for (String aType : aTypes.get(iType))
+                        if (type.endsWith(aType)) {
+                            allowed = true;
+                            break;
+                        }
+
+                    double z = 0;
+                    //responsibilities
+                    Map<String, Double> gamma = new LinkedHashMap<>();
+                    for (String patt : patts) {
+                        if(words.get(patt) == null) {
+                            //System.err.println("Did not find: "+patt+" "+iType);
+                            continue;
+                        }
+                        Pair<Double, Double> p = words.get(patt).get(iType);
+                        //this should not happen as we are just making pass over gazettes
+                        if (p.getSecond() <= 0)
+                            continue;
+
+                        double pfreq =  p.getFirst() / p.getSecond();
+                        //pfreq and log functions as belief for the measure
+                        double val = Math.log(p.getSecond()+1);
+                        double d = (allowed?pfreq:(1-pfreq)) * val;
+                        gamma.put(patt, d);
+                        z += d;
+                    }
+                    if(z == 0)
+                        continue;
+                    for (String g : gamma.keySet())
+                        gamma.put(g, gamma.get(g) / z);
+
+                    for (String g : gamma.keySet()) {
+                        if (!revisedwords.containsKey(g)) {
+                            Map<Short, Pair<Double, Double>> map = new LinkedHashMap<>();
+                            for (Short t : allTypes) {
+                                map.put(t, new Pair<>(0.0, 0.0));
+                            }
+                            revisedwords.put(g, map);
+                        }
+                        if (allowed)
+                            revisedwords.get(g).get(iType).first += gamma.get(g);
+                        revisedwords.get(g).get(iType).second += gamma.get(g);
+                    }
+                }
+            }
+            double change = 0;
+            for(String w: words.keySet())
+                if(revisedwords.containsKey(w))
+                    change += Math.abs(revisedwords.get(w).get(FeatureDictionary.ORGANISATION).getFirst()-words.get(w).get(FeatureDictionary.ORGANISATION).getFirst());
+            log.info("Iter: "+i+", change: "+change);
+            words = revisedwords;
+            revisedwords = new LinkedHashMap<>();
+        }
+        try {
+            FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump");
+            Map<String, Double> some = new LinkedHashMap<>();
+            for (String w: words.keySet())
+                some.put(w, words.get(w).get(FeatureDictionary.ORGANISATION).getFirst()/words.get(w).get(FeatureDictionary.ORGANISATION).getSecond());
+            List<Pair<String,Double>> ps = Util.sortMapByValue(some);
+            for(Pair<String,Double> p: ps)
+                fw.write(p.getFirst()+" ::: "+p.getSecond()+":::"+words.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).getFirst()+":::"+words.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).getSecond()+"\n");
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        features.put("words", words);
     }
 
     private static FeatureDictionary buildAndDumpDictionary(Map<String,String> gazz, String fn){
@@ -234,7 +338,7 @@ public class FeatureDictionary implements Serializable {
         for (String word : words) {
             double pw = 0;
             try {
-                Pair<Integer, Integer> freqs = features.get("word").get(word).get(iType);
+                Pair<Double, Double> freqs = features.get("word").get(word).get(iType);
                 pw = (double) freqs.first / freqs.second;
             } catch (Exception e) {
                 ;
@@ -323,7 +427,7 @@ public class FeatureDictionary implements Serializable {
     //P(tag/x,type);
     public double getConditional(String word, Character l, Short type){
         char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
-        Map<Short,Pair<Integer,Integer>> pairMap;
+        Map<Short,Pair<Double,Double>> pairMap;
         double nw = getFreq(word);
         if(l==labels[4]) {
             pairMap = features.get("words").get(word);
@@ -346,26 +450,26 @@ public class FeatureDictionary implements Serializable {
             }
             return (double)(f+1)/nw;
         }
-        Pair<Integer,Integer> p;
+        Pair<Double,Double> p;
         if(pairMap == null||pairMap.get(FeatureDictionary.ORGANISATION) == null)
-            p = new Pair<>(0,0);
+            p = new Pair<>(0.0,0.0);
         else
             p = pairMap.get(type);
         return Math.log(p.getFirst()+1) - Math.log(nw);
     }
 
     //returns smoothed frequency
-    public Integer getFreq(String word){
+    public double getFreq(String word){
         //some dummy type;
         Short type = FeatureDictionary.PERSON;
         String[] patts = new String[]{word,word+"*","*"+word+"*","*"+word};
-        int n = 0;
+        double n = 0;
         for(String patt: patts){
-            Map<Short,Pair<Integer,Integer>> pairMap;
+            Map<Short,Pair<Double,Double>> pairMap;
             pairMap = features.get("words").get(patt);
-            Pair<Integer,Integer> p;
+            Pair<Double,Double> p;
             if(pairMap == null||pairMap.get(FeatureDictionary.ORGANISATION) == null)
-                p = new Pair<>(0,0);
+                p = new Pair<>(0.0,0.0);
             else
                 p = pairMap.get(type);
             n += p.getSecond();
@@ -376,7 +480,7 @@ public class FeatureDictionary implements Serializable {
 
     //P(x)
     public double getMarginal(String word){
-        int n = getFreq(word);
+        double n = getFreq(word);
         return Math.log(n)-Math.log(numPatts + numPattsWithDuplicates);
     }
 
@@ -410,9 +514,9 @@ public class FeatureDictionary implements Serializable {
                 patt = "*" + word;
             else if (wi < (words.length - 1))
                 patt = "*" + word + "*";
-            Map<Short, Pair<Integer, Integer>> pairMap = features.get("words").get(patt);
+            Map<Short, Pair<Double, Double>> pairMap = features.get("words").get(patt);
             if (pairMap != null && pairMap.get(FeatureDictionary.ORGANISATION) != null) {
-                Pair<Integer, Integer> p = pairMap.get(FeatureDictionary.ORGANISATION);
+                Pair<Double, Double> p = pairMap.get(FeatureDictionary.ORGANISATION);
                 if(p.getFirst()>0 && p.getSecond()>0)
                     numHits++;
             }
@@ -456,26 +560,29 @@ public class FeatureDictionary implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String userDir = "/Users/vihari/epadd-appraisal/user";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            Map<String, String> abNames = EmailUtils.getNames(archive.addressBook.allContacts());
-            Map<String, String> dbpedia = EmailUtils.readDBpedia();
-            Map<String, String> gazzs = new LinkedHashMap<>();
-            gazzs.putAll(abNames);
-            gazzs.putAll(dbpedia);
-            System.err.println("AB: " + abNames.size() + "\nDBpedia: " + dbpedia.size() + "\nAll:" + gazzs.size());
-            FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
-            FeatureDictionary dictionary = new FeatureDictionary(gazzs, fgs);
-            Map<String, Map<String, Map<Short, Pair<Integer, Integer>>>> features = dictionary.features;
-            for (String str1 : features.keySet())
-                for (String str2 : features.get(str1).keySet()) {
-                    for (Short s3 : features.get(str1).get(str2).keySet()) {
-                        System.err.print(str1 + " : " + str2 + " : " + s3 + " : " + features.get(str1).get(str2).get(s3) + ", ");
-                    }
-                    System.err.println();
-                }
-        } catch (Exception e) {
+            String baseDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+            Archive archive = SimpleSessions.readArchiveIfPresent(baseDir);
+            List<Document> docs = archive.getAllDocs();
+            for(Document doc: docs)
+                System.err.println(doc.getUniqueId());
+            System.err.println("Num docs: "+docs.size());
+        }catch(IOException e){
             e.printStackTrace();
         }
+//        try {
+//            String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
+//            String modelFile = mwl + SequenceModel.modelFileName;
+//            SequenceModel nerModel;
+//            if(new File(modelFile).exists()) {
+//                System.err.println("Loading model ... ");
+//                nerModel = SequenceModel.loadModel(new File(modelFile));
+//            }else{
+//                System.err.println("Building model...");
+//                nerModel = SequenceModel.train();
+//            }
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
     }
 }

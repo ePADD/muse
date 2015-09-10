@@ -152,8 +152,10 @@ public class SequenceModel implements Serializable{
         FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
         nerModel.dictionary = dictionary;
         nerModel.tokenizer = new CICTokenizer();
-        String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+        String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
+        System.err.println("Performing EM...");
+        nerModel.dictionary.EM(dbpedia);
         try {
             nerModel.writeModel(new File(modelFile));
         }catch(IOException e){

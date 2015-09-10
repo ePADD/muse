@@ -389,27 +389,27 @@ public class JSPHelper {
 		archive.setBaseDir(getBaseDir(m, request));
 		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
 
-		try {
-			//train an epadd ner ; recognise the entities and dd it to the index
-			NER ner = new NER(archive);
-			session.setAttribute("statusProvider", ner);
-			log.info("Base dir: " + getBaseDir(m, request));
-            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
-            if("memorytest".equals(mode)) {
-                log.info("Setting dump model to false for NER");
-                ner.trainAndRecognise(false);
-            }else
-                ner.trainAndRecognise(true);
-			archive.processingMetadata.entityCounts = ner.stats.counts;
-			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
-			log.info(ner.stats);
-			log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
-		}
-		//trying to be extra defensive during indexing.
-		catch (Exception e) {
-			e.printStackTrace();
-			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
-		}
+//		try {
+//			//train an epadd ner ; recognise the entities and dd it to the index
+//			NER ner = new NER(archive);
+//			session.setAttribute("statusProvider", ner);
+//			log.info("Base dir: " + getBaseDir(m, request));
+//            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
+//            if("memorytest".equals(mode)) {
+//                log.info("Setting dump model to false for NER");
+//                ner.trainAndRecognise(false);
+//            }else
+//                ner.trainAndRecognise(true);
+//			archive.processingMetadata.entityCounts = ner.stats.counts;
+//			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+//			log.info(ner.stats);
+//			log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+//		}
+//		//trying to be extra defensive during indexing.
+//		catch (Exception e) {
+//			e.printStackTrace();
+//			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
+//		}
 
         if(!"muse".equals(Version.appName)) {
             //one final step of building entity feature index to build context for every entity
