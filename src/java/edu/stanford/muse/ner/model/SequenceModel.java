@@ -139,7 +139,7 @@ public class SequenceModel implements Serializable{
         SequenceModel nerModel = new SequenceModel();
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
         Set<String> fts = new LinkedHashSet<>();
-        fts.add(WordSurfaceFeature.PATTERN);
+        fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
         FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
         nerModel.dictionary = dictionary;
@@ -161,20 +161,20 @@ public class SequenceModel implements Serializable{
             String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-            String modelFile = mwl + SequenceModel.modelFileName;
-            if (fdw == null) {
-                try {
-                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            System.err.println("Loading model...");
-            SequenceModel nerModel = null;
-            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
-            catch(IOException e){e.printStackTrace();}
-            if(nerModel == null)
-                nerModel = train();
+//            String modelFile = mwl + SequenceModel.modelFileName;
+//            if (fdw == null) {
+//                try {
+//                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            System.err.println("Loading model...");
+//            SequenceModel nerModel = null;
+//            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+//            catch(IOException e){e.printStackTrace();}
+//            if(nerModel == null)
+            SequenceModel nerModel = train();
             List<Document> docs = archive.getAllDocs();
             int di =0;
             for(Document doc: docs) {

@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 public class WordSurfaceFeature extends FeatureGenerator implements Serializable{
 	//use only an order preserving data structure
 	List<Pair<String, Short>> featureGens = new ArrayList<Pair<String, Short>>();
+    Set<String> featureTypes = new LinkedHashSet<>();
     public static String END_PERIOD = "end-period", CONTAINS_SPECIAL = "contains-special",
     CONTAINS_MARKER = "contains-marker", CONTAINS_STOPWORD = "contains-sw",
     CONTAINS_PERIOD = "contains-period", CONTAINS_DICT = "contains-dict",
@@ -51,21 +52,33 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
     private static final long							serialVersionUID	= 1L;
 
     public WordSurfaceFeature(){
-        featureGens.add(new Pair<String, Short>("end-period", FeatureDictionary.BOOLEAN));
-		featureGens.add(new Pair<String, Short>("contains-special", FeatureDictionary.BOOLEAN));
-		featureGens.add(new Pair<String, Short>("contains-marker", FeatureDictionary.BOOLEAN));
-		featureGens.add(new Pair<String, Short>("contains-sw", FeatureDictionary.BOOLEAN));
-		featureGens.add(new Pair<String, Short>("contains-period", FeatureDictionary.BOOLEAN));
-		featureGens.add(new Pair<String, Short>("contains-dict", FeatureDictionary.BOOLEAN));
-		featureGens.add(new Pair<String, Short>("patt", FeatureDictionary.NOMINAL));
-		featureGens.add(new Pair<String, Short>("suff", FeatureDictionary.NOMINAL));
-        featureGens.add(new Pair<String, Short>("words", FeatureDictionary.NOMINAL));
-        featureGens.add(new Pair<String, Short>("pre", FeatureDictionary.NOMINAL));
+        featureGens.add(new Pair<>("end-period", FeatureDictionary.BOOLEAN));
+        featureTypes.add(END_PERIOD);
+		featureGens.add(new Pair<>("contains-special", FeatureDictionary.BOOLEAN));
+        featureTypes.add(CONTAINS_SPECIAL);
+		featureGens.add(new Pair<>("contains-marker", FeatureDictionary.BOOLEAN));
+        featureTypes.add(CONTAINS_MARKER);
+		featureGens.add(new Pair<>("contains-sw", FeatureDictionary.BOOLEAN));
+        featureTypes.add(CONTAINS_STOPWORD);
+		featureGens.add(new Pair<>("contains-period", FeatureDictionary.BOOLEAN));
+        featureTypes.add(CONTAINS_PERIOD);
+		featureGens.add(new Pair<>("contains-dict", FeatureDictionary.BOOLEAN));
+        featureTypes.add(CONTAINS_DICT);
+		featureGens.add(new Pair<>("patt", FeatureDictionary.NOMINAL));
+        featureTypes.add(PATTERN);
+		featureGens.add(new Pair<>("suff", FeatureDictionary.NOMINAL));
+        featureTypes.add(SUFFIX);
+        featureGens.add(new Pair<>("words", FeatureDictionary.NOMINAL));
+        featureTypes.add(WORDS);
+        featureGens.add(new Pair<>("pre", FeatureDictionary.NOMINAL));
+        featureTypes.add(PREFIX);
         //wordclass
-		featureGens.add(new Pair<String, Short>("wc", FeatureDictionary.NOMINAL));
+		featureGens.add(new Pair<>("wc", FeatureDictionary.NOMINAL));
+        featureTypes.add(WORD_CLASS);
 	}
 
     public WordSurfaceFeature (Set<String> featureTypes){
+        this.featureTypes = featureTypes;
         if(featureTypes.contains(END_PERIOD))
             featureGens.add(new Pair<String, Short>("end-period", FeatureDictionary.BOOLEAN));
         if(featureTypes.contains(CONTAINS_SPECIAL))
@@ -152,7 +165,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		Pair<String,Boolean> p2 = checkAndStrip(p1.getFirst(), endMarkers, false, false);
 		name = p2.getFirst();
 
-        if(featureGens.contains(CONTAINS_MARKER)) {
+        if(featureTypes.contains(CONTAINS_MARKER)) {
             boolean marker = p1.getSecond() || p2.getSecond();
             if (marker)
                 put(features, "contains-marker", "exists");
@@ -160,14 +173,14 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
                 put(features, "contains-marker", "no");
         }
 
-		if(featureGens.contains(WORD_CLASS)) {
+		if(featureTypes.contains(WORD_CLASS)) {
             //word features.
             String tc = FeatureGeneratorUtil.tokenFeature(name);
             put(features, "wc", tc);
             //System.err.println("Word class: " + tc + " for: " + name + "\t" + t);
         }
 
-        if(featureGens.contains(END_PERIOD)) {
+        if(featureTypes.contains(END_PERIOD)) {
             //end-period?
             if (name.length() > 1) {
                 if (name.charAt(name.length() - 1) == '.')
@@ -178,7 +191,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
                 put(features, "end-period", "no");
         }
 
-        if(featureGens.contains(CONTAINS_PERIOD)) {
+        if(featureTypes.contains(CONTAINS_PERIOD)) {
             //contains period
             if (name.contains("."))
                 put(features, "contains-period", "exists");
@@ -186,7 +199,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
                 put(features, "contains-period", "no");
         }
 
-        if(featureGens.contains(CONTAINS_SPECIAL)) {
+        if(featureTypes.contains(CONTAINS_SPECIAL)) {
             //any special chars like apos, hypen, apresand
             if (name.contains("'") || name.contains("-") || name.contains("&"))
                 put(features, "contains-special", "exists");
@@ -194,7 +207,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
                 put(features, "contains-special", "no");
         }
 
-		if(featureGens.contains(PATTERN)) {
+		if(featureTypes.contains(PATTERN)) {
             //pattern, akin to summarised pattern
             String patt = name.replaceAll("[A-Z]+", "A");
             patt = patt.replaceAll("[a-z]+", "a");
@@ -203,7 +216,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
         }
 
         String[] words = name.split("\\s+");
-        if(featureGens.contains(PREFIX)||featureGens.contains(SUFFIX)) {
+        if(featureTypes.contains(PREFIX)||featureTypes.contains(SUFFIX)) {
             //take prefix and suffix of every single word.
             for (String word : words) {
                 if (word.length() > 2) {
@@ -215,7 +228,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
             }
         }
 
-        if(featureGens.contains(CONTAINS_STOPWORD)) {
+        if(featureTypes.contains(CONTAINS_STOPWORD)) {
             //check for stop-words
             boolean sws = false;
             for (String word : words)
@@ -229,7 +242,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
                 put(features, "contains-sw", "no");
         }
 
-        if(featureGens.contains(CONTAINS_DICT)) {
+        if(featureTypes.contains(CONTAINS_DICT)) {
             //contains dictionary word?
             boolean dict = false;
             for (String word : words)
@@ -272,7 +285,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		//Pattern endClean = Pattern.compile("^\\W+|\\W+$");
 		/** Using patterns like this improved the accuracy in the case of orgs. */
 		//String t = null;
-		if(featureGens.contains(WORDS)) {
+		if(featureTypes.contains(WORDS)) {
             String[] patts = FeatureDictionary.getPatts(name);
             for (String p : patts) {
                 put(features, "words", p);
