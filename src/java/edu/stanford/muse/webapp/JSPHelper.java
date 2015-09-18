@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.webapp;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
@@ -24,6 +25,7 @@ import edu.stanford.muse.groups.*;
 import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.util.SloppyDates.DateRangeSpec;
 import org.apache.commons.logging.Log;
@@ -389,6 +391,19 @@ public class JSPHelper {
 		archive.setBaseDir(getBaseDir(m, request));
 		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
 
+        String mwl = Config.SETTINGS_DIR+File.separator;
+        String modelFile = mwl + SequenceModel.modelFileName;
+        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+        log.info("Loading NER sequence model...");
+        try {
+            nerModel = SequenceModel.loadModel(new File(modelFile));
+        } catch (IOException e) {
+            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
+        }
+        if (nerModel == null) {
+            log.error("Could not load NER model from: "+modelFile);
+        }
+
 //		try {
 //			//train an epadd ner ; recognise the entities and dd it to the index
 //			NER ner = new NER(archive);
@@ -411,25 +426,25 @@ public class JSPHelper {
 //			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
 //		}
 
-        if(!"muse".equals(Version.appName)) {
-            //one final step of building entity feature index to build context for every entity
-            try {
-                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-                session.setAttribute("statusProvider", assignauthorities);
-                assignauthorities.initialize(archive);
-                if (!assignauthorities.isCancelled())
-                    request.getSession().setAttribute("authorities", assignauthorities);
-                else
-                    assignauthorities = null;
-                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
-                if (!success) {
-                    log.warn("Could not build context features for entities");
-                } else
-                    log.info("Successfully built context features for entities");
-            } catch (Exception e) {
-                log.warn("Exception while building context features", e);
-            }
-        }
+//        if(!"muse".equals(Version.appName)) {
+//            //one final step of building entity feature index to build context for every entity
+//            try {
+//                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+//                session.setAttribute("statusProvider", assignauthorities);
+//                assignauthorities.initialize(archive);
+//                if (!assignauthorities.isCancelled())
+//                    request.getSession().setAttribute("authorities", assignauthorities);
+//                else
+//                    assignauthorities = null;
+//                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+//                if (!success) {
+//                    log.warn("Could not build context features for entities");
+//                } else
+//                    log.info("Successfully built context features for entities");
+//            } catch (Exception e) {
+//                log.warn("Exception while building context features", e);
+//            }
+//        }
 		// add the new stores
 	}
 

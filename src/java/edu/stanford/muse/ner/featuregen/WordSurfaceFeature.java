@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
  * CONTAINS_STOPWORD [BOOLEAN] - if the phrase contains one or more stop words
  * CONTAINS_PERIOD [BOOLEAN] - if the phrase contains a period in it
  * CONTAINS_DICT [BOOLEAN] - if the phrase contains a dictionary word
- * PATTERN [NOMINAL] - reflects the structure of the phrase ePADD-aA sOmE-aAaA
+ * PATTERN [NOMINAL] - reflects the structure of the phrase [ePADD-aA] [sOmE-aAaA]
  * SUFFIX [NOMINAL] - suffix of every word in the phrase
  * PREFIX [NOMINAL] - prefix of every word in the phrase
  * WORDS [NOMINAL][TYPE SPECIFIC] - every word in the phrase
@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
 public class WordSurfaceFeature extends FeatureGenerator implements Serializable{
 	//use only an order preserving data structure
 	List<Pair<String, Short>> featureGens = new ArrayList<Pair<String, Short>>();
-    String END_PERIOD = "end-period", CONTAINS_SPECIAL = "contains-special",
+    public static String END_PERIOD = "end-period", CONTAINS_SPECIAL = "contains-special",
     CONTAINS_MARKER = "contains-marker", CONTAINS_STOPWORD = "contains-sw",
     CONTAINS_PERIOD = "contains-period", CONTAINS_DICT = "contains-dict",
     PATTERN = "patt", SUFFIX = "suff",
@@ -51,7 +51,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
     private static final long							serialVersionUID	= 1L;
 
     public WordSurfaceFeature(){
-		featureGens.add(new Pair<String, Short>("end-period", FeatureDictionary.BOOLEAN));
+        featureGens.add(new Pair<String, Short>("end-period", FeatureDictionary.BOOLEAN));
 		featureGens.add(new Pair<String, Short>("contains-special", FeatureDictionary.BOOLEAN));
 		featureGens.add(new Pair<String, Short>("contains-marker", FeatureDictionary.BOOLEAN));
 		featureGens.add(new Pair<String, Short>("contains-sw", FeatureDictionary.BOOLEAN));
@@ -113,7 +113,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 
 	public static Pair<String,Boolean> checkAndStrip(String name, String[] markers, Boolean start, Boolean strip){
 		if(markers == null)
-			return new Pair<String, Boolean>(name, false);
+			return new Pair<>(name, false);
 
 		//TODO: replace this regular expression, is there a better way to get words in string?
 		String[] words = name.split("\\s+");
@@ -150,81 +150,99 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		//String temp = name.replaceAll(FeatureDictionary.MARKERS_PATT, "");
 		Pair<String,Boolean> p1 = checkAndStrip(name, startMarkers, true, FeatureDictionary.PERSON.equals(iType));
 		Pair<String,Boolean> p2 = checkAndStrip(p1.getFirst(), endMarkers, false, false);
-		boolean marker = p1.getSecond() || p2.getSecond();
 		name = p2.getFirst();
 
-		if (marker)
-			put(features, "contains-marker", "exists");
-		else
-			put(features, "contains-marker", "no");
+        if(featureGens.contains(CONTAINS_MARKER)) {
+            boolean marker = p1.getSecond() || p2.getSecond();
+            if (marker)
+                put(features, "contains-marker", "exists");
+            else
+                put(features, "contains-marker", "no");
+        }
 
-		//word features.
-		String tc = FeatureGeneratorUtil.tokenFeature(name);
-		put(features, "wc", tc);
-		//System.err.println("Word class: " + tc + " for: " + name + "\t" + t);
+		if(featureGens.contains(WORD_CLASS)) {
+            //word features.
+            String tc = FeatureGeneratorUtil.tokenFeature(name);
+            put(features, "wc", tc);
+            //System.err.println("Word class: " + tc + " for: " + name + "\t" + t);
+        }
 
-		//end-period?
-		if (name.length() > 1) {
-			if (name.charAt(name.length() - 1) == '.')
-				put(features,"end-period", "exists");
-			else
-				put(features, "end-period", "no");
-		} else
-			put(features, "end-period", "no");
+        if(featureGens.contains(END_PERIOD)) {
+            //end-period?
+            if (name.length() > 1) {
+                if (name.charAt(name.length() - 1) == '.')
+                    put(features, "end-period", "exists");
+                else
+                    put(features, "end-period", "no");
+            } else
+                put(features, "end-period", "no");
+        }
 
-		//contains period
-		if (name.contains("."))
-			put(features, "contains-period", "exists");
-		else
-			put(features, "contains-period", "no");
+        if(featureGens.contains(CONTAINS_PERIOD)) {
+            //contains period
+            if (name.contains("."))
+                put(features, "contains-period", "exists");
+            else
+                put(features, "contains-period", "no");
+        }
 
-		//any special chars like apos, hypen, apresand
-		if (name.contains("'") || name.contains("-") || name.contains("&"))
-			put(features, "contains-special", "exists");
-		else
-			put(features, "contains-special", "no");
+        if(featureGens.contains(CONTAINS_SPECIAL)) {
+            //any special chars like apos, hypen, apresand
+            if (name.contains("'") || name.contains("-") || name.contains("&"))
+                put(features, "contains-special", "exists");
+            else
+                put(features, "contains-special", "no");
+        }
 
-		//pattern, akin to summarised pattern
-		String patt = name.replaceAll("[A-Z]+", "A");
-		patt = patt.replaceAll("[a-z]+", "a");
-		patt = patt.replaceAll("[0-9]+", "d");
-		put(features, "patt", patt);
+		if(featureGens.contains(PATTERN)) {
+            //pattern, akin to summarised pattern
+            String patt = name.replaceAll("[A-Z]+", "A");
+            patt = patt.replaceAll("[a-z]+", "a");
+            patt = patt.replaceAll("[0-9]+", "d");
+            put(features, "patt", patt);
+        }
 
-		//take prefix and suffix of every single word.
-		String[] words = name.split("\\s+");
-		for (String word : words) {
-			if (word.length() > 2) {
-				String pre = word.substring(0, 3);
-				String suff = word.substring(Math.max(0, word.length() - 3), word.length());
-				put(features,"pre", pre);
-				put(features,"suff", suff);
-			}
-		}
+        String[] words = name.split("\\s+");
+        if(featureGens.contains(PREFIX)||featureGens.contains(SUFFIX)) {
+            //take prefix and suffix of every single word.
+            for (String word : words) {
+                if (word.length() > 2) {
+                    String pre = word.substring(0, 3);
+                    String suff = word.substring(Math.max(0, word.length() - 3), word.length());
+                    put(features, "pre", pre);
+                    put(features, "suff", suff);
+                }
+            }
+        }
 
-		//check for stop-words
-		boolean sws = false;
-		for (String word : words)
-			if (Indexer.MUSE_STOP_WORDS_SET.contains(word.toLowerCase())) {
-				sws = true;
-				break;
-			}
-		if (sws)
-			put(features,"contains-sw", "exists");
-		else
-			put(features,"contains-sw", "no");
+        if(featureGens.contains(CONTAINS_STOPWORD)) {
+            //check for stop-words
+            boolean sws = false;
+            for (String word : words)
+                if (Indexer.MUSE_STOP_WORDS_SET.contains(word.toLowerCase())) {
+                    sws = true;
+                    break;
+                }
+            if (sws)
+                put(features, "contains-sw", "exists");
+            else
+                put(features, "contains-sw", "no");
+        }
 
-		//contains dictionary word?
-		boolean dict = false;
-		for (String word : words)
-			if (DictUtils.fullDictWords.contains(word.toLowerCase())) {
-				dict = true;
-				break;
-			}
+        if(featureGens.contains(CONTAINS_DICT)) {
+            //contains dictionary word?
+            boolean dict = false;
+            for (String word : words)
+                if (DictUtils.fullDictWords.contains(word.toLowerCase())) {
+                    dict = true;
+                    break;
+                }
 
-		if (dict)
-			put(features,"contains-dict", "exists");
-		else
-			put(features,"contains-dict", "no");
+            if (dict)
+                put(features, "contains-dict", "exists");
+            else
+                put(features, "contains-dict", "no");
+        }
 
 		//signals if the name contains signals like "W." in W.S. Merwin, George W. Bush
 		//		boolean nameLikeAcronym = false;
@@ -251,24 +269,15 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		//		wf.put("contains-ola", orgLikeAcronym + "");
 
 		double freqs = 0, minfreq = 10, maxfreq = -1;
-		Pattern endClean = Pattern.compile("^\\W+|\\W+$");
+		//Pattern endClean = Pattern.compile("^\\W+|\\W+$");
 		/** Using patterns like this improved the accuracy in the case of orgs. */
-		String t = null;
-		for (int i = 0; i < words.length; i++) {
-			String word = words[i];
-			if (i > 0 && i < (words.length - 1))
-			    t = "*" + word + "*";
-			else if (i == 0 && words.length > 1)
-			    t = word + "*";
-			else if (i == (words.length - 1) && words.length > 1)
-			    t = "*" + word;
-			//references are generally made with first name and this may have continuation like Harvard University or Apple_Inc
-			else t = word;
-
-			//emit all the words or patterns
-			if(t!=null)
-				put(features, "words",t);
-		}
+		//String t = null;
+		if(featureGens.contains(WORDS)) {
+            String[] patts = FeatureDictionary.getPatts(name);
+            for (String p : patts) {
+                put(features, "words", p);
+            }
+        }
 		//The performance over the test set without averaging and with averaging respectively are:
 		//Accuracy:0.9113924050632911, Recall:0.8648648648648649, F1:0.8875192604006163
 		//Accuracy:0.9597701149425287, Recall:0.9009009009009009, F1:0.9294042351893591

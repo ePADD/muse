@@ -21,8 +21,7 @@ import java.util.*;
 
 /**
  * Created by vihari on 07/09/15.
- * This is a factor model, that ranks sub-strings and assigns likelihood of belonging to a certain type
- * P(y,x) = P(y_i/x_{i})*P(x_{i+1}/x_{i})*P(y_{i+1}/y_i)
+ * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu) for every mixture and assigns probs to this
  */
 public class SequenceModel implements Serializable{
     public FeatureDictionary dictionary;
@@ -45,23 +44,24 @@ public class SequenceModel implements Serializable{
     public Map<String,Double> find(String content) {
         //check if the model is initialised
 
+        List<String> commonWords = Arrays.asList("as","because","just","in","by","for","and","to","on","of","dear","according","think","a","an","if","at","but","the");
         Map<String, Double> map = new LinkedHashMap<>();
         //recognises only orgs
         //labels = {O, B, I, E, S} null, beginning, in, end, solo
-        char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
+        //char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
         List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, false);
         for(Triple<String,Integer,Integer> cand: cands) {
             try {
                 fdw.write(cand.first + "\n");
                 String[] words = cand.first.split("\\s+");
-                //brute force algorithm is O(2^n)
-                if(words.length>5){
+                //brute force algorithm, is O(2^n)
+                if(words.length>10){
                     continue;
                 }
 
-                boolean atleastSeenOne = dictionary.numPattHits(cand.first)>0;
-                if(!atleastSeenOne)
-                    continue;
+//                boolean atleastSeenOne = dictionary.numPattHits(cand.first)>0;
+//                if(!atleastSeenOne)
+//                    continue;
 
                 //look at all the sub strings and select a few with good score
                 //if its a single word, we assign S label
@@ -70,51 +70,41 @@ public class SequenceModel implements Serializable{
                 //In general, a search algorithm to find the subset with max probability should be employed
                 Set<String> substrs = IndexUtils.computeAllSubstrings(cand.getFirst());
                 Map<String, Double> ssubstrs = new LinkedHashMap<>();
-                for(String substr: substrs){
-                    int nph = dictionary.numPattHits(substr);
-                    if(nph == 0)
-                        continue;
-                    String[] swords = substr.split("\\s+");
-                    Character[] seqLabel = new Character[swords.length];
-                    if(swords.length == 1)
-                        seqLabel[0] = labels[4];
-                    else{
-                        seqLabel[0] = labels[1];
-                        if(swords.length==2)
-                            seqLabel[1] = labels[3];
-                        else{
-                            for(int i=1;i<seqLabel.length-1;i++)
-                                seqLabel[i] = labels[2];
-                            seqLabel[seqLabel.length-1] = labels[3];
-                        }
-                    }
-                    String prevW = null;
+                for(String substr: substrs) {
                     double s = 0;
-                    for(int swi=0;swi<swords.length;swi++) {
-                        String word = swords[swi];
-                        Character l = seqLabel[swi];
+                    //what the candidate starts or ends with is important
+                    String[] swords = substr.split("\\s+");
+                    String fw = swords[0].toLowerCase();
+                    fw = FeatureDictionary.endClean.matcher(fw).replaceAll("");
+                    String sw = null;
+                    if(swords.length>1) {
+                        sw = swords[swords.length - 1].toLowerCase();
+                        sw = FeatureDictionary.endClean.matcher(sw).replaceAll("");
+                    }
+                    if(commonWords.contains(fw)||commonWords.contains(sw))
+                        continue;
 
-                        Double d = dictionary.getConditional(word, l, FeatureDictionary.ORGANISATION);
-                        if(Double.isNaN(d))
-                            System.err.println("Cond nan "+word+", "+l+", "+d);
-                        s += d;
-                        if(prevW!=null) {
-                            String currW = swords[swi];
-                            //P(x_i,x_i+1)
-                            //n(x_i) = n(x_i*)+n(*x_i*);
-                            d = dictionary.getMutualInformation(prevW, currW);
-                            if(Double.isNaN(d))
-                                System.err.println("Mi: nan "+prevW+", "+currW+", "+d);
-                            s += d;
+                    String[] patts = FeatureDictionary.getPatts(substr);
+                    for(String patt: patts) {
+                        String word = patt;
+                        word = word.replaceAll("^\\*|\\*$","");
+                        word = FeatureDictionary.endClean.matcher(word).replaceAll("");
+                        Double d = dictionary.getConditional(word, patt, FeatureDictionary.ORGANISATION);
+                        if (Double.isNaN(d))
+                            System.err.println("Cond nan " + patt + ", " + d);
+                        fdw.write("Patt: "+patt+" - "+d+"\n");
+                        double val = d;
+                        if(val>0){
+                           double freq = dictionary.getFreq(patt);
+                           val *= Math.log(1+freq);
                         }
-                        prevW = swords[swi];
+                        s += val;//*dictionary.getMarginal(word);
                     }
                     ssubstrs.put(substr, s);
                 }
                 List<Pair<String,Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
                 for(Pair<String,Double> p: sssubstrs) {
                     fdw.write(p.getFirst() + " : " + p.getSecond() + "\n");
-                    //System.err.println(p.getFirst() + " : " + p.getSecond());
                 }
                 fdw.write("\n");
                 if(sssubstrs.size()>0)
@@ -148,7 +138,9 @@ public class SequenceModel implements Serializable{
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
-        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
+        Set<String> fts = new LinkedHashSet<>();
+        fts.add(WordSurfaceFeature.PATTERN);
+        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
         FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
         nerModel.dictionary = dictionary;
         nerModel.tokenizer = new CICTokenizer();
@@ -191,12 +183,12 @@ public class SequenceModel implements Serializable{
                 if(di++>10)
                     break;
             }
-            Character[] labels = new Character[]{'S','E','I','B','O'};
+            String[] patts = new String[]{"company","company*","*company*","*company","O"};
 
             double p = 0;
-            for(Character l: labels) {
-                double x = nerModel.dictionary.getConditional("Company", l, FeatureDictionary.ORGANISATION);
-                System.err.println("Conditional: [" + l + "] " + x);
+            for(String patt: patts) {
+                double x = nerModel.dictionary.getConditional("company", patt, FeatureDictionary.ORGANISATION);
+                System.err.println("Conditional: [" + p + "] " + x);
                 p+=x;
             }
             System.err.println("Peace project: " + nerModel.dictionary.counts.get("Peace:::Project"));
@@ -209,11 +201,11 @@ public class SequenceModel implements Serializable{
             System.err.println(nerModel.dictionary.features.get("words").get("*Company").get(FeatureDictionary.ORGANISATION));
             System.err.println(nerModel.dictionary.features.get("words").get("Company*").get(FeatureDictionary.ORGANISATION));
             System.err.println(nerModel.dictionary.features.get("words").get("*Company*").get(FeatureDictionary.ORGANISATION));
-            System.err.println(nerModel.dictionary.features.get("words").get("Company").get(FeatureDictionary.ORGANISATION));
+            //System.err.println(nerModel.dictionary.features.get("words").get("Company").get(FeatureDictionary.ORGANISATION));
 
             System.err.println("Total: "+p);
             System.err.println("Marginal: " + nerModel.dictionary.getMarginal("Company"));
-            System.err.println("MI: " + nerModel.dictionary.getMutualInformation("University", "of"));
+            System.err.println("MI: " + nerModel.dictionary.getConditional("university","*university", FeatureDictionary.ORGANISATION));
         }catch(Exception e){
             e.printStackTrace();
         }

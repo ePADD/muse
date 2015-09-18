@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  */
 public class CICTokenizer implements Tokenizer, Serializable {
 	static Pattern	personNamePattern, entityPattern, acronymPattern;
-	static String[] stopWords =  new String[]{"the","for"};//new String[]{"and", "for","on","a","the","to","at","of", "in"};
+	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at","of", "in"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
 
 	static {
@@ -69,7 +69,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         //ignoring period at he end of the name may not be desired, "Rockwell International Corp.", the period here is part of the name
 		String nameP = "[A-Z][A-Za-z'\\-\\.]*";
 		//comma is a terrible character to allow, it sometimes crawls in the full list the entity is contained in.
-		String allowedCharsOther = "\\s", allowedCharsPerson = "\\s";
+		String allowedCharsOther = "\\s&", allowedCharsPerson = "\\s";
 
 		StringBuilder sp = new StringBuilder("");
 		int i = 0;
