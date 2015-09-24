@@ -21,7 +21,7 @@ import java.util.*;
 
 /**
  * Created by vihari on 07/09/15.
- * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu) for every mixture and assigns probs to this
+ * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
  */
 public class SequenceModel implements Serializable{
     public FeatureDictionary dictionary;
@@ -59,10 +59,6 @@ public class SequenceModel implements Serializable{
                     continue;
                 }
 
-//                boolean atleastSeenOne = dictionary.numPattHits(cand.first)>0;
-//                if(!atleastSeenOne)
-//                    continue;
-
                 //look at all the sub strings and select a few with good score
                 //if its a single word, we assign S label
                 //if its multi word we assign B(I*)E labels.
@@ -71,7 +67,7 @@ public class SequenceModel implements Serializable{
                 Set<String> substrs = IndexUtils.computeAllSubstrings(cand.getFirst());
                 Map<String, Double> ssubstrs = new LinkedHashMap<>();
                 for(String substr: substrs) {
-                    double s = 0;
+                    double sorg = 0, snon_org = 0;
                     //what the candidate starts or ends with is important
                     String[] swords = substr.split("\\s+");
                     String fw = swords[0].toLowerCase();
@@ -92,15 +88,17 @@ public class SequenceModel implements Serializable{
                         Double d = dictionary.getConditional(word, patt, FeatureDictionary.ORGANISATION);
                         if (Double.isNaN(d))
                             System.err.println("Cond nan " + patt + ", " + d);
-                        fdw.write("Patt: "+patt+" - "+d+"\n");
-                        double val = d;
+                        double val = d, vc = 1-d;
                         if(val>0){
                            double freq = dictionary.getFreq(patt);
                            val *= Math.log(1+freq);
+                           vc *= Math.log(1+freq);
                         }
-                        s += val;//*dictionary.getMarginal(word);
+                        fdw.write("Patt: "+patt+" - "+val+" nc: "+ vc +"\n");
+                        sorg += val;//*dictionary.getMarginal(word);
+                        snon_org += vc;
                     }
-                    ssubstrs.put(substr, s);
+                    ssubstrs.put(substr, sorg-snon_org);
                 }
                 List<Pair<String,Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
                 for(Pair<String,Double> p: sssubstrs) {
@@ -161,20 +159,20 @@ public class SequenceModel implements Serializable{
             String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-//            String modelFile = mwl + SequenceModel.modelFileName;
-//            if (fdw == null) {
-//                try {
-//                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//            System.err.println("Loading model...");
-//            SequenceModel nerModel = null;
-//            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
-//            catch(IOException e){e.printStackTrace();}
-//            if(nerModel == null)
-            SequenceModel nerModel = train();
+            String modelFile = mwl + SequenceModel.modelFileName;
+            if (fdw == null) {
+                try {
+                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            System.err.println("Loading model...");
+            SequenceModel nerModel = null;
+            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+            catch(IOException e){e.printStackTrace();}
+            if(nerModel == null)
+                nerModel = train();
             List<Document> docs = archive.getAllDocs();
             int di =0;
             for(Document doc: docs) {

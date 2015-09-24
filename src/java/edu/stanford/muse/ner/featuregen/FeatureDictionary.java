@@ -3,8 +3,6 @@ package edu.stanford.muse.ner.featuregen;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
-import edu.stanford.muse.ner.model.SVMModel;
-import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
@@ -12,13 +10,11 @@ import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm_parameter;
-import org.apache.commons.compress.archivers.zip.UnsupportedZipFeatureException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -31,19 +27,178 @@ import java.util.regex.Pattern;
  * As the name suggests, feature dictionary keeps track of all the features generated during training.
  * During prediction/recognition step, features should be generated through this class, this emits a feature vector representation of the phrase
  * Behaviour of generating feature vector
- * Nominal: generates value based on proportion of times the nominal value appeared in iType to total frquency
+ * Nominal: generates value based on proportion of times the nominal value appeared in iType to total frequency
  * Boolean: Passes the value of the feature generator as is
  * Numeric: Passes the value of the feature generator as is
  * TODO: Explore indexing of this data-structure
  * */
 public class FeatureDictionary implements Serializable {
+    /**
+     * Features for a word that corresponds to a mixture
+     * position: SOLO, INSIDE, BEGIN, END
+     * number of words: number of words in the phrase, can be any value from 1 to 10
+     * left and right labels, LABEL is one of: LOC, ORG,PER, OTHER, NEW, stop words, special chars*/
+    public static class MU{
+        //the likelihood with the type is also considered
+        static String[] TYPE_LABELS = new String[]{"THIS_TYPE","NOT_THIS_TYPE"};
+        //all possible labels of the words to the left and right
+        //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
+        static String[] WORD_LABELS = new String[]{"and","for","to","in","at","on","the","of","LOC","ORG","PER","OTHER","NEW","&",",","NULL"};
+        static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
+        static int NUM_WORDLENGTH_LABELS = 10;
+        //feature and the value, for example: <"LEFT: and",200>
+        Map<String,Double> muVectorPositive;
+        //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
+        double numMixture;
+        public MU() {
+            initialise();
+        }
+
+        //Since we depend on tags of the neighbouring tokens in a big way, we initialise so that the mixture likelihood with type is more precise.
+        //and the likelihood with all the other types to be equally likely
+        public static MU initialise(double numThisType, double numTotal){
+            MU mu = new MU();
+            for(int i=0;i<WORD_LABELS.length;i++){
+                mu.muVectorPositive.put("L:"+WORD_LABELS[i],1.0/WORD_LABELS.length);
+            }
+            for(int i=0;i<WORD_LABELS.length;i++){
+                mu.muVectorPositive.put("R:"+WORD_LABELS[i],1.0/WORD_LABELS.length);
+            }
+            for(int i=0;i<POSITION_LABELS.length;i++) {
+                mu.muVectorPositive.put("PL:" + POSITION_LABELS[i], 1.0/POSITION_LABELS.length);
+            }
+            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++){
+                mu.muVectorPositive.put("WL:" + i, 1.0/NUM_WORDLENGTH_LABELS);
+            }
+            for(int i=0;i<TYPE_LABELS.length;i++){
+                if(i==0) {
+                    mu.muVectorPositive.put(TYPE_LABELS[i], numThisType/numTotal);
+                }
+                else{
+                    mu.muVectorPositive.put(TYPE_LABELS[i], (numTotal - numThisType)/numTotal);
+                }
+            }
+            mu.numMixture = 1;
+            return mu;
+        }
+
+        private void initialise(){
+            muVectorPositive = new LinkedHashMap<>();
+            for(int i=0;i<WORD_LABELS.length;i++){
+                this.muVectorPositive.put("L:"+WORD_LABELS[i],0.0);
+            }
+
+            for(int i=0;i<WORD_LABELS.length;i++){
+                this.muVectorPositive.put("R:"+WORD_LABELS[i],0.0);
+            }
+
+            for(int i=0;i<POSITION_LABELS.length;i++) {
+                this.muVectorPositive.put("PL:" + POSITION_LABELS[i], 0.0);
+            }
+
+            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++){
+                this.muVectorPositive.put("WL:" + i, 0.0);
+            }
+
+            for(int i=0;i<TYPE_LABELS.length;i++){
+                if(i==0) {
+                    this.muVectorPositive.put(TYPE_LABELS[i], 0.0);
+                }
+                else{
+                    this.muVectorPositive.put(TYPE_LABELS[i], 0.0);
+                }
+            }
+            this.numMixture = 0;
+        }
+
+        //returns P(type/this-mixture)
+        public double getLikelihoodWithThisType(){
+            double p1, p2;
+            p1 = muVectorPositive.get(TYPE_LABELS[0]);
+            p2 = numMixture;
+            return p1/p2;
+        }
+
+        //features also include the type of the phrase
+        //returns the log of P(type,features/this-mixture)
+        public double getLikelihood(Set<String> features){
+            double p = 0;
+            for(String f: features){
+                if(!muVectorPositive.containsKey(f)){
+                    System.err.println("!!!FATAL!!! Unknown feature: "+f);
+                    continue;
+                }
+                p += Math.log(muVectorPositive.get(f))-Math.log(numMixture);
+            }
+            return p;
+        }
+
+        //where N is the total number of observations, for normalization
+        public double getPrior(int N){
+            //Initially numMixtures is just set to 1
+            //Initially, this value is used only for computing the gamma value, hence any value,
+            //that remains the same for all the mixtures will do
+            return numMixture/N;
+        }
+
+        /**Maximization step in EM update, update under the assumption that add will be called only if the evidence for the corresponding mixture is seen, i.e. xk!=0
+         * @param resp - responsibility of this mixture in explaing the type and features
+         * @param isOfThisType - if it is of this type
+         * @param features - set of all *relevant* features to this mixture*/
+        public void add(double resp,Boolean isOfThisType, Set<String> features){
+            numMixture += resp;
+            if(isOfThisType)
+                muVectorPositive.put(TYPE_LABELS[0],muVectorPositive.get(TYPE_LABELS[0])+1);
+            else
+                muVectorPositive.put(TYPE_LABELS[1],muVectorPositive.get(TYPE_LABELS[1])+1);
+            for(String f: features){
+                if(!muVectorPositive.containsKey(f)){
+                    System.err.println("!!!FATAL!!! Unknown feature: "+f);
+                    continue;
+                }
+                muVectorPositive.put(f, muVectorPositive.get(f)+1);
+            }
+        }
+
+        public double difference(MU mu){
+            if(this.muVectorPositive == null || mu.muVectorPositive == null)
+                return 0.0;
+            double d = 0;
+            for(String str: muVectorPositive.keySet()){
+                d += Math.pow((muVectorPositive.get(str)/numMixture)-(mu.muVectorPositive.get(str)/mu.numMixture),2);
+            }
+            return Math.sqrt(d);
+        }
+
+        public String print(){
+            String str = "";
+            String p[] = new String[]{"L:","R:","WL:","PL:",""};
+            String[] WORD_LENGTHS = new String[NUM_WORDLENGTH_LABELS];
+            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++)
+                WORD_LENGTHS[i] = i+"";
+            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,WORD_LENGTHS,POSITION_LABELS,TYPE_LABELS};
+            for(int i=0;i<labels.length;i++) {
+                Map<String,Double> some = new LinkedHashMap<>();
+                for(int l=0;l<labels[i].length;l++) {
+                    String d = p[i] + labels[l];
+                    some.put(d, muVectorPositive.get(d) / numMixture);
+                }
+                List<Pair<String,Double>> smap;
+                smap = Util.sortMapByValue(some);
+                for(Pair<String,Double> pair: smap)
+                    str += pair.getFirst()+":"+pair.getSecond();
+                str += "\n";
+            }
+            return str;
+        }
+    }
     private static final long serialVersionUID = 1L;
     //dimension -> instance -> entity type of interest -> #positive type, #negative type
     //patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
-    public Map<String, Map<String, Map<Short, Pair<Double, Double>>>> features = new LinkedHashMap<>();
+    public Map<String, Map<String, Map<Short, Pair<Double,Double>>>> features = new LinkedHashMap<>();
     public static Set<String> newWords = null;
     //threshold to be classified as new word
-    public static int THRESHOLD_FOR_NEW = 10;
+    public static int THRESHOLD_FOR_NEW = 5;
     //contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
     //This can get quite depending on the archive and is not a scalable solution
 
@@ -150,9 +305,6 @@ public class FeatureDictionary implements Serializable {
             String[] words = str.split("\\s+");
             for(int ii=0;ii<words.length-1;ii++) {
                 String cstr = words[ii]+":::"+words[ii+1];
-//                if(!counts.containsKey(cstr))
-//                    counts.put(cstr, 0);
-//                counts.put(cstr, counts.get(cstr)+1);
                 totalcount++;
             }
             numPattsWithDuplicates += words.length;
@@ -257,8 +409,8 @@ public class FeatureDictionary implements Serializable {
 //            if(newWords.contains(word))
 //                word = ":NEW:";
             //if the next word is stop-word, append to the patt
-            if(i<(words.length-1) && sws.contains(words[i+1]))
-                word += " "+words[i+1];
+//            if(i<(words.length-1) && sws.contains(words[i+1]))
+//                word += " "+words[i+1];
 
             if (i > 0 && i < (words.length - 1))
                 t = "*" + word + "*";
@@ -266,7 +418,7 @@ public class FeatureDictionary implements Serializable {
                 t = word + "*";
             else if (i == (words.length - 1) && words.length > 1)
                 t = "*" + word;
-                //references are generally made with first name and this may have continuation like Harvard University or Apple_Inc
+            //references are generally made with first name and this may have continuation like Harvard_University or Apple_Inc
             else t = word;
 
 
@@ -277,15 +429,101 @@ public class FeatureDictionary implements Serializable {
         return patts.toArray(new String[patts.size()]);
     }
 
+    public String getLabel(String word, Map<String, Map<Short, MU>> mixtures){
+        word = word.toLowerCase();
+        if(sws.contains(word))
+            return word;
+        if(word.equals("&")||word.equals(","))
+            return word;
+        if(newWords.contains(word))
+            return "NEW";
+        double per, org, loc, other;
+        per = mixtures.get(word).get(FeatureDictionary.PERSON).getLikelihoodWithThisType();
+        org = mixtures.get(word).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType();
+        loc = mixtures.get(word).get(FeatureDictionary.PLACE).getLikelihoodWithThisType();
+        other = 1-per-org-loc;
+        double m = Math.max(per,org);
+        m = Math.max(m, loc);m = Math.max(m, other);
+        if(m == per)
+            return "PER";
+        if(m == org)
+            return "ORG";
+        if(m == loc)
+            return "LOC";
+        return "OTHER";
+    }
+
+    /**
+     * TODO: move this to an appropriate place
+     * A generative function, that takes the phrase and generates features.
+     * requires mixtures as a parameter, because some of the features depend on this
+     * returns a map of mixture identity to the set of features relevant to the mixture */
+    public Map<String,Set<String>> generateFeatures(String phrase, Map<String, Map<Short, MU>> mixtures, boolean isOfThisType){
+        Map<String, Set<String>> mixtureFeatures = new LinkedHashMap<>();
+        String[] words = phrase.split("\\s+");
+        for(int wi = 0; wi<words.length; wi++){
+            if(sws.contains(words[wi].toLowerCase()))
+                continue;
+            Set<String> features = new LinkedHashSet<>();
+            String prevWord = null, nxtWord = null;
+            if(wi > 0)
+                prevWord = words[wi-1];
+            if(wi < (words.length-1))
+                nxtWord = words[wi+1];
+
+            String prevLabel = getLabel(prevWord, mixtures);
+            String nxtLabel = getLabel(nxtWord, mixtures);
+
+            String posLabel;
+            if(wi==0) {
+                if (words.length == 1)
+                    posLabel = "S";
+                else
+                    posLabel = "B";
+            }
+            else if(wi>0 && wi<(words.length-1)){
+                posLabel = "I";
+            }
+            else //if(wi == (words.length-1))
+                posLabel = "E";
+            String nwlabel = words.length+"";
+            features.add("L:"+prevLabel);
+            features.add("R:"+nxtLabel);
+            features.add("PL:"+posLabel);
+            features.add("WL:"+nwlabel);
+            if(isOfThisType)
+                features.add("THIS_TYPE");
+            else
+                features.add("NOT_THIS_TYPE");
+
+            mixtureFeatures.put(words[wi].toLowerCase(), features);
+        }
+        return mixtureFeatures;
+    }
+
     public void EM(Map<String,String> gazettes){
+        if(newWords == null)
+            computeNewWords();
+
         Map<String, Map<Short,Pair<Double, Double>>> words = features.get("words");
-        Map<String, Map<Short,Pair<Double, Double>>> revisedwords = new LinkedHashMap<>();
-        int MAX_ITER = 5;
+        Map<String, Map<Short,MU>> mixtures = new LinkedHashMap<>();
+        //initialise mixtures
+        for(String word: words.keySet()){
+            word = word.toLowerCase();
+            if(mixtures.get(word)==null)
+                mixtures.put(word, new LinkedHashMap<Short, MU>());
+            for(Short type: words.get(word).keySet()) {
+                Pair<Double,Double> p = words.get(word).get(type);
+                mixtures.get(word).put(type, MU.initialise(p.getFirst(),p.getSecond()));
+            }
+        }
+        Map<String, Map<Short, MU>> revisedMixtures = new LinkedHashMap<>();
+        int MAX_ITER = 1;
+        int N = gazettes.size();
         for(int i=0;i<MAX_ITER;i++) {
             for (String phrase : gazettes.keySet()) {
                 String type = gazettes.get(phrase);
                 for (Short iType : allTypes) {
-                    String[] patts = getPatts(phrase);
                     boolean allowed = false;
                     for (String aType : aTypes.get(iType))
                         if (type.endsWith(aType)) {
@@ -296,63 +534,58 @@ public class FeatureDictionary implements Serializable {
                     double z = 0;
                     //responsibilities
                     Map<String, Double> gamma = new LinkedHashMap<>();
-                    for (String patt : patts) {
-                        if(words.get(patt) == null) {
-                            //System.err.println("Did not find: "+patt+" "+iType);
+                    //Word (sort of mixture identity) -> Features
+                    Map<String,Set<String>> featureMap = generateFeatures(phrase, mixtures, allowed);
+                    for (String mi : featureMap.keySet()) {
+                        //this should not even happen
+                        if(mixtures.get(mi) == null) {
+                            System.err.println("Did not find mixture for: "+ mi +" "+iType);
                             continue;
                         }
-                        Pair<Double, Double> p = words.get(patt).get(iType);
-                        //this should not happen as we are just making pass over gazettes
-                        if (p.getSecond() <= 0)
-                            continue;
-
+                        MU mu = mixtures.get(mi).get(iType);
+                        double d = mu.getLikelihood(featureMap.get(mi))*mu.getPrior(N);
                         //only two tags, org/non-org
-                        double pfreq =  (p.getFirst() + 1)/ (p.getSecond()+2);
-//                        //pfreq and log functions as belief for the measure
-                        double val = Math.log(p.getSecond()+1);
-                        double d = (allowed?pfreq:(1-pfreq)) * val;
                         //by N cancels out whe we normalize
                         //double d = (allowed?pfreq:(1-pfreq)) * (p.getSecond()+2);
-                        gamma.put(patt, d);
+                        gamma.put(mi, d);
                         z += d;
                     }
                     if(z == 0)
                         continue;
-                    //this one, approximates the contribution from all the other mixtures not considered here: ~ 1-n/N, N>>>n
-                    z += 1;
+
                     for (String g : gamma.keySet())
                         gamma.put(g, gamma.get(g) / z);
 
                     for (String g : gamma.keySet()) {
-                        if (!revisedwords.containsKey(g)) {
-                            Map<Short, Pair<Double, Double>> map = new LinkedHashMap<>();
+                        if (!revisedMixtures.containsKey(g)) {
+                            Map<Short, MU> map = new LinkedHashMap<>();
                             for (Short t : allTypes) {
-                                map.put(t, new Pair<>(0.0, 0.0));
+                                map.put(t, new MU());
                             }
-                            revisedwords.put(g, map);
+                            revisedMixtures.put(g, map);
                         }
-                        if (allowed)
-                            revisedwords.get(g).get(iType).first += gamma.get(g);
-                        revisedwords.get(g).get(iType).second += gamma.get(g);
+
+                        revisedMixtures.get(g).get(iType).add(gamma.get(g), allowed, featureMap.get(g));
                     }
                 }
             }
             double change = 0;
-            for(String w: words.keySet())
-                if(revisedwords.containsKey(w))
-                    change += Math.abs(revisedwords.get(w).get(FeatureDictionary.ORGANISATION).getFirst()-words.get(w).get(FeatureDictionary.ORGANISATION).getFirst());
+            for(String mi: mixtures.keySet())
+                if(revisedMixtures.containsKey(mi))
+                    for(Short iType: allTypes)
+                        change += revisedMixtures.get(mi).get(iType).difference(mixtures.get(mi).get(iType));
             log.info("Iter: "+i+", change: "+change);
-            words = revisedwords;
-            revisedwords = new LinkedHashMap<>();
+            mixtures = revisedMixtures;
+            revisedMixtures = new LinkedHashMap<>();
         }
         try {
             FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump");
             Map<String, Double> some = new LinkedHashMap<>();
             for (String w: words.keySet())
-                some.put(w, words.get(w).get(FeatureDictionary.ORGANISATION).getFirst()/words.get(w).get(FeatureDictionary.ORGANISATION).getSecond());
+                some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType());
             List<Pair<String,Double>> ps = Util.sortMapByValue(some);
             for(Pair<String,Double> p: ps)
-                fw.write(p.getFirst()+" ::: "+p.getSecond()+":::"+words.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).getFirst()+":::"+words.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).getSecond()+"\n");
+                fw.write(mixtures.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).print());
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -470,23 +703,6 @@ public class FeatureDictionary implements Serializable {
     public double getMarginal(String word){
         double n = getFreq(word);
         return n/((double)numPatts + numPattsWithDuplicates);
-    }
-
-    /**
-     * @param fw - First word
-     * @param sw - Second word
-     * @returns P(sw/fw)*/
-    public double getMutualInformation(String fw, String sw){
-        return 1.0;
-//        //n(x)
-//        double pfw = getMarginal(fw);
-//        //double psw = getMarginal(sw);
-//        Integer nfsw = counts.get(fw+":::"+sw);
-//        if(nfsw == null)
-//            nfsw = 0;
-//        double tc = 2*Math.log(totalcount+counts.size());
-//        double psfw = Math.log(nfsw+1)-tc;
-//        return psfw - (pfw);
     }
 
     public int numPattHits(String phrase){

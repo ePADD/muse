@@ -37,16 +37,13 @@
     NEREvaluator eval = new NEREvaluator(10000);
     List<String> sents = eval.getSentences();
     Set<String> orgs = new LinkedHashSet<>();
-    double CUTOFF = 1;
+    double CUTOFF = 0;
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents){
         Map<String,Double> some = nerModel.find(sent);
         for(String s: some.keySet()) {
             String[] patts = FeatureDictionary.getPatts(s);
             double x = some.get(s);
-            if(patts.length==0)
-                continue;
-            x /= patts.length;
             if (x > CUTOFF)
                 orgs.add(s);
             all.put(s, x);
