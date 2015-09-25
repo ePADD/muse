@@ -45,7 +45,8 @@ public class FeatureDictionary implements Serializable {
         //all possible labels of the words to the left and right
         //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
         static String[] WORD_LABELS = new String[]{"and","for","to","in","at","on","the","of","LOC","ORG","PER","OTHER","NEW","&",",","NULL"};
-        //static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
+        //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
+        static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
         //static int NUM_WORDLENGTH_LABELS = 10;
         //feature and the value, for example: <"LEFT: and",200>
         Map<String,Double> muVectorPositive;
@@ -95,9 +96,9 @@ public class FeatureDictionary implements Serializable {
             for(String str: WORD_LABELS)
                 if(f.endsWith(str))
                     return WORD_LABELS.length;
-//            for(String str: POSITION_LABELS)
-//                if(f.endsWith(str))
-//                    return POSITION_LABELS.length;
+            for(String str: POSITION_LABELS)
+                if(f.endsWith(str))
+                    return POSITION_LABELS.length;
 //            if(f.startsWith("WL:"))return NUM_WORDLENGTH_LABELS;
             System.err.println("!!!REALLY FATAL!!! Unknown feature: "+f);
             return 0;
@@ -110,22 +111,34 @@ public class FeatureDictionary implements Serializable {
         //features also include the type of the phrase
         //returns the log of P(type,features/this-mixture)
         public double getLikelihood(Set<String> features){
-            double p = 0;
+            double p = 1;
             for(String f: features){
                 int v = getNumberOfSymbols(f);
+                boolean pl = false;
+                if(f.startsWith("PL:"))
+                    pl = true;
+
                 if(!muVectorPositive.containsKey(f)){
-                    //System.err.println("!!!FATAL!!! Unknown feature: "+f);
-                    p += Math.log(1.0)-Math.log(v);
-                    if(Double.isNaN(Math.log(1.0)-Math.log(v)))
-                        System.err.println("Found a nan here: "+ f+", "+v);
+                    //no smoothing in the case of position label
+                    if(pl)
+                        p *= 0;
+                    else {
+                        //System.err.println("!!!FATAL!!! Unknown feature: "+f);
+                        p *= (1.0/v);
+                    }
                     continue;
                 }
-                double val = Math.log(muVectorPositive.get(f)+1)-Math.log(numMixture+v);
+                double val;
+                if(!pl)
+                    val = Math.log(muVectorPositive.get(f)+1)-Math.log(numMixture+v);
+                else
+                    val = muVectorPositive.get(f)/numMixture;
+
                 if(Double.isNaN(val)) {
                     System.err.println("Found a nan here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + v);
                     System.err.println(toString());
                 }
-                p += val;
+                p *= val;
             }
             return p;
         }
@@ -188,11 +201,11 @@ public class FeatureDictionary implements Serializable {
         @Override
         public String toString(){
             String str = "";
-            String p[] = new String[]{"L:","R:",""};
+            String p[] = new String[]{"L:","R:","PL:",""};
 //            String[] WORD_LENGTHS = new String[NUM_WORDLENGTH_LABELS];
 //            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++)
 //                WORD_LENGTHS[i-1] = i+"";
-            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS};
+            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,POSITION_LABELS,TYPE_LABELS};
             for(int i=0;i<labels.length;i++) {
                 Map<String,Double> some = new LinkedHashMap<>();
                 for(int l=0;l<labels[i].length;l++) {
@@ -529,7 +542,7 @@ public class FeatureDictionary implements Serializable {
             String nwlabel = words.length+"";
             features.add("L:"+prevLabel);
             features.add("R:"+nxtLabel);
-//            features.add("PL:"+ posLabel);
+            features.add("PL:"+ posLabel);
 //            features.add("WL:"+nwlabel);
             if(isOfThisType)
                 features.add("Y");
@@ -720,7 +733,7 @@ public class FeatureDictionary implements Serializable {
                 d = features.get(mid).get(type).getLikelihood(tokenFeatures.get(mid));
             else
                 //a likelihood that assumes nothing
-                d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length);
+                d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length);
             if (Double.isNaN(d))
                 System.err.println("Cond nan " + mid + ", " + d);
             double val = d;

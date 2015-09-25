@@ -14,6 +14,9 @@
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+    if(nerModel.dictionary.newWords == null)
+        nerModel.dictionary.computeNewWords();
+
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
