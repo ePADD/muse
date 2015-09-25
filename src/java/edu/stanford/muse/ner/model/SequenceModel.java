@@ -49,7 +49,7 @@ public class SequenceModel implements Serializable{
         //recognises only orgs
         //labels = {O, B, I, E, S} null, beginning, in, end, solo
         //char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
-        List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, false);
+        List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type.equals(FeatureDictionary.PERSON));
         for(Triple<String,Integer,Integer> cand: cands) {
             try {
                 fdw.write(cand.first + "\n");

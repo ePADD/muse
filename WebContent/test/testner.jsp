@@ -8,6 +8,7 @@
 <%@ page import="edu.stanford.muse.util.Util" %>
 <%
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+    Short type = FeatureDictionary.ORGANISATION;
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
@@ -41,7 +42,7 @@
     double CUTOFF = 0;
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents){
-        Map<String,Double> some = nerModel.find(sent, FeatureDictionary.ORGANISATION);
+        Map<String,Double> some = nerModel.find(sent, type);
         for(String s: some.keySet()) {
             String[] patts = FeatureDictionary.getPatts(s);
             double x = some.get(s);
@@ -51,7 +52,7 @@
         }
     }
     List<Pair<String,Double>> lst = Util.sortMapByValue(all);
-    Set<String> borgs = eval.bNames.get(FeatureDictionary.ORGANISATION);
+    Set<String> borgs = eval.bNames.get(type);
     Set<String> temp = new LinkedHashSet<>();
     for(String org: borgs){
         String t = org.replaceAll("^\\W+|\\W+$","");
@@ -77,7 +78,7 @@
     double p = (double)found.size()/orgs.size();
     double r = (double)found.size()/borgs.size();
     double f = 2*p*r/(p+r);
-    Triple<Double,Double, Double> t = eval.evaluate(orgs, FeatureDictionary.ORGANISATION);
+    //Triple<Double,Double, Double> t = eval.evaluate(orgs, FeatureDictionary.ORGANISATION);
     out.println("Precision: "+p+"<br>");
     out.println("Recall: "+r+"<br>");
     out.println("F1: "+f+"<br>");

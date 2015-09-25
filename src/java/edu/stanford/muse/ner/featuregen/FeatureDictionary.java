@@ -566,7 +566,7 @@ public class FeatureDictionary implements Serializable {
 
         Map<String, Map<Short,MU>> mixtures = features;
         Map<String, Map<Short, MU>> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 2;
+        int MAX_ITER = 3;
         int N = gazettes.size();
         int wi = 0;
         for(int i=0;i<MAX_ITER;i++) {
@@ -631,19 +631,20 @@ public class FeatureDictionary implements Serializable {
             log.info("Iter: "+i+", change: "+change);
             mixtures = revisedMixtures;
             revisedMixtures = new LinkedHashMap<>();
-        }
-        try {
-            FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump");
-            Map<String, Double> some = new LinkedHashMap<>();
-            for (String w: mixtures.keySet())
-                some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType()*Math.log(mixtures.get(w).get(FeatureDictionary.ORGANISATION).getFreq()));
-            List<Pair<String,Double>> ps = Util.sortMapByValue(some);
-            for(Pair<String,Double> p: ps) {
-                fw.write("Token: "+p.getFirst()+" : "+p.getSecond()+"\n");
-                fw.write(mixtures.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).toString());
+
+            try {
+                FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump."+i);
+                Map<String, Double> some = new LinkedHashMap<>();
+                for (String w: mixtures.keySet())
+                    some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType()*Math.log(mixtures.get(w).get(FeatureDictionary.ORGANISATION).getFreq()));
+                List<Pair<String,Double>> ps = Util.sortMapByValue(some);
+                for(Pair<String,Double> p: ps) {
+                    fw.write("Token: "+p.getFirst()+" : "+p.getSecond()+"\n");
+                    fw.write(mixtures.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).toString());
+                }
+            }catch(IOException e){
+                e.printStackTrace();
             }
-        }catch(IOException e){
-            e.printStackTrace();
         }
         features = mixtures;
     }
