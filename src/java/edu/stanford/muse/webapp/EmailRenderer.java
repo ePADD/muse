@@ -293,7 +293,7 @@ public class EmailRenderer {
 						else
 							JSPHelper.log.warn("attachments store is null!");
 
-						// print the filename in any case,
+						// toString the filename in any case,
 						String s = attachment.filename;
 						// cap to a length of 25, otherwise the attachment name
 						// overflows the tn

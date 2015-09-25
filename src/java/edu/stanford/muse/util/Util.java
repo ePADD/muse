@@ -2189,7 +2189,7 @@ public class Util
 	// e.g. a.b.c.d to d
 	public static String stripPackageFromClassName(String class_name)
 	{
-		// System.out.print ("input is " + s);
+		// System.out.toString ("input is " + s);
 
 		int z = class_name.lastIndexOf('.');
 		if (z >= 0)

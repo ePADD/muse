@@ -463,7 +463,7 @@ public class Grouper<T extends Comparable<? super T>> implements StatusProvider
 				throw new CancelledException();
 
 			pctComplete = (100 - (graph.size() * 100) / startingGraphSize);
-			statusMessage = "Grouping people"; // can print percentage remaining etc.
+			statusMessage = "Grouping people"; // can toString percentage remaining etc.
 
 			// get the best move on the heap
 			Move<T> currentMove = bmt.firstMove();
@@ -553,7 +553,7 @@ public class Grouper<T extends Comparable<? super T>> implements StatusProvider
 			}
 		}
 
-		//print out the results of groups left in the graph
+		//toString out the results of groups left in the graph
 		for (Iterator<SimilarGroup<T>> iter = graph.getAllGroups().iterator(); iter.hasNext();)
 		{
 			SimilarGroup<T> key = iter.next();

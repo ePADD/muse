@@ -8,7 +8,7 @@ import java.util.Map;
 
 import edu.stanford.muse.util.Util;
 
-/** little class to let us pretty print type hierarchies */
+/** little class to let us pretty toString type hierarchies */
 public class TypeHierarchy {
 	private Map<String, TypeHierarchyNode>	dir	= new LinkedHashMap<String, TypeHierarchyNode>();
 

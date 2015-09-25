@@ -382,7 +382,7 @@ public class Entities implements Serializable, StatusProvider {
 			}
 
 			JSONObject obj = new JSONObject();
-			// now print it out
+			// now toString it out
 			JSONArray classes = new JSONArray();
 			JSONArray contexts = new JSONArray();
 			JSONArray values = new JSONArray();

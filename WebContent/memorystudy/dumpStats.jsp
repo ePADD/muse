@@ -96,7 +96,7 @@ text-align:right;
 	} 
 	if (!csv) { out.println("</table>"); }
 
-	// For each contact, we should print out the last date of communication with them, going backwards in time (visually separated by month)
+	// For each contact, we should toString out the last date of communication with them, going backwards in time (visually separated by month)
 	// Similarly, for each entity (all types, as well as broken down by P/L/O
 
 	%>

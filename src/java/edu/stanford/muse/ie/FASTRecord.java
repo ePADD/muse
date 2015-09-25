@@ -344,7 +344,7 @@ abstract public class FASTRecord {
 
 		sb.append("<br/><div class=\"ids\">");
 
-		// if is a Geographic type then also print latitude and longitude.
+		// if is a Geographic type then also toString latitude and longitude.
 		if (this instanceof FASTGeographic) {
 			FASTGeographic fg = (FASTGeographic) this;
 			if (fg.latitude != null && fg.longitude != null) {

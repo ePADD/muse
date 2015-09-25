@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="images/muse-favicon.png">
 <jsp:include page="../css/css.jsp"/>
 <link type="text/css" rel="stylesheet" href="../css/xword.css"/>
-<!--  <link rel="stylesheet" type"text/css" href="css/printxword.css" media="print">  -->
+<!--  <link rel="stylesheet" type"text/css" href="css/printxword.css" media="toString">  -->
 <link href="../css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/> 
 
 <form method="post" action="../crossword">

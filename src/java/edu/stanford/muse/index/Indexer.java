@@ -619,7 +619,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * 
 	 * multiDocsIndexed++; // IndexUtils.dumpDocument(clusterPrefix,
 	 * clusterText); // i don't think we need to do this except for debugging
-	 * System.out.print("."); // goes to console, that's ok...
+	 * System.out.toString("."); // goes to console, that's ok...
 	 * 
 	 * if (md.docs.size() > 0) { String stat2 = ("Memory status after indexing "
 	 * + docsIndexed + " of " + allDocs.size() + " documents in " +

@@ -307,7 +307,7 @@ public class JSONUtils {
 		JSONObject result = new JSONObject();
 		result.put ("group", jsonForGroup (ab, g));	// the top level group
 		List<SimilarGroup<String>> children = parentToChildrenMap.get(g);
-		if (children != null && children.size() > 0) // don't print <td></td> if there are no children
+		if (children != null && children.size() > 0) // don't toString <td></td> if there are no children
 		{
 			JSONArray subsets = new JSONArray();
 			for (int i = 0; i < children.size(); i++)

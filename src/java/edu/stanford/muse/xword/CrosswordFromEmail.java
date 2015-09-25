@@ -27,7 +27,7 @@ public class CrosswordFromEmail {
 	
 	public static Crossword createCrossword (Map<String, String> params, HttpSession session) throws Exception
 	{
-		// print a count of the most popular names
+		// toString a count of the most popular names
 
 		int timeoutMillis = DEFAULT_TIMEOUT_MILLIS;
 		String millisStr = params.get("millis");
