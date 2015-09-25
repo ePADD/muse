@@ -41,10 +41,10 @@ public class SequenceModel implements Serializable{
 
     }
 
-    public Map<String,Double> find(String content) {
+    public Map<String,Double> find(String content, Short type) {
         //check if the model is initialised
 
-        List<String> commonWords = Arrays.asList("as","because","just","in","by","for","and","to","on","of","dear","according","think","a","an","if","at","but","the");
+        List<String> commonWords = Arrays.asList("as","because","just","in","by","for","and","to","on","of","dear","according","think","a","an","if","at","but","the","is");
         Map<String, Double> map = new LinkedHashMap<>();
         //recognises only orgs
         //labels = {O, B, I, E, S} null, beginning, in, end, solo
@@ -81,8 +81,8 @@ public class SequenceModel implements Serializable{
                         continue;
 
                     //String[] patts = FeatureDictionary.getPatts(substr);
-                    sorg = dictionary.getConditional(substr, FeatureDictionary.ORGANISATION, true);
-                    snon_org = dictionary.getConditional(substr, FeatureDictionary.ORGANISATION, false);
+                    sorg = dictionary.getConditional(substr, type, true);
+                    snon_org = dictionary.getConditional(substr, type, false);
                     fdw.write("String: "+substr+" - "+sorg+" "+ snon_org + "\n");
                     ssubstrs.put(substr, sorg-snon_org);
                 }
@@ -163,7 +163,7 @@ public class SequenceModel implements Serializable{
             int di =0;
             for(Document doc: docs) {
                 String content = archive.getContents(doc, true);
-                nerModel.find(content);
+                nerModel.find(content, FeatureDictionary.ORGANISATION);
                 if(di++>10)
                     break;
             }

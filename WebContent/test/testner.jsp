@@ -41,7 +41,7 @@
     double CUTOFF = 0;
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents){
-        Map<String,Double> some = nerModel.find(sent);
+        Map<String,Double> some = nerModel.find(sent, FeatureDictionary.ORGANISATION);
         for(String s: some.keySet()) {
             String[] patts = FeatureDictionary.getPatts(s);
             double x = some.get(s);

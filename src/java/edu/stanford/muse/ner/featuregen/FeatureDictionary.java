@@ -44,7 +44,7 @@ public class FeatureDictionary implements Serializable {
         static String[] TYPE_LABELS = new String[]{"Y","N"};
         //all possible labels of the words to the left and right
         //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
-        static String[] WORD_LABELS = new String[]{"and","for","to","in","at","on","the","of","LOC","ORG","PER","OTHER","NEW","&",",","NULL"};
+        static String[] WORD_LABELS = new String[]{"and","for","to","in","at","on","the","of","a","an","is","LOC","ORG","PER","OTHER","NEW","&",",","NULL"};
         //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
         //static int NUM_WORDLENGTH_LABELS = 10;
@@ -134,7 +134,7 @@ public class FeatureDictionary implements Serializable {
                 }
                 double val;
                 if(smooth)
-                    val = Math.log(muVectorPositive.get(f)+1)-Math.log(numMixture+v);
+                    val = (muVectorPositive.get(f)+1)/(numMixture+v);
                 else
                     val = muVectorPositive.get(f)/numMixture;
 

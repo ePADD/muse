@@ -1326,67 +1326,57 @@ public class EmailUtils {
 	}
 
 	public static Map<String, String> readDBpedia() {
-		String typesFile = "instance_types_en.nt1.gz";
-		if (dbpedia != null)
-			return dbpedia;
-		dbpedia = new LinkedHashMap<String, String>();
-		int d = 0, numPersons = 0, lines = 0;
-		try {
-			LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new GZIPInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));//EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));
-			while (true)
-			{
-				String line = lnr.readLine();
-				if (line == null)
-					break;
-				if (lines++ % 500000 == 0)
-					log.info ("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
-                if(lines>10000)
+        String typesFile = "instance_types_en.nt1.gz";
+        if (dbpedia != null)
+            return dbpedia;
+        dbpedia = new LinkedHashMap<String, String>();
+        int d = 0, numPersons = 0, lines = 0;
+        try {
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new GZIPInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));//EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));
+            while (true) {
+                String line = lnr.readLine();
+                if (line == null)
                     break;
+                if (lines++ % 500000 == 0)
+                    log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
+//                if (lines > 10000)
+//                    break;
 
-				if (line.contains("GivenName"))
-					continue;
+                if (line.contains("GivenName"))
+                    continue;
 
-				String r = null;
-				StringTokenizer st = new StringTokenizer(line);
-				if (st.hasMoreTokens())
-				{
-					r = st.nextToken();
+                String[] words = line.split("\\s+");
+                String r = words[0];
 
-					/**
-					 * The types file contains lines like this:
-					 * National_Bureau_of_Asian_Research Organisation|Agent
-					 * National_Bureau_of_Asian_Research__1 PersonFunction
-					 * National_Bureau_of_Asian_Research__2 PersonFunction
-					 * Which leads to classifying "National_Bureau_of_Asian_Research" as PersonFunction and not Org.
-					 */
-					if (r.contains("__"))
-					{
-						d++;
-						continue;
-						//					r = r.replaceAll("\\_\\_.$", "");
-						//					r = r.replaceAll("^.+?\\_\\_", "");
-					}
-					//if it still contains this, is a bad title.
-					if (r.equals("") || r.contains("__"))
-					{
-						d++;
-						continue;
-					}
-                    r = r.replaceAll("_\\(.*?\\)","");
-					String title = r.replaceAll("_", " ");
-					if (st.hasMoreTokens())
-					{
-						String type = st.nextToken();
-						String badSuffix = "|Agent";
-						if (type.endsWith(badSuffix) && type.length() > badSuffix.length())
-							type = type.substring(0, type.length() - badSuffix.length());
-						if (type.contains("|Person"))
-							numPersons++;
-						type = type.intern(); // type strings are repeated very often, so intern
-						dbpedia.put(title, type);
-					}
-				}
-			}
+                /**
+                 * The types file contains lines like this:
+                 * National_Bureau_of_Asian_Research Organisation|Agent
+                 * National_Bureau_of_Asian_Research__1 PersonFunction
+                 * National_Bureau_of_Asian_Research__2 PersonFunction
+                 * Which leads to classifying "National_Bureau_of_Asian_Research" as PersonFunction and not Org.
+                 */
+                if (r.contains("__")) {
+                    d++;
+                    continue;
+                    //					r = r.replaceAll("\\_\\_.$", "");
+                    //					r = r.replaceAll("^.+?\\_\\_", "");
+                }
+                //if it still contains this, is a bad title.
+                if (r.equals("") || r.contains("__")) {
+                    d++;
+                    continue;
+                }
+                r = r.replaceAll("_\\(.*?\\)", "");
+                String title = r;
+                String type = words[1];
+                String badSuffix = "|Agent";
+                if (type.endsWith(badSuffix) && type.length() > badSuffix.length())
+                    type = type.substring(0, type.length() - badSuffix.length());
+                if (type.contains("|Person"))
+                    numPersons++;
+                type = type.intern(); // type strings are repeated very often, so intern
+                dbpedia.put(title, type);
+            }
 			lnr.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1397,4 +1387,9 @@ public class EmailUtils {
 
 		return dbpedia;
 	}
+
+    public static void main(String[] args){
+        Map<String,String> dbpedia = readDBpedia();
+        System.err.println(dbpedia.containsKey("Samsung"));
+    }
 }

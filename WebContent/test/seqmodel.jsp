@@ -76,6 +76,9 @@
             e.printStackTrace();
         }
     }
+    if(nerModel.dictionary.newWords == null)
+        nerModel.dictionary.computeNewWords();
+
     //List<Document> docs = archive.getAllDocs();
     Map<String,Double> all = new LinkedHashMap<String, Double>();
     int i=0;
@@ -83,7 +86,7 @@
     List<Document> docs = archive.getAllDocs();
     for(Document doc: docs){
         String content = archive.getContents(doc, true);
-        Map<String,Double> some = nerModel.find(content);
+        Map<String,Double> some = nerModel.find(content, FeatureDictionary.ORGANISATION);
         for(String s: some.keySet())
             all.put(s, some.get(s));
         if(i++%1000 == 0)
@@ -91,12 +94,11 @@
     }
 
     Map<String, Pair<Integer,Integer>> patts = new LinkedHashMap<>();
-    Map<String,Map<Short, Pair<Double,Double>>> words = nerModel.dictionary.features.get("words");
 
     List<Pair<String,Double>> sall = Util.sortMapByValue(all);
     for(Pair<String,Double> p: sall) {
-        String not = new Some().getNotation(p.getFirst(), words);
-        Pair<Integer, Integer> pair = patts.get(not);
-        out.println(p.getFirst() + " ::: " + p.getSecond() + " ::: " + not + "<br>");
+        //String not = new Some().getNotation(p.getFirst(), words);
+        //Pair<Integer, Integer> pair = patts.get(not);
+        out.println(p.getFirst() + " ::: " + p.getSecond()+ "<br>");
     }
 %>

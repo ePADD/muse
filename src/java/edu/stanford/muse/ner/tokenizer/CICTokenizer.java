@@ -83,7 +83,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 
 		//[\"'_:\\s]*
 		//number of times special chars between words can recur
-		String recur = "{1,3}";
+		String recur = "{1}";
 		//doe not allow more than two stop words occuring between two ic words.
 		//should more than one sw be allowed? "The Supreme Court of the United States" or "The Supreme Court"?
 		String nps = "(" + nameP + "([" + allowedCharsOther + "]" + recur + "(" + nameP + "[" + allowedCharsOther + "]" + recur + "|(" + stopWordsPattern + "[" + allowedCharsOther + "]" + recur + "))*" + nameP + ")?)";
