@@ -31,8 +31,9 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	static Pattern	personNamePattern, entityPattern, acronymPattern;
 	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at","of", "in"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
+    private static final long serialVersionUID = 1L;
 
-	static {
+    static {
 		initPattern();
 	}
 

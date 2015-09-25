@@ -40,12 +40,12 @@ public class FeatureDictionary implements Serializable {
      * left and right labels, LABEL is one of: LOC, ORG,PER, OTHER, NEW, stop words, special chars*/
     public static class MU{
         //the likelihood with the type is also considered
-        static String[] TYPE_LABELS = new String[]{"THIS_TYPE","NOT_THIS_TYPE"};
+        static String[] TYPE_LABELS = new String[]{"Y","N"};
         //all possible labels of the words to the left and right
         //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
         static String[] WORD_LABELS = new String[]{"and","for","to","in","at","on","the","of","LOC","ORG","PER","OTHER","NEW","&",",","NULL"};
-        static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
-        static int NUM_WORDLENGTH_LABELS = 10;
+        //static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
+        //static int NUM_WORDLENGTH_LABELS = 10;
         //feature and the value, for example: <"LEFT: and",200>
         Map<String,Double> muVectorPositive;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
@@ -72,30 +72,6 @@ public class FeatureDictionary implements Serializable {
 
         private void initialise(){
             muVectorPositive = new LinkedHashMap<>();
-//            for(int i=0;i<WORD_LABELS.length;i++){
-//                this.muVectorPositive.put("L:"+WORD_LABELS[i],0.0);
-//            }
-//
-//            for(int i=0;i<WORD_LABELS.length;i++){
-//                this.muVectorPositive.put("R:"+WORD_LABELS[i],0.0);
-//            }
-//
-//            for(int i=0;i<POSITION_LABELS.length;i++) {
-//                this.muVectorPositive.put("PL:" + POSITION_LABELS[i], 0.0);
-//            }
-//
-//            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++){
-//                this.muVectorPositive.put("WL:" + i, 0.0);
-//            }
-//
-//            for(int i=0;i<TYPE_LABELS.length;i++){
-//                if(i==0) {
-//                    this.muVectorPositive.put(TYPE_LABELS[i], 0.0);
-//                }
-//                else{
-//                    this.muVectorPositive.put(TYPE_LABELS[i], 0.0);
-//                }
-//            }
             this.numMixture = 0;
         }
 
@@ -118,10 +94,10 @@ public class FeatureDictionary implements Serializable {
             for(String str: WORD_LABELS)
                 if(f.endsWith(str))
                     return WORD_LABELS.length;
-            for(String str: POSITION_LABELS)
-                if(f.endsWith(str))
-                    return POSITION_LABELS.length;
-            if(f.startsWith("WL:"))return NUM_WORDLENGTH_LABELS;
+//            for(String str: POSITION_LABELS)
+//                if(f.endsWith(str))
+//                    return POSITION_LABELS.length;
+//            if(f.startsWith("WL:"))return NUM_WORDLENGTH_LABELS;
             System.err.println("!!!REALLY FATAL!!! Unknown feature: "+f);
             return 0;
         }
@@ -207,11 +183,11 @@ public class FeatureDictionary implements Serializable {
         @Override
         public String toString(){
             String str = "";
-            String p[] = new String[]{"L:","R:","WL:","PL:",""};
-            String[] WORD_LENGTHS = new String[NUM_WORDLENGTH_LABELS];
-            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++)
-                WORD_LENGTHS[i-1] = i+"";
-            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,WORD_LENGTHS,POSITION_LABELS,TYPE_LABELS};
+            String p[] = new String[]{"L:","R:",""};
+//            String[] WORD_LENGTHS = new String[NUM_WORDLENGTH_LABELS];
+//            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++)
+//                WORD_LENGTHS[i-1] = i+"";
+            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS};
             for(int i=0;i<labels.length;i++) {
                 Map<String,Double> some = new LinkedHashMap<>();
                 for(int l=0;l<labels[i].length;l++) {
@@ -539,12 +515,12 @@ public class FeatureDictionary implements Serializable {
             String nwlabel = words.length+"";
             features.add("L:"+prevLabel);
             features.add("R:"+nxtLabel);
-            features.add("PL:"+ posLabel);
-            features.add("WL:"+nwlabel);
+//            features.add("PL:"+ posLabel);
+//            features.add("WL:"+nwlabel);
             if(isOfThisType)
-                features.add("THIS_TYPE");
+                features.add("Y");
             else
-                features.add("NOT_THIS_TYPE");
+                features.add("N");
 
             mixtureFeatures.put(words[wi].toLowerCase(), features);
         }
