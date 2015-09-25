@@ -367,7 +367,7 @@ import java.util.*;
                     if (DictUtils.fullDictWords.contains(t.toLowerCase()) || Indexer.MUSE_STOP_WORDS_SET.contains(t.toLowerCase()))
                         num++;
                 double maxp = -1;
-                maxp = dictionary.getMaxpfreq(h, iType);
+                //maxp = dictionary.getMaxpfreq(h, iType);
 
                 //add to training sequence only if all the words are dictionary words or the max chance of having a person name is less than 0.25.
                 //maxp is set to -1 if it cannot find any of the tokens in the gazette list

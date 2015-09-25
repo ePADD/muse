@@ -103,7 +103,10 @@ public class SVMModel implements NERModel, Serializable {
                                 if(dictionary.features.get("words").get(w)==null)
                                     r = 0;
                                 else {
-                                    Pair<Double, Double> p = dictionary.features.get("words").get(w).get(type);
+                                    Pair<Double, Double> p = new Pair<>(0.0,0.0);
+                                    FeatureDictionary.MU mu = dictionary.features.get(w).get(type);
+                                    p.first = mu.getLikelihoodWithThisType()*mu.getFreq();
+                                    p.second = mu.getFreq();
                                     r = p.getFirst() / p.getSecond();
                                 }
                                 maxs = Math.max(r, maxs);

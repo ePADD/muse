@@ -10,6 +10,7 @@ import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm_parameter;
+import org.apache.commons.collections.map.LinkedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -38,7 +39,7 @@ public class FeatureDictionary implements Serializable {
      * position: SOLO, INSIDE, BEGIN, END
      * number of words: number of words in the phrase, can be any value from 1 to 10
      * left and right labels, LABEL is one of: LOC, ORG,PER, OTHER, NEW, stop words, special chars*/
-    public static class MU{
+    public static class MU implements Serializable{
         //the likelihood with the type is also considered
         static String[] TYPE_LABELS = new String[]{"Y","N"};
         //all possible labels of the words to the left and right
@@ -49,7 +50,7 @@ public class FeatureDictionary implements Serializable {
         //feature and the value, for example: <"LEFT: and",200>
         Map<String,Double> muVectorPositive;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
-        double numMixture;
+        public double numMixture;
         public MU() {
             initialise();
         }
@@ -100,6 +101,10 @@ public class FeatureDictionary implements Serializable {
 //            if(f.startsWith("WL:"))return NUM_WORDLENGTH_LABELS;
             System.err.println("!!!REALLY FATAL!!! Unknown feature: "+f);
             return 0;
+        }
+
+        public double getFreq(){
+            return numMixture;
         }
 
         //features also include the type of the phrase
@@ -209,7 +214,8 @@ public class FeatureDictionary implements Serializable {
     private static final long serialVersionUID = 1L;
     //dimension -> instance -> entity type of interest -> #positive type, #negative type
     //patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
-    public Map<String, Map<String, Map<Short, Pair<Double,Double>>>> features = new LinkedHashMap<>();
+    //mixtures of the BMM model
+    public Map<String, Map<Short, MU>> features = new LinkedHashMap<>();
     public static Set<String> newWords = null;
     //threshold to be classified as new word
     public static int THRESHOLD_FOR_NEW = 1;
@@ -221,7 +227,6 @@ public class FeatureDictionary implements Serializable {
     //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
     public int totalcount = 0;
     //total number of word patterns
-    public Integer numPatts=0, numPattsWithDuplicates=0;
 
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3;
@@ -298,6 +303,7 @@ public class FeatureDictionary implements Serializable {
         int g = 0, nume = 0;
         final int gs = gazettes.size();
         int gi = 0;
+        Map<String, Map<String,Map<Short, Pair<Double, Double>>>> lfeatures = new LinkedHashMap<>();
         for (String str : gazettes.keySet()) {
             tms = System.currentTimeMillis();
 
@@ -313,7 +319,7 @@ public class FeatureDictionary implements Serializable {
             for (FeatureGenerator fg : featureGens) {
                 if (!fg.getContextDependence()) {
                     for (Short iType : allTypes)
-                        add(fg.createFeatures(str, null, null, iType), entityType, iType);
+                        add(lfeatures, fg.createFeatures(str, null, null, iType), entityType, iType);
                 }
             }
             String[] words = str.split("\\s+");
@@ -321,7 +327,6 @@ public class FeatureDictionary implements Serializable {
                 String cstr = words[ii]+":::"+words[ii+1];
                 totalcount++;
             }
-            numPattsWithDuplicates += words.length;
 
             timeToComputeFeatures += System.currentTimeMillis() - tms;
 
@@ -334,7 +339,16 @@ public class FeatureDictionary implements Serializable {
 
         log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
-        numPatts = features.get("words").size();
+
+        Map<String, Map<Short, Pair<Double,Double>>> words = lfeatures.get("words");
+        for(String str: words.keySet()){
+            if(!features.containsKey(str))
+                features.put(str, new LinkedHashMap<Short, MU>());
+            for(Short type: words.get(str).keySet()){
+                Pair<Double,Double> p = words.get(str).get(type);
+                features.get(str).put(type, MU.initialise(p.getFirst(), p.getSecond()));
+            }
+        }
 
         return this;
     }
@@ -345,13 +359,13 @@ public class FeatureDictionary implements Serializable {
     }
 
     //should not try to build dictionry outside of this method
-    private void add(Map<String, List<String>> wfeatures, String type, Short iType) {
+    private void add( Map<String, Map<String,Map<Short, Pair<Double, Double>>>> lfeatures, Map<String, List<String>> wfeatures, String type, Short iType) {
         if(wfeatures==null)
             return;
         for (String dim : wfeatures.keySet()) {
-            if (!features.containsKey(dim))
-                features.put(dim, new LinkedHashMap<String, Map<Short, Pair<Double, Double>>>());
-            Map<String, Map<Short, Pair<Double, Double>>> hm = features.get(dim);
+            if (!lfeatures.containsKey(dim))
+                lfeatures.put(dim, new LinkedHashMap<String, Map<Short, Pair<Double, Double>>>());
+            Map<String, Map<Short, Pair<Double, Double>>> hm = lfeatures.get(dim);
             if (wfeatures.get(dim) != null)
                 for (String val : wfeatures.get(dim)) {
                     if (!hm.containsKey(val)) {
@@ -369,7 +383,7 @@ public class FeatureDictionary implements Serializable {
                     p.second++;
                     hm.get(val).put(iType, p);
                 }
-            features.put(dim, hm);
+            lfeatures.put(dim, hm);
         }
     }
 
@@ -532,25 +546,11 @@ public class FeatureDictionary implements Serializable {
             computeNewWords();
         System.err.println("Done computing new words");
 
-        Map<String, Map<Short,Pair<Double, Double>>> words = features.get("words");
-        Map<String, Map<Short,MU>> mixtures = new LinkedHashMap<>();
-        int N1 = words.size();
-        int wi = 0;
-        //initialise mixtures
-        for(String word: words.keySet()){
-            word = word.toLowerCase();
-            if(mixtures.get(word)==null)
-                mixtures.put(word, new LinkedHashMap<Short, MU>());
-            for(Short type: words.get(word).keySet()) {
-                Pair<Double,Double> p = words.get(word).get(type);
-                mixtures.get(word).put(type, MU.initialise(p.getFirst(),p.getSecond()));
-            }
-            if(wi++%1000 == 0)
-                System.err.println(wi+"/"+N1);
-        }
+        Map<String, Map<Short,MU>> mixtures = features;
         Map<String, Map<Short, MU>> revisedMixtures = new LinkedHashMap<>();
         int MAX_ITER = 2;
         int N = gazettes.size();
+        int wi = 0;
         for(int i=0;i<MAX_ITER;i++) {
             wi =0;
             for (String phrase : gazettes.keySet()) {
@@ -617,7 +617,7 @@ public class FeatureDictionary implements Serializable {
         try {
             FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump");
             Map<String, Double> some = new LinkedHashMap<>();
-            for (String w: words.keySet())
+            for (String w: features.keySet())
                 some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType());
             List<Pair<String,Double>> ps = Util.sortMapByValue(some);
             for(Pair<String,Double> p: ps) {
@@ -627,7 +627,7 @@ public class FeatureDictionary implements Serializable {
         }catch(IOException e){
             e.printStackTrace();
         }
-        features.put("words", words);
+        features = mixtures;
     }
 
     private static FeatureDictionary buildAndDumpDictionary(Map<String,String> gazz, String fn){
@@ -665,21 +665,21 @@ public class FeatureDictionary implements Serializable {
         }
     }
 
-    public double getMaxpfreq(String name, Short iType) {
-        String[] words = name.split("\\s+");
-        double p = 0;
-        for (String word : words) {
-            double pw = 0;
-            try {
-                Pair<Double, Double> freqs = features.get("word").get(word).get(iType);
-                pw = (double) freqs.first / freqs.second;
-            } catch (Exception e) {
-                ;
-            }
-            p = Math.max(pw, p);
-        }
-        return p;
-    }
+//    public double getMaxpfreq(String name, Short iType) {
+//        String[] words = name.split("\\s+");
+//        double p = 0;
+//        for (String word : words) {
+//            double pw = 0;
+//            try {
+//                Pair<Double, Double> freqs = features.get("word").get(word).get(iType);
+//                pw = (double) freqs.first / freqs.second;
+//            } catch (Exception e) {
+//                ;
+//            }
+//            p = Math.max(pw, p);
+//        }
+//        return p;
+//    }
 
     /**
      * returns the value of the dimension in the features generated
@@ -710,66 +710,75 @@ public class FeatureDictionary implements Serializable {
         return cleanAB;
     }
 
+    //not using logarithms, since the number of symbols is less
+    public double getConditional(String phrase, Short type, boolean isOfThisType){
+        Map<String, Set<String>> tokenFeatures = generateFeatures(phrase, this.features, isOfThisType);
+        double sorg = 0;
+        for(String mid: tokenFeatures.keySet()) {
+            Double d;
+            if(features.get(mid) != null)
+                d = features.get(mid).get(type).getLikelihood(tokenFeatures.get(mid));
+            else
+                //a likelihood that assumes nothing
+                d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length);
+            if (Double.isNaN(d))
+                System.err.println("Cond nan " + mid + ", " + d);
+            double val = d;
+            if(val>0){
+                double freq = 0;
+                if(features.get(mid) != null)
+                    freq = features.get(mid).get(type).getFreq();
+                val *= 1+freq;
+            }
+            sorg += val;//*dictionary.getMarginal(word);
+        }
+        return sorg;
+    }
+
     //P(tag/x,type);
-    public double getConditional(String word, String patt, Short type){
-        Map<Short,Pair<Double,Double>> pairMap;
-        pairMap = features.get("words").get(patt);
+//    public double getConditional(String word, String patt, Short type){
+//        Map<Short,Pair<Double,Double>> pairMap;
+//        pairMap = features.get("words").get(patt);
+//
+//        Pair<Double,Double> p;
+//        if(pairMap == null||pairMap.get(type) == null || pairMap.get(type).getSecond()==0)
+//            return 0.0;//p = new Pair<>(0.0,0.0);
+//        else
+//            p = pairMap.get(type);
+//        return p.getFirst()/p.getSecond();
+//    }
 
-        Pair<Double,Double> p;
-        if(pairMap == null||pairMap.get(type) == null || pairMap.get(type).getSecond()==0)
-            return 0.0;//p = new Pair<>(0.0,0.0);
-        else
-            p = pairMap.get(type);
-        return p.getFirst()/p.getSecond();
-    }
-
-    //returns smoothed frequency
-    public double getFreq(String patt){
-        //some dummy type;
-        Short type = FeatureDictionary.PERSON;
-        Map<Short,Pair<Double,Double>> pairMap;
-        pairMap = features.get("words").get(patt);
-        Pair<Double,Double> p;
-        if(pairMap == null||pairMap.get(FeatureDictionary.ORGANISATION) == null)
-            p = new Pair<>(0.0,0.0);
-        else
-            p = pairMap.get(type);
-        return p.getSecond();
-    }
+//    //returns smoothed frequency
+//    public double getFreq(String patt){
+//        //some dummy type;
+//        Short type = FeatureDictionary.PERSON;
+//        Map<Short,Pair<Double,Double>> pairMap;
+//        pairMap = features.get("words").get(patt);
+//        Pair<Double,Double> p;
+//        if(pairMap == null||pairMap.get(FeatureDictionary.ORGANISATION) == null)
+//            p = new Pair<>(0.0,0.0);
+//        else
+//            p = pairMap.get(type);
+//        return p.getSecond();
+//    }
 
     //P(x)
-    public double getMarginal(String word){
-        double n = getFreq(word);
-        return n/((double)numPatts + numPattsWithDuplicates);
-    }
+//    public double getMarginal(String word){
+//        double n = getFreq(word);
+//        return n/((double)numPatts + numPattsWithDuplicates);
+//    }
 
-    public int numPattHits(String phrase){
-        String[] words = phrase.split("\\s+");
-        int wi =0, numHits = 0;
-        String[] patts = FeatureDictionary.getPatts(phrase);
-        for(String patt: patts) {
-            Map<Short, Pair<Double, Double>> pairMap = features.get("words").get(patt);
-            if (pairMap != null && pairMap.get(FeatureDictionary.ORGANISATION) != null) {
-                Pair<Double, Double> p = pairMap.get(FeatureDictionary.ORGANISATION);
-                if(p.getFirst()>0 && p.getSecond()>0)
-                    numHits++;
-            }
-            wi++;
-        }
-        return numHits;
-    }
-
-    @Override
-    public String toString() {
-        String res = "";
-        for (String dim : features.keySet()) {
-            res += "Dim:" + dim + "--";
-            for (String val : features.get(dim).keySet())
-                res += val + ":::" + features.get(dim).get(val) + "---";
-            res += "\n";
-        }
-        return res;
-    }
+//    @Override
+//    public String toString() {
+//        String res = "";
+//        for (String dim : features.keySet()) {
+//            res += "Dim:" + dim + "--";
+//            for (String val : features.get(dim).keySet())
+//                res += val + ":::" + features.get(dim).get(val) + "---";
+//            res += "\n";
+//        }
+//        return res;
+//    }
 
     //TODO: get a better location for this method
     public static svm_parameter getDefaultSVMParam() {

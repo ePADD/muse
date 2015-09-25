@@ -43,9 +43,14 @@ public class FeatureVector implements Serializable {
                         double maxcount = 0;
 						Pair<Double, Double> p = null;
 						for (String val : features.get(dim)) {
-							if (dictionary.features.get(dim)!=null && dictionary.features.get(dim).containsKey(val))
-								p = dictionary.features.get(dim).get(val).get(iType);
-							//There can be pairs like <0,0> as we try to emit person like features and organisation like features for an entity
+							if (dictionary.features.get(dim)!=null && dictionary.features.get(dim).containsKey(val)) {
+                                p = new Pair<>(0.0, 0.0);
+                                FeatureDictionary.MU mu = dictionary.features.get(val).get(type);
+                                p.first = mu.getLikelihoodWithThisType() * mu.getFreq();
+                                p.second = mu.getFreq();
+                            }
+
+                            //There can be pairs like <0,0> as we try to emit person like features and organisation like features for an entity
                             if(p!=null && p.second>0) {
 								double ratio = (double) p.first / (double) p.second;
 								maxfreq = Math.max(maxfreq, ratio);

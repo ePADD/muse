@@ -80,24 +80,10 @@ public class SequenceModel implements Serializable{
                     if(commonWords.contains(fw)||commonWords.contains(sw))
                         continue;
 
-                    String[] patts = FeatureDictionary.getPatts(substr);
-                    for(String patt: patts) {
-                        String word = patt;
-                        word = word.replaceAll("^\\*|\\*$","");
-                        word = FeatureDictionary.endClean.matcher(word).replaceAll("");
-                        Double d = dictionary.getConditional(word, patt, FeatureDictionary.ORGANISATION);
-                        if (Double.isNaN(d))
-                            System.err.println("Cond nan " + patt + ", " + d);
-                        double val = d, vc = 1-d;
-                        if(val>0){
-                           double freq = dictionary.getFreq(patt);
-                           val *= Math.log(1+freq);
-                           vc *= Math.log(1+freq);
-                        }
-                        fdw.write("Patt: "+patt+" - "+val+" nc: "+ vc +"\n");
-                        sorg += val;//*dictionary.getMarginal(word);
-                        snon_org += vc;
-                    }
+                    //String[] patts = FeatureDictionary.getPatts(substr);
+                    sorg = dictionary.getConditional(substr, FeatureDictionary.ORGANISATION, true);
+                    snon_org = dictionary.getConditional(substr, FeatureDictionary.ORGANISATION, false);
+                    fdw.write("String: "+substr+" - "+sorg+" "+ snon_org + "\n");
                     ssubstrs.put(substr, sorg-snon_org);
                 }
                 List<Pair<String,Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
@@ -184,26 +170,6 @@ public class SequenceModel implements Serializable{
             String[] patts = new String[]{"company","company*","*company*","*company","O"};
 
             double p = 0;
-            for(String patt: patts) {
-                double x = nerModel.dictionary.getConditional("company", patt, FeatureDictionary.ORGANISATION);
-                System.err.println("Conditional: [" + p + "] " + x);
-                p+=x;
-            }
-            System.err.println("Peace project: " + nerModel.dictionary.counts.get("Peace:::Project"));
-
-            try {
-                fdw.close();
-            }catch(IOException e) {
-                e.printStackTrace();
-            }
-            System.err.println(nerModel.dictionary.features.get("words").get("*Company").get(FeatureDictionary.ORGANISATION));
-            System.err.println(nerModel.dictionary.features.get("words").get("Company*").get(FeatureDictionary.ORGANISATION));
-            System.err.println(nerModel.dictionary.features.get("words").get("*Company*").get(FeatureDictionary.ORGANISATION));
-            //System.err.println(nerModel.dictionary.features.get("words").get("Company").get(FeatureDictionary.ORGANISATION));
-
-            System.err.println("Total: "+p);
-            System.err.println("Marginal: " + nerModel.dictionary.getMarginal("Company"));
-            System.err.println("MI: " + nerModel.dictionary.getConditional("university","*university", FeatureDictionary.ORGANISATION));
         }catch(Exception e){
             e.printStackTrace();
         }
