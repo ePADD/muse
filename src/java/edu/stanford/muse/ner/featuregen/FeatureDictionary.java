@@ -631,7 +631,7 @@ public class FeatureDictionary implements Serializable {
             FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump");
             Map<String, Double> some = new LinkedHashMap<>();
             for (String w: features.keySet())
-                some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType());
+                some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType()*Math.log(mixtures.get(w).get(FeatureDictionary.ORGANISATION).getFreq()));
             List<Pair<String,Double>> ps = Util.sortMapByValue(some);
             for(Pair<String,Double> p: ps) {
                 fw.write("Token: "+p.getFirst()+" : "+p.getSecond()+"\n");
