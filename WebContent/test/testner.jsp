@@ -1,9 +1,6 @@
 <%@ page import="edu.stanford.muse.util.Pair" %>
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.index.IndexUtils" %>
-<%@ page import="edu.stanford.muse.index.Archive" %>
-<%@ page import="edu.stanford.muse.webapp.SimpleSessions" %>
 <%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
 <%@ page import="java.io.*" %>
 <%@ page import="edu.stanford.muse.ner.NEREvaluator" %>
@@ -14,8 +11,6 @@
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-    if(nerModel.dictionary.newWords == null)
-        nerModel.dictionary.computeNewWords();
 
     if(nerModel == null) {
         System.err.println("Loading model...");
@@ -28,6 +23,9 @@
             nerModel = SequenceModel.train();
         session.setAttribute("ner", nerModel);
     }
+
+    if(nerModel.dictionary.newWords == null)
+        nerModel.dictionary.computeNewWords();
 
     if (nerModel.fdw == null) {
         try {

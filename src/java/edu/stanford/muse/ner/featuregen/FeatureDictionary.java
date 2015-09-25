@@ -114,13 +114,17 @@ public class FeatureDictionary implements Serializable {
             double p = 1;
             for(String f: features){
                 int v = getNumberOfSymbols(f);
-                boolean pl = false;
+                boolean smooth = true;
+                //does not want to smooth, if the feature is position label
                 if(f.startsWith("PL:"))
-                    pl = true;
+                    smooth = false;
+                //just after initialisation, in this case the should not assign 0 mass for unseen observations
+                if(muVectorPositive.size()==2)
+                    smooth = true;
 
                 if(!muVectorPositive.containsKey(f)){
                     //no smoothing in the case of position label
-                    if(pl)
+                    if(!smooth)
                         p *= 0;
                     else {
                         //System.err.println("!!!FATAL!!! Unknown feature: "+f);
@@ -129,7 +133,7 @@ public class FeatureDictionary implements Serializable {
                     continue;
                 }
                 double val;
-                if(!pl)
+                if(smooth)
                     val = Math.log(muVectorPositive.get(f)+1)-Math.log(numMixture+v);
                 else
                     val = muVectorPositive.get(f)/numMixture;
@@ -558,6 +562,7 @@ public class FeatureDictionary implements Serializable {
         if(newWords == null)
             computeNewWords();
         System.err.println("Done computing new words");
+        System.err.println("Performing EM on: #"+features.size()+" words");
 
         Map<String, Map<Short,MU>> mixtures = features;
         Map<String, Map<Short, MU>> revisedMixtures = new LinkedHashMap<>();
@@ -630,7 +635,7 @@ public class FeatureDictionary implements Serializable {
         try {
             FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump");
             Map<String, Double> some = new LinkedHashMap<>();
-            for (String w: features.keySet())
+            for (String w: mixtures.keySet())
                 some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType()*Math.log(mixtures.get(w).get(FeatureDictionary.ORGANISATION).getFreq()));
             List<Pair<String,Double>> ps = Util.sortMapByValue(some);
             for(Pair<String,Double> p: ps) {
