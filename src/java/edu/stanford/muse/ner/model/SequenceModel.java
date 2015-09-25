@@ -23,7 +23,7 @@ import java.util.*;
  * Created by vihari on 07/09/15.
  * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
  */
-public class SequenceModel implements Serializable{
+public class SequenceModel implements NERModel, Serializable{
     public FeatureDictionary dictionary;
     public Tokenizer tokenizer;
     public static String modelFileName = "SeqModel.ser";
@@ -41,63 +41,96 @@ public class SequenceModel implements Serializable{
 
     }
 
-    public Map<String,Double> find(String content, Short type) {
-        //check if the model is initialised
-
-        List<String> commonWords = Arrays.asList("as","because","just","in","by","for","and","to","on","of","dear","according","think","a","an","if","at","but","the","is");
+    public Pair<String,Double> scoreSubstrs(String phrase, Short type) {
+        if (fdw == null) {
+            try {
+                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "features.dump"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        Pair<String,Double> ret = new Pair<>(phrase, 0.0);
+        List<String> commonWords = Arrays.asList("as", "because", "just", "in", "by", "for", "and", "to", "on", "of", "dear", "according", "think", "a", "an", "if", "at", "but", "the", "is");
         Map<String, Double> map = new LinkedHashMap<>();
         //recognises only orgs
         //labels = {O, B, I, E, S} null, beginning, in, end, solo
         //char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
-        List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type.equals(FeatureDictionary.PERSON));
-        for(Triple<String,Integer,Integer> cand: cands) {
-            try {
-                fdw.write(cand.first + "\n");
-                String[] words = cand.first.split("\\s+");
-                //brute force algorithm, is O(2^n)
-                if(words.length>10){
+        //List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type.equals(FeatureDictionary.PERSON));
+        //for(Triple<String,Integer,Integer> cand: cands) {
+        try {
+            if (fdw != null)
+                fdw.write(phrase + "\n");
+            String[] words = phrase.split("\\s+");
+            //brute force algorithm, is O(2^n)
+            if (words.length > 10) {
+                return new Pair<>(phrase, 0.0);
+            }
+
+            //look at all the sub strings and select a few with good score
+            //if its a single word, we assign S label
+            //if its multi word we assign B(I*)E labels.
+            //We can afford to do this, because we are just looking inside a CIC pattern
+            //In general, a search algorithm to find the subset with max probability should be employed
+            Set<String> substrs = IndexUtils.computeAllSubstrings(phrase);
+            Map<String, Double> ssubstrs = new LinkedHashMap<>();
+            for (String substr : substrs) {
+                double sorg = 0, snon_org = 0;
+                //what the candidate starts or ends with is important
+                String[] swords = substr.split("\\s+");
+                String fw = swords[0].toLowerCase();
+                fw = FeatureDictionary.endClean.matcher(fw).replaceAll("");
+                String sw = null;
+                if (swords.length > 1) {
+                    sw = swords[swords.length - 1].toLowerCase();
+                    sw = FeatureDictionary.endClean.matcher(sw).replaceAll("");
+                }
+                //should not just be a word of special chars
+                if (commonWords.contains(fw) || commonWords.contains(sw) || fw.equals(""))
                     continue;
-                }
 
-                //look at all the sub strings and select a few with good score
-                //if its a single word, we assign S label
-                //if its multi word we assign B(I*)E labels.
-                //We can afford to do this, because we are just looking inside a CIC pattern
-                //In general, a search algorithm to find the subset with max probability should be employed
-                Set<String> substrs = IndexUtils.computeAllSubstrings(cand.getFirst());
-                Map<String, Double> ssubstrs = new LinkedHashMap<>();
-                for(String substr: substrs) {
-                    double sorg = 0, snon_org = 0;
-                    //what the candidate starts or ends with is important
-                    String[] swords = substr.split("\\s+");
-                    String fw = swords[0].toLowerCase();
-                    fw = FeatureDictionary.endClean.matcher(fw).replaceAll("");
-                    String sw = null;
-                    if(swords.length>1) {
-                        sw = swords[swords.length - 1].toLowerCase();
-                        sw = FeatureDictionary.endClean.matcher(sw).replaceAll("");
-                    }
-                    if(commonWords.contains(fw)||commonWords.contains(sw))
-                        continue;
-
-                    //String[] patts = FeatureDictionary.getPatts(substr);
-                    sorg = dictionary.getConditional(substr, type, true);
-                    snon_org = dictionary.getConditional(substr, type, false);
-                    fdw.write("String: "+substr+" - "+sorg+" "+ snon_org + "\n");
-                    ssubstrs.put(substr, sorg-snon_org);
-                }
-                List<Pair<String,Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
-                for(Pair<String,Double> p: sssubstrs) {
+                //String[] patts = FeatureDictionary.getPatts(substr);
+                sorg = dictionary.getConditional(substr, type, true, fdw);
+                snon_org = dictionary.getConditional(substr, type, false, fdw);
+                if (fdw != null)
+                    fdw.write("String: " + substr + " - " + sorg + " " + snon_org + "\n");
+                ssubstrs.put(substr, sorg - snon_org);
+            }
+            List<Pair<String, Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
+            for (Pair<String, Double> p : sssubstrs) {
+                if (fdw != null)
                     fdw.write(p.getFirst() + " : " + p.getSecond() + "\n");
-                }
+            }
+            if (fdw != null)
                 fdw.write("\n");
-                if(sssubstrs.size()>0)
-                    map.put(sssubstrs.get(0).first, sssubstrs.get(0).getSecond());
-            }catch(IOException e){
-                e.printStackTrace();
+            if (sssubstrs.size() > 0)
+                ret = new Pair<>(sssubstrs.get(0).first, sssubstrs.get(0).getSecond());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return ret;
+    }
+
+    @Override
+    public Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> find (String content){
+        Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
+
+        Map<Short, List<String>> maps = new LinkedHashMap<>();
+        List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
+        for(Short t: types)
+            maps.put(t, new ArrayList<String>());
+        for(int t=0;t<types.length;t++) {
+            Short type = types[t];
+            List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type==FeatureDictionary.PERSON);
+            for (Triple<String,Integer,Integer> cand : cands) {
+                //Double val = allMaps[t].get(cand.getFirst());
+                Pair<String,Double> p = scoreSubstrs(cand.first, type);
+                if (p.getFirst()!=null && p.getSecond()>0) {
+                    maps.get(type).add(p.getFirst());
+                    offsets.add(new Triple<>(p.getFirst(), cand.getSecond(), cand.getThird()));
+                }
             }
         }
-        return map;
+        return new Pair<>(maps,offsets);
     }
 
     public void writeModel(File modelFile) throws IOException{
@@ -130,7 +163,7 @@ public class SequenceModel implements Serializable{
         nerModel.tokenizer = new CICTokenizer();
         String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
-        System.err.println("Performing EM...");
+        log.info("Performing EM...");
         nerModel.dictionary.EM(dbpedia);
         try {
             nerModel.writeModel(new File(modelFile));
@@ -161,13 +194,15 @@ public class SequenceModel implements Serializable{
                 nerModel = train();
             List<Document> docs = archive.getAllDocs();
             int di =0;
-            for(Document doc: docs) {
-                String content = archive.getContents(doc, true);
-                nerModel.find(content, FeatureDictionary.ORGANISATION);
-                if(di++>10)
-                    break;
-            }
-            String[] patts = new String[]{"company","company*","*company*","*company","O"};
+//            for(Document doc: docs) {
+//                String content = archive.getContents(doc, true);
+//                System.err.println("Content: "+content);
+//                Pair<Map<Short,List<String>>, List<Triple<String,Integer,Integer>>> mapsAndOffsets = nerModel.find(content);
+//                for(Short type: mapsAndOffsets.getFirst().keySet())
+//                    System.err.println(type +" : "+mapsAndOffsets.getFirst().get(type));
+//                if(di++>10)
+//                    break;
+//            }
 
             double p = 0;
         }catch(Exception e){

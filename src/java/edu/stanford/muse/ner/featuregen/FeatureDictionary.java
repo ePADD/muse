@@ -10,7 +10,6 @@ import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm_parameter;
-import org.apache.commons.collections.map.LinkedMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -100,7 +99,7 @@ public class FeatureDictionary implements Serializable {
                 if(f.endsWith(str))
                     return POSITION_LABELS.length;
 //            if(f.startsWith("WL:"))return NUM_WORDLENGTH_LABELS;
-            System.err.println("!!!REALLY FATAL!!! Unknown feature: "+f);
+            log.error("!!!REALLY FATAL!!! Unknown feature: " + f);
             return 0;
         }
 
@@ -130,6 +129,7 @@ public class FeatureDictionary implements Serializable {
                         //System.err.println("!!!FATAL!!! Unknown feature: "+f);
                         p *= (1.0/v);
                     }
+                    //System.err.println("!f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+v);
                     continue;
                 }
                 double val;
@@ -137,10 +137,11 @@ public class FeatureDictionary implements Serializable {
                     val = (muVectorPositive.get(f)+1)/(numMixture+v);
                 else
                     val = muVectorPositive.get(f)/numMixture;
+                //System.err.println("f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+v);
 
                 if(Double.isNaN(val)) {
-                    System.err.println("Found a nan here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + v);
-                    System.err.println(toString());
+                    log.warn("Found a nan here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + v);
+                    log.warn(toString());
                 }
                 p *= val;
             }
@@ -160,7 +161,7 @@ public class FeatureDictionary implements Serializable {
          * @param features - set of all *relevant* features to this mixture*/
         public void add(double resp, Set<String> features){
             if(Double.isNaN(resp))
-                System.err.println("Responsibility is nan for: "+features);
+                log.warn("Responsibility is nan for: " + features);
             numMixture += resp;
             for(String f: features){
                 if(!muVectorPositive.containsKey(f)){
@@ -480,6 +481,8 @@ public class FeatureDictionary implements Serializable {
     }
 
     public String getLabel(String word, Map<String, Map<Short, MU>> mixtures){
+        if(newWords == null)
+            computeNewWords();
         if(word == null)
             return "NULL";
         word = word.toLowerCase();
@@ -730,7 +733,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     //not using logarithms, since the number of symbols is less
-    public double getConditional(String phrase, Short type, boolean isOfThisType){
+    public double getConditional(String phrase, Short type, boolean isOfThisType, FileWriter fw){
         Map<String, Set<String>> tokenFeatures = generateFeatures(phrase, this.features, isOfThisType);
         double sorg = 0;
         for(String mid: tokenFeatures.keySet()) {
@@ -740,8 +743,14 @@ public class FeatureDictionary implements Serializable {
             else
                 //a likelihood that assumes nothing
                 d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length);
+            try {
+                if (fw != null)
+                    fw.write("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+"\n");
+            }catch(IOException e){
+                e.printStackTrace();
+            }
             if (Double.isNaN(d))
-                System.err.println("Cond nan " + mid + ", " + d);
+                log.warn("Cond nan " + mid + ", " + d);
             double val = d;
             if(val>0){
                 double freq = 0;

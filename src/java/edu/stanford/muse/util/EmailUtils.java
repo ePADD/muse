@@ -1367,7 +1367,7 @@ public class EmailUtils {
                     continue;
                 }
                 r = r.replaceAll("_\\(.*?\\)", "");
-                String title = r;
+                String title = r.replaceAll("_"," ");
                 String type = words[1];
                 String badSuffix = "|Agent";
                 if (type.endsWith(badSuffix) && type.length() > badSuffix.length())

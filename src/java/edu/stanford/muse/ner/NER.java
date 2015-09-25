@@ -42,6 +42,7 @@ public class NER implements StatusProvider {
 	double						pctComplete			= 0;
 	boolean						cancelled			= false;
 	Archive						archive				= null;
+    NERModel                    nerModel;
 	//in seconds
 	long						time				= -1, eta = -1;
 	static FieldType			ft;
@@ -134,8 +135,9 @@ public class NER implements StatusProvider {
 		ft.freeze();
 	}
 
-	public NER(Archive archive) {
+	public NER(Archive archive, NERModel nerModel) {
 		this.archive = archive;
+        this.nerModel = nerModel;
 		time = 0;
 		eta = 10 * 60;
 		stats = new NERStats();
@@ -265,7 +267,7 @@ public class NER implements StatusProvider {
 
 	//TODO: Consider using Atomic reader for accessing the index, if it improves performance
 	//main method trains the model, recognizes the entities and updates the doc.
-	public void trainAndRecognise(boolean dumpModel) throws CancelledException, IOException {
+	public void recongniseArchive() throws CancelledException, IOException {
 		time = 0;
 		archive.openForRead();
 		archive.setupForWrite();
@@ -277,12 +279,6 @@ public class NER implements StatusProvider {
 
         String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
 		List<Document> docs = archive.getAllDocs();
-		NERModel nerModel = SVMModel.loadModel(new File(modelFile));
-        if(nerModel == null) {
-            status = "Did not find ner model in " + modelFile;
-            status = "Building model";
-            nerModel = trainModel(dumpModel);
-        }
 
 		if (cancelled) {
 			status = "Cancelling...";
@@ -488,7 +484,7 @@ public class NER implements StatusProvider {
 		try {
 			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            NER ner = new NER(archive);
+            NER ner = new NER(archive, null);
             System.err.println("Loading model...");
             long start = System.currentTimeMillis();
             NERModel model = ner.trainModel(false);

@@ -22,7 +22,6 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
 import edu.stanford.muse.groups.*;
-import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.model.SequenceModel;
@@ -391,10 +390,11 @@ public class JSPHelper {
 		archive.setBaseDir(getBaseDir(m, request));
 		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
 
-        String mwl = Config.SETTINGS_DIR+File.separator;
+        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
         SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-        log.info("Loading NER sequence model...");
+        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
+        log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
             nerModel = SequenceModel.loadModel(new File(modelFile));
         } catch (IOException e) {
@@ -404,6 +404,10 @@ public class JSPHelper {
             log.error("Could not load NER model from: "+modelFile);
         }
 
+        NER ner = new NER(archive, nerModel);
+        session.setAttribute("statusProvider", ner);
+        ner.recongniseArchive();
+
 //		try {
 //			//train an epadd ner ; recognise the entities and dd it to the index
 //			NER ner = new NER(archive);
@@ -412,9 +416,9 @@ public class JSPHelper {
 //            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
 //            if("memorytest".equals(mode)) {
 //                log.info("Setting dump model to false for NER");
-//                ner.trainAndRecognise(false);
+//                ner.recongniseArchive(false);
 //            }else
-//                ner.trainAndRecognise(true);
+//                ner.recongniseArchive(true);
 //			archive.processingMetadata.entityCounts = ner.stats.counts;
 //			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
 //			log.info(ner.stats);

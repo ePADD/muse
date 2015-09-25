@@ -31,6 +31,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	static Pattern	personNamePattern, entityPattern, acronymPattern;
 	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at","of", "in"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
+    //private static final long serialVersionUID = 5699314474092217343L;
     private static final long serialVersionUID = 1L;
 
     static {
@@ -275,7 +276,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		System.err.println(CICTokenizer.personNamePattern.pattern());
         Tokenizer tok = new CICTokenizer();
         Set<String> names = tok.tokenizeWithoutOffsets("Hello, I am Vihari, Piratla'. Some thing IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN", true);
-        names = tok.tokenizeWithoutOffsets("Rockwell International Corp.'s_POS Tulsa unit said it signed a tentative agreement extending its contract with Boeing Co. to provide structural parts for Boeing's 747 jetliners", true);
+        names = tok.tokenizeWithoutOffsets("January 30, 2002: University at Buffalo, Center for Tomorrow, Service Center\n" +
+                "Road, North Campus", false);
         for(String name: names)
             System.err.println(name);
 	}
