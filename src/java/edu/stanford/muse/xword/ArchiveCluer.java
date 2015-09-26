@@ -130,12 +130,18 @@ public class ArchiveCluer extends Cluer {
 	{
 		return createClue(answer, tabooClues, null);
 	}
+
+	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	{
+		return createClue(answer, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1);
+
+	}
 	/** create clue for the given answer.
     cannot pick clue from sentences that have taboo clues
     if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
 	 * @throws ParseException 
 	 */
-	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -144,8 +150,12 @@ public class ArchiveCluer extends Cluer {
 
 	    // find all messages with the answer in them (original content only)
 	    List<Document> docsWithAnswer = new ArrayList<>();
-		for (Document doc: docs)
+		for (Document doc: docs) {
+			DatedDocument dd = (DatedDocument) doc;
+			if (dd.date.before(startDate) || dd.date.after(endDate))
+				continue;
 			docsWithAnswer.add(doc);
+		}
 
 		// note: docsWithAnswer is not sorted by time
 		
@@ -236,19 +246,32 @@ public class ArchiveCluer extends Cluer {
 				String contents = archive.getContents(ed, true);
 				String cleanedContents = EmailUtils.cleanupEmailMessage(contents);
 				SentenceTokenizer st = new SentenceTokenizer(cleanedContents);
-				int sentenceNum = 0;
-
+				List<String> sentences = new ArrayList<>();
 				while (st.hasMoreSentences())
-				{				
-					sentenceNum++;
-					String originalSentence = st.nextSentence(true); // include trailing delim
+					sentences.add(st.nextSentence(true));
+
+				if (sentences.size() < numSentences)
+					continue;
+
+				for (int i = 0; i < sentences.size(); i++)
+				{
+					if (i < numSentences-1) // e.g. if nSentences = 3, we can start building candidate clues at i = 2
+						continue;
+
+					String originalSentence = "";
+					for (int j = i - numSentences+1; j <= i; j++)
+						originalSentence += sentences.get(j);
 					originalSentence = originalSentence.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
+
+					//
 
 					// 1 newline is normal, but 2 or more is bad...it tends to be a signature or list... or code.... doesn't make for a good clue.
 					float linesBoost = 1.0f;
-					int nLines = new StringTokenizer(originalSentence, "\n").countTokens();
-					if (nLines > 2)
-						linesBoost = (float) -Math.pow(5.0f, nLines-1); // steep penalty if it spans more than 2 lines
+					for (int j = 0; j < numSentences; j++) {
+						int nLines = new StringTokenizer(sentences.get(i-j), "\n").countTokens();
+						if (nLines > 2)
+							linesBoost += (float) -Math.pow(5.0f, nLines - 1); // steep penalty if it spans more than 2 lines
+					}
 
 					originalSentence = originalSentence.trim().replaceAll("\n", " ");
 					originalSentence = Util.canonicalizeSpaces(originalSentence);
@@ -257,7 +280,7 @@ public class ArchiveCluer extends Cluer {
 					if (!Util.occursOnlyAsWholeWord(lowerCaseSentence, answer))
 						continue;
 
-					int MAX_CLUE_CHARS = 200;
+					int MAX_CLUE_CHARS = 200 * numSentences;
 
 					if (originalSentence.length() >= MAX_CLUE_CHARS)
 						continue;
@@ -268,7 +291,7 @@ public class ArchiveCluer extends Cluer {
 					if (Util.nLetterChars(originalSentence) == Util.nLetterChars(answer))
 						continue; 
 
-					if (!sentenceIsValidAsClue(lowerCaseSentence))
+					if (!sentenceIsValidAsClue(lowerCaseSentence, numSentences))
 						continue;
 					if (tabooClues != null && (tabooClues.contains(lowerCaseSentence) || tabooClues.contains(originalSentence)))
 						continue;
@@ -291,14 +314,14 @@ public class ArchiveCluer extends Cluer {
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
-					float sentenceNumBoost = -0.2f*sentenceNum;
+					float sentenceNumBoost = -0.2f * i;
 					// log.info ("raw clue score for " + answer + " is " + clueScore + " sentence num boost = " + sentenceNumBoost);
 					// add in the score for message factors
 					clueScore += docSentimentScore;
 					clueScore += sentenceNumBoost;
 
 					clue.clueStats.finalScore = clueScore;
-					log.info ("clue score for " + answer + " is " + clueScore + " (docscore: " + docSentimentScore + ") for sentence# " + sentenceNum + " in doc #" + docCount + ":" + clue + " lines boost = " + linesBoost);
+					log.info ("clue score for " + answer + " is " + clueScore + " (docscore: " + docSentimentScore + ") for sentence# " + i + " in doc #" + docCount + ":" + clue + " lines boost = " + linesBoost);
 
 					if (clueScore > bestScore)
 					{
@@ -316,7 +339,7 @@ public class ArchiveCluer extends Cluer {
 						clue.clueStats.docSentiments = sentimentMap;
 						clue.clueStats.sentenceNumBoost = sentenceNumBoost;
 						
-						clue.clueStats.sentenceNumInMessage = sentenceNum;
+						clue.clueStats.sentenceNumInMessage = i;
 						
 						// copy stats related to the message
 						clue.clueStats.namesInMessage = namesInMessage.size();
@@ -349,7 +372,7 @@ public class ArchiveCluer extends Cluer {
 				
 				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
 				if (bestClueDoc == ed)
-					bestClue.clueStats.sentencesInMessage = sentenceNum;
+					bestClue.clueStats.sentencesInMessage = sentences.size();
 			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
 			
 			docCount++;
@@ -507,9 +530,12 @@ public class ArchiveCluer extends Cluer {
 	}
 
 	/** checks if sentence is ok as clue. returns true if yes, false otherwise */
-	public static boolean sentenceIsValidAsClue(String lowerCaseSentence)
+	public static boolean sentenceIsValidAsClue(String lowerCaseSentence, int nSentences)
 	{					
-		if (lowerCaseSentence.indexOf("/") >= 0 || lowerCaseSentence.indexOf("|") >= 0 || lowerCaseSentence.indexOf(">") >= 0 || lowerCaseSentence.indexOf("---") >= 0 || lowerCaseSentence.indexOf("<") >= 0 || lowerCaseSentence.indexOf("___") >= 0) // get rid of things like http:// or >> or | quotes
+//		if (lowerCaseSentence.indexOf("/") >= 0 || lowerCaseSentence.indexOf("|") >= 0 || lowerCaseSentence.indexOf(">") >= 0 || lowerCaseSentence.indexOf("---") >= 0 || lowerCaseSentence.indexOf("<") >= 0 || lowerCaseSentence.indexOf("___") >= 0) // get rid of things like http:// or >> or | quotes
+
+        // removing the barring of "/" from the sentence, because sometimes it can occur in real english sentences like lonavala/khandala
+        if (lowerCaseSentence.indexOf("|") >= 0 || lowerCaseSentence.indexOf(">") >= 0 || lowerCaseSentence.indexOf("---") >= 0 || lowerCaseSentence.indexOf("<") >= 0 || lowerCaseSentence.indexOf("___") >= 0) // get rid of things like http:// or >> or | quotes
 			return false;
 		if (lowerCaseSentence.charAt(0) < 'a' || lowerCaseSentence.charAt(0) > 'z')
 			return false;
@@ -519,18 +545,24 @@ public class ArchiveCluer extends Cluer {
 			return false;
 		//protect against excessively large words and slightly large words with numbers in them
 		List<String> wordsInSentence = Util.tokenize(lowerCaseSentence, " ");
-		int MAX_LENGTH = 20;
-		int MAX_LENGTH_W_NUMBER = 10;
-		for (String word: wordsInSentence){	
-			if (word.length() > MAX_LENGTH)
+		int MAX_WORDS = 20 * nSentences;
+		int MAX_WORDS_W_NUMBER = 15 * nSentences;
+		for (String word: wordsInSentence){
+			if (word.length() > MAX_WORDS)
 				return false;
 			
 			//protect against numbers in a large word.
-			if (word.length() > MAX_LENGTH_W_NUMBER)
+			if (word.length() > MAX_WORDS_W_NUMBER)
 				for (char c: word.toCharArray()) 
 					if (Character.isDigit(c))
 						return false;
+
+            // disallow = in long words because we see url params authKey=someLongHashCode
+            // just = in a sentence is ok.
+            if (word.contains("=") && word.length() > 10)
+                return false;
 		}
+
 		// unbalanced parens look ugly
 		// unless they are in emoticons (so first nuke emoticons
 		lowerCaseSentence = lowerCaseSentence.replaceAll("[:;][-][\\)\\(DP]", "");
@@ -546,7 +578,7 @@ public class ArchiveCluer extends Cluer {
 		// get rid of the following templates of sentences... they tend to be very noisy
 		if (lowerCaseSentence.indexOf("html") >= 0) // junk like html randomly shows up sometimes
 			return false;
-		if (lowerCaseSentence.indexOf("http") >= 0 || lowerCaseSentence.indexOf("=") >= 0) // also "=" because we see url params authKey=someLongHashCode
+		if (lowerCaseSentence.indexOf("http") >= 0)
 			return false;
 		if (lowerCaseSentence.indexOf("@") >= 0)
 			return false;
