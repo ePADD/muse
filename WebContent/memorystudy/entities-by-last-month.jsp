@@ -279,7 +279,7 @@ public static String canonicalize(String s) {
             ci.lastSeenDate = lastSeenDate;
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
-            ci.clue = cluer.createClue(fullAnswer, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, 3);
+            ci.clue = cluer.createClue(fullAnswer, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 3));
             ci.hasCoreTokens = hasCoreTokens;
             clueInfos[interval].add(ci);
          }
