@@ -73,8 +73,8 @@
         } catch (Exception e) {
             e.printStackTrace();
         }
-    if(nerModel.dictionary.newWords == null)
-        nerModel.dictionary.computeNewWords();
+//    if(nerModel.dictionary.newWords == null)
+//        nerModel.dictionary.computeNewWords();
 
     String content = "Good Afternoon,\n" +
             "Please share this information with all of your staff who are on the state\n" +

@@ -25,8 +25,8 @@
         session.setAttribute("ner", nerModel);
     }
 
-    if(nerModel.dictionary.newWords == null)
-        nerModel.dictionary.computeNewWords();
+//    if(nerModel.dictionary.newWords == null)
+//        nerModel.dictionary.computeNewWords();
 
     if (nerModel.fdw == null) {
         try {
@@ -42,14 +42,13 @@
     double CUTOFF = 0;
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents){
-        Map<String,Double> some = nerModel.find(sent, type);
-        for(String s: some.keySet()) {
-            String[] patts = FeatureDictionary.getPatts(s);
-            double x = some.get(s);
-            if (x > CUTOFF)
-                orgs.add(s);
-            all.put(s, x);
+        Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> some = nerModel.find(sent);
+        for(String str: some.first.get(FeatureDictionary.ORGANISATION)) {
+            //String[] patts = FeatureDictionary.getPatts(s);
+            orgs.add(str);
+            all.put(str, 1.0);
         }
+        //System.err.println("Found: "+some.first.get(FeatureDictionary.ORGANISATION).size());
     }
     List<Pair<String,Double>> lst = Util.sortMapByValue(all);
     Set<String> borgs = eval.bNames.get(type);
@@ -82,4 +81,7 @@
     out.println("Precision: "+p+"<br>");
     out.println("Recall: "+r+"<br>");
     out.println("F1: "+f+"<br>");
+    Map<Short, FeatureDictionary.MU> mus = nerModel.dictionary.features.get("co");
+    for(Short srt: mus.keySet())
+        out.println(srt+" - "+mus.get(srt).getLikelihoodWithThisType()+"<br>");
 %>

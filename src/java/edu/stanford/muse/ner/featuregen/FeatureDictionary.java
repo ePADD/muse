@@ -43,7 +43,15 @@ public class FeatureDictionary implements Serializable {
         static String[] TYPE_LABELS = new String[]{"Y","N"};
         //all possible labels of the words to the left and right
         //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
-        static String[] WORD_LABELS = new String[]{"and","for","to","in","at","on","the","of","a","an","is","LOC","ORG","PER","OTHER","NEW","&",",","NULL"};
+        //"LOC","ORG","PER","OTHER","NEW"
+        //Responsibility, does not seem to do well in some cases, For example: "Co", though occurred in many ORG names, occurred in few people names with other words that are relatively unknown words, hence Co is being marked as PERSON name
+
+        //has a bad feeling about the LOC, ORG, PER, as they depend on the parameters that are being learned
+        //For example: in New York Stock Exchange or California State University, "New York" and "California State" have good location scores, since they are in comfortable context.
+        //this is probably the problem of scoring, when the mixture frequency is included in the score, things like New though is single token will get a high score due to the pi term
+        //New York, for example might have explained a lot of locations,
+        //"and","for","to","in","at","on","the","of","a","an","is","&",","
+        static String[] WORD_LABELS = new String[]{"OTHER", "LOC", "ORG", "PER", "NULL"};
         //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
         //static int NUM_WORDLENGTH_LABELS = 10;
@@ -80,7 +88,7 @@ public class FeatureDictionary implements Serializable {
         public double getLikelihoodWithThisType(){
             double p1, p2;
             if(muVectorPositive.get(TYPE_LABELS[0]) == null)
-                return 0.5;
+                return 0;
 
             p1 = muVectorPositive.get(TYPE_LABELS[0]);
             p2 = numMixture;
@@ -258,7 +266,8 @@ public class FeatureDictionary implements Serializable {
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2, OTHER = 3;
     public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-    static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of");
+    static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is");
+    static List<String> symbols = Arrays.asList("&","-",",");
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
@@ -423,6 +432,8 @@ public class FeatureDictionary implements Serializable {
             for(int ii=0;ii<words.length-1;ii++) {
                 String w = words[ii].toLowerCase();
                 w = endClean.matcher(w).replaceAll("");
+                if(w.equals(""))
+                    continue;
                 if(!wordFreqs.containsKey(w))
                     wordFreqs.put(w, 0);
                 wordFreqs.put(w, wordFreqs.get(w)+1);
@@ -434,7 +445,7 @@ public class FeatureDictionary implements Serializable {
         }
     }
 
-    public static String[] getPatts(String phrase){
+    public static String[] getPatts2(String phrase){
         List<String> patts = new ArrayList<>();
         String[] words = phrase.split("\\s+");
         for (int i = 0; i < words.length; i++) {
@@ -449,7 +460,7 @@ public class FeatureDictionary implements Serializable {
         return patts.toArray(new String[patts.size()]);
     }
 
-    public static String[] getPatts2(String phrase){
+    public static String[] getPatts(String phrase){
         List<String> patts = new ArrayList<>();
         String[] words = phrase.split("\\s+");
         for (int i = 0; i < words.length; i++) {
@@ -457,20 +468,22 @@ public class FeatureDictionary implements Serializable {
             //dont emit stop words
             //canonicalize the word
             word = word.toLowerCase();
-            word = endClean.matcher(word).replaceAll("");
-            if(sws.contains(word)){
+            if(sws.contains(word) || symbols.contains(word)){
                 continue;
             }
-            String t;
-
-            if (i > 0 && i < (words.length - 1))
-                t = "*" + word + "*";
-            else if (i == 0 && words.length > 1)
-                t = word + "*";
-            else if (i == (words.length - 1) && words.length > 1)
-                t = "*" + word;
-            //references are generally made with first name and this may have continuation like Harvard_University or Apple_Inc
-            else t = word;
+            String t = word;
+            if(i>0 && (sws.contains(words[i-1].toLowerCase())||symbols.contains(words[i-1].toLowerCase())))
+                t = words[i-1].toLowerCase()+" "+t;
+            if(i<(words.length-1) && (sws.contains(words[i+1].toLowerCase())||(symbols.contains(words[i+1].toLowerCase()))))
+                t += " "+words[i+1].toLowerCase();
+//            if (i > 0 && i < (words.length - 1))
+//                t = "*" + word + "*";
+//            else if (i == 0 && words.length > 1)
+//                t = word + "*";
+//            else if (i == (words.length - 1) && words.length > 1)
+//                t = "*" + word;
+//            //references are generally made with first name and this may have continuation like Harvard_University or Apple_Inc
+//            else t = word;
 
 
             //emit all the words or patterns
@@ -481,17 +494,17 @@ public class FeatureDictionary implements Serializable {
     }
 
     public String getLabel(String word, Map<String, Map<Short, MU>> mixtures){
-        if(newWords == null)
-            computeNewWords();
+//        if(newWords == null)
+//            computeNewWords();
         if(word == null)
             return "NULL";
         word = word.toLowerCase();
-        if(sws.contains(word))
-            return word;
-        if(word.equals("&")||word.equals(","))
-            return word;
-        if(newWords.contains(word))
-            return "NEW";
+//        if(sws.contains(word))
+//            return word;
+//        if(word.equals("&")||word.equals(","))
+//            return word;
+//        if(newWords.contains(word))
+//            return "NEW";
         double per, org, loc, other;
         //System.err.println("Token: "+word);
         //this can happen, since we ignore a few types
@@ -520,16 +533,24 @@ public class FeatureDictionary implements Serializable {
      * returns a map of mixture identity to the set of features relevant to the mixture */
     public Map<String,Set<String>> generateFeatures(String phrase, Map<String, Map<Short, MU>> mixtures, boolean isOfThisType){
         Map<String, Set<String>> mixtureFeatures = new LinkedHashMap<>();
-        String[] words = phrase.split("\\s+");
+        String[] words = getPatts(phrase);
+        String fw = words[0];
+        String lw = words[words.length-1];
         for(int wi = 0; wi<words.length; wi++){
             if(sws.contains(words[wi].toLowerCase()))
                 continue;
             Set<String> features = new LinkedHashSet<>();
             String prevWord = null, nxtWord = null;
-            if(wi > 0)
-                prevWord = words[wi-1];
-            if(wi < (words.length-1))
-                nxtWord = words[wi+1];
+//            if(wi > 0)
+//                prevWord = words[wi-1];
+//            if(wi < (words.length-1))
+//                nxtWord = words[wi+1];
+            prevWord = fw;
+            nxtWord = lw;
+            if(wi == 0)
+                prevWord = null;
+            if(wi == (words.length-1))
+                nxtWord = null;
 
             String prevLabel = getLabel(prevWord, mixtures);
             String nxtLabel = getLabel(nxtWord, mixtures);
@@ -562,9 +583,9 @@ public class FeatureDictionary implements Serializable {
     }
 
     public void EM(Map<String,String> gazettes){
-        if(newWords == null)
-            computeNewWords();
-        System.err.println("Done computing new words");
+//        if(newWords == null)
+//            computeNewWords();
+        //System.err.println("Done computing new words");
         System.err.println("Performing EM on: #"+features.size()+" words");
 
         Map<String, Map<Short,MU>> mixtures = features;
@@ -830,16 +851,18 @@ public class FeatureDictionary implements Serializable {
     }
 
     public static void main(String[] args) {
-        try {
-            String baseDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
-            Archive archive = SimpleSessions.readArchiveIfPresent(baseDir);
-            List<Document> docs = archive.getAllDocs();
-            for(Document doc: docs)
-                System.err.println(doc.getUniqueId());
-            System.err.println("Num docs: "+docs.size());
-        }catch(IOException e){
-            e.printStackTrace();
-        }
+        for(String str: getPatts("The Secular Nation & India"))
+            System.err.println(str);
+//        try {
+//            String baseDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(baseDir);
+//            List<Document> docs = archive.getAllDocs();
+//            for(Document doc: docs)
+//                System.err.println(doc.getUniqueId());
+//            System.err.println("Num docs: "+docs.size());
+//        }catch(IOException e){
+//            e.printStackTrace();
+//        }
 //        try {
 //            String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
 //            String modelFile = mwl + SequenceModel.modelFileName;
