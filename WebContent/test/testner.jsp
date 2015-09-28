@@ -6,9 +6,11 @@
 <%@ page import="edu.stanford.muse.ner.NEREvaluator" %>
 <%@ page import="edu.stanford.muse.util.Triple" %>
 <%@ page import="edu.stanford.muse.util.Util" %>
+<%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
 <%
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-    Short type = FeatureDictionary.ORGANISATION;
+    Short type = FeatureDictionary.PLACE
+            ;
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
@@ -43,7 +45,7 @@
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents){
         Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> some = nerModel.find(sent);
-        for(String str: some.first.get(FeatureDictionary.ORGANISATION)) {
+        for(String str: some.first.get(type)) {
             //String[] patts = FeatureDictionary.getPatts(s);
             orgs.add(str);
             all.put(str, 1.0);

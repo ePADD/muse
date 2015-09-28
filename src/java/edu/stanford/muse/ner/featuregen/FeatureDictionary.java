@@ -534,6 +534,8 @@ public class FeatureDictionary implements Serializable {
     public Map<String,Set<String>> generateFeatures(String phrase, Map<String, Map<Short, MU>> mixtures, boolean isOfThisType){
         Map<String, Set<String>> mixtureFeatures = new LinkedHashMap<>();
         String[] words = getPatts(phrase);
+        if(words.length == 0)
+            return mixtureFeatures;
         String fw = words[0];
         String lw = words[words.length-1];
         for(int wi = 0; wi<words.length; wi++){
@@ -657,14 +659,16 @@ public class FeatureDictionary implements Serializable {
             revisedMixtures = new LinkedHashMap<>();
 
             try {
-                FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump."+i);
-                Map<String, Double> some = new LinkedHashMap<>();
-                for (String w: mixtures.keySet())
-                    some.put(w, mixtures.get(w).get(FeatureDictionary.ORGANISATION).getLikelihoodWithThisType()*Math.log(mixtures.get(w).get(FeatureDictionary.ORGANISATION).getFreq()));
-                List<Pair<String,Double>> ps = Util.sortMapByValue(some);
-                for(Pair<String,Double> p: ps) {
-                    fw.write("Token: "+p.getFirst()+" : "+p.getSecond()+"\n");
-                    fw.write(mixtures.get(p.getFirst()).get(FeatureDictionary.ORGANISATION).toString());
+                for(Short type: allTypes) {
+                    FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
+                    Map<String, Double> some = new LinkedHashMap<>();
+                    for (String w : mixtures.keySet())
+                        some.put(w, mixtures.get(w).get(type).getLikelihoodWithThisType() * Math.log(mixtures.get(w).get(type).getFreq()));
+                    List<Pair<String, Double>> ps = Util.sortMapByValue(some);
+                    for (Pair<String, Double> p : ps) {
+                        fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");
+                        fw.write(mixtures.get(p.getFirst()).get(type).toString());
+                    }
                 }
             }catch(IOException e){
                 e.printStackTrace();

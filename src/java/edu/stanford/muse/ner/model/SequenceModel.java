@@ -136,7 +136,8 @@ public class SequenceModel implements NERModel, Serializable{
             List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type==FeatureDictionary.PERSON);
             for (Triple<String,Integer,Integer> cand : cands) {
                 //Double val = allMaps[t].get(cand.getFirst());
-                double s = score(cand.first, type);
+                //Pair<String, Double> p = scoreSubstrs(cand.first, type);
+                double s = score(cand.first, type);//p.getSecond();
                 if (s>0) {
                     maps.get(type).add(cand.getFirst());
                     offsets.add(new Triple<>(cand.getFirst(), cand.getSecond(), cand.getThird()));
@@ -262,7 +263,8 @@ public class SequenceModel implements NERModel, Serializable{
 
                 //remove, "The" in the beginning before passing
                 str = str.replaceAll("^The\\s","");
-                double s = nerModel.score(str, FeatureDictionary.ORGANISATION);
+                Pair<String,Double> p = nerModel.scoreSubstrs(str, FeatureDictionary.ORGANISATION);
+                double s = p.getSecond();
                 if(allowed) {
                     m1 += s;
                     n1++;

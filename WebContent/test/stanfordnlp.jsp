@@ -6,12 +6,14 @@
 <%@ page import="edu.stanford.nlp.ie.AbstractSequenceClassifier" %>
 <%@ page import="edu.stanford.nlp.ie.crf.CRFClassifier" %>
 <%
+    Short type = FeatureDictionary.PLACE;
+    String stype = "LOCATION"; // "ORGANIZATION", "PERSON"
     String serializedClassifier = "/Users/vihari/epadd-ner/english.all.3class.distsim.crf.ser.gz";
     AbstractSequenceClassifier<CoreLabel> classifier = CRFClassifier.getClassifier(serializedClassifier);
 
     NEREvaluator evaluator = new NEREvaluator(10000);
     List<String> contents = evaluator.getSentences();
-    Set<String> borgs = evaluator.bNames.get(FeatureDictionary.ORGANISATION);
+    Set<String> borgs = evaluator.bNames.get(type);
     Set<String> orgs = new LinkedHashSet<>();
     int di = 0;
     for (String content: contents) {
@@ -21,7 +23,7 @@
             for (CoreLabel word : sentence) {
                 String ann = word.get(CoreAnnotations.AnswerAnnotation.class);
                 String w = word.word();
-                if(!ann.equals("ORGANIZATION")) {
+                if(!ann.equals(stype)) {
                     if(!str.equals(""))
                         orgs.add(str);
                     str = "";
