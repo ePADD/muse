@@ -1,14 +1,11 @@
 package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.Config;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.Document;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm_parameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -56,6 +53,7 @@ public class FeatureDictionary implements Serializable {
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
         //static int NUM_WORDLENGTH_LABELS = 10;
         //feature and the value, for example: <"LEFT: and",200>
+        //indicates if the values are final or if they have to be learned
         Map<String,Double> muVectorPositive;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
         public double numMixture;
@@ -75,7 +73,7 @@ public class FeatureDictionary implements Serializable {
                     mu.muVectorPositive.put(TYPE_LABELS[i], (numTotal - numThisType + 1)/(2 + numTotal));
                 }
             }
-            mu.numMixture = 1;
+            mu.numMixture = numTotal+1;
             return mu;
         }
 
@@ -165,19 +163,20 @@ public class FeatureDictionary implements Serializable {
         }
 
         /**Maximization step in EM update, update under the assumption that add will be called only if the evidence for the corresponding mixture is seen, i.e. xk!=0
-         * @param resp - responsibility of this mixture in explaing the type and features
+         * @param resp - responsibility of this mixture in explaining the type and features
          * @param features - set of all *relevant* features to this mixture*/
-        public void add(double resp, Set<String> features){
-            if(Double.isNaN(resp))
+        public void add(double resp, Set<String> features) {
+            //if learn is set to false, ignore all the observations
+            if (Double.isNaN(resp))
                 log.warn("Responsibility is nan for: " + features);
             numMixture += resp;
-            for(String f: features){
-                if(!muVectorPositive.containsKey(f)){
+            for (String f : features) {
+                if (!muVectorPositive.containsKey(f)) {
                     //System.err.println("!!!FATAL!!! Unknown feature: "+f);
                     //continue;
                     muVectorPositive.put(f, 0.0);
                 }
-                muVectorPositive.put(f, muVectorPositive.get(f)+resp);
+                muVectorPositive.put(f, muVectorPositive.get(f) + resp);
             }
         }
 
@@ -371,9 +370,44 @@ public class FeatureDictionary implements Serializable {
         for(String str: words.keySet()){
             if(!features.containsKey(str))
                 features.put(str, new LinkedHashMap<Short, MU>());
+//            System.err.println(str);
+            String ic = str.substring(0,1).toUpperCase();
+            if(str.length()>1)
+                ic+=str.substring(1,str.length());
+            //System.err.println(str+"->"+ic);
+            Short ht = null;
+            if(gazettes.containsKey(ic)) {
+                String type = gazettes.get(ic);
+                for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.PERSON))
+                    if(type.endsWith(at)) {
+                        ht = FeatureDictionary.PERSON;
+                        break;
+                    }
+                if(ht==null)
+                    for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION))
+                        if(type.endsWith(at)) {
+                            ht = FeatureDictionary.ORGANISATION;
+                            break;
+                        }
+                if(ht==null)
+                    for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.PLACE))
+                        if(type.endsWith(at)) {
+                            ht = FeatureDictionary.PLACE;
+                            break;
+                        }
+                if(ht == null)
+                    ht = -1;
+            }
             for(Short type: words.get(str).keySet()){
+//                if(ht!=null && ht>0)
+//                    System.err.println("Initialising "+str+" with type: "+ht);
                 Pair<Double,Double> p = words.get(str).get(type);
+                //if(ht==null)
                 features.get(str).put(type, MU.initialise(p.getFirst(), p.getSecond()));
+//                else if(ht==type)
+//                    features.get(str).put(type, MU.initialise(p.getSecond(), p.getSecond()));
+//                else
+//                    features.get(str).put(type, MU.initialise(0.0, p.getSecond()));
             }
         }
 

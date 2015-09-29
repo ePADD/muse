@@ -7,10 +7,36 @@
 <%@ page import="edu.stanford.muse.util.Triple" %>
 <%@ page import="edu.stanford.muse.util.Util" %>
 <%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
+<%@ page import="edu.stanford.muse.util.NLPUtils" %>
 <%
+    class Some{
+        public Map<String,Double> find (String content, Short type, SequenceModel model){
+            //Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
+
+            //Map<Short, List<String>> maps = new LinkedHashMap<>();
+            //List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
+//            for(Short t: types)
+//                maps.put(t, new ArrayList<String>());
+//            for(int t=0;t<types.length;t++) {
+            Map<String,Double> map = new LinkedHashMap<>();
+            List<Triple<String,Integer,Integer>> cands = new CICTokenizer().tokenize(content, type==FeatureDictionary.PERSON);
+            //List<String> pns = NLPUtils.getAllProperNouns(content);
+            //for (Triple<String,Integer,Integer> cand : cands) {
+            for(Triple<String,Integer, Integer> t: cands){
+                String pn = t.getFirst();
+                //Double val = allMaps[t].get(cand.getFirst());
+                //Pair<String, Double> p = scoreSubstrs(cand.first, type);
+                double s = model.score(pn, type);//p.getSecond();
+                if (s>0) {
+                    map.put(pn, s);
+                    //offsets.add(new Triple<>(cand.getFirst(), cand.getSecond(), cand.getThird()));
+                }
+            }
+            return map;
+        }
+    }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-    Short type = FeatureDictionary.PLACE
-            ;
+    Short type = FeatureDictionary.PLACE;
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
@@ -44,11 +70,16 @@
     double CUTOFF = 0;
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents){
-        Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> some = nerModel.find(sent);
-        for(String str: some.first.get(type)) {
-            //String[] patts = FeatureDictionary.getPatts(s);
+        //Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> some = nerModel.find(sent);
+//        for(String str: some.first.get(type)) {
+//            //String[] patts = FeatureDictionary.getPatts(s);
+//            orgs.add(str);
+//            all.put(str, 1.0);
+//        }
+        Map<String,Double> temp = new Some().find(sent, type, nerModel);
+        for(String str: temp.keySet()) {
+            all.put(str, temp.get(str));
             orgs.add(str);
-            all.put(str, 1.0);
         }
         //System.err.println("Found: "+some.first.get(FeatureDictionary.ORGANISATION).size());
     }

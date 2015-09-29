@@ -237,7 +237,7 @@ public class SequenceModel implements NERModel, Serializable{
                     "streets and at my desk. In that sense it was a moral snow.\n" +
                     "If you're in Buffalo could you stand a stop after work?\n" +
                     "My best, " +
-                    "National Bank. National Kidney Foundation. University Commencement";
+                    "National Bank some. National Kidney Foundation some . University Commencement";
             Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> mapsandoffsets = nerModel.find(content);
             for(Short type: mapsandoffsets.first.keySet())
                 System.out.println(type + " : "+mapsandoffsets.first.get(type)+"<br>");

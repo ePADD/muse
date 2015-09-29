@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * @TODO: Having two dashes in the name is not ok
  */
 public class CICTokenizer implements Tokenizer, Serializable {
-	static Pattern	personNamePattern, entityPattern, acronymPattern;
+	static Pattern	personNamePattern, entityPattern, acronymPattern, multipleStopWordPattern ;
 	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at", "in", "of"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
     //private static final long serialVersionUID = 5699314474092217343L;
@@ -71,7 +71,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         //ignoring period at he end of the name may not be desired, "Rockwell International Corp.", the period here is part of the name
 		String nameP = "[A-Z][A-Za-z'\\-\\.]*";
 		//comma is a terrible character to allow, it sometimes crawls in the full list the entity is contained in.
-		String allowedCharsOther = "\\s&", allowedCharsPerson = "\\s";
+		String allowedCharsOther = "\\s&'", allowedCharsPerson = "\\s";
 
 		StringBuilder sp = new StringBuilder("");
 		int i = 0;
@@ -82,9 +82,11 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		}
 		String stopWordsPattern = "(" + sp.toString() + ")";
 
+        String recur = "{1,3}";
+        multipleStopWordPattern = Pattern.compile("("+stopWordsPattern+"["+allowedCharsOther+"]"+recur+"){2,}");
+
 		//[\"'_:\\s]*
 		//number of times special chars between words can recur
-		String recur = "{1,3}";
 		//doe not allow more than two stop words occuring between two ic words.
 		//should more than one sw be allowed? "The Supreme Court of the United States" or "The Supreme Court"?
 		String nps = "(" + nameP + "([" + allowedCharsOther + "]" + recur + "(" + nameP + "[" + allowedCharsOther + "]" + recur + "|(" + stopWordsPattern + "[" + allowedCharsOther + "]" + recur + "))*" + nameP + ")?)";
@@ -166,6 +168,18 @@ public class CICTokenizer implements Tokenizer, Serializable {
         if(ret == null)
             return null;
         return ret.getFirst();
+    }
+
+    public static String[] tokenizeMultipleStopWords(String phrase){
+        List<String> tokenL = new ArrayList<>();
+        Matcher m = multipleStopWordPattern.matcher(phrase);
+        int end = 0;
+        while(m.find()){
+            tokenL.add(phrase.substring(end, m.start()));
+            end = m.end();
+        }
+        tokenL.add(phrase.substring(end, phrase.length()));
+        return tokenL.toArray(new String[tokenL.size()]);
     }
 
 	public Pair<List<Triple<String, Integer, Integer>>,Sentences> tokenizeWithSentences(String content, boolean pn) {
@@ -259,8 +273,11 @@ public class CICTokenizer implements Tokenizer, Serializable {
 						//@TODO: Can these "'s" be put to a good use?
 						String[] cns = tokeniseQuoteS(name);
                         for(String cn: cns) {
-                            matches.add(new Triple<String, Integer, Integer>(cn, start, end));
-                            smap.put(start, si);
+                            String[] tokens = tokenizeMultipleStopWords(cn);
+                            for(String token: tokens) {
+                                matches.add(new Triple<>(token, start, end));
+                                smap.put(start, si);
+                            }
                         }
 					}
 				}
@@ -275,9 +292,9 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	public static void main(String[] args) {
 		System.err.println(CICTokenizer.personNamePattern.pattern());
         Tokenizer tok = new CICTokenizer();
-        Set<String> names = tok.tokenizeWithoutOffsets("Hello, I am Vihari, Piratla'. Some thing IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN", true);
-        names = tok.tokenizeWithoutOffsets("January 30, 2002: University at Buffalo, Center for Tomorrow, Service Center\n" +
-                "Road, North Campus", false);
+        Set<String> names = tok.tokenizeWithoutOffsets("Hello, I am Vihari, Piratla of the IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN", true);
+        //names = tok.tokenizeWithoutOffsets("January 30, 2002: University at Buffalo, Center for Tomorrow, Service Center\n" +
+                //"Road, North Campus", false);
         for(String name: names)
             System.err.println(name);
 	}
