@@ -28,6 +28,9 @@ import java.util.regex.Pattern;
  * Boolean: Passes the value of the feature generator as is
  * Numeric: Passes the value of the feature generator as is
  * TODO: Explore indexing of this data-structure
+ *
+ * TODO: There are all kinds of crazy names in DBpedia, for example: ESCP_Europe is an University, the algorithm should not let such examples to sway its decision of tag
+ * We know the
  * */
 public class FeatureDictionary implements Serializable {
     /**
@@ -402,12 +405,12 @@ public class FeatureDictionary implements Serializable {
 //                if(ht!=null && ht>0)
 //                    System.err.println("Initialising "+str+" with type: "+ht);
                 Pair<Double,Double> p = words.get(str).get(type);
-                //if(ht==null)
-                features.get(str).put(type, MU.initialise(p.getFirst(), p.getSecond()));
-//                else if(ht==type)
-//                    features.get(str).put(type, MU.initialise(p.getSecond(), p.getSecond()));
-//                else
-//                    features.get(str).put(type, MU.initialise(0.0, p.getSecond()));
+                if(ht==null)
+                    features.get(str).put(type, MU.initialise(p.getFirst(), p.getSecond()));
+                else if(ht==type)
+                    features.get(str).put(type, MU.initialise(p.getSecond(), p.getSecond()));
+                else
+                    features.get(str).put(type, MU.initialise(0.0, p.getSecond()));
             }
         }
 

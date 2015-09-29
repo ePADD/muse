@@ -184,13 +184,13 @@ public class EmailUtils {
                 "Nerve|AnatomicalStructure",
                 "WineRegion|Place",
                 "Muscle|AnatomicalStructure",
-                "BasketballLeague|SportsLeague|Organisation|Agent",
+                //"BasketballLeague|SportsLeague|Organisation|Agent",
                 "Canal|Stream|BodyOfWater|NaturalPlace|Place",
                 "SnookerPlayer|Athlete|Person|Agent",
                 "Cave|NaturalPlace|Place",
                 "Vein|AnatomicalStructure",
                 "Embryology|AnatomicalStructure",
-                "IceHockeyLeague|SportsLeague|Organisation|Agent",
+                //"IceHockeyLeague|SportsLeague|Organisation|Agent",
                 //176 BaseballLeague|SportsLeague|Organisation|Agent
                 //173 SportsLeague|Organisation|Agent
                 //169 SoccerLeague|SportsLeague|Organisation|Agent
@@ -223,7 +223,7 @@ public class EmailUtils {
                 "BodyOfWater|NaturalPlace|Place",
                 //HandballLeague|SportsLeague|Organisation|Agent
                 "Continent|PopulatedPlace|Place",
-                "AutoRacingLeague|SportsLeague|Organisation|Agent",
+                //"AutoRacingLeague|SportsLeague|Organisation|Agent",
                 "Journalist|Person|Agent",
                 //9 GolfLeague|SportsLeague|Organisation|Agent
                 //9 CricketLeague|SportsLeague|Organisation|Agent
