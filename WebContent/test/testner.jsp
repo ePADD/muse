@@ -21,7 +21,7 @@
             Map<String,Double> map = new LinkedHashMap<>();
             List<Triple<String,Integer,Integer>> cands = new CICTokenizer().tokenize(content, type==FeatureDictionary.PERSON);
             //List<String> pns = NLPUtils.getAllProperNouns(content);
-            //for (Triple<String,Integer,Integer> cand : cands) {
+            //for(String pn: pns){
             for(Triple<String,Integer, Integer> t: cands){
                 String pn = t.getFirst();
                 //Double val = allMaps[t].get(cand.getFirst());
@@ -36,7 +36,7 @@
         }
     }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-    Short type = FeatureDictionary.PLACE;
+    Short type = FeatureDictionary.PERSON;
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");

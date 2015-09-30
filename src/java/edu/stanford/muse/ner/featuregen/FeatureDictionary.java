@@ -40,6 +40,7 @@ public class FeatureDictionary implements Serializable {
      * left and right labels, LABEL is one of: LOC, ORG,PER, OTHER, NEW, stop words, special chars*/
     public static class MU implements Serializable{
         //the likelihood with the type is also considered
+        //static String[] TYPE_LABELS = new String[]{"per","org","loc","oth"};
         static String[] TYPE_LABELS = new String[]{"Y","N"};
         //all possible labels of the words to the left and right
         //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
@@ -100,7 +101,7 @@ public class FeatureDictionary implements Serializable {
         public static int getNumberOfSymbols(String f){
             for(String str: TYPE_LABELS)
                 if(str.equals(f))
-                    return 2;
+                    return TYPE_LABELS.length;
             for(String str: WORD_LABELS)
                 if(f.endsWith(str))
                     return WORD_LABELS.length;
@@ -126,6 +127,7 @@ public class FeatureDictionary implements Serializable {
                 //does not want to smooth, if the feature is position label
                 if(f.startsWith("PL:"))
                     smooth = false;
+                //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
                 if(muVectorPositive.size()==2)
                     smooth = true;

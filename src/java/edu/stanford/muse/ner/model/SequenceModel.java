@@ -190,7 +190,6 @@ public class SequenceModel implements NERModel, Serializable{
     public static void main(String[] args){
         try {
             String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
             String modelFile = mwl + SequenceModel.modelFileName;
             if (fdw == null) {
@@ -206,7 +205,6 @@ public class SequenceModel implements NERModel, Serializable{
             catch(IOException e){e.printStackTrace();}
             if(nerModel == null)
                 nerModel = train();
-            List<Document> docs = archive.getAllDocs();
             int di =0;
 //            for(Document doc: docs) {
 //                String content = archive.getContents(doc, true);
