@@ -1597,7 +1597,8 @@ public class EmailUtils {
 	}
 
     public static void main(String[] args){
-        Map<String,String> dbpedia = readDBpedia();
-        System.err.println(dbpedia.containsKey("Samsung"));
+//        Map<String,String> dbpedia = readDBpedia();
+//        System.err.println(dbpedia.get("Canada"));
+        System.err.println("hello".indexOf(':'));
     }
 }

@@ -168,12 +168,16 @@ public class FeatureDictionary implements Serializable {
                 //does not want to smooth, if the feature is position label
                 //also dont smooth if the feature is a type related feature
                 //TODO: This way of checking the feature type is pathetic, improve this
-                if(f.startsWith("PL:") || f.indexOf(':')==-1)
+                if(f.startsWith("PL:"))
                     smooth = false;
                 //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
                 if(muVectorPositive.size()==TYPE_LABELS.length)
                     smooth = true;
+
+                //should not smooth type related mu params even initially
+                if(f.indexOf(':')==-1)
+                    smooth = false;
 
                 if(!muVectorPositive.containsKey(f)){
                     //no smoothing in the case of position label
