@@ -46,7 +46,6 @@ public class SequenceModel implements NERModel, Serializable{
         if(phrase.startsWith("The "))
             phrase = phrase.replaceAll("^The ","");
         List<String> commonWords = Arrays.asList("as", "because", "just", "in", "by", "for", "and", "to", "on", "of", "dear", "according", "think", "a", "an", "if", "at", "but", "the", "is");
-        double sorg, snon_org;
         //what the candidate starts or ends with is important
         String[] swords = phrase.split("\\s+");
         String fw = swords[0].toLowerCase();

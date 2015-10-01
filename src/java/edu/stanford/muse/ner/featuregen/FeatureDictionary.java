@@ -77,13 +77,15 @@ public class FeatureDictionary implements Serializable {
                     mu.muVectorPositive.put("per", initialParams.get(type).first);
                 else if(type==FeatureDictionary.ORGANISATION)
                     mu.muVectorPositive.put("org", initialParams.get(type).first);
-                else
+                else if(type==FeatureDictionary.PLACE)
                     mu.muVectorPositive.put("loc", initialParams.get(type).first);
+                else
+                    mu.muVectorPositive.put("oth", initialParams.get(type).first);
                 s1 += initialParams.get(type).first;
                 s2 = initialParams.get(type).second;
             }
             //System.err.println("INitialised with: "+initialParams);
-            mu.muVectorPositive.put("oth", 1-s1);
+            //mu.muVectorPositive.put("oth", 1-s1);
             mu.numMixture = s2;
 //            for(int i=0;i<TYPE_LABELS.length;i++){
 //                if(i==0) {
@@ -168,7 +170,7 @@ public class FeatureDictionary implements Serializable {
                 //does not want to smooth, if the feature is position label
                 //also dont smooth if the feature is a type related feature
                 //TODO: This way of checking the feature type is pathetic, improve this
-                if(f.startsWith("PL:"))
+                if(!features.contains("per") && f.startsWith("PL:"))
                     smooth = false;
                 //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
@@ -194,7 +196,10 @@ public class FeatureDictionary implements Serializable {
                 if(smooth)
                     val = (muVectorPositive.get(f)+1)/(numMixture+v);
                 else
-                    val = muVectorPositive.get(f)/numMixture;
+                    if(numMixture>0)
+                        val = (muVectorPositive.get(f))/(numMixture);
+                    else
+                        val = 0;
                 //System.err.println("f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+v);
 
                 if(Double.isNaN(val)) {
@@ -449,17 +454,29 @@ public class FeatureDictionary implements Serializable {
                         }
             }
             Map<Short, Pair<Double,Double>> priors = new LinkedHashMap<>();
+            double total=0,totalT=0;
             for(Short type: words.get(str).keySet()){
 //                if(ht!=null && ht>0)
 //                    System.err.println("Initialising "+str+" with type: "+ht);
                 Pair<Double,Double> p = words.get(str).get(type);
-                if(ht==null)
+                if(ht==null) {
                     priors.put(type, p);
-                else if(ht==type)
+                    totalT+=p.first;
+                }
+                else if(ht==type) {
                     priors.put(type, new Pair<>(p.getSecond(), p.getSecond()));
-                else
+                    totalT+=p.getSecond();
+                }
+                else {
                     priors.put(type, new Pair<>(0.0, p.getSecond()));
+                    totalT += 0;
+                }
+                total=p.getSecond();
             }
+            if(ht!=null)
+                priors.put(FeatureDictionary.OTHER, new Pair<>(0.0, total));
+            else
+                priors.put(FeatureDictionary.OTHER, new Pair<>(total-totalT,total));
             features.put(str, MU.initialise(priors));
         }
 
@@ -752,8 +769,13 @@ public class FeatureDictionary implements Serializable {
                 for (Short type : allTypes) {
                     FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
                     Map<String, Double> some = new LinkedHashMap<>();
-                    for (String w : mixtures.keySet())
-                        some.put(w, mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).getFreq()));
+                    for (String w : mixtures.keySet()) {
+                        double v = mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).getFreq());
+                        if(Double.isNaN(v))
+                            some.put(w, 0.0);
+                        else
+                            some.put(w, v);
+                    }
                     List<Pair<String, Double>> ps = Util.sortMapByValue(some);
                     for (Pair<String, Double> p : ps) {
                         fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");

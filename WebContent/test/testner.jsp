@@ -36,7 +36,7 @@
         }
     }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-    Short type = FeatureDictionary.PLACE;
+    Short type = FeatureDictionary.ORGANISATION;
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
@@ -95,10 +95,12 @@
     Set<String> found = new LinkedHashSet<>();
     for(Pair<String,Double> p: lst) {
         String color = "";
-        if(borgs.contains(p.getFirst())) {
+        String str = p.getFirst().replaceAll("^The ","");
+        if(borgs.contains(str)) {
             color = "red";
-            if(p.getSecond()>CUTOFF)
-                found.add(p.getFirst());
+            if(p.getSecond()>CUTOFF) {
+                found.add(str);
+            }
         }
         out.println("<span style='color:"+color+"'>"+p.getFirst() + " : " + p.getSecond() + "</span><br>");
     }
