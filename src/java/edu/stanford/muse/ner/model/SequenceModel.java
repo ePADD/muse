@@ -46,7 +46,7 @@ public class SequenceModel implements NERModel, Serializable{
         if(phrase.startsWith("The "))
             phrase = phrase.replaceAll("^The ","");
         List<String> commonWords = Arrays.asList("as", "because", "just", "in", "by", "for", "and", "to", "on", "of", "dear", "according", "think", "a", "an", "if", "at", "but", "the", "is");
-        double sorg = 0, snon_org = 0;
+        double sorg, snon_org;
         //what the candidate starts or ends with is important
         String[] swords = phrase.split("\\s+");
         String fw = swords[0].toLowerCase();
@@ -61,16 +61,30 @@ public class SequenceModel implements NERModel, Serializable{
             return 0.0;
 
         //String[] patts = FeatureDictionary.getPatts(substr);
-        sorg = dictionary.getConditional(phrase, type, true, fdw);
-        snon_org = dictionary.getConditional(phrase, type, false, fdw);
+        double[] scores = new double[4];
+        scores[0] = dictionary.getConditional(phrase, FeatureDictionary.OTHER, fdw);
+        Short bt = FeatureDictionary.OTHER;
+        double bs = scores[0];
+        for(int ti=0;ti<FeatureDictionary.allTypes.length;ti++){
+            Short t = FeatureDictionary.allTypes[ti];
+            double s = dictionary.getConditional(phrase, t, fdw);
+            scores[ti+1] = s;
+            if(s>bs) {
+                bt = t;
+                bs = s;
+            }
+        }
         if (fdw != null) {
             try {
-                fdw.write("String: " + phrase + " - " + sorg + " " + snon_org + "\n");
+                String str = "";
+                for(double s: scores)
+                    str += s+" ";
+                fdw.write("String: " + phrase + " - " + str + "\n");
             }catch(IOException e){
                 e.printStackTrace();
             }
         }
-        return sorg-snon_org;
+        return bs*((bt==type)?1:-1);
     }
 
     public Pair<String,Double> scoreSubstrs(String phrase, Short type) {
@@ -282,6 +296,8 @@ public class SequenceModel implements NERModel, Serializable{
                     break;
                 rfw.write(str+" realtype: "+type+", s:"+s+", result: "+(v>=0?"correct":"wrong")+"\n");
             }
+            System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
+            System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
             rfw.close();
             fdw.close();
             double p = numCorrect/numOrgRec;

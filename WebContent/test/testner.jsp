@@ -36,7 +36,7 @@
         }
     }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-    Short type = FeatureDictionary.PERSON;
+    Short type = FeatureDictionary.PLACE;
 
     String modelFile = mwl + SequenceModel.modelFileName;
     SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
@@ -114,7 +114,7 @@
     out.println("Precision: "+p+"<br>");
     out.println("Recall: "+r+"<br>");
     out.println("F1: "+f+"<br>");
-    Map<Short, FeatureDictionary.MU> mus = nerModel.dictionary.features.get("co");
-    for(Short srt: mus.keySet())
-        out.println(srt+" - "+mus.get(srt).getLikelihoodWithThisType()+"<br>");
+//    Map<Short, FeatureDictionary.MU> mus = nerModel.dictionary.features.get("co");
+//    for(Short srt: mus.keySet())
+//        out.println(srt+" - "+mus.get(srt).getLikelihoodWithThisType()+"<br>");
 %>
