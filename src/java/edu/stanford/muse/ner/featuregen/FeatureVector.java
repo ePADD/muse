@@ -46,8 +46,8 @@ public class FeatureVector implements Serializable {
 							if (dictionary.features.get(dim)!=null && dictionary.features.containsKey(dim)) {
                                 p = new Pair<>(0.0, 0.0);
                                 FeatureDictionary.MU mu = dictionary.features.get(val);
-                                p.first = mu.getLikelihoodWithType(type) * mu.getFreq();
-                                p.second = mu.getFreq();
+                                p.first = mu.getLikelihoodWithType(type) * mu.getPrior();
+                                p.second = mu.numMixture;
                             }
 
                             //There can be pairs like <0,0> as we try to emit person like features and organisation like features for an entity

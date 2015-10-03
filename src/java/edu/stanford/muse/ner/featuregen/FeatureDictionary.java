@@ -35,23 +35,22 @@ import java.util.regex.Pattern;
 public class FeatureDictionary implements Serializable {
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
-    public static short SETTLEMENT=0,PERSON=1,COMPANY=2,BUILDING=3,PLACE=4,SCHOOL=5,RIVER=6,ROAD=7,SPORTSTEAM=8,UNIVERSITY=9,
-            MILITARYUNIT=10,MOUNTAIN=11,AIRPORT=12,LAKE=13,STADIUM=14,PROTECTEDAREA=15,ORGANISATION=16,DRUG=17,
-            NEWSPAPER=18,ACADEMICJOURNAL=19,MAGAZINE=20,POLITICALPARTY=21,ISLAND=22,MUSEUM=23,BRIDGE=24,AIRLINE=25,
-            NPORG=26,GOVAGENCY=27,RECORDLABEL=28,SHOPPINGMALL=29,HOSPITAL=30,POWERSTATION=31,AWARD=32,TRADEUNIN=33,
-            PARK=34,WORLDHERITAGESITE=35,HOTEL=36,THEATRE=37,LEGISTLATURE=38,LIBRARY=39,LAWFIRM=40,CANAL=41,
-            COLLEGE=42,STREAM=43,BODYOFWATER=44,MONUMENT=45,OTHER=-1;
+    public static short SETTLEMENT=0,PERSON=1,COMPANY=2,BUILDING=3,PLACE=4,RIVER=5,ROAD=6,SPORTSTEAM=7,UNIVERSITY=8,
+            MILITARYUNIT=9,MOUNTAIN=10,AIRPORT=11,LAKE=12,STADIUM=13,PROTECTEDAREA=14,ORGANISATION=15,DRUG=16,NEWSPAPER=17,
+            ACADEMICJOURNAL=18,MAGAZINE=19,POLITICALPARTY=20,ISLAND=21,MUSEUM=22,BRIDGE=23,AIRLINE=24,NPORG=25,GOVAGENCY=26,
+            RECORDLABEL=27,SHOPPINGMALL=28,HOSPITAL=29,POWERSTATION=30,AWARD=31,TRADEUNIN=32,PARK=33,WORLDHERITAGESITE=34,
+            HOTEL=35,THEATRE=36,LEGISTLATURE=37,LIBRARY=38,LAWFIRM=39,CANAL=40,STREAM=41,BODYOFWATER=42,MONUMENT=43,OTHER=-1;
     //public static Short[] allTypes = new Short[]{PERSON, ORGANISATION, PLACE};
-    public static Short[] allTypes = new Short[]{SETTLEMENT,PERSON,COMPANY,BUILDING,PLACE,SCHOOL,RIVER,ROAD,SPORTSTEAM,
+    public static Short[] allTypes = new Short[]{SETTLEMENT,PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,SPORTSTEAM,
             UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,LAKE,STADIUM,PROTECTEDAREA,ORGANISATION,DRUG,NEWSPAPER,ACADEMICJOURNAL,
             MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,RECORDLABEL,SHOPPINGMALL,HOSPITAL,
-            POWERSTATION,AWARD,TRADEUNIN,PARK,WORLDHERITAGESITE,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,CANAL,COLLEGE,
+            POWERSTATION,AWARD,TRADEUNIN,PARK,WORLDHERITAGESITE,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,CANAL,
             STREAM,BODYOFWATER,MONUMENT,OTHER};
     static Log log = LogFactory.getLog(FeatureDictionary.class);
-    public static Map<Short, String[]> aTypes = new LinkedHashMap<Short, String[]>();
+    public static Map<Short, String[]> aTypes = new LinkedHashMap<>();
     public FeatureGenerator[] featureGens = null;
-    public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<Short, String[]>();
-    public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<Short, String[]>();
+    public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<>();
+    public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<>();
     public static List<String> ignoreTypes = new ArrayList<String>();
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2;
@@ -70,11 +69,10 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(COMPANY, new String[]{"Company|Organisation"});
         aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place"});
         aTypes.put(PLACE, new String[]{"Place"});
-        aTypes.put(SCHOOL, new String[]{"School|EducationalInstitution|Organisation"});
         aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place"});
         aTypes.put(ROAD, new String[]{"Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(SPORTSTEAM, new String[]{"SportsTeam|Organisation"});
-        aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation"});
+        aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation","School|EducationalInstitution|Organisation","College|EducationalInstitution|Organisation"});
         aTypes.put(MILITARYUNIT, new String[]{"MilitaryUnit|Organisation"});
         aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
         aTypes.put(AIRPORT, new String[]{"Airport|Infrastructure|ArchitecturalStructure|Place"});
@@ -107,7 +105,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(LIBRARY, new String[]{"Library|EducationalInstitution|Organisation|Agent|Building|ArchitecturalStructure|Place"});
         aTypes.put(LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
         aTypes.put(CANAL, new String[]{"Canal|Stream|BodyOfWater|NaturalPlace|Place"});
-        aTypes.put(COLLEGE, new String[]{"College|EducationalInstitution|Organisation"});
         aTypes.put(STREAM, new String[]{"Stream|BodyOfWater|NaturalPlace|Place"});
         aTypes.put(BODYOFWATER, new String[]{"BodyOfWater|NaturalPlace|Place"});
         aTypes.put(MONUMENT, new String[]{"Monument|Place"});
@@ -170,6 +167,8 @@ public class FeatureDictionary implements Serializable {
         Map<String,Double> muVectorPositive;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
         public double numMixture;
+        //total number of times, this mixture is considered
+        public double numSeen;
         public MU() {
             initialise();
         }
@@ -186,13 +185,16 @@ public class FeatureDictionary implements Serializable {
                 s1 += initialParams.get(type).first;
                 s2 = initialParams.get(type).second;
             }
+            //initially dont assume anything about gammas and pi's
             mu.numMixture = s2;
+            mu.numSeen = s2;
             return mu;
         }
 
         private void initialise(){
             muVectorPositive = new LinkedHashMap<>();
             this.numMixture = 0;
+            this.numSeen = 0;
         }
 
         //returns P(type/this-mixture)
@@ -237,10 +239,6 @@ public class FeatureDictionary implements Serializable {
             return 0;
         }
 
-        public double getFreq(){
-            return numMixture;
-        }
-
         //features also include the type of the phrase
         //returns the log of P(type,features/this-mixture)
         public double getLikelihood(Set<String> features){
@@ -252,8 +250,8 @@ public class FeatureDictionary implements Serializable {
                 //also dont smooth if the feature is a type related feature
                 //TODO: This way of checking the feature type is pathetic, improve this
                 //it creates problem if there is smoothing for certain types and not for other types
-//                if(!features.contains("T:"+FeatureDictionary.PERSON) && f.startsWith("PL:"))
-//                    smooth = false;
+                if(f.startsWith("L:") || f.startsWith("R:"))
+                    smooth = true;
                 //should not smooth type related mu params even initially
                 //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
@@ -291,11 +289,10 @@ public class FeatureDictionary implements Serializable {
         }
 
         //where N is the total number of observations, for normalization
-        public double getPrior(int N){
-            //Initially numMixtures is just set to 1
-            //Initially, this value is used only for computing the gamma value, hence any value,
-            //that remains the same for all the mixtures will do
-            return numMixture/N;
+        public double getPrior(){
+            if(numSeen == 0)
+                System.err.println("FATAL!!! Number of times this mixture is seen is zero, that cant be true!!!");
+            return (numMixture+1)/(numSeen+1);
         }
 
         /**Maximization step in EM update, update under the assumption that add will be called only if the evidence for the corresponding mixture is seen, i.e. xk!=0
@@ -306,10 +303,9 @@ public class FeatureDictionary implements Serializable {
             if (Double.isNaN(resp))
                 log.warn("Responsibility is nan for: " + features);
             numMixture += resp;
+            numSeen += 1;
             for (String f : features) {
                 if (!muVectorPositive.containsKey(f)) {
-                    //System.err.println("!!!FATAL!!! Unknown feature: "+f);
-                    //continue;
                     muVectorPositive.put(f, 0.0);
                 }
                 muVectorPositive.put(f, muVectorPositive.get(f) + resp);
@@ -350,9 +346,6 @@ public class FeatureDictionary implements Serializable {
         public String toString(){
             String str = "";
             String p[] = new String[]{"L:","R:","PL:","T:"};
-//            String[] WORD_LENGTHS = new String[NUM_WORDLENGTH_LABELS];
-//            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++)
-//                WORD_LENGTHS[i-1] = i+"";
             String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,POSITION_LABELS,TYPE_LABELS};
             for(int i=0;i<labels.length;i++) {
                 Map<String,Double> some = new LinkedHashMap<>();
@@ -369,6 +362,7 @@ public class FeatureDictionary implements Serializable {
                     str += pair.getFirst()+":"+pair.getSecond()+"-";
                 str += "\n";
             }
+            str += "NM:"+numMixture+", NS:"+numSeen+"\n";
             return str;
         }
     }
@@ -764,7 +758,7 @@ public class FeatureDictionary implements Serializable {
                         continue;
                     }
                     MU mu = mixtures.get(mi);
-                    double d = mu.getLikelihood(featureMap.get(mi)) * mu.getPrior(N);
+                    double d = mu.getLikelihood(featureMap.get(mi)) * mu.getPrior();
                     //only two tags, org/non-org
                     //by N cancels out whe we normalize
                     //double d = (allowed?pfreq:(1-pfreq)) * (p.getSecond()+2);
@@ -803,7 +797,7 @@ public class FeatureDictionary implements Serializable {
                         FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
                         Map<String, Double> some = new LinkedHashMap<>();
                         for (String w : mixtures.keySet()) {
-                            double v = mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).getFreq());
+                            double v = mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).numMixture);
                             if (Double.isNaN(v))
                                 some.put(w, 0.0);
                             else
@@ -929,8 +923,8 @@ public class FeatureDictionary implements Serializable {
             if(val>0){
                 double freq = 0;
                 if(features.get(mid) != null)
-                    freq = features.get(mid).getFreq();
-                val *= 1+freq;
+                    freq = features.get(mid).getPrior();
+                val *= freq;
             }
             sorg += val;//*dictionary.getMarginal(word);
         }

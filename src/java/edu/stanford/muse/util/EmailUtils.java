@@ -1345,7 +1345,7 @@ public class EmailUtils {
                     break;
                 if (lines++ % 500000 == 0)
                     log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
-                if (lines > 500000)
+                if (lines > 100000)
                     break;
 
                 if (line.contains("GivenName"))
