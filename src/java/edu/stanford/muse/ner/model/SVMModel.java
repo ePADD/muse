@@ -73,7 +73,7 @@ public class SVMModel implements NERModel, Serializable {
                 //log.info("Name: "+name+", predict: "+v+", fv:"+wfv);
                 if (v > 0) {
                     //clean before passing for annotation.
-                    if(FeatureDictionary.PERSON.equals(type)) {
+                    if(FeatureDictionary.PERSON == type) {
                         Pair<String, Boolean> p1 = WordSurfaceFeature.checkAndStrip(name, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON), true, true);
                         name = p1.getFirst();
                     }

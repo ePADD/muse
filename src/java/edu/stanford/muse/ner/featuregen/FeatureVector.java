@@ -70,7 +70,7 @@ public class FeatureVector implements Serializable {
                         if(numWords>0)
 							freq /= numWords;
 						featureIndices.put(dim, fvList.size());
-						if(!FeatureDictionary.ORGANISATION.equals(iType))
+						if(!(FeatureDictionary.ORGANISATION == iType))
 							fvList.add(freq);
 						else {
                             if("words".equals(dim)) {

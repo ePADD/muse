@@ -19,6 +19,7 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.QuotedPrintableCodec;
@@ -46,204 +47,6 @@ public class EmailUtils {
     static class DBpediaTypes {
         //these are types identified from DBpedia that may contain some predictable tokens and omitting types with any possible tokens like TVShows and Bands
         //also omitting types that are not very different from other types like, Company and AutomobileEngine|Device
-        public static List<String> allowedTypes = Arrays.asList(
-                "Settlement|PopulatedPlace|Place",
-                "Person|Agent",
-                "Village|Settlement|PopulatedPlace|Place",
-                "SoccerPlayer|Athlete|Person|Agent",
-                "Company|Organisation|Agent",
-                "Town|Settlement|PopulatedPlace|Place",
-                "Building|ArchitecturalStructure|Place",
-                "MusicalArtist|Artist|Person|Agent",
-                "AdministrativeRegion|PopulatedPlace|Place",
-                "OfficeHolder|Person|Agent",
-                "School|EducationalInstitution|Organisation|Agent",
-                "River|Stream|BodyOfWater|NaturalPlace|Place",
-                "MilitaryPerson|Person|Agent",
-                "Station|Infrastructure|ArchitecturalStructure|Place",
-                "BaseballPlayer|Athlete|Person|Agent",
-                "Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
-                "City|Settlement|PopulatedPlace|Place",
-                "SoccerClub|SportsTeam|Organisation|Agent",
-                "University|EducationalInstitution|Organisation|Agent",
-                "Fish|Animal|Eukaryote|Species",
-                "Writer|Artist|Person|Agent",
-                "MilitaryUnit|Organisation|Agent",
-                "Scientist|Person|Agent",
-                "SoccerManager|Person|Agent",
-                "Mountain|NaturalPlace|Place",
-                "Airport|Infrastructure|ArchitecturalStructure|Place",
-                "AmericanFootballPlayer|GridironFootballPlayer|Athlete|Person|Agent",
-                "IceHockeyPlayer|Athlete|Person|Agent",
-                "Cricketer|Athlete|Person|Agent",
-                "Athlete|Person|Agent",
-                "Lake|BodyOfWater|NaturalPlace|Place",
-                "RugbyPlayer|Athlete|Person|Agent",
-                "Politician|Person|Agent",
-                "Artist|Person|Agent",
-                "Stadium|Building|ArchitecturalStructure|Place",
-                "GridironFootballPlayer|Athlete|Person|Agent",
-                "ProtectedArea|Place",
-                "HistoricPlace|Place",
-                "Organisation|Agent",
-                "CollegeCoach|Person|Agent",
-                "Drug",
-                "SoccerClubSeason|SportsTeamSeason|Organisation|Agent",
-                "ComicsCharacter|FictionalCharacter|Person|Agent",
-                "FictionalCharacter|Person|Agent",
-                "MemberOfParliament|Politician|Person|Agent",
-                "Newspaper|PeriodicalLiterature|WrittenWork|Work",
-                "AcademicJournal|PeriodicalLiterature|WrittenWork|Work",
-                "Election|Event",
-                "Animal|Eukaryote|Species",
-                "HistoricBuilding|Building|ArchitecturalStructure|Place",
-                "ChristianBishop|Cleric|Person|Agent",
-                "Magazine|PeriodicalLiterature|WrittenWork|Work",
-                "Cyclist|Athlete|Person|Agent",
-                "PoliticalParty|Organisation|Agent",
-                "Island|PopulatedPlace|Place",
-                "Museum|Building|ArchitecturalStructure|Place",
-                "Bridge|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
-                "Airline|Company|Organisation|Agent",
-                "Non-ProfitOrganisation|Organisation|Agent",
-                "Country|PopulatedPlace|Place",
-                "GaelicGamesPlayer|Athlete|Person|Agent",
-                "TennisPlayer|Athlete|Person|Agent",
-                "GovernmentAgency|Organisation|Agent",
-                "Saint|Cleric|Person|Agent",
-                "MartialArtist|Athlete|Person|Agent",
-                "Website|Work",
-                "BasketballPlayer|Athlete|Person|Agent",
-                "Congressman|Politician|Person|Agent",
-                "GolfPlayer|Athlete|Person|Agent",
-                "Governor|Politician|Person|Agent",
-                "FigureSkater|Athlete|Person|Agent",
-                "ComicsCreator|Artist|Person|Agent",
-                "Boxer|Athlete|Person|Agent",
-                "RecordLabel|Company|Organisation|Agent",
-                "Monarch|Person|Agent",
-                "President|Politician|Person|Agent",
-                "ShoppingMall|Building|ArchitecturalStructure|Place",
-                "RailwayLine|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
-                "Hospital|Building|ArchitecturalStructure|Place",
-                "AustralianRulesFootballPlayer|Athlete|Person|Agent",
-                "FootballMatch|SportsEvent|Event",
-                "Wrestler|Athlete|Person|Agent",
-                "AnatomicalStructure",
-                "MountainRange|NaturalPlace|Place",
-                "PowerStation|Infrastructure|ArchitecturalStructure|Place",
-                "AdultActor|Actor|Artist|Person|Agent",
-                "Judge|Person|Agent",
-                "Award",
-                "LunarCrater|NaturalPlace|Place",
-                "PrimeMinister|Politician|Person|Agent",
-                "TradeUnion|Organisation|Agent",
-                "Park|ArchitecturalStructure|Place",
-                "Criminal|Person|Agent",
-                "Lighthouse|Building|ArchitecturalStructure|Place",
-                //"PublicTransitSystem|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
-                "Model|Person|Agent",
-                "Philosopher|Person|Agent",
-                "Architect|Person|Agent",
-                "BroadcastNetwork|Broadcaster|Organisation|Agent",
-                "WorldHeritageSite|Place",
-                "Mayor|Politician|Person|Agent",
-                "WrestlingEvent|SportsEvent|Event",
-                "PlayboyPlaymate|Person|Agent",
-                "Senator|Politician|Person|Agent",
-                "Comedian|Artist|Person|Agent",
-                "Hotel|Building|ArchitecturalStructure|Place",
-                "MusicFestival|Event",
-                "Theatre|Building|ArchitecturalStructure|Place",
-                "FormulaOneRacer|Athlete|Person|Agent",
-                "Actor|Artist|Person|Agent",
-                "Volcano|NaturalPlace|Place",
-                "Legislature|Organisation|Agent",
-                "NascarDriver|Athlete|Person|Agent",
-                "BasketballTeam|SportsTeam|Organisation|Agent",
-                //697 MixedMartialArtsEvent|SportsEvent|Event
-                "Place",
-                "Astronaut|Person|Agent",
-                "Library|EducationalInstitution|Organisation|Agent|Building|ArchitecturalStructure|Place",
-                "PokerPlayer|Person|Agent",
-                "NationalCollegiateAthleticAssociationAthlete|Athlete|Person|Agent",
-                "SkiArea|Place",
-                "Brain|AnatomicalStructure",
-                "Cardinal|Cleric|Person|Agent",
-                "Convention|Event",
-                "SiteOfSpecialScientificInterest|Place",
-                "Race|SportsEvent|Event",
-                "SpaceMission|Event",
-                "Restaurant|Building|ArchitecturalStructure|Place",
-                "Bone|AnatomicalStructure",
-                "FilmFestival|Event",
-                "BadmintonPlayer|Athlete|Person|Agent",
-                "LawFirm|Company|Organisation|Agent",
-                "Ambassador|Person|Agent",
-                "Artery|AnatomicalStructure",
-                "Nerve|AnatomicalStructure",
-                "WineRegion|Place",
-                "Muscle|AnatomicalStructure",
-                //"BasketballLeague|SportsLeague|Organisation|Agent",
-                "Canal|Stream|BodyOfWater|NaturalPlace|Place",
-                "SnookerPlayer|Athlete|Person|Agent",
-                "Cave|NaturalPlace|Place",
-                "Vein|AnatomicalStructure",
-                "Embryology|AnatomicalStructure",
-                //"IceHockeyLeague|SportsLeague|Organisation|Agent",
-                //176 BaseballLeague|SportsLeague|Organisation|Agent
-                //173 SportsLeague|Organisation|Agent
-                //169 SoccerLeague|SportsLeague|Organisation|Agent
-                //156 Sport|Activity
-                //126 RugbyLeague|SportsLeague|Organisation|Agent
-                "Valley|NaturalPlace|Place",
-                "Chancellor|Politician|Person|Agent",
-                "Lymph|AnatomicalStructure",
-                //79 SpeedwayTeam|SportsTeam|Organisation|Agent
-                "LaunchPad|Infrastructure|ArchitecturalStructure|Place",
-                "College|EducationalInstitution|Organisation|Agent",
-                //69 AmericanFootballLeague|SportsLeague|Organisation|Agent
-                //61 HockeyTeam|SportsTeam|Organisation|Agent
-                "Olympics|SportsEvent|Event",
-                "WomensTennisAssociationTournament|SportsEvent|Event",
-                //54 YearInSpaceflight|Event
-                //52 VolleyballLeague|SportsLeague|Organisation|Agent
-                //SpaceStation|MeanOfTransportation
-                //30 Tunnel|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place
-                "Stream|BodyOfWater|NaturalPlace|Place",
-                "SnookerChamp|SnookerPlayer|Athlete|Person|Agent",
-                //MotorcycleRacingLeague|SportsLeague|Organisation|Agent
-                "SpaceShuttle|MeanOfTransportation",
-                //FieldHockeyLeague|SportsLeague|Organisation|Agent
-                //CanadianFootballTeam|SportsTeam|Organisation|Agent
-                //WaterwayTunnel|Tunnel|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place
-//        18 LacrosseLeague|SportsLeague|Organisation|Agent
-//        18 InlineHockeyLeague|SportsLeague|Organisation|Agent
-//        17 SoftballLeague|SportsLeague|Organisation|Agent
-                "BodyOfWater|NaturalPlace|Place",
-                //HandballLeague|SportsLeague|Organisation|Agent
-                "Continent|PopulatedPlace|Place",
-                //"AutoRacingLeague|SportsLeague|Organisation|Agent",
-                "Journalist|Person|Agent",
-                //9 GolfLeague|SportsLeague|Organisation|Agent
-                //9 CricketLeague|SportsLeague|Organisation|Agent
-                //8 PoloLeague|SportsLeague|Organisation|Agent
-                //6 TennisLeague|SportsLeague|Organisation|Agent
-                "HumanGene|Gene|Biomolecule",
-                //VideogamesLeague|SportsLeague|Organisation|Agent
-                //SpeedwayLeague|SportsLeague|Organisation|Agent
-                "Monument|Place",
-                "HumanGeneLocation|GeneLocation",
-                //CanadianFootballLeague|SportsLeague|Organisation|Agent
-                //AustralianFootballLeague|SportsLeague|Organisation|Agent
-                "MouseGene|Gene|Biomolecule",
-                "MouseGeneLocation|GeneLocation",
-                //"AmericanFootballTeam|SportsTeam|Organisation|Agent
-//        "URI:|URI:
-//                2 Ginkgo|Plant|Eukaryote|Species
-                "Skyscraper|Building|ArchitecturalStructure|Place"
-//        1 MixedMartialArtsLeague|SportsLeague|Organisation|Agent
-        );
     }
 
 	public static String tabooEmailNames[] = new String[]{"paypal member", "info@evite.com", "evite.com"}; // could consider adding things ending in clients, members, etc.
@@ -1542,7 +1345,7 @@ public class EmailUtils {
                     break;
                 if (lines++ % 500000 == 0)
                     log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
-                if (lines > 10000)
+                if (lines > 500000)
                     break;
 
                 if (line.contains("GivenName"))
@@ -1569,13 +1372,15 @@ public class EmailUtils {
                     d++;
                     continue;
                 }
-                r = r.replaceAll("_\\(.*?\\)", "");
-                String title = r.replaceAll("_"," ");
+                //its very dangerous to remove things inside brackets as that may lead to terms like
+                //University_(Metrorail_Station) MetroStation|Place e.t.c.
+                //so keep them, or just skip this entry all together
+                //r = r.replaceAll("_\\(.*?\\)", "");
                 String type = words[1];
-
-                boolean allowed = DBpediaTypes.allowedTypes.contains(type);
-                if(!allowed)
-                    continue;
+                //in places there are things like: Shaikh_Ibrahim,_Iraq
+                if (type.endsWith("Place"))
+                    r = r.replaceAll(",_.*","");
+                String title = r.replaceAll("_"," ");
 
                 String badSuffix = "|Agent";
                 if (type.endsWith(badSuffix) && type.length() > badSuffix.length())
@@ -1583,6 +1388,17 @@ public class EmailUtils {
                 if (type.contains("|Person"))
                     numPersons++;
                 type = type.intern(); // type strings are repeated very often, so intern
+
+                boolean allowed = true;
+                //boolean allowed = DBpediaTypes.allowedTypes.contains(type);
+                for(String it: FeatureDictionary.ignoreTypes)
+                    if(type.endsWith(it)) {
+                        allowed = false;
+                        break;
+                    }
+                if(!allowed)
+                    continue;
+
                 dbpedia.put(title, type);
             }
 			lnr.close();

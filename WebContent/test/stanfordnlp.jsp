@@ -5,15 +5,27 @@
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="edu.stanford.nlp.ie.AbstractSequenceClassifier" %>
 <%@ page import="edu.stanford.nlp.ie.crf.CRFClassifier" %>
+<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
+<%@ page import="edu.stanford.muse.index.Archive" %>
+<%@ page import="edu.stanford.muse.index.Document" %>
 <%
-    Short type = FeatureDictionary.PLACE;
-    String stype = "LOCATION"; // "ORGANIZATION", "PERSON"
+    Short type = FeatureDictionary.ORGANISATION;
+    String stype = "ORGANIZATION";//"LOCATION"; //, "PERSON"
     String serializedClassifier = "/Users/vihari/epadd-ner/english.all.3class.distsim.crf.ser.gz";
     AbstractSequenceClassifier<CoreLabel> classifier = CRFClassifier.getClassifier(serializedClassifier);
 
     NEREvaluator evaluator = new NEREvaluator(10000);
-    List<String> contents = evaluator.getSentences();
-    Set<String> borgs = evaluator.bNames.get(type);
+    //List<String> contents = evaluator.getSentences();
+    Archive archive = JSPHelper.getArchive(request.getSession());
+    List<Document> docs = archive.getAllDocs();
+    List<String> contents = new ArrayList<>();
+    int i=0;
+    for(Document doc: docs){
+        if(i++>5)
+            break;
+        contents.add(archive.getContents(doc, true));
+    }
+    Set<String> borgs = new LinkedHashSet<>();//evaluator.bNames.get(type);
     Set<String> orgs = new LinkedHashSet<>();
     int di = 0;
     for (String content: contents) {

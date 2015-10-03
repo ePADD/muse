@@ -161,7 +161,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		String[] endMarkers = FeatureDictionary.endMarkersForType.get(iType);
 		//thought this is efficient than name.matches as the regex of latter needs .* to be appended
 		//String temp = name.replaceAll(FeatureDictionary.MARKERS_PATT, "");
-		Pair<String,Boolean> p1 = checkAndStrip(name, startMarkers, true, FeatureDictionary.PERSON.equals(iType));
+		Pair<String,Boolean> p1 = checkAndStrip(name, startMarkers, true, FeatureDictionary.PERSON == iType);
 		Pair<String,Boolean> p2 = checkAndStrip(p1.getFirst(), endMarkers, false, false);
 		name = p2.getFirst();
 

@@ -36,6 +36,12 @@
         }
     }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+    //FeatureDictionary.LEGISTLATURE
+    Short[] types = new Short[]{FeatureDictionary.SETTLEMENT,FeatureDictionary.COMPANY,FeatureDictionary.SCHOOL,FeatureDictionary.SPORTSTEAM,
+            FeatureDictionary.UNIVERSITY,FeatureDictionary.AIRPORT,FeatureDictionary.ORGANISATION,FeatureDictionary.NEWSPAPER,FeatureDictionary.ACADEMICJOURNAL,
+            FeatureDictionary.MAGAZINE,FeatureDictionary.POLITICALPARTY,FeatureDictionary.AIRLINE,FeatureDictionary.NPORG,FeatureDictionary.GOVAGENCY,FeatureDictionary.RECORDLABEL,
+            FeatureDictionary.SHOPPINGMALL,FeatureDictionary.HOSPITAL,
+            FeatureDictionary.POWERSTATION,FeatureDictionary.TRADEUNIN,FeatureDictionary.LEGISTLATURE,FeatureDictionary.LIBRARY,FeatureDictionary.LAWFIRM,FeatureDictionary.COLLEGE};
     Short type = FeatureDictionary.ORGANISATION;
 
     String modelFile = mwl + SequenceModel.modelFileName;
@@ -67,24 +73,28 @@
     NEREvaluator eval = new NEREvaluator(10000);
     List<String> sents = eval.getSentences();
     Set<String> orgs = new LinkedHashSet<>();
-    double CUTOFF = 0;
+    double CUTOFF = 1.5E-4;
     Map<String,Double> all = new LinkedHashMap<>();
-    for(String sent: sents){
+    for(String sent: sents) {
         //Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> some = nerModel.find(sent);
 //        for(String str: some.first.get(type)) {
 //            //String[] patts = FeatureDictionary.getPatts(s);
 //            orgs.add(str);
 //            all.put(str, 1.0);
 //        }
-        Map<String,Double> temp = new Some().find(sent, type, nerModel);
-        for(String str: temp.keySet()) {
-            all.put(str, temp.get(str));
-            orgs.add(str);
+        for (short t : types) {
+            Map<String, Double> temp = new Some().find(sent, t, nerModel);
+            for (String str : temp.keySet()) {
+                all.put(str, temp.get(str));
+                orgs.add(str);
+            }
         }
         //System.err.println("Found: "+some.first.get(FeatureDictionary.ORGANISATION).size());
     }
     List<Pair<String,Double>> lst = Util.sortMapByValue(all);
     Set<String> borgs = eval.bNames.get(type);
+    if(borgs == null)
+        borgs = new LinkedHashSet<>();
     Set<String> temp = new LinkedHashSet<>();
     for(String org: borgs){
         String t = org.replaceAll("^\\W+|\\W+$","");

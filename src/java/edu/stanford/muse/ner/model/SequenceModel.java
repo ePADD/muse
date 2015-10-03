@@ -60,14 +60,14 @@ public class SequenceModel implements NERModel, Serializable{
             return 0.0;
 
         //String[] patts = FeatureDictionary.getPatts(substr);
-        double[] scores = new double[4];
-        scores[0] = dictionary.getConditional(phrase, FeatureDictionary.OTHER, fdw);
+        double[] scores = new double[FeatureDictionary.allTypes.length];
+        //scores[0] = dictionary.getConditional(phrase, FeatureDictionary.OTHER, fdw);
         Short bt = FeatureDictionary.OTHER;
         double bs = scores[0];
         for(int ti=0;ti<FeatureDictionary.allTypes.length;ti++){
             Short t = FeatureDictionary.allTypes[ti];
             double s = dictionary.getConditional(phrase, t, fdw);
-            scores[ti+1] = s;
+            scores[ti] = s;
             if(s>bs) {
                 bt = t;
                 bs = s;
@@ -76,8 +76,8 @@ public class SequenceModel implements NERModel, Serializable{
         if (fdw != null) {
             try {
                 String str = "";
-                for(double s: scores)
-                    str += s+" ";
+                for(int si=0;si<scores.length;si++)
+                    str += FeatureDictionary.allTypes[si]+":"+scores[si]+" ";
                 fdw.write("String: " + phrase + " - " + str + "\n");
             }catch(IOException e){
                 e.printStackTrace();
@@ -148,9 +148,7 @@ public class SequenceModel implements NERModel, Serializable{
             Short type = types[t];
             List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type==FeatureDictionary.PERSON);
             for (Triple<String,Integer,Integer> cand : cands) {
-                //Double val = allMaps[t].get(cand.getFirst());
-                //Pair<String, Double> p = scoreSubstrs(cand.first, type);
-                double s = score(cand.first, type);//p.getSecond();
+                double s = score(cand.first, type);
                 if (s>0) {
                     maps.get(type).add(cand.getFirst());
                     offsets.add(new Triple<>(cand.getFirst(), cand.getSecond(), cand.getThird()));

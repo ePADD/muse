@@ -33,6 +33,107 @@ import java.util.regex.Pattern;
  * We know the
  * */
 public class FeatureDictionary implements Serializable {
+    //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
+    //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
+    public static short SETTLEMENT=0,PERSON=1,COMPANY=2,BUILDING=3,PLACE=4,SCHOOL=5,RIVER=6,ROAD=7,SPORTSTEAM=8,UNIVERSITY=9,
+            MILITARYUNIT=10,MOUNTAIN=11,AIRPORT=12,LAKE=13,STADIUM=14,PROTECTEDAREA=15,ORGANISATION=16,DRUG=17,
+            NEWSPAPER=18,ACADEMICJOURNAL=19,MAGAZINE=20,POLITICALPARTY=21,ISLAND=22,MUSEUM=23,BRIDGE=24,AIRLINE=25,
+            NPORG=26,GOVAGENCY=27,RECORDLABEL=28,SHOPPINGMALL=29,HOSPITAL=30,POWERSTATION=31,AWARD=32,TRADEUNIN=33,
+            PARK=34,WORLDHERITAGESITE=35,HOTEL=36,THEATRE=37,LEGISTLATURE=38,LIBRARY=39,LAWFIRM=40,CANAL=41,
+            COLLEGE=42,STREAM=43,BODYOFWATER=44,MONUMENT=45,OTHER=-1;
+    //public static Short[] allTypes = new Short[]{PERSON, ORGANISATION, PLACE};
+    public static Short[] allTypes = new Short[]{SETTLEMENT,PERSON,COMPANY,BUILDING,PLACE,SCHOOL,RIVER,ROAD,SPORTSTEAM,
+            UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,LAKE,STADIUM,PROTECTEDAREA,ORGANISATION,DRUG,NEWSPAPER,ACADEMICJOURNAL,
+            MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,RECORDLABEL,SHOPPINGMALL,HOSPITAL,
+            POWERSTATION,AWARD,TRADEUNIN,PARK,WORLDHERITAGESITE,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,CANAL,COLLEGE,
+            STREAM,BODYOFWATER,MONUMENT,OTHER};
+    static Log log = LogFactory.getLog(FeatureDictionary.class);
+    public static Map<Short, String[]> aTypes = new LinkedHashMap<Short, String[]>();
+    public FeatureGenerator[] featureGens = null;
+    public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<Short, String[]>();
+    public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<Short, String[]>();
+    public static List<String> ignoreTypes = new ArrayList<String>();
+    //feature types
+    public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2;
+    public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
+    static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is");
+    static List<String> symbols = Arrays.asList("&","-",",");
+    static {
+        //the extra '|' is appended so as not to match junk.
+        //matches both Person and PersonFunction in dbpedia types.
+//        aTypes.put(FeatureDictionary.PERSON, new String[]{"Person"});
+//        aTypes.put(FeatureDictionary.PLACE, new String[]{"Place"});
+//        aTypes.put(FeatureDictionary.ORGANISATION, new String[]{"Organisation", "PeriodicalLiterature|WrittenWork|Work"});
+
+        aTypes.put(SETTLEMENT, new String[]{"Settlement|PopulatedPlace|Place"});
+        aTypes.put(PERSON, new String[]{"Person"});
+        aTypes.put(COMPANY, new String[]{"Company|Organisation"});
+        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place"});
+        aTypes.put(PLACE, new String[]{"Place"});
+        aTypes.put(SCHOOL, new String[]{"School|EducationalInstitution|Organisation"});
+        aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place"});
+        aTypes.put(ROAD, new String[]{"Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
+        aTypes.put(SPORTSTEAM, new String[]{"SportsTeam|Organisation"});
+        aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation"});
+        aTypes.put(MILITARYUNIT, new String[]{"MilitaryUnit|Organisation"});
+        aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
+        aTypes.put(AIRPORT, new String[]{"Airport|Infrastructure|ArchitecturalStructure|Place"});
+        aTypes.put(LAKE, new String[]{"Lake|BodyOfWater|NaturalPlace|Place"});
+        aTypes.put(STADIUM, new String[]{"Stadium|Building|ArchitecturalStructure|Place"});
+        aTypes.put(PROTECTEDAREA, new String[]{"ProtectedArea|Place"});
+        aTypes.put(ORGANISATION, new String[]{"Organisation"});
+        aTypes.put(DRUG, new String[]{"Drug"});
+        aTypes.put(NEWSPAPER, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work"});
+        aTypes.put(ACADEMICJOURNAL, new String[]{"AcademicJournal|PeriodicalLiterature|WrittenWork|Work"});
+        aTypes.put(MAGAZINE, new String[]{"Magazine|PeriodicalLiterature|WrittenWork|Work"});
+        aTypes.put(POLITICALPARTY, new String[]{"PoliticalParty|Organisation"});
+        aTypes.put(ISLAND, new String[]{"Island|PopulatedPlace|Place"});
+        aTypes.put(MUSEUM, new String[]{"Museum|Building|ArchitecturalStructure|Place"});
+        aTypes.put(BRIDGE, new String[]{"Bridge|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
+        aTypes.put(AIRLINE, new String[]{"Airline|Company|Organisation"});
+        aTypes.put(NPORG, new String[]{"Non-ProfitOrganisation|Organisation"});
+        aTypes.put(GOVAGENCY, new String[]{"GovernmentAgency|Organisation"});
+        aTypes.put(RECORDLABEL, new String[]{"RecordLabel|Company|Organisation"});
+        aTypes.put(SHOPPINGMALL, new String[]{"ShoppingMall|Building|ArchitecturalStructure|Place"});
+        aTypes.put(HOSPITAL, new String[]{"Hospital|Building|ArchitecturalStructure|Place"});
+        aTypes.put(POWERSTATION, new String[]{"PowerStation|Infrastructure|ArchitecturalStructure|Place"});
+        aTypes.put(AWARD, new String[]{"Award"});
+        aTypes.put(TRADEUNIN, new String[]{"TradeUnion|Organisation"});
+        aTypes.put(PARK, new String[]{"Park|ArchitecturalStructure|Place"});
+        aTypes.put(WORLDHERITAGESITE, new String[]{"WorldHeritageSite|Place"});
+        aTypes.put(HOTEL, new String[]{"Hotel|Building|ArchitecturalStructure|Place"});
+        aTypes.put(THEATRE, new String[]{"Theatre|Building|ArchitecturalStructure|Place"});
+        aTypes.put(LEGISTLATURE, new String[]{"Legislature|Organisation"});
+        aTypes.put(LIBRARY, new String[]{"Library|EducationalInstitution|Organisation|Agent|Building|ArchitecturalStructure|Place"});
+        aTypes.put(LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
+        aTypes.put(CANAL, new String[]{"Canal|Stream|BodyOfWater|NaturalPlace|Place"});
+        aTypes.put(COLLEGE, new String[]{"College|EducationalInstitution|Organisation"});
+        aTypes.put(STREAM, new String[]{"Stream|BodyOfWater|NaturalPlace|Place"});
+        aTypes.put(BODYOFWATER, new String[]{"BodyOfWater|NaturalPlace|Place"});
+        aTypes.put(MONUMENT, new String[]{"Monument|Place"});
+        //aTypes.put("RailwayLine|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
+
+        //case insensitive
+        startMarkersForType.put(FeatureDictionary.PERSON, new String[]{"dear", "hi", "hello", "mr", "mr.", "mrs", "mrs.", "miss", "sir", "madam", "dr.", "prof", "dr", "prof.", "dearest", "governor", "gov."});
+        endMarkersForType.put(FeatureDictionary.PERSON, new String[]{"jr", "sr"});
+        startMarkersForType.put(FeatureDictionary.PLACE, new String[]{"new"});
+        endMarkersForType.put(FeatureDictionary.PLACE, new String[]{"shire", "city", "state", "bay", "beach", "building", "hall"});
+        startMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"the", "national", "univ", "univ.", "university", "school"});
+        endMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"inc.", "inc", "school", "university", "univ", "studio", "center", "service", "service", "institution", "institute", "press", "foundation", "project", "org", "company", "club", "industry", "factory"});
+
+        /**
+         * Something funny happening here, Creeley has a lot of press related orgs and many press are annotated with non-org type,
+         * fox example periodicals, magazine etc. If these types are not ignored, then word proportion score for "*Press" is very low and is unrecognised
+         * leading to a drop of recall from 0.6 to 0.53*/
+        //these types may contain tokens from this type
+        //dont see why these ignoreTypes have to be type (i.e. person, org, loc) specific
+        ignoreTypes = Arrays.asList(
+                "RecordLabel|Company|Organisation",
+                "Band|Organisation",
+                "OrganisationMember|Person",
+                "PersonFunction"
+        );
+    }
     /**
      * Features for a word that corresponds to a mixture
      * position: SOLO, INSIDE, BEGIN, END
@@ -40,7 +141,6 @@ public class FeatureDictionary implements Serializable {
      * left and right labels, LABEL is one of: LOC, ORG,PER, OTHER, NEW, stop words, special chars*/
     public static class MU implements Serializable{
         //the likelihood with the type is also considered
-        static String[] TYPE_LABELS = new String[]{"per","org","loc","oth"};
         //static String[] TYPE_LABELS = new String[]{"Y","N"};
         //all possible labels of the words to the left and right
         //NULL symbol when there is no previous or the next word, I am not convinced if this is required, since we already have position label
@@ -52,9 +152,18 @@ public class FeatureDictionary implements Serializable {
         //this is probably the problem of scoring, when the mixture frequency is included in the score, things like New though is single token will get a high score due to the pi term
         //New York, for example might have explained a lot of locations,
         //"and","for","to","in","at","on","the","of","a","an","is","&",","
-        static String[] WORD_LABELS = new String[]{"OTHER", "LOC", "ORG", "PER", "NULL"};
+        //static String[] WORD_LABELS = new String[]{"OTHER", "LOC", "ORG", "PER", "NULL"};
         //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
+        static String[] WORD_LABELS = new String[allTypes.length];
+        static String[] TYPE_LABELS = new String[allTypes.length];
+        static{
+            for(int i=0;i<allTypes.length;i++)
+                WORD_LABELS[i] = allTypes[i]+"";
+            for(int i=0;i<allTypes.length;i++)
+                TYPE_LABELS[i] = allTypes[i]+"";
+        }
+
         //static int NUM_WORDLENGTH_LABELS = 10;
         //feature and the value, for example: <"LEFT: and",200>
         //indicates if the values are final or if they have to be learned
@@ -73,29 +182,11 @@ public class FeatureDictionary implements Serializable {
             double s1 = 0, s2 = 0;
             MU mu = new MU();
             for(Short type: initialParams.keySet()) {
-                if(type==FeatureDictionary.PERSON)
-                    mu.muVectorPositive.put("per", initialParams.get(type).first);
-                else if(type==FeatureDictionary.ORGANISATION)
-                    mu.muVectorPositive.put("org", initialParams.get(type).first);
-                else if(type==FeatureDictionary.PLACE)
-                    mu.muVectorPositive.put("loc", initialParams.get(type).first);
-                else
-                    mu.muVectorPositive.put("oth", initialParams.get(type).first);
+                mu.muVectorPositive.put("T:"+type, initialParams.get(type).first);
                 s1 += initialParams.get(type).first;
                 s2 = initialParams.get(type).second;
             }
-            //System.err.println("INitialised with: "+initialParams);
-            //mu.muVectorPositive.put("oth", 1-s1);
             mu.numMixture = s2;
-//            for(int i=0;i<TYPE_LABELS.length;i++){
-//                if(i==0) {
-//                    mu.muVectorPositive.put(TYPE_LABELS[i], (1+numThisType)/(2+numTotal));
-//                }
-//                else{
-//                    mu.muVectorPositive.put(TYPE_LABELS[i], (numTotal - numThisType + 1)/(2 + numTotal));
-//                }
-//            }
-//            mu.numMixture = numTotal+1;
             return mu;
         }
 
@@ -107,15 +198,11 @@ public class FeatureDictionary implements Serializable {
         //returns P(type/this-mixture)
         public double getLikelihoodWithType(String typeLabel){
             double p1, p2;
-//            if(muVectorPositive.get(TYPE_LABELS[0]) == null) {
-//                System.err.println("Uninitialised type priors for the mixture");
-//                return 0;
-//            }
 
             for(String tl: TYPE_LABELS) {
                 if(tl.equals(typeLabel)) {
-                    if(muVectorPositive.containsKey(tl)) {
-                        p1 = muVectorPositive.get(tl);
+                    if(muVectorPositive.containsKey("T:"+typeLabel)) {
+                        p1 = muVectorPositive.get("T:"+typeLabel);
                         p2 = numMixture;
                         return p1 / p2;
                     }
@@ -126,28 +213,22 @@ public class FeatureDictionary implements Serializable {
                 }
             }
             System.err.println("!!!FATAL: Unknown type label: "+typeLabel+"!!!");
+            System.err.println("Expected");
+            for(String tl: TYPE_LABELS)
+                System.err.println(tl);
             return 0;
         }
 
         public double getLikelihoodWithType(short typeLabel){
-            if(typeLabel==FeatureDictionary.PERSON)
-                return getLikelihoodWithType("per");
-            else if(typeLabel==FeatureDictionary.ORGANISATION)
-                return getLikelihoodWithType("org");
-            else if(typeLabel==FeatureDictionary.PLACE)
-                return getLikelihoodWithType("loc");
-            else
-                return getLikelihoodWithType("oth");
+            return getLikelihoodWithType(""+typeLabel);
         }
 
         //gets number of symbols in the dimension represented by this feature
         public static int getNumberOfSymbols(String f){
-            for(String str: TYPE_LABELS)
-                if(str.equals(f))
-                    return TYPE_LABELS.length;
-            for(String str: WORD_LABELS)
-                if(f.endsWith(str))
-                    return WORD_LABELS.length;
+            if(f.startsWith("L:")||f.startsWith("R:"))
+                return WORD_LABELS.length;
+            if(f.startsWith("T:"))
+                return TYPE_LABELS.length;
             for(String str: POSITION_LABELS)
                 if(f.endsWith(str))
                     return POSITION_LABELS.length;
@@ -166,20 +247,18 @@ public class FeatureDictionary implements Serializable {
             double p = 1;
             for(String f: features){
                 int v = getNumberOfSymbols(f);
-                boolean smooth = true;
+                boolean smooth = false;
                 //does not want to smooth, if the feature is position label
                 //also dont smooth if the feature is a type related feature
                 //TODO: This way of checking the feature type is pathetic, improve this
-                if(!features.contains("per") && f.startsWith("PL:"))
-                    smooth = false;
+                //it creates problem if there is smoothing for certain types and not for other types
+//                if(!features.contains("T:"+FeatureDictionary.PERSON) && f.startsWith("PL:"))
+//                    smooth = false;
+                //should not smooth type related mu params even initially
                 //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
                 if(muVectorPositive.size()==TYPE_LABELS.length)
                     smooth = true;
-
-                //should not smooth type related mu params even initially
-                if(f.indexOf(':')==-1)
-                    smooth = false;
 
                 if(!muVectorPositive.containsKey(f)){
                     //no smoothing in the case of position label
@@ -270,7 +349,7 @@ public class FeatureDictionary implements Serializable {
         @Override
         public String toString(){
             String str = "";
-            String p[] = new String[]{"L:","R:","PL:",""};
+            String p[] = new String[]{"L:","R:","PL:","T:"};
 //            String[] WORD_LENGTHS = new String[NUM_WORDLENGTH_LABELS];
 //            for(int i=1;i<=NUM_WORDLENGTH_LABELS;i++)
 //                WORD_LENGTHS[i-1] = i+"";
@@ -309,46 +388,6 @@ public class FeatureDictionary implements Serializable {
     //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
     public int totalcount = 0;
     //total number of word patterns
-
-    //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
-    public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
-    public static Short[] allTypes = new Short[]{PERSON, ORGANISATION, PLACE};
-    static Log log = LogFactory.getLog(FeatureDictionary.class);
-    public static Map<Short, String[]> aTypes = new LinkedHashMap<Short, String[]>();
-    public FeatureGenerator[] featureGens = null;
-    public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<Short, String[]>();
-    public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<Short, String[]>();
-    public static List<String> ignoreTypes = new ArrayList<String>();
-    //feature types
-    public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2;
-    public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-    static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is");
-    static List<String> symbols = Arrays.asList("&","-",",");
-    static {
-        //the extra '|' is appended so as not to match junk.
-        //matches both Person and PersonFunction in dbpedia types.
-        aTypes.put(FeatureDictionary.PERSON, new String[]{"Person"});
-        aTypes.put(FeatureDictionary.PLACE, new String[]{"Place"});
-        aTypes.put(FeatureDictionary.ORGANISATION, new String[]{"Organisation", "PeriodicalLiterature|WrittenWork|Work"});
-
-        //case insensitive
-        startMarkersForType.put(FeatureDictionary.PERSON, new String[]{"dear", "hi", "hello", "mr", "mr.", "mrs", "mrs.", "miss", "sir", "madam", "dr.", "prof", "dr", "prof.", "dearest", "governor", "gov."});
-        endMarkersForType.put(FeatureDictionary.PERSON, new String[]{"jr", "sr"});
-        startMarkersForType.put(FeatureDictionary.PLACE, new String[]{"new"});
-        endMarkersForType.put(FeatureDictionary.PLACE, new String[]{"shire", "city", "state", "bay", "beach", "building", "hall"});
-        startMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"the", "national", "univ", "univ.", "university", "school"});
-        endMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"inc.", "inc", "school", "university", "univ", "studio", "center", "service", "service", "institution", "institute", "press", "foundation", "project", "org", "company", "club", "industry", "factory"});
-
-        /**
-         * Something funny happening here, Creeley has a lot of press related orgs and many press are annotated with non-org type,
-         * fox example periodicals, magazine etc. If these types are not ignored, then word proportion score for "*Press" is very low and is unrecognised
-         * leading to a drop of recall from 0.6 to 0.53*/
-        //these types may contain tokens from this type
-        //dont see why these ignoreTypes have to be type (i.e. person, org, loc) specific
-        ignoreTypes = Arrays.asList(
-                "RecordLabel|Company|Organisation",
-                "Band|Organisation"
-        );
 //        ignoreTypes = Arrays.asList(
 //                "Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
 //                "SportsTeamMember|OrganisationMember|Person", "TelevisionShow|Work", "Book|WrittenWork|Work",
@@ -359,7 +398,6 @@ public class FeatureDictionary implements Serializable {
 //                "SportsTeamMember|OrganisationMember|Person",
 //                "SoccerClub|SportsTeam|Organisation"
 //        );
-    }
 
     public FeatureDictionary(){
         features = new LinkedHashMap<>();
@@ -391,8 +429,8 @@ public class FeatureDictionary implements Serializable {
             tms = System.currentTimeMillis();
 
             //if is a single word name and in dictionary, ignore.
-            if (!str.contains(" ") && DictUtils.fullDictWords.contains(str.toLowerCase()))
-                continue;
+//            if (!str.contains(" ") && DictUtils.fullDictWords.contains(str.toLowerCase()))
+//                continue;
 
             String entityType = gazettes.get(str);
             if (ignoreTypes.contains(entityType)) {
@@ -428,31 +466,45 @@ public class FeatureDictionary implements Serializable {
 //            if(!features.containsKey(str))
 //                features.put(str, new LinkedHashMap<Short, MU>());
 //            System.err.println(str);
-            String ic = str.substring(0,1).toUpperCase();
-            if(str.length()>1)
-                ic+=str.substring(1,str.length());
-            //System.err.println(str+"->"+ic);
+//            String ic = str.substring(0,1).toUpperCase();
+//            if(str.length()>1)
+//                ic+=str.substring(1,str.length());
+//            //System.err.println(str+"->"+ic);
+//            Short ht = null;
+//            if(gazettes.containsKey(ic)) {
+//                String type = gazettes.get(ic);
+//                //atomic types
+//                String[] atypes = new String[]{"Settlement|PopulatedPlace|Place", "Country|PopulatedPlace|Place"};
+//                for(String atype: atypes)
+//                    if(type.endsWith(atype)) {
+//                        ht = FeatureDictionary.PLACE;
+//                        break;
+//                    }
+//                for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.PERSON))
+//                    if(type.endsWith(at)) {
+//                        ht = FeatureDictionary.PERSON;
+//                        break;
+//                    }
+//                if(ht==null)
+//                    for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION))
+//                        if(type.endsWith(at)) {
+//                            ht = FeatureDictionary.ORGANISATION;
+//                            break;
+//                        }
+//                if(ht==null)
+//                    for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.PLACE))
+//                        if(type.endsWith(at)) {
+//                            ht = FeatureDictionary.PLACE;
+//                            break;
+//                        }
+//            }
+//            if(ht!=null){
+//                Map<Short, Pair<Double,Double>> freqs = words.get(str);
+//                if(freqs.get())
+//            }
             Short ht = null;
-            if(gazettes.containsKey(ic)) {
-                String type = gazettes.get(ic);
-                for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.PERSON))
-                    if(type.endsWith(at)) {
-                        ht = FeatureDictionary.PERSON;
-                        break;
-                    }
-                if(ht==null)
-                    for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION))
-                        if(type.endsWith(at)) {
-                            ht = FeatureDictionary.ORGANISATION;
-                            break;
-                        }
-                if(ht==null)
-                    for(String at: FeatureDictionary.aTypes.get(FeatureDictionary.PLACE))
-                        if(type.endsWith(at)) {
-                            ht = FeatureDictionary.PLACE;
-                            break;
-                        }
-            }
+            //Trying to assign ht is just pathetic, we know that these are full matches and gazette lookup will solve things,
+            //Setting ht and setting more appropriate type initially is not helping anyway, all this gets lost in EM (if smoothing of the type is enabled)
             Map<Short, Pair<Double,Double>> priors = new LinkedHashMap<>();
             double total=0,totalT=0;
             for(Short type: words.get(str).keySet()){
@@ -504,17 +556,39 @@ public class FeatureDictionary implements Serializable {
                             hm.get(val).put(at, new Pair<>(0.0, 0.0));
                     }
                     Pair<Double, Double> p = hm.get(val).get(iType);
-                    String[] allowT = aTypes.get(iType);
-                    for (String at : allowT)
-                        if (type.endsWith(at)) {
-                            p.first++;
-                            break;
-                        }
+                    Short eType = codeType(type);
+                    if(eType == iType)
+                        p.first++;
                     p.second++;
                     hm.get(val).put(iType, p);
                 }
             lfeatures.put(dim, hm);
         }
+    }
+
+    //codes a given DBpedia type into type coding of this class
+    public static Short codeType(String type){
+        Short ct = FeatureDictionary.OTHER;
+        String[] fs = type.split("\\|");
+        outer:
+        for(int ti=0;ti<fs.length;ti++) {
+            String st = "";
+            for(int tj=ti;tj<fs.length;tj++) {
+                st += fs[tj];
+                if(tj<fs.length-1)
+                    st+="|";
+            }
+            for (Short t : allTypes) {
+                String[] allowT = FeatureDictionary.aTypes.get(t);
+                if (allowT != null)
+                    for (String at : allowT)
+                        if (st.equals(at)) {
+                            ct = t;
+                            break outer;
+                        }
+            }
+        }
+        return ct;
     }
 
     public static void computeNewWords(){
@@ -568,26 +642,19 @@ public class FeatureDictionary implements Serializable {
         String[] words = phrase.split("\\s+");
         for (int i = 0; i < words.length; i++) {
             String word = words[i];
-            //dont emit stop words
+            //do not emit stop words
             //canonicalize the word
             word = word.toLowerCase();
             if(sws.contains(word) || symbols.contains(word)){
                 continue;
             }
+            //some DBpedia entries end in ',' as in Austin,_Texas
             String t = word;
+            t = endClean.matcher(t).replaceAll("");
             if(i>0 && (sws.contains(words[i-1].toLowerCase())||symbols.contains(words[i-1].toLowerCase())))
                 t = words[i-1].toLowerCase()+" "+t;
             if(i<(words.length-1) && (sws.contains(words[i+1].toLowerCase())||(symbols.contains(words[i+1].toLowerCase()))))
                 t += " "+words[i+1].toLowerCase();
-//            if (i > 0 && i < (words.length - 1))
-//                t = "*" + word + "*";
-//            else if (i == 0 && words.length > 1)
-//                t = word + "*";
-//            else if (i == (words.length - 1) && words.length > 1)
-//                t = "*" + word;
-//            //references are generally made with first name and this may have continuation like Harvard_University or Apple_Inc
-//            else t = word;
-
 
             //emit all the words or patterns
             if (t != null)
@@ -597,36 +664,22 @@ public class FeatureDictionary implements Serializable {
     }
 
     public String getLabel(String word, Map<String, MU> mixtures){
-//        if(newWords == null)
-//            computeNewWords();
         if(word == null)
             return "NULL";
         word = word.toLowerCase();
-//        if(sws.contains(word))
-//            return word;
-//        if(word.equals("&")||word.equals(","))
-//            return word;
-//        if(newWords.contains(word))
-//            return "NEW";
-        double per, org, loc, other;
-        //System.err.println("Token: "+word);
         //this can happen, since we ignore a few types
+        //this label cannot be the same as OTHER, these are NEW or previously unseen tokens.
         if(mixtures.get(word) == null)
-            return "OTHER";
-        per = mixtures.get(word).getLikelihoodWithType("per");
-        org = mixtures.get(word).getLikelihoodWithType("org");
-        loc = mixtures.get(word).getLikelihoodWithType("loc");
-        other = 1-per-org-loc;
-        double m = Math.max(per,org);
-        m = Math.max(m, loc);m = Math.max(m, other);
-        //System.err.println(word+" "+per+", "+org+", "+loc+", "+other+" 444ln");
-        if(m == per)
-            return "PER";
-        if(m == org)
-            return "ORG";
-        if(m == loc)
-            return "LOC";
-        return "OTHER";
+            return ""+(-2);
+        String bl="NULL";
+        double bs = -1;
+        for(String tl: MU.TYPE_LABELS) {
+            double s = mixtures.get(word).getLikelihoodWithType(tl);
+            bs = Math.max(s, bs);
+            if(s==bs)
+                bl=tl;
+        }
+        return bl;
     }
 
     /**
@@ -646,10 +699,6 @@ public class FeatureDictionary implements Serializable {
                 continue;
             Set<String> features = new LinkedHashSet<>();
             String prevWord = null, nxtWord = null;
-//            if(wi > 0)
-//                prevWord = words[wi-1];
-//            if(wi < (words.length-1))
-//                nxtWord = words[wi+1];
             prevWord = fw;
             nxtWord = lw;
             if(wi == 0)
@@ -677,17 +726,7 @@ public class FeatureDictionary implements Serializable {
             features.add("R:"+nxtLabel);
             features.add("PL:"+ posLabel);
 //            features.add("WL:"+nwlabel);
-            if(type==FeatureDictionary.PERSON)
-                features.add("per");
-            else if(type==FeatureDictionary.ORGANISATION)
-                features.add("org");
-            else if(type==FeatureDictionary.PLACE)
-                features.add("loc");
-            else if(type==FeatureDictionary.OTHER)
-                features.add("oth");
-            else
-                System.err.println("!!FATAL: Unknown feature type: "+type+"!!");
-
+            features.add("T:"+type);
             mixtureFeatures.put(words[wi].toLowerCase(), features);
         }
         return mixtureFeatures;
@@ -711,15 +750,7 @@ public class FeatureDictionary implements Serializable {
                     System.err.println("EM iter: " + i + ", " + wi + "/" + N);
                 String type = gazettes.get(phrase);
                 boolean allowed = false;
-                Short coarseType = FeatureDictionary.OTHER;
-                outer:
-                for(Short iType: allTypes) {
-                    for (String aType : aTypes.get(iType))
-                        if (type.endsWith(aType)) {
-                            coarseType = iType;
-                            break outer;
-                        }
-                }
+                Short coarseType = codeType(type);
 
                 double z = 0;
                 //responsibilities
@@ -766,22 +797,27 @@ public class FeatureDictionary implements Serializable {
             revisedMixtures = new LinkedHashMap<>();
 
             try {
-                for (Short type : allTypes) {
-                    FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
-                    Map<String, Double> some = new LinkedHashMap<>();
-                    for (String w : mixtures.keySet()) {
-                        double v = mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).getFreq());
-                        if(Double.isNaN(v))
-                            some.put(w, 0.0);
-                        else
-                            some.put(w, v);
+                if(i==(MAX_ITER-1)) {
+                    Short[] ats = FeatureDictionary.allTypes;//= new Short[]{FeatureDictionary.AIRLINE,FeatureDictionary.MILITARYUNIT,FeatureDictionary.PERSON, FeatureDictionary.GOVAGENCY, FeatureDictionary.UNIVERSITY};
+                    for (Short type : ats) {
+                        FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
+                        Map<String, Double> some = new LinkedHashMap<>();
+                        for (String w : mixtures.keySet()) {
+                            double v = mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).getFreq());
+                            if (Double.isNaN(v))
+                                some.put(w, 0.0);
+                            else
+                                some.put(w, v);
+                        }
+                        List<Pair<String, Double>> ps = Util.sortMapByValue(some);
+                        for (Pair<String, Double> p : ps) {
+                            if(p.second<=0.01)
+                                break;
+                            fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");
+                            fw.write(mixtures.get(p.getFirst()).toString());
+                            fw.write("========================\n");
+                        }
                     }
-                    List<Pair<String, Double>> ps = Util.sortMapByValue(some);
-                    for (Pair<String, Double> p : ps) {
-                        fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");
-                        fw.write(mixtures.get(p.getFirst()).toString());
-                    }
-                    fw.write("========================\n");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -968,32 +1004,8 @@ public class FeatureDictionary implements Serializable {
     }
 
     public static void main(String[] args) {
-        for(String str: getPatts("The Secular Nation & India"))
-            System.err.println(str);
-//        try {
-//            String baseDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
-//            Archive archive = SimpleSessions.readArchiveIfPresent(baseDir);
-//            List<Document> docs = archive.getAllDocs();
-//            for(Document doc: docs)
-//                System.err.println(doc.getUniqueId());
-//            System.err.println("Num docs: "+docs.size());
-//        }catch(IOException e){
-//            e.printStackTrace();
-//        }
-//        try {
-//            String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
-//            String modelFile = mwl + SequenceModel.modelFileName;
-//            SequenceModel nerModel;
-//            if(new File(modelFile).exists()) {
-//                System.err.println("Loading model ... ");
-//                nerModel = SequenceModel.loadModel(new File(modelFile));
-//            }else{
-//                System.err.println("Building model...");
-//                nerModel = SequenceModel.train();
-//            }
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
+        String r = "Shaikh_Ibrahim,_Iraq";
+        r = r.replaceAll(",_.*","");
+        System.err.println(r);
     }
 }
