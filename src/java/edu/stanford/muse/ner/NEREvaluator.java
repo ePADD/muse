@@ -11,14 +11,17 @@ import java.util.*;
  * Created by vihari on 11/09/15.
  */
 public class NEREvaluator {
+    //short value of 100 corresponds to MISC
     public Map<Short, Set<String>> bNames = new LinkedHashMap<>();
     List<String> sents = new ArrayList<>();
-    String homeFldr = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"umasshw";
+    static String homeFldr = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"umasshw";
     int n = -1;
 
-    Pair<Short, String> getTagAndToken(String line){
+    static Pair<Short, String> getTagAndToken(String line){
         line = line.trim();
         String[] words = line.split("\\s+");
+        if(words.length<4)
+            return new Pair<>((short)-1,"");
         Short tag = -1;
         if(words[3].equals("ORG"))
             tag = FeatureDictionary.ORGANISATION;
@@ -26,13 +29,15 @@ public class NEREvaluator {
             tag = FeatureDictionary.PERSON;
         else if(words[3].equals("LOC"))
             tag = FeatureDictionary.PLACE;
+        else if(words[3].equals("MISC"))
+            tag = 100;
         return new Pair<>(tag, words[0]);
     }
 
     int pl = 0;
     String ptok;
     short ptype=-1;
-    //keps track of line, so as to merge tokens in consecutive lines
+    //keeps track of line, so as to merge tokens in consecutive lines
     void add(Short type, String token, int ll){
         if(ll == (pl+1) && ptype==type){
             ptok = ptok+" "+token;
@@ -91,6 +96,39 @@ public class NEREvaluator {
         }
     }
 
+    public static void add(String entry, Map<String,Integer> dict){
+        if(entry==null||entry.equals(""))
+            return;
+        if(!dict.containsKey(entry))
+            dict.put(entry, 0);
+        dict.put(entry, dict.get(entry)+1);
+    }
+
+    //just reads tokens with 'O' tags
+    public static Map<String, Integer> buildDictionary(int threshold){
+        Map<String,Integer> dict = new LinkedHashMap<>();
+        String dataFile = homeFldr + File.separator + "train.dat";
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(dataFile));
+            String line;
+            while((line = br.readLine())!=null) {
+                if(line.startsWith("-DOCSTART-"))
+                    continue;
+                //System.err.println(line.trim());
+                Pair<Short, String> p = getTagAndToken(line.trim());
+                if(p!=null && p.getFirst()==-1)
+                    add(p.getSecond(),dict);
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        Map<String,Integer> filtered = new LinkedHashMap<>();
+        for(String str: dict.keySet())
+            if(dict.get(str)>threshold)
+                filtered.put(str, dict.get(str));
+        return filtered;
+    }
+
     public NEREvaluator(){
         this(-1);
     }
@@ -116,15 +154,6 @@ public class NEREvaluator {
     }
 
     public static void main(String[] args){
-        NEREvaluator eval = new NEREvaluator(100);
-        List<String> sents = eval.getSentences();
-        Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
-        for(Short type: types)
-            System.out.println("Type: " + type + ", " + eval.bNames.get(type).size());
-        for(String sent: sents)
-            System.out.println(sent);
-        System.out.println(eval.bNames.get(FeatureDictionary.PERSON));
-        System.out.println(eval.bNames.get(FeatureDictionary.ORGANISATION));
-        System.out.println(eval.bNames.get(FeatureDictionary.PLACE));
+        System.err.println(buildDictionary(3));
     }
 }

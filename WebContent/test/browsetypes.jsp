@@ -3,7 +3,6 @@
 <%@ page import="java.util.*" %>
 <%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
 <%@ page import="java.io.*" %>
-<%@ page import="edu.stanford.muse.ner.NEREvaluator" %>
 <%@ page import="edu.stanford.muse.util.Triple" %>
 <%@ page import="edu.stanford.muse.util.Util" %>
 <%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
@@ -16,7 +15,7 @@
             Map<String,Double> map = new LinkedHashMap<>();
             List<Triple<String,Integer,Integer>> cands = new CICTokenizer().tokenize(content, type==FeatureDictionary.PERSON);
             for(Triple<String,Integer, Integer> t: cands){
-                String pn = t.getFirst();
+                String pn = t.getFirst().replaceAll("^\\W+|\\W+$","");
                 double s = model.score(pn, type);
                 if (s>0) {
                     map.put(pn, s);

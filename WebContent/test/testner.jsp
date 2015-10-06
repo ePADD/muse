@@ -37,11 +37,12 @@
     }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
     //FeatureDictionary.LEGISTLATURE
-    Short[] types = new Short[]{FeatureDictionary.SETTLEMENT,FeatureDictionary.COMPANY,FeatureDictionary.SCHOOL,FeatureDictionary.SPORTSTEAM,
+    Short[] types = new Short[]{FeatureDictionary.SETTLEMENT,FeatureDictionary.PLACE,FeatureDictionary.COMPANY,FeatureDictionary.SPORTSTEAM,
             FeatureDictionary.UNIVERSITY,FeatureDictionary.AIRPORT,FeatureDictionary.ORGANISATION,FeatureDictionary.NEWSPAPER,FeatureDictionary.ACADEMICJOURNAL,
             FeatureDictionary.MAGAZINE,FeatureDictionary.POLITICALPARTY,FeatureDictionary.AIRLINE,FeatureDictionary.NPORG,FeatureDictionary.GOVAGENCY,FeatureDictionary.RECORDLABEL,
             FeatureDictionary.SHOPPINGMALL,FeatureDictionary.HOSPITAL,
-            FeatureDictionary.POWERSTATION,FeatureDictionary.TRADEUNIN,FeatureDictionary.LEGISTLATURE,FeatureDictionary.LIBRARY,FeatureDictionary.LAWFIRM,FeatureDictionary.COLLEGE};
+            FeatureDictionary.POWERSTATION,FeatureDictionary.TRADEUNIN,
+            FeatureDictionary.LEGISTLATURE,FeatureDictionary.LIBRARY,FeatureDictionary.LAWFIRM};
     Short type = FeatureDictionary.ORGANISATION;
 
     String modelFile = mwl + SequenceModel.modelFileName;
@@ -73,7 +74,7 @@
     NEREvaluator eval = new NEREvaluator(10000);
     List<String> sents = eval.getSentences();
     Set<String> orgs = new LinkedHashSet<>();
-    double CUTOFF = 1.5E-4;
+    double CUTOFF = 0;//1.5E-4;
     Map<String,Double> all = new LinkedHashMap<>();
     for(String sent: sents) {
         //Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> some = nerModel.find(sent);
@@ -126,6 +127,8 @@
     out.println("Precision: "+p+"<br>");
     out.println("Recall: "+r+"<br>");
     out.println("F1: "+f+"<br>");
+    nerModel.fdw.close();
+    nerModel.fdw = null;
 //    Map<Short, FeatureDictionary.MU> mus = nerModel.dictionary.features.get("co");
 //    for(Short srt: mus.keySet())
 //        out.println(srt+" - "+mus.get(srt).getLikelihoodWithThisType()+"<br>");

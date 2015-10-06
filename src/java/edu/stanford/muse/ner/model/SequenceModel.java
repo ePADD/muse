@@ -1,8 +1,7 @@
 package edu.stanford.muse.ner.model;
 
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.IndexUtils;
+import edu.stanford.muse.ner.NEREvaluator;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
 import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
@@ -12,12 +11,13 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by vihari on 07/09/15.
@@ -31,6 +31,7 @@ public class SequenceModel implements NERModel, Serializable{
     static Log log = LogFactory.getLog(SequenceModel.class);
     public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
+    static Map<String,Integer> dict = NEREvaluator.buildDictionary(3);
 
     public SequenceModel(FeatureDictionary dictionary, Tokenizer tokenizer) {
         this.dictionary = dictionary;
@@ -38,7 +39,6 @@ public class SequenceModel implements NERModel, Serializable{
     }
 
     public SequenceModel(){
-
     }
 
     public double score(String phrase, Short type) {
@@ -78,6 +78,24 @@ public class SequenceModel implements NERModel, Serializable{
                 String str = "";
                 for(int si=0;si<scores.length;si++)
                     str += FeatureDictionary.allTypes[si]+":"+scores[si]+" ";
+                String[] words = phrase.split("[\\s,]+");
+                String labelStr = "";
+                for(String word: words) {
+                    Pair<String,Double> p = dictionary.getLabel(word, dictionary.features);
+                    FeatureDictionary.MU mu = dictionary.features.get(word);
+                    String label = "";
+                    if(mu == null)
+                        label = p.getFirst();
+                    else{
+                        if(mu.getLikelihoodWithType(FeatureDictionary.OTHER+"")>p.getSecond())
+                            label = ""+FeatureDictionary.OTHER;
+                        else
+                            label = p.getFirst();
+                    }
+                    labelStr += word+":"+label+" ";
+                }
+                fdw.write(labelStr+"\n");
+                fdw.write(dictionary.generateFeatures(phrase, dictionary.features, type).toString()+"\n");
                 fdw.write("String: " + phrase + " - " + str + "\n");
             }catch(IOException e){
                 e.printStackTrace();
@@ -139,19 +157,27 @@ public class SequenceModel implements NERModel, Serializable{
     @Override
     public Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> find (String content){
         Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
+        Map<Short, Short[]>mappings = new LinkedHashMap<>();
+        mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
+        mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
+                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK,
+                FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
+        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY, FeatureDictionary.SPORTSTEAM,FeatureDictionary.POWERSTATION,FeatureDictionary.UNIVERSITY, FeatureDictionary.MILITARYUNIT, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.ACADEMICJOURNAL,
+                FeatureDictionary.AIRLINE, FeatureDictionary.MAGAZINE, FeatureDictionary.POLITICALPARTY, FeatureDictionary.NPORG, FeatureDictionary.GOVAGENCY,FeatureDictionary.RECORDLABEL, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM});
 
         Map<Short, List<String>> maps = new LinkedHashMap<>();
         List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
         for(Short t: types)
             maps.put(t, new ArrayList<String>());
         for(int t=0;t<types.length;t++) {
-            Short type = types[t];
-            List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type==FeatureDictionary.PERSON);
-            for (Triple<String,Integer,Integer> cand : cands) {
-                double s = score(cand.first, type);
-                if (s>0) {
-                    maps.get(type).add(cand.getFirst());
-                    offsets.add(new Triple<>(cand.getFirst(), cand.getSecond(), cand.getThird()));
+            for(Short type: mappings.get(types[t])) {
+                List<Triple<String, Integer, Integer>> cands = tokenizer.tokenize(content, type == FeatureDictionary.PERSON);
+                for (Triple<String, Integer, Integer> cand : cands) {
+                    double s = score(cand.first, type);
+                    if (s > 0) {
+                        maps.get(types[t]).add(cand.getFirst());
+                        offsets.add(new Triple<>(cand.getFirst(), cand.getSecond(), cand.getThird()));
+                    }
                 }
             }
         }
