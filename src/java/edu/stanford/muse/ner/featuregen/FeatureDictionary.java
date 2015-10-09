@@ -233,7 +233,7 @@ public class FeatureDictionary implements Serializable {
                     return POSITION_LABELS.length;
             if(f.startsWith("SW:"))
                 return sws.size()+1;
-            if(f.startsWith("DICT:")||f.startsWith("ADJ:")||f.startsWith("ADV:")||f.startsWith("PREP:")||f.startsWith("V:")||f.startsWith("PN:"))
+            if(f.startsWith("DICT:")||f.startsWith("ADJ:")||f.startsWith("ADV:")||f.startsWith("PREP:")||f.startsWith("V:")||f.startsWith("PN:")||f.startsWith("POS:"))
                 return 2;
             log.error("!!!REALLY FATAL!!! Unknown feature: " + f);
             return 0;
@@ -671,6 +671,10 @@ public class FeatureDictionary implements Serializable {
         }
         if(patts.length == 0)
             return mixtureFeatures;
+        boolean containsPOS = false;
+        if(phrase.contains("'s "))
+            containsPOS = true;
+
         String fw = patts[0];
         String lw = patts[patts.length-1];
         for(int wi = 0; wi<patts.length; wi++){
@@ -750,6 +754,10 @@ public class FeatureDictionary implements Serializable {
             if(containsPronoun)
                 features.put("PN:Y", 1.0);
             else features.put("PN:N", 1.0);
+            if(containsPOS)
+                features.put("POS:Y",1.0);
+            else
+                features.put("POS:N",1.0);
 
             mixtureFeatures.put(patts[wi].toLowerCase(), features);
         }

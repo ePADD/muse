@@ -1345,7 +1345,7 @@ public class EmailUtils {
                     break;
                 if (lines++ % 500000 == 0)
                     log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
-                if (lines > 100000)
+                if (lines > 1000000)
                     break;
 
                 if (line.contains("GivenName"))
@@ -1372,14 +1372,28 @@ public class EmailUtils {
                     d++;
                     continue;
                 }
-                //its very dangerous to remove things inside brackets as that may lead to terms like
-                //University_(Metrorail_Station) MetroStation|Place e.t.c.
-                //so keep them, or just skip this entry all together
-                //r = r.replaceAll("_\\(.*?\\)", "");
                 String type = words[1];
+                if(type.equals("PersonFunction"))
+                    continue;
                 //in places there are things like: Shaikh_Ibrahim,_Iraq
                 if (type.endsWith("Place"))
                     r = r.replaceAll(",_.*","");
+                if(!r.contains("_"))
+                    continue;
+                //so as not to allow single word entries
+                if(r.contains("(")) {
+                    int ti = r.indexOf('(');
+                    int ui = r.indexOf('_');
+                    //if is a single word token, then continue;
+                    if((ui==-1) || ti<ui || (ui+1==ti)) {
+                        continue;
+                    }
+                }
+                //its very dangerous to remove things inside brackets as that may lead to terms like
+                //University_(Metrorail_Station) MetroStation|Place e.t.c.
+                //so keep them, or just skip this entry all together
+                //We are not cosidsering single word tokens any way, so its OK to remove things inside the brackets
+                r = r.replaceAll("_\\(.*?\\)", "");
                 String title = r.replaceAll("_"," ");
 
                 String badSuffix = "|Agent";

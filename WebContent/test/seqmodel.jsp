@@ -107,8 +107,8 @@
                 //dont let it start with or end with SW
                 if (str.equals("") && lab.equals("SW"))
                     cut = true;
-                if(m.group().endsWith("'s"))
-                    cut = true;
+//                if(m.group().endsWith("'s"))
+//                    cut = true;
                 if (!cut)
                     str = str + sc + m.group();
                 else {
@@ -137,27 +137,31 @@
             return ctoks;
         }
 
-        //first set is the tokens from the entries with type of interest and second are the tokens from other types
-        public Pair<Set<String>,Set<String>> readTokensDBpedia(){
-            Map<String,String> dbpedia = EmailUtils.readDBpedia();
-            Set<String> dbpediaTypeTokens = new LinkedHashSet<>();
-            Set<String> dbpediaOtherTokens = new LinkedHashSet<>();
-            for(String str: dbpedia.keySet()){
-                Short ct = FeatureDictionary.codeType(dbpedia.get(str));
-                String[] tokens = str.split("\\W+");
-                if(ct!=FeatureDictionary.OTHER){
-                    for(String tok: tokens)
-                        dbpediaTypeTokens.add(tok.toLowerCase());
+        public List<Triple<String,Integer, Integer>> tokenizePOS(String sent, Short type){
+            List<Pair<String,String>> posTags = NLPUtils.posTag(sent);
+            List<Triple<String,Integer,Integer>> ret = new ArrayList<>();
+            List<String> allowedPOSTags = new ArrayList<>();
+            if(type == FeatureDictionary.PERSON)
+                allowedPOSTags = Arrays.asList("NNP","NNS","NN");
+            else
+                allowedPOSTags = Arrays.asList("NNP","NNS","NN","JJ","IN","POS");
+
+            String str = "";
+            for(Pair<String,String> p: posTags){
+                String tag = p.second;
+                //POS for 's
+                if(allowedPOSTags.contains(tag))
+                    str += p.getFirst()+" ";
+                else{
+                    ret.add(new Triple<>(str, -1, -1));
+                    str = "";
                 }
-                else
-                    for(String tok: tokens)
-                        dbpediaOtherTokens.add(tok.toLowerCase());
             }
-            for(String dtt: dbpediaTypeTokens)
-                if(dbpediaOtherTokens.contains(dtt))
-                    dbpediaOtherTokens.remove(dtt);
-            return new Pair<>(dbpediaTypeTokens, dbpediaOtherTokens);
+            if(!str.equals(""))
+                ret.add(new Triple<>(str,-1,-1));
+            return ret;
         }
+
         public Pair<String,Double> scoreSubstrs(String phrase, Short type, SequenceModel nerModel, double threshold) {
             Pair<String, Double> ret = new Pair<>(phrase, 0.0);
             String[] words = phrase.split("\\s+");
@@ -220,15 +224,18 @@
     int i=0, si=0;
     int MAX_SENT = 100;
     Map<String,Integer> dict = NEREvaluator.buildDictionary(3);
-    Short type = FeatureDictionary.UNIVERSITY;
+    Short type = FeatureDictionary.PERSON;
     //Pair<Set<String>,Set<String>> p = new Some().readTokensDBpedia();
     Map<String,Double> found = new LinkedHashMap<>();
     for(Document doc: docs) {
         String c = archive.getContents(doc, true);
         String[] sents = NLPUtils.tokeniseSentence(c);
         for(String sent: sents) {
-            List<Triple<String,Integer,Integer>> toks = new Some().tokenize(sent, dict, nerModel);
-            out.println(sent + "<br>");
+            List<Triple<String,Integer,Integer>> toks = new Some().tokenizePOS(sent, type);
+            List<Pair<String,String>> posTags = NLPUtils.posTag(sent);
+            for(Pair<String,String> p: posTags)
+                out.println(p.getFirst()+"["+p.getSecond()+"]");
+            out.println("<br>");
             for (Triple<String,Integer,Integer> t : toks) {
                 Pair<String, Double> p = new Some().scoreSubstrs(t.getFirst(), type, nerModel, 1E-4);
                 String color = "";

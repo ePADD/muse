@@ -1,3 +1,8 @@
+be
+say
+ask
+read
+fall
 is
 are
 has
