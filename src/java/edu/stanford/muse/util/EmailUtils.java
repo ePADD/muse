@@ -23,6 +23,7 @@ import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.QuotedPrintableCodec;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -1332,13 +1333,14 @@ public class EmailUtils {
 	}
 
 	public static Map<String, String> readDBpedia() {
-        String typesFile = "instance_types_en.nt1.gz";
+        String typesFile = "nstance-types_2015-04.en.txt.bz2";
         if (dbpedia != null)
             return dbpedia;
         dbpedia = new LinkedHashMap<String, String>();
         int d = 0, numPersons = 0, lines = 0;
         try {
-            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new GZIPInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));//EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));
+            //true arguement for BZip2CompressorInputStream so as to load the whole file content into memory
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)

@@ -224,7 +224,7 @@
     int i=0, si=0;
     int MAX_SENT = 100;
     Map<String,Integer> dict = NEREvaluator.buildDictionary(3);
-    Short type = FeatureDictionary.LEGISTLATURE;
+    Short type = FeatureDictionary.PLACE;
     //Pair<Set<String>,Set<String>> p = new Some().readTokensDBpedia();
     Map<String,Double> found = new LinkedHashMap<>();
     for(Document doc: docs) {
