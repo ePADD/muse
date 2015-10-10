@@ -224,7 +224,7 @@
     int i=0, si=0;
     int MAX_SENT = 100;
     Map<String,Integer> dict = NEREvaluator.buildDictionary(3);
-    Short type = FeatureDictionary.PERSON;
+    Short type = FeatureDictionary.LEGISTLATURE;
     //Pair<Set<String>,Set<String>> p = new Some().readTokensDBpedia();
     Map<String,Double> found = new LinkedHashMap<>();
     for(Document doc: docs) {
@@ -255,6 +255,7 @@
         }
     }
     List<Pair<String,Double>> sF = Util.sortMapByValue(found);
+    out.println("Found: "+sF.size());
     out.println(" ----------------- <br>");
     for(Pair<String,Double> p: sF)
         out.println(p.getFirst()+" : "+p.getSecond()+"<br>");

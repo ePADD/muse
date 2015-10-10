@@ -9,8 +9,8 @@
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
 <%
-    Short type = FeatureDictionary.ORGANISATION;
-    String stype = "ORGANIZATION";//"LOCATION"; //, "PERSON"
+    Short type = FeatureDictionary.PERSON;
+    String stype = "PERSON";//"ORGANIZATION";//"LOCATION";
     String serializedClassifier = "/Users/vihari/epadd-ner/english.all.3class.distsim.crf.ser.gz";
     AbstractSequenceClassifier<CoreLabel> classifier = CRFClassifier.getClassifier(serializedClassifier);
 
@@ -21,7 +21,7 @@
     List<String> contents = new ArrayList<>();
     int i=0;
     for(Document doc: docs){
-        if(i++>5)
+        if(i++>100)
             break;
         contents.add(archive.getContents(doc, true));
     }
@@ -64,6 +64,7 @@
         if(!found.contains(bo))
             out.println(bo+"<br>");
     }
+    out.println("#found: "+orgs.size());
     double p = (double)found.size()/orgs.size();
     double r = (double)found.size()/borgs.size();
     double f = 2*p*r/(p+r);

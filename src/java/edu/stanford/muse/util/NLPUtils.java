@@ -129,8 +129,22 @@ public class NLPUtils {
         }
         List<Pair<String,String>> ret = new ArrayList<>();
         for(int i=0;i<Math.min(tokens.length, tags.length);i++)
-            ret.add(new Pair<String,String>(tokens[i],tags[i]));
+            ret.add(new Pair<>(tokens[i],tags[i]));
         return ret;
     }
 
+    public static List<Pair<String,Triple<String,Integer,Integer>>> posTagWithOffsets(String sent){
+        Span[] tokenSpans = tokenizer.tokenizePos(sent);
+        String[] tokens = new String[tokenSpans.length];
+        for(int si=0;si<tokenSpans.length;si++)
+            tokens[si] = tokenSpans[si].getCoveredText(sent).toString();
+        String[] tags = posTag(tokens);
+        if(tokens.length!=tags.length){
+            log.warn("Something wrong with POS tagging. Number of POS tags: " + tags.length + " not the same as number of tokens " + tokens.length);
+        }
+        List<Pair<String,Triple<String,Integer,Integer>>> ret = new ArrayList<>();
+        for(int i=0;i<Math.min(tokens.length, tags.length);i++)
+            ret.add(new Pair<>(tokens[i],new Triple<>(tags[i], tokenSpans[i].getStart(), tokenSpans[i].getEnd())));
+        return ret;
+    }
 }

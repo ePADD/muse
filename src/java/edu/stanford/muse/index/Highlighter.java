@@ -1,6 +1,9 @@
 package edu.stanford.muse.index;
 
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -232,10 +235,24 @@ public class Highlighter {
 		//to merge contiguous annotations.
 		Boolean merge = true;
 
-		//When highlighting, lucene highlighter ignores any non-word chars for example in Rachelle K. Learner will be highlighted as <>Rachelle</> <>K</>. <>Learner</> 
+        //TODO: This highlighting of candidate entities is only for test purposes and should be removed soon
+        POSTokenizer tokenizer = new POSTokenizer();
+        //some random type for getting tokens
+        List<Triple<String,Integer,Integer>> tokens = tokenizer.tokenize(contents, FeatureDictionary.PLACE);
+        String uc = "";
+        int prev_end = 0;
+        for(Triple<String,Integer,Integer> t: tokens) {
+            uc += contents.substring(prev_end, t.getSecond());
+            prev_end = t.getThird();
+            uc += "<u>"+t.getFirst()+"</u>";
+        }
+        uc += contents.substring(prev_end,contents.length());
+		contents = uc;
+
+		//When highlighting, lucene highlighter ignores any non-word chars for example in Rachelle K. Learner will be highlighted as <>Rachelle</> <>K</>. <>Learner</>
 		//this kind of annotation makes it hard to cross reference the string to find the type of the entity.
 		//mimicking the analyzer function
-		Map<String, Archive.Entity> neweids = new LinkedHashMap<String, Archive.Entity>();
+		Map<String, Archive.Entity> neweids = new LinkedHashMap<>();
 		if (entitiesWithId != null) {
 			for (String str : entitiesWithId.keySet()) {
 				String term = canonicalizeMultiWordTerm(str);
@@ -312,7 +329,7 @@ public class Highlighter {
                 int val = match?Integer.MAX_VALUE:substr.length();
                 //remove it from terms to be annotated.
 				if (cStemmedTermsToHighlight.contains(substr)) {
-                    o.put(new Pair<String, Short>(substr, HIGHLIGHT_STEMMED), val);
+                    o.put(new Pair<>(substr, HIGHLIGHT_STEMMED), val);
 					cStemmedTermsToHighlight.remove(substr);
                 }
 				if (cUnstemmedTermsToHighlight.contains(substr)) {
