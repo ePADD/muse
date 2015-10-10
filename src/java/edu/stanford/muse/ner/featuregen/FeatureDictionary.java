@@ -644,7 +644,7 @@ public class FeatureDictionary implements Serializable {
             if(s==bs)
                 bl=tl;
         }
-        return new Pair<>(bl, bs);
+        return new Pair<>(bl, 1.0);
     }
 
     /**
@@ -715,6 +715,7 @@ public class FeatureDictionary implements Serializable {
             features.put("T:" + type, 1.0);
             boolean containsAdj = false, containsAdv = false, containsVerb = false, containsPrep = false, containsPronoun = false, containsDict = false;
             for(String word: words) {
+                //consider all the other words, other than this word
                 if(!sws.contains(word) && !patts[wi].equals(word) && !patts[wi].contains(" "+word) && !patts[wi].contains(word+" ")) {
                     word  = word.toLowerCase();
                     if(EnglishDictionary.getTopAdjectives().contains(word))

@@ -1333,7 +1333,7 @@ public class EmailUtils {
 	}
 
 	public static Map<String, String> readDBpedia() {
-        String typesFile = "instance-types_2015-04.en.txt.bz2";
+        String typesFile = "instance_types_2015-04.en.txt.bz2";
         if (dbpedia != null)
             return dbpedia;
         dbpedia = new LinkedHashMap<String, String>();
@@ -1380,9 +1380,9 @@ public class EmailUtils {
                 //in places there are things like: Shaikh_Ibrahim,_Iraq
                 if (type.endsWith("Place"))
                     r = r.replaceAll(",_.*","");
+                //so as not to allow single word entries
                 if(!r.contains("_"))
                     continue;
-                //so as not to allow single word entries
                 if(r.contains("(")) {
                     int ti = r.indexOf('(');
                     int ui = r.indexOf('_');
@@ -1394,14 +1394,14 @@ public class EmailUtils {
                 //its very dangerous to remove things inside brackets as that may lead to terms like
                 //University_(Metrorail_Station) MetroStation|Place e.t.c.
                 //so keep them, or just skip this entry all together
-                //We are not cosidsering single word tokens any way, so its OK to remove things inside the brackets
+                //We are not cosidering single word tokens any way, so its OK to remove things inside the brackets
                 r = r.replaceAll("_\\(.*?\\)", "");
                 String title = r.replaceAll("_"," ");
 
                 String badSuffix = "|Agent";
                 if (type.endsWith(badSuffix) && type.length() > badSuffix.length())
                     type = type.substring(0, type.length() - badSuffix.length());
-                if (type.contains("|Person"))
+                if (type.endsWith("|Person"))
                     numPersons++;
                 type = type.intern(); // type strings are repeated very often, so intern
 
