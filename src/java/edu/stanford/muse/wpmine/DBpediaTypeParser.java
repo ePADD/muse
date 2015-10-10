@@ -89,7 +89,7 @@ public class DBpediaTypeParser {
             OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(outPath + File.separator + name+".en.txt.bz2"))));
             int numRecords = 0;
             for(String str: dbpedia.keySet()) {
-                osw.write(str+" "+dbpedia.get(str)+"\n");
+                osw.write(str + " " + dbpedia.get(str) + "\n");
                 numRecords++;
             }
             System.err.println("Wrote: "+numRecords+" to "+outPath+File.separator+name+".en.txt.bz2");
@@ -105,6 +105,6 @@ public class DBpediaTypeParser {
 //        Map<String,String> ontology = parseOntology("dbpedia_2015-04.nt.bz2");
 //        for(String str: ontology.keySet())
 //            System.err.println(str+" : "+ontology.get(str));
-        parse("instance-types_2015-04.en.nt.bz2", "dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-ner");
+        parse("instance_types_2015-04.en.nt.bz2", "dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-ner");
     }
 }
