@@ -31,17 +31,16 @@ import java.util.regex.Pattern;
  * TODO: Explore indexing of this data-structure
  *
  * TODO: There are all kinds of crazy names in DBpedia, for example: ESCP_Europe is an University, the algorithm should not let such examples to sway its decision of tag
- * We know the
  * */
 public class FeatureDictionary implements Serializable {
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
-    public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,SPORTSTEAM=6,UNIVERSITY=7,MILITARYUNIT=8,
+    public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,MILITARYUNIT=8,
             MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,DRUG=12,NEWSPAPER=13,ACADEMICJOURNAL=14,MAGAZINE=15,POLITICALPARTY=16,
             ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,NPORG=21,GOVAGENCY=22,RECORDLABEL=23,SHOPPINGMALL=24,HOSPITAL=25,
             POWERSTATION=26,AWARD=27,TRADEUNIN=28,PARK=29,HOTEL=30,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
             MONUMENT=35,OTHER=36;
-    public static Short[] allTypes = new Short[]{PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,SPORTSTEAM,
+    public static Short[] allTypes = new Short[]{PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,
             UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,ORGANISATION,DRUG,NEWSPAPER,ACADEMICJOURNAL,
             MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,RECORDLABEL,SHOPPINGMALL,HOSPITAL,
             POWERSTATION,AWARD,TRADEUNIN,PARK,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,OTHER};
@@ -54,8 +53,9 @@ public class FeatureDictionary implements Serializable {
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2;
     public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-    public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is");
+    public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is", "from");
     static List<String> symbols = Arrays.asList("&","-",",");
+    static final boolean DEBUG = false;
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
@@ -69,7 +69,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place"});
         aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place","Canal|Stream|BodyOfWater|NaturalPlace|Place","Stream|BodyOfWater|NaturalPlace|Place","BodyOfWater|NaturalPlace|Place", "Lake|BodyOfWater|NaturalPlace|Place"});
         aTypes.put(ROAD, new String[]{"Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
-        aTypes.put(SPORTSTEAM, new String[]{"SportsTeam|Organisation"});
         aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation","School|EducationalInstitution|Organisation","College|EducationalInstitution|Organisation"});
         aTypes.put(MILITARYUNIT, new String[]{"MilitaryUnit|Organisation"});
         aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
@@ -88,7 +87,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(GOVAGENCY, new String[]{"GovernmentAgency|Organisation"});
         aTypes.put(RECORDLABEL, new String[]{"RecordLabel|Company|Organisation"});
         aTypes.put(SHOPPINGMALL, new String[]{"ShoppingMall|Building|ArchitecturalStructure|Place"});
-        //TODO: nothings getting assigned to this type, take a look
         aTypes.put(HOSPITAL, new String[]{"Hospital|Building|ArchitecturalStructure|Place"});
         aTypes.put(POWERSTATION, new String[]{"PowerStation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(AWARD, new String[]{"Award"});
@@ -100,7 +98,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(LIBRARY, new String[]{"Library|EducationalInstitution|Organisation|Agent|Building|ArchitecturalStructure|Place"});
         aTypes.put(LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
         aTypes.put(MONUMENT, new String[]{"Monument|Place"});
-        //aTypes.put("RailwayLine|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
 
         //case insensitive
         startMarkersForType.put(FeatureDictionary.PERSON, new String[]{"dear", "hi", "hello", "mr", "mr.", "mrs", "mrs.", "miss", "sir", "madam", "dr.", "prof", "dr", "prof.", "dearest", "governor", "gov."});
@@ -143,6 +140,7 @@ public class FeatureDictionary implements Serializable {
         //"and","for","to","in","at","on","the","of","a","an","is","&",","
         //static String[] WORD_LABELS = new String[]{"OTHER", "LOC", "ORG", "PER", "NULL"};
         //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
+        static final long serialVersionUID = 1L;
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
         static String[] WORD_LABELS = new String[allTypes.length+1];
         static String[] TYPE_LABELS = new String[allTypes.length];
@@ -159,7 +157,7 @@ public class FeatureDictionary implements Serializable {
         //static int NUM_WORDLENGTH_LABELS = 10;
         //feature and the value, for example: <"LEFT: and",200>
         //indicates if the values are final or if they have to be learned
-        Map<String,Double> muVectorPositive;
+        public Map<String,Double> muVectorPositive;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
         public double numMixture;
         //total number of times, this mixture is considered
@@ -168,18 +166,28 @@ public class FeatureDictionary implements Serializable {
             initialise();
         }
 
+        public static double getMaxEntProb(){
+            return (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
+        }
+
         //Since we depend on tags of the neighbouring tokens in a big way, we initialise so that the mixture likelihood with type is more precise.
         //and the likelihood with all the other types to be equally likely
-        public static MU initialise(Map<Short, Pair<Double,Double>> initialParams){
+        public static MU initialise(String word, Map<Short, Pair<Double,Double>> initialParams){
             //dont perform smoothing here, the likelihood is sometimes set to 0 deliberately for some token with some types
             //performing smoothing, will make the contribution of these params non-zero in some phrases where it should not be and leads to unexpected results.
-            double s1 = 0, s2 = 0;
+            double s2 = 0;
             MU mu = new MU();
             for(Short type: initialParams.keySet()) {
                 mu.muVectorPositive.put("T:"+type, initialParams.get(type).first);
-                s1 += initialParams.get(type).first;
                 s2 = initialParams.get(type).second;
             }
+            double n = 0, d = 0;
+            for(Pair<Double,Double> p: initialParams.values()) {
+                n += p.getFirst();
+                d = p.getSecond();
+            }
+            if(initialParams.size()==0 || n==0 || d==0 || n!=d)
+                System.err.println("!!!FATAL!!! mu initialisation improper"+", "+n+", "+d+", "+mu.muVectorPositive+", word: "+word);
             //initially dont assume anything about gammas and pi's
             mu.numMixture = s2;
             mu.numSeen = s2;
@@ -241,11 +249,64 @@ public class FeatureDictionary implements Serializable {
 
         //features also include the type of the phrase
         //returns the log of P(type,features/this-mixture)
-        public double getLikelihood(Map<String,Double> features){
+        public double getLikelihood(Set<String> features, FeatureDictionary dictionary) {
             double p = 1.0;
-            for(String f: features.keySet()){
+            Set<String> left = new LinkedHashSet<>();
+            Set<String> right = new LinkedHashSet<>();
+            for (String f : features) {
+                if (f.startsWith("L:"))
+                    left.add(f);
+                if (f.startsWith("R:"))
+                    right.add(f);
+            }
+            Set<String> ts = new LinkedHashSet<>();
+            for (Short at : allTypes) {
+                ts.add(at + "");
+            }
+            ts.add("NULL");
+            boolean smooth = true;
+            if (muVectorPositive.size()==TYPE_LABELS.length)
+                smooth = true;
+            int si=0;
+            for (Set<String> strs : new Set[]{left, right}) {
+                si++;
+                for (String l : strs) {
+                    double s = 0;
+                    Map<String,Pair<Double,Double>> ls = new LinkedHashMap<>();
+                    for (String t : ts) {
+                        Double v;
+                        if(si==1)
+                            v = muVectorPositive.get("L:"+t);
+                        else
+                            v = muVectorPositive.get("R:"+t);
+
+                        if (numMixture == 0)
+                            continue;
+                        if(v==null)
+                            v=0.0;
+                        if(!smooth) {
+                            s += dictionary.getConditionalOfWordWithType(l, t) * (v / numMixture);
+                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v / numMixture)));
+                        }
+                        else {
+                            s += dictionary.getConditionalOfWordWithType(l, t) * ((v + 1) / (numMixture + allTypes.length + 1));
+                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v + 1) / (numMixture + allTypes.length + 1)));
+                        }
+                        //System.err.println(dictionary.getConditionalOfWordWithType(l, t)+", "+v+","+numMixture);
+                    }
+                    if(DEBUG) {
+                        log.info("Scoring: " + features+"- score: "+s);
+                        for (String t : ls.keySet())
+                            log.info(t + ": <" + ls.get(t).first+"-"+ls.get(t).second+">");
+                    }
+                    p *= Math.pow(s, 1.0 / strs.size());
+                }
+            }
+            //System.err.println(numMixture+", s: "+s);
+
+            for (String f : features) {
                 int v = getNumberOfSymbols(f);
-                boolean smooth = false;
+                smooth = false;
                 //does not want to smooth, if the feature is position label
                 //also dont smooth if the feature is a type related feature
                 //TODO: This way of checking the feature type is pathetic, improve this
@@ -253,47 +314,50 @@ public class FeatureDictionary implements Serializable {
 //                if(f.startsWith("L:") || f.startsWith("R:"))
 //                    smooth = true;
 
+                if (f.startsWith("L:") || f.startsWith("R:")) {
+                    //should be specially handled
+                    continue;
+                }
                 //k, think before you change something related to the smoothing, I have done enough code dance here.
                 //enabling smoothing will dilute everything, and produce undesired results, for example: New York Times may be recognised as York Times, since in the former case New and York contribute some score and make it a location name.
-                //if something token is prominently appearing in many types, then the type affinities should automatically be smoothed out.
+                //if some token is prominently appearing in many types, then the type affinities should automatically be smoothed out.
                 //also, we dont want to make any judgement about unseen tokens, hence smoothing only in that case
-                if(f.equals("L:-2") || f.equals("R:-2"))
+                if (f.equals("L:-2") || f.equals("R:-2"))
                     smooth = true;
                 //should not smooth type related mu params even initially
                 //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
-                if (muVectorPositive.size()==TYPE_LABELS.length)
+                if (muVectorPositive.size() == TYPE_LABELS.length)
                     smooth = true;
 
-                p *= features.get(f);
-                //System.err.println("p: "+p+", "+features.get(f));
-                if(!muVectorPositive.containsKey(f)){
+                if (!muVectorPositive.containsKey(f)) {
                     //no smoothing in the case of position label
-                    if(!smooth)
+                    if (!smooth)
                         p *= 0;
-                    else {
+                    else
                         //System.err.println("!!!FATAL!!! Unknown feature: "+f);
-                        p *= 1.0/v;
-                    }
+                        p *= 1.0 / v;
                     //System.err.println("!f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+v);
                     continue;
                 }
                 double val;
-                if(smooth)
-                    val = (muVectorPositive.get(f)+1)/(numMixture+v);
+                if (smooth)
+                    val = (muVectorPositive.get(f) + 1) / (numMixture + v);
+                else if (numMixture > 0)
+                    val = (muVectorPositive.get(f)) / (numMixture);
                 else
-                    if(numMixture>0)
-                        val = (muVectorPositive.get(f))/(numMixture);
-                    else
-                        val = 0;
+                    val = 0;
                 //System.err.println("f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+val+", "+muVectorPositive.size()+", "+TYPE_LABELS.length+", "+smooth);
 
-                if(Double.isNaN(val)) {
+                if (Double.isNaN(val)) {
                     log.warn("Found a nan here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + val);
                     log.warn(toString());
                 }
+//                if(val == 0)
+//                    System.err.println(f+","+muVectorPositive.get(f));
                 p *= val;
             }
+            //System.err.println("Score: "+p+", "+features);
             return p;
         }
 
@@ -308,17 +372,65 @@ public class FeatureDictionary implements Serializable {
         /**Maximization step in EM update, update under the assumption that add will be called only if the evidence for the corresponding mixture is seen, i.e. xk!=0
          * @param resp - responsibility of this mixture in explaining the type and features
          * @param features - set of all *relevant* features to this mixture*/
-        public void add(double resp, Map<String,Double> features) {
+        public void add(double resp, Set<String> features, FeatureDictionary dictionary) {
             //if learn is set to false, ignore all the observations
             if (Double.isNaN(resp))
                 log.warn("Responsibility is nan for: " + features);
             numMixture += resp;
             numSeen += 1;
-            for (String f : features.keySet()) {
-                if (!muVectorPositive.containsKey(f)) {
-                    muVectorPositive.put(f, 0.0);
+            for (String f : features) {
+                if(!f.startsWith("L:") && !f.startsWith("R:")) {
+                    if (!muVectorPositive.containsKey(f)) {
+                        muVectorPositive.put(f, 0.0);
+                    }
+                    muVectorPositive.put(f, muVectorPositive.get(f) + resp);
                 }
-                muVectorPositive.put(f, muVectorPositive.get(f) + resp);
+            }
+            Set<String> left = new LinkedHashSet<>(), right = new LinkedHashSet<>();
+            for(String f: features) {
+                if (f.startsWith("L:"))
+                    left.add(f);
+                else if(f.startsWith("R:"))
+                    right.add(f);
+            }
+            Set<String> ts = new LinkedHashSet<>();
+            for(Short at: allTypes)
+                ts.add(at+"");
+            ts.add("NULL");
+            //selct top types for every left and right word, trying to populate fields for every type blows up the space requirement
+            int MAX = 2;
+            for(String l: left){
+                Map<String,Double> ltop = new LinkedHashMap<>();
+                for(String t: ts)
+                    ltop.put(t, dictionary.getConditionalOfWordWithType(l, t));
+                List<Pair<String,Double>> temp = Util.sortMapByValue(ltop);
+                if(DEBUG)
+                    log.info("Left temp size: "+temp.size());
+                for(int i=0;i<Math.min(temp.size(), MAX);i++){
+                    String t = temp.get(i).first;
+                    if(!muVectorPositive.containsKey("L:"+t))
+                        muVectorPositive.put("L:"+t,0.0);
+                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + (resp * ltop.get(t) / left.size()));
+                    if(DEBUG)
+                        log.info("Adding left type: "+t+" for "+l);
+                }
+            }
+
+            for(String r: right){
+                Map<String,Double> rtop = new LinkedHashMap<>();
+                for(String t: ts)
+                    rtop.put(t, dictionary.getConditionalOfWordWithType(r, t));
+                List<Pair<String,Double>> temp = Util.sortMapByValue(rtop);
+                if(DEBUG)
+                    log.info("Right temp size: "+temp.size());
+                for(int i=0;i<Math.min(temp.size(), MAX);i++){
+                    String t = temp.get(i).first;
+                    if(!muVectorPositive.containsKey("R:"+t))
+                        muVectorPositive.put("R:"+t,0.0);
+                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + (resp * rtop.get(t) / right.size()));
+                    if(DEBUG)
+                        log.info("Adding right type: "+t+" for "+r);
+                }
             }
         }
 
@@ -381,6 +493,10 @@ public class FeatureDictionary implements Serializable {
     //patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
     //mixtures of the BMM model
     public Map<String, MU> features = new LinkedHashMap<>();
+    //priors over every type label, computed by P(t) = \sum\limits_{w} P(w)*P(t/w)
+    public Map<Short, Double> typePriors = new LinkedHashMap<>();
+    //N is the total number of words seen
+    public double N;
     public static Set<String> newWords = null;
     //threshold to be classified as new word
     public static int THRESHOLD_FOR_NEW = 1;
@@ -445,7 +561,6 @@ public class FeatureDictionary implements Serializable {
             }
             String[] words = str.split("\\s+");
             for(int ii=0;ii<words.length-1;ii++) {
-                String cstr = words[ii]+":::"+words[ii+1];
                 totalcount++;
             }
 
@@ -460,40 +575,68 @@ public class FeatureDictionary implements Serializable {
 
         log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
+        log.info("Initialising MUs");
 
         Map<String, Map<Short, Pair<Double,Double>>> words = lfeatures.get("words");
+        int wi=0, ws = words.size();
         for(String str: words.keySet()){
-            Short ht = null;
-            //Trying to assign ht is just pathetic, we know that these are full matches and gazette lookup will solve things,
-            //Setting ht and setting more appropriate type initially is not helping anyway, all this gets lost in EM (if smoothing of the type is enabled)
             Map<Short, Pair<Double,Double>> priors = new LinkedHashMap<>();
-            double total=0,totalT=0;
             for(Short type: words.get(str).keySet()){
-//                if(ht!=null && ht>0)
-//                    System.err.println("Initialising "+str+" with type: "+ht);
                 Pair<Double,Double> p = words.get(str).get(type);
-                if(ht==null) {
-                    priors.put(type, p);
-                    totalT+=p.first;
-                }
-                else if(ht==type) {
-                    priors.put(type, new Pair<>(p.getSecond(), p.getSecond()));
-                    totalT+=p.getSecond();
-                }
-                else {
-                    priors.put(type, new Pair<>(0.0, p.getSecond()));
-                    totalT += 0;
-                }
-                total=p.getSecond();
+                priors.put(type, p);
             }
-            if(ht!=null)
-                priors.put(FeatureDictionary.OTHER, new Pair<>(0.0, total));
-            else
-                priors.put(FeatureDictionary.OTHER, new Pair<>(total-totalT,total));
-            features.put(str, MU.initialise(priors));
+            if(DEBUG) {
+                String ds = "";
+                for(Short t: priors.keySet())
+                    ds+=t+"<"+priors.get(t).first+","+priors.get(t).second+"> ";
+                log.info("Initialising: " + str + " with " + ds);
+            }
+            features.put(str, MU.initialise(str, priors));
+            if(wi++%1000 == 0)
+                log.info("Done: "+wi+"/"+ws);
         }
 
         return this;
+    }
+
+    //returns P(w/type) = P(type/w)*P(w)/P(type)
+    public double getConditionalOfWordWithType(String word, String type){
+        if(word.startsWith("L:")||word.startsWith("R:"))
+            word = word.substring(2);
+        //base case
+        if(word.equals("NULL") || type.equals("NULL")) {
+            if (word.equals("NULL") && type.equals("NULL"))
+                return 1.0;
+            else
+                return 0.0;
+        }
+
+        MU mu = features.get(word);
+        Short t = Short.parseShort(type);
+        if(typePriors.get(t)==null || typePriors.get(t)==0) {
+            if(DEBUG && typePriors.get(t)==null)
+                log.warn("!!!FATAL!!! Unknown type or type priors not computed: Type priors null? "+(typePriors==null)+", Type: "+t);
+            return 0;
+        }
+
+        //smoothing is very important, there are two facets to it
+        //by adding some numbers to bothe numerator and denominator, we are encouraging ratios with higher components than just the ratio
+        //when the values are smoothed, the values are virually clamped and will be swayed only if a good evidence is found
+        boolean smooth = true;
+        if(mu!=null) {
+            //System.err.println("Returning: "+((1 + mu.numSeen) / (N + features.size())) * mu.getLikelihoodWithType(Short.parseShort(type)));
+            if(smooth)
+                return (mu.getLikelihoodWithType(t)+1)/(typePriors.get(t)+allTypes.length+1);
+            else {
+                //System.err.println(t+", "+typePriors.get(t)+","+typePriors.keySet());
+                return mu.getLikelihoodWithType(t) / typePriors.get(t);
+            }
+        }
+        else {
+            if(DEBUG)
+                log.info("Unknown word: "+word+", returning best guess");
+            return (1.0 / allTypes.length);
+        }
     }
 
     public FeatureVector getVector(String cname, Short iType) {
@@ -515,9 +658,11 @@ public class FeatureDictionary implements Serializable {
                         hm.put(val, new LinkedHashMap<Short, Pair<Double, Double>>());
                         for (Short at : allTypes)
                             hm.get(val).put(at, new Pair<>(0.0, 0.0));
+                        //System.err.println("Putting: "+val);
                     }
                     Pair<Double, Double> p = hm.get(val).get(iType);
                     Short eType = codeType(type);
+                    //System.err.println("Type info: "+eType+", "+iType+", "+type);
                     if(eType == iType)
                         p.first++;
                     p.second++;
@@ -653,8 +798,8 @@ public class FeatureDictionary implements Serializable {
      * requires mixtures as a parameter, because some of the features depend on this
      * returns a map of mixture identity to the set of features relevant to the mixture
      * Map<String,Double> because features sometimes are associated with a score, for semantic type, get label to be precise</>*/
-    public Map<String,Map<String,Double>> generateFeatures(String phrase, Map<String, MU> mixtures, Short type){
-        Map<String, Map<String,Double>> mixtureFeatures = new LinkedHashMap<>();
+    public Map<String,Set<String>> generateFeatures(String phrase, Short type){
+        Map<String, Set<String>> mixtureFeatures = new LinkedHashMap<>();
         String[] patts = getPatts(phrase);
         String[] words = phrase.split("\\s+");
         String sw = "NULL";
@@ -675,22 +820,10 @@ public class FeatureDictionary implements Serializable {
         if(phrase.contains("'s "))
             containsPOS = true;
 
-        String fw = patts[0];
-        String lw = patts[patts.length-1];
         for(int wi = 0; wi<patts.length; wi++){
             if(sws.contains(patts[wi].toLowerCase()))
                 continue;
-            Map<String,Double> features = new LinkedHashMap<>();
-            String prevWord = null, nxtWord = null;
-            prevWord = fw;
-            nxtWord = lw;
-            if(wi == 0)
-                prevWord = null;
-            if(wi == (patts.length-1))
-                nxtWord = null;
-
-            Pair<String,Double> pp = getLabel(prevWord, mixtures);
-            Pair<String,Double> np = getLabel(nxtWord, mixtures);
+            Set<String> features = new LinkedHashSet<>();
 
             String posLabel;
             if(wi==0) {
@@ -705,14 +838,21 @@ public class FeatureDictionary implements Serializable {
             else //if(wi == (words.length-1))
                 posLabel = "E";
             String nwlabel = patts.length+"";
-            features.put("L:" + pp.first, pp.second);
-            features.put("R:" + np.first, np.second);
-            features.put("PL:"+ posLabel, 1.0);
+            for(int wj=0;wj<wi;wj++)
+                features.add("L:"+patts[wj]);
+            if(wi==0)
+                features.add("L:NULL");
+            for(int wj=wi+1;wj<patts.length;wj++)
+                features.add("R:"+patts[wj]);
+            if(wi+1 == patts.length)
+                features.add("R:NULL");
+
+            features.add("PL:" + posLabel);
             //the stop word that appeared in this string
 
-            features.put("SW:" + sw, 1.0);
+            features.add("SW:" + sw);
             //features.add("WL:"+nwlabel);
-            features.put("T:" + type, 1.0);
+            features.add("T:" + type);
             boolean containsAdj = false, containsAdv = false, containsVerb = false, containsPrep = false, containsPronoun = false, containsDict = false;
             for(String word: words) {
                 //consider all the other words, other than this word
@@ -733,84 +873,123 @@ public class FeatureDictionary implements Serializable {
                 }
             }
             if(containsDict)
-                features.put("DICT:Y", 1.0);
+                features.add("DICT:Y");
             else
-                features.put("DICT:N", 1.0);
+                features.add("DICT:N");
             if(containsAdj)
-                features.put("ADJ:Y", 1.0);
+                features.add("ADJ:Y");
             else
-                features.put("ADJ:N",1.0);
+                features.add("ADJ:N");
             if(containsAdv)
-                features.put("ADV:Y", 1.0);
+                features.add("ADV:Y");
             else
-                features.put("ADV:N",1.0);
+                features.add("ADV:N");
             if(containsPrep)
-                features.put("PREP:Y", 1.0);
+                features.add("PREP:Y");
             else
-                features.put("PREP:N",1.0);
+                features.add("PREP:N");
             if(containsVerb)
-                features.put("V:Y", 1.0);
+                features.add("V:Y");
             else
-                features.put("V:N",1.0);
+                features.add("V:N");
             if(containsPronoun)
-                features.put("PN:Y", 1.0);
-            else features.put("PN:N", 1.0);
+                features.add("PN:Y");
+            else features.add("PN:N");
             if(containsPOS)
-                features.put("POS:Y",1.0);
+                features.add("POS:Y");
             else
-                features.put("POS:N",1.0);
+                features.add("POS:N");
 
             mixtureFeatures.put(patts[wi].toLowerCase(), features);
         }
         return mixtureFeatures;
     }
 
+    public void computeTypePriors(){
+        typePriors = new LinkedHashMap<>();
+        N = 0;
+        for(String w: features.keySet())
+            N += features.get(w).numSeen;
+
+        for(Short at: allTypes)
+            typePriors.put(at, 1.0);
+//        for(String w: features.keySet()){
+//            for(Short at: allTypes) {
+//                double t = 0;
+//                if(features.get(w).muVectorPositive.get("T:"+at)!=null && features.get(w).numMixture>0) {
+//                    t = features.get(w).muVectorPositive.get("T:"+at) / features.get(w).numMixture;
+//                    //System.err.println("T: "+t+", "+features.get(w).numSeen/N+", "+features.get(w).muVectorPositive.get("T:"+at)/features.get(w).numMixture);
+//                }
+//                //t *= features.get(w).numSeen/N;
+//                if(!typePriors.containsKey(at))
+//                    typePriors.put(at, 0.0);
+//                typePriors.put(at,typePriors.get(at)+t);
+//            }
+//        }
+        if(DEBUG) {
+            log.info("Type priors: "+N);
+            for (short t : typePriors.keySet())
+                log.info(t + " " + typePriors.get(t) + "\n");
+        }
+    }
+
     public void EM(Map<String,String> gazettes){
-//        if(newWords == null)
-//            computeNewWords();
-        //System.err.println("Done computing new words");
         System.err.println("Performing EM on: #"+features.size()+" words");
 
-        Map<String, MU> mixtures = features;
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
         int MAX_ITER = 3;
         int N = gazettes.size();
-        int wi = 0;
+        int wi;
         for(int i=0;i<MAX_ITER;i++) {
             wi = 0;
+            computeTypePriors();
+
             for (String phrase : gazettes.keySet()) {
                 if (wi++ % 1000 == 0)
                     System.err.println("EM iter: " + i + ", " + wi + "/" + N);
                 String type = gazettes.get(phrase);
-                boolean allowed = false;
                 Short coarseType = codeType(type);
-
                 double z = 0;
                 //responsibilities
                 Map<String, Double> gamma = new LinkedHashMap<>();
                 //Word (sort of mixture identity) -> Features
-                Map<String, Map<String,Double>> featureMap = generateFeatures(phrase, mixtures, coarseType);
-                for (String mi : featureMap.keySet()) {
+                Map<String, Set<String>> wfeatures = generateFeatures(phrase, coarseType);
+                //System.err.println(" ---- ");
+                for (String mi : wfeatures.keySet()) {
                     //this should not even happen
-                    if (mixtures.get(mi) == null) {
-                        //System.err.println("Did not find mixture for: "+ mi +" "+iType);
+                    if (wfeatures.get(mi) == null) {
                         continue;
                     }
-                    MU mu = mixtures.get(mi);
-                    double d = mu.getLikelihood(featureMap.get(mi)) * mu.getPrior();
+                    MU mu = features.get(mi);
+                    if(mu == null)
+                        System.err.println("mu null for: " + mi + ", " + features.size());
+
+                    double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
                     //only two tags, org/non-org
-                    //by N cancels out whe we normalize
+                    //by N cancels out when we normalize
                     //double d = (allowed?pfreq:(1-pfreq)) * (p.getSecond()+2);
                     if(Double.isNaN(d))
-                        System.err.println("score for: " + mi + " "+ featureMap.get(mi) + " " + d);
+                        System.err.println("score for: " + mi + " "+ wfeatures.get(mi) + " " + d);
                     gamma.put(mi, d);
                     z += d;
+                    //System.err.println(mi + " : " + d + ", "+mu.getLikelihood(wfeatures.get(mi), this) );
                 }
-                if (z == 0)
+                if (z == 0) {
+                    log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
                     continue;
+                }
 
                 for (String g : gamma.keySet())
                     gamma.put(g, gamma.get(g) / z);
+
+                if(DEBUG){
+                    for(String mi: wfeatures.keySet()) {
+                        log.info("MI:" + mi + ", " + gamma.get(mi) + ", " + wfeatures.get(mi));
+                        log.info(features.get(mi).toString());
+                    }
+                    log.info("EM iter: "+i+", "+phrase+", "+type+", ct: "+coarseType);
+                    log.info("-----");
+                }
 
                 for (String g : gamma.keySet()) {
                     if (!revisedMixtures.containsKey(g)) {
@@ -819,15 +998,18 @@ public class FeatureDictionary implements Serializable {
 
                     if (Double.isNaN(gamma.get(g)))
                         System.err.println("Gamma: " + gamma.get(g) + ", " + g);
-                    revisedMixtures.get(g).add(gamma.get(g), featureMap.get(g));
+                    if(DEBUG)
+                        if(gamma.get(g) == 0)
+                            log.warn("!! Resp: " + 0 + " for "+g+" in "+phrase+", "+gazettes.get(phrase));
+                    revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), this);
                 }
             }
             double change = 0;
-            for (String mi : mixtures.keySet())
+            for (String mi : features.keySet())
                 if (revisedMixtures.containsKey(mi))
-                    change += revisedMixtures.get(mi).difference(mixtures.get(mi));
+                    change += revisedMixtures.get(mi).difference(features.get(mi));
             log.info("Iter: " + i + ", change: " + change);
-            mixtures = revisedMixtures;
+            features = revisedMixtures;
             revisedMixtures = new LinkedHashMap<>();
 
             try {
@@ -836,8 +1018,8 @@ public class FeatureDictionary implements Serializable {
                     for (Short type : ats) {
                         FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
                         Map<String, Double> some = new LinkedHashMap<>();
-                        for (String w : mixtures.keySet()) {
-                            double v = mixtures.get(w).getLikelihoodWithType(type) * Math.log(mixtures.get(w).numMixture);
+                        for (String w : features.keySet()) {
+                            double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
                             if (Double.isNaN(v))
                                 some.put(w, 0.0);
                             else
@@ -849,7 +1031,7 @@ public class FeatureDictionary implements Serializable {
                                 if(p.second<=0.01)
                                     break;
                             fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");
-                            fw.write(mixtures.get(p.getFirst()).toString());
+                            fw.write(features.get(p.getFirst()).toString());
                             fw.write("========================\n");
                         }
                         fw.close();
@@ -859,7 +1041,6 @@ public class FeatureDictionary implements Serializable {
                 e.printStackTrace();
             }
         }
-        features = mixtures;
     }
 
     private static FeatureDictionary buildAndDumpDictionary(Map<String,String> gazz, String fn){
@@ -897,22 +1078,6 @@ public class FeatureDictionary implements Serializable {
         }
     }
 
-//    public double getMaxpfreq(String name, Short iType) {
-//        String[] words = name.split("\\s+");
-//        double p = 0;
-//        for (String word : words) {
-//            double pw = 0;
-//            try {
-//                Pair<Double, Double> freqs = features.get("word").get(word).get(iType);
-//                pw = (double) freqs.first / freqs.second;
-//            } catch (Exception e) {
-//                ;
-//            }
-//            p = Math.max(pw, p);
-//        }
-//        return p;
-//    }
-
     /**
      * returns the value of the dimension in the features generated
      */
@@ -944,12 +1109,12 @@ public class FeatureDictionary implements Serializable {
 
     //not using logarithms, since the number of symbols is less
     public double getConditional(String phrase, Short type, FileWriter fw){
-        Map<String, Map<String,Double>> tokenFeatures = generateFeatures(phrase, this.features, type);
+        Map<String, Set<String>> tokenFeatures = generateFeatures(phrase, type);
         double sorg = 0;
         for(String mid: tokenFeatures.keySet()) {
             Double d;
             if(features.get(mid) != null)
-                d = features.get(mid).getLikelihood(tokenFeatures.get(mid));
+                d = features.get(mid).getLikelihood(tokenFeatures.get(mid), this);
             else
                 //a likelihood that assumes nothing
                 d = 0.0;//(1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);

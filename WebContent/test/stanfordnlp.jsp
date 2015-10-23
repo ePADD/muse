@@ -9,8 +9,8 @@
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
 <%
-    Short type = FeatureDictionary.PERSON;
-    String stype = "PERSON";//"ORGANIZATION";//"LOCATION";
+    //Short type = FeatureDictionary.;
+    String stype = "PERSON";//"ORGANIZATION";//"PERSON";//"LOCATION";
     String serializedClassifier = "/Users/vihari/epadd-ner/english.all.3class.distsim.crf.ser.gz";
     AbstractSequenceClassifier<CoreLabel> classifier = CRFClassifier.getClassifier(serializedClassifier);
 
@@ -20,8 +20,9 @@
     List<Document> docs = archive.getAllDocs();
     List<String> contents = new ArrayList<>();
     int i=0;
+    contents.toArray(new String[contents.size()]);
     for(Document doc: docs){
-        if(i++>100)
+        if(i++>510)
             break;
         contents.add(archive.getContents(doc, true));
     }

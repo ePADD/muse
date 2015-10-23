@@ -235,20 +235,6 @@ public class Highlighter {
 		//to merge contiguous annotations.
 		Boolean merge = true;
 
-        //TODO: This highlighting of candidate entities is only for test purposes and should be removed soon
-        POSTokenizer tokenizer = new POSTokenizer();
-        //some random type for getting tokens
-        List<Triple<String,Integer,Integer>> tokens = tokenizer.tokenize(contents, FeatureDictionary.PLACE);
-        String uc = "";
-        int prev_end = 0;
-        for(Triple<String,Integer,Integer> t: tokens) {
-            uc += contents.substring(prev_end, t.getSecond());
-            prev_end = t.getThird();
-            uc += "<u>"+t.getFirst()+"</u>";
-        }
-        uc += contents.substring(prev_end,contents.length());
-		contents = uc;
-
 		//When highlighting, lucene highlighter ignores any non-word chars for example in Rachelle K. Learner will be highlighted as <>Rachelle</> <>K</>. <>Learner</>
 		//this kind of annotation makes it hard to cross reference the string to find the type of the entity.
 		//mimicking the analyzer function

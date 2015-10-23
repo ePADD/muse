@@ -1339,13 +1339,13 @@ public class EmailUtils {
         dbpedia = new LinkedHashMap<String, String>();
         int d = 0, numPersons = 0, lines = 0;
         try {
-            //true arguement for BZip2CompressorInputStream so as to load the whole file content into memory
+            //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
             LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
                     break;
-                if (lines++ % 500000 == 0)
+                if (lines++ % 10000 == 0)
                     log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
                 if (lines > 1000000)
                     break;
@@ -1375,26 +1375,27 @@ public class EmailUtils {
                     continue;
                 }
                 String type = words[1];
-                if(type.equals("PersonFunction"))
+                //Royalty names, though tagged person are very weird, contains roman characters and suffixes like of_Poland e.t.c.
+                if(type.equals("PersonFunction") || type.equals("Royalty|Person|Agent"))
                     continue;
                 //in places there are things like: Shaikh_Ibrahim,_Iraq
-                if (type.endsWith("Place"))
+                if (type.endsWith("Settlement|PopulatedPlace|Place"))
                     r = r.replaceAll(",_.*","");
                 //so as not to allow single word entries
-                if(!r.contains("_"))
-                    continue;
-                if(r.contains("(")) {
-                    int ti = r.indexOf('(');
-                    int ui = r.indexOf('_');
-                    //if is a single word token, then continue;
-                    if((ui==-1) || ti<ui || (ui+1==ti)) {
-                        continue;
-                    }
-                }
+//                if(!r.contains("_"))
+//                    continue;
+//                if(r.contains("(")) {
+//                    int ti = r.indexOf('(');
+//                    int ui = r.indexOf('_');
+//                    //if is a single word token, then continue;
+//                    if((ui==-1) || ti<ui || (ui+1==ti)) {
+//                        continue;
+//                    }
+//                }
                 //its very dangerous to remove things inside brackets as that may lead to terms like
                 //University_(Metrorail_Station) MetroStation|Place e.t.c.
                 //so keep them, or just skip this entry all together
-                //We are not cosidering single word tokens any way, so its OK to remove things inside the brackets
+                //We are not considering single word tokens any way, so its OK to remove things inside the brackets
                 r = r.replaceAll("_\\(.*?\\)", "");
                 String title = r.replaceAll("_"," ");
 

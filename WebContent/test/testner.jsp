@@ -7,42 +7,36 @@
 <%@ page import="edu.stanford.muse.util.Triple" %>
 <%@ page import="edu.stanford.muse.util.Util" %>
 <%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
-<%@ page import="edu.stanford.muse.util.NLPUtils" %>
 <%
     class Some{
         public Map<String,Double> find (String content, Short type, SequenceModel model){
-            //Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
 
-            //Map<Short, List<String>> maps = new LinkedHashMap<>();
-            //List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
-//            for(Short t: types)
-//                maps.put(t, new ArrayList<String>());
-//            for(int t=0;t<types.length;t++) {
             Map<String,Double> map = new LinkedHashMap<>();
-            List<Triple<String,Integer,Integer>> cands = new CICTokenizer().tokenize(content, type==FeatureDictionary.PERSON);
+            List<Triple<String,Integer,Integer>> cands = new CICTokenizer().tokenize(content, false);
             //List<String> pns = NLPUtils.getAllProperNouns(content);
             //for(String pn: pns){
             for(Triple<String,Integer, Integer> t: cands){
                 String pn = t.getFirst();
-                //Double val = allMaps[t].get(cand.getFirst());
-                //Pair<String, Double> p = scoreSubstrs(cand.first, type);
-                double s = model.score(pn, type);//p.getSecond();
-                if (s>0) {
-                    map.put(pn, s);
-                    //offsets.add(new Triple<>(cand.getFirst(), cand.getSecond(), cand.getThird()));
+                Map<String,Pair<Short,Double>> es = model.seqLabel(pn);//score(pn, type);//p.getSecond();
+                for(String str: es.keySet()){
+                    Pair<Short,Double> p = es.get(str);
+                    if(p.getFirst()==type)
+                        map.put(str, p.getSecond());
                 }
             }
             return map;
         }
     }
     String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
-    //FeatureDictionary.LEGISTLATURE
-    Short[] types = new Short[]{FeatureDictionary.SETTLEMENT,FeatureDictionary.PLACE,FeatureDictionary.COMPANY,FeatureDictionary.SPORTSTEAM,
+    Short[] types = new Short[]{
+            FeatureDictionary.PLACE,
+            FeatureDictionary.COMPANY,
             FeatureDictionary.UNIVERSITY,FeatureDictionary.AIRPORT,FeatureDictionary.ORGANISATION,FeatureDictionary.NEWSPAPER,FeatureDictionary.ACADEMICJOURNAL,
             FeatureDictionary.MAGAZINE,FeatureDictionary.POLITICALPARTY,FeatureDictionary.AIRLINE,FeatureDictionary.NPORG,FeatureDictionary.GOVAGENCY,FeatureDictionary.RECORDLABEL,
             FeatureDictionary.SHOPPINGMALL,FeatureDictionary.HOSPITAL,
             FeatureDictionary.POWERSTATION,FeatureDictionary.TRADEUNIN,
             FeatureDictionary.LEGISTLATURE,FeatureDictionary.LIBRARY,FeatureDictionary.LAWFIRM};
+    //types = new Short[]{FeatureDictionary.PERSON};
     Short type = FeatureDictionary.ORGANISATION;
 
     String modelFile = mwl + SequenceModel.modelFileName;

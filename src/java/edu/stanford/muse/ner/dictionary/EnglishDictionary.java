@@ -1,10 +1,13 @@
 package edu.stanford.muse.ner.dictionary;
 
+import edu.stanford.muse.util.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class EnglishDictionary {
@@ -14,9 +17,41 @@ public class EnglishDictionary {
     static String prepFile = "dictionaries/en-prepositions.txt";
     static String pronounFile = "dictionaries/en-pronouns.txt";
     static String fullDictFile = "dict.words.full.safe";
+    static String dictStatsFile = "stats.txt";
+
     static Log log = LogFactory.getLog(EnglishDictionary.class);
 
     static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary;
+    //word -> <#capitalised,#total>
+    static Map<String,Pair<Integer,Integer>> dictStats;
+
+    /**
+     * @return dictionary entry -> #times appeared in capitalised form, total number of occurrences */
+    public static Map<String,Pair<Integer,Integer>> getDictStats(){
+        if(dictStats==null){
+            dictStats = new LinkedHashMap<>();
+            try{
+                BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(dictStatsFile)));
+                String line;
+                while((line=br.readLine())!=null){
+                    if(line.startsWith("#"))
+                        continue;
+                    String[] fields = line.split("\\s");
+                    if(fields == null || fields.length<3)
+                        continue;
+                    int cnum = Integer.parseInt(fields[1]);
+                    int num = Integer.parseInt(fields[2]);
+                    dictStats.put(fields[0], new Pair<>(cnum, num));
+                }
+            }catch(IOException e){
+                log.warn("Cannot read file: "+dictStatsFile);
+                e.printStackTrace();
+            }
+            return dictStats;
+        }
+        return dictStats;
+    }
+
     public static Set<String> getDict(){
         if(dictionary==null){
             dictionary = readFile(fullDictFile);
@@ -89,6 +124,6 @@ public class EnglishDictionary {
     }
 
     public static void main(String[] args){
-        System.err.println(getDict().contains("larry"));
+        System.err.println(getDictStats().get("john"));
     }
 }

@@ -5,11 +5,11 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.*;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SVMModel;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.ner.train.NERTrainer;
@@ -37,12 +37,13 @@ public class NER implements StatusProvider {
 	public static String		EPER				= "en_person", ELOC = "en_loc", EORG = "en_org", NAMES_ORIGINAL = "en_names_original";
     public static String		EPER_TITLE			= "en_person_title", ELOC_TITLE = "en_loc_title", EORG_TITLE = "en_org_title";
     public static String		NAMES_OFFSETS		= "en_names_offsets", TITLE_NAMES_OFFSETS = "en_names_offsets_title";
+    public static String        FINE_ENTITIES = "en_fine_entities", TITLE_FINE_ENTITIES = "en_fine_entities_title";
 
 	String						status;
 	double						pctComplete			= 0;
 	boolean						cancelled			= false;
 	Archive						archive				= null;
-    NERModel                    nerModel;
+    SequenceModel               nerModel;
 	//in seconds
 	long						time				= -1, eta = -1;
 	static FieldType			ft;
@@ -135,7 +136,7 @@ public class NER implements StatusProvider {
 		ft.freeze();
 	}
 
-	public NER(Archive archive, NERModel nerModel) {
+	public NER(Archive archive, SequenceModel nerModel) {
 		this.archive = archive;
         this.nerModel = nerModel;
 		time = 0;
@@ -143,20 +144,15 @@ public class NER implements StatusProvider {
 		stats = new NERStats();
 	}
 
-	private static void storeNameOffsets(org.apache.lucene.document.Document doc, boolean body, List<Triple<String, Integer, Integer>> offsets)
+	private static void storeSerialized(org.apache.lucene.document.Document doc, String fieldName, Object obj)
 	{
-        String fieldName = null;
-        if(body)
-            fieldName = NAMES_OFFSETS;
-        else
-            fieldName = TITLE_NAMES_OFFSETS;
-		FieldType storeOnly_ft = new FieldType();
+        FieldType storeOnly_ft = new FieldType();
 		storeOnly_ft.setStored(true);
 		storeOnly_ft.freeze();
 		try {
 			ByteArrayOutputStream bs = new ByteArrayOutputStream();
 			ObjectOutputStream oos = new ObjectOutputStream(bs);
-			oos.writeObject(offsets);
+			oos.writeObject(obj);
 			oos.close();
 			bs.close();
 			doc.removeField(fieldName);
@@ -178,7 +174,7 @@ public class NER implements StatusProvider {
     }
 
     public static List<Triple<String, Integer, Integer>> getNameOffsets(org.apache.lucene.document.Document doc, boolean body) {
-        String fieldName = null;
+        String fieldName;
         if(body)
             fieldName = NAMES_OFFSETS;
         else
@@ -199,11 +195,39 @@ public class NER implements StatusProvider {
 		} catch (Exception e) {
 			log.warn("Failed to deserialize field: "+fieldName);
 			e.printStackTrace();
-			result = new ArrayList<Triple<String, Integer, Integer>>();
+			result = new ArrayList<>();
 		}
 
 		return result;
 	}
+
+    public static Map<Short,Map<String,Double>> getEntities(org.apache.lucene.document.Document doc, boolean body) {
+        String fieldName;
+        if(body)
+            fieldName = FINE_ENTITIES;
+        else
+            fieldName = TITLE_FINE_ENTITIES;
+        BytesRef bytesRef = doc.getBinaryValue(fieldName);
+        if (bytesRef == null)
+            return null;
+        byte[] data = bytesRef.bytes;
+        if (data == null)
+            return null;
+
+        ByteArrayInputStream bs = new ByteArrayInputStream(data);
+        Map<Short,Map<String,Double>> result;
+        ObjectInputStream ois;
+        try {
+            ois = new ObjectInputStream(bs);
+            result = (Map<Short,Map<String,Double>>) ois.readObject();
+        } catch (Exception e) {
+            log.warn("Failed to deserialize field: "+fieldName);
+            e.printStackTrace();
+            result = new LinkedHashMap<>();
+        }
+
+        return result;
+    }
 
     public NERModel loadModel() throws IOException{
         String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
@@ -277,7 +301,6 @@ public class NER implements StatusProvider {
 			throw new CancelledException();
 		}
 
-        String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
 		List<Document> docs = archive.getAllDocs();
 
 		if (cancelled) {
@@ -302,13 +325,13 @@ public class NER implements StatusProvider {
 			String content = archive.getContents(ldoc, false);
             String title = archive.getTitle(ldoc);
 			//original content is substring of content;
-            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
-            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
+            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
+            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
 			recTime += System.currentTimeMillis() - st;
 			st = System.currentTimeMillis();
 
-			Map<Short, List<String>> map = mapAndOffsets.first;
-            Map<Short, List<String>> mapTitle = mapAndOffsetsTitle.first;
+			Map<Short, List<String>> map = SequenceModel.mergeTypes(mapAndOffsets.first);
+            Map<Short, List<String>> mapTitle = SequenceModel.mergeTypes(mapAndOffsetsTitle.first);
 			stats.update(map);
             stats.update(mapTitle);
 			updateTime += System.currentTimeMillis() - st;
@@ -317,8 +340,11 @@ public class NER implements StatusProvider {
 			//!!!!!!SEVERE!!!!!!!!!!
 			//TODO: an entity name is stored in NAMES, NAMES_ORIGINAL, nameoffsets, and one or more of EPER, ELOC, EORG fields, that is a lot of redundancy
 			//!!!!!!SEVERE!!!!!!!!!!
-			storeNameOffsets(ldoc, true, mapAndOffsets.second);
-            storeNameOffsets(ldoc, false, mapAndOffsetsTitle.second);
+			storeSerialized(ldoc, NAMES_OFFSETS, mapAndOffsets.second);
+            storeSerialized(ldoc, TITLE_NAMES_OFFSETS, mapAndOffsetsTitle.second);
+            storeSerialized(ldoc, FINE_ENTITIES, mapAndOffsets.getFirst());
+            storeSerialized(ldoc, TITLE_FINE_ENTITIES, mapAndOffsets.getSecond());
+
 			List<String> persons = map.get(FeatureDictionary.PERSON);
 			List<String> locs = map.get(FeatureDictionary.PLACE);
 			List<String> orgs = map.get(FeatureDictionary.ORGANISATION);

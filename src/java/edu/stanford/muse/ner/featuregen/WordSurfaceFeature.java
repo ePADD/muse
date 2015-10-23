@@ -157,8 +157,8 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
             return null;
 		Map<String,List<String>> features = new LinkedHashMap<String, List<String>>();
 
-		String[] startMarkers = FeatureDictionary.startMarkersForType.get(iType);
-		String[] endMarkers = FeatureDictionary.endMarkersForType.get(iType);
+		String[] startMarkers = new String[]{};//FeatureDictionary.startMarkersForType.get(iType);
+		String[] endMarkers = new String[]{};//FeatureDictionary.endMarkersForType.get(iType);
 		//thought this is efficient than name.matches as the regex of latter needs .* to be appended
 		//String temp = name.replaceAll(FeatureDictionary.MARKERS_PATT, "");
 		Pair<String,Boolean> p1 = checkAndStrip(name, startMarkers, true, FeatureDictionary.PERSON == iType);
