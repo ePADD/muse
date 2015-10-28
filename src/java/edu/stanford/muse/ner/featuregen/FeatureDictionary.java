@@ -410,7 +410,7 @@ public class FeatureDictionary implements Serializable {
                     String t = temp.get(i).first;
                     if(!muVectorPositive.containsKey("L:"+t))
                         muVectorPositive.put("L:"+t,0.0);
-                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + (resp * ltop.get(t) / left.size()));
+                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + (resp * ltop.get(t) / Math.min(temp.size(),MAX)));
                     if(DEBUG)
                         log.info("Adding left type: "+t+" for "+l);
                 }
@@ -427,7 +427,7 @@ public class FeatureDictionary implements Serializable {
                     String t = temp.get(i).first;
                     if(!muVectorPositive.containsKey("R:"+t))
                         muVectorPositive.put("R:"+t,0.0);
-                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + (resp * rtop.get(t) / right.size()));
+                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + (resp * rtop.get(t) / Math.min(temp.size(), MAX)));
                     if(DEBUG)
                         log.info("Adding right type: "+t+" for "+r);
                 }
