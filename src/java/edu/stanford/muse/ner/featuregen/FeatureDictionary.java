@@ -160,6 +160,8 @@ public class FeatureDictionary implements Serializable {
         public Map<String,Double> muVectorPositive;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
         public double numMixture;
+        //these are the denominator sums in the case of mu's corresponding to left and right semantic types
+        public double nmR, nmL;
         //total number of times, this mixture is considered
         public double numSeen;
         public MU() {
@@ -191,6 +193,8 @@ public class FeatureDictionary implements Serializable {
             //initially dont assume anything about gammas and pi's
             mu.numMixture = s2;
             mu.numSeen = s2;
+            mu.nmR = s2;
+            mu.nmL = s2;
             return mu;
         }
 
@@ -198,6 +202,8 @@ public class FeatureDictionary implements Serializable {
             muVectorPositive = new LinkedHashMap<>();
             this.numMixture = 0;
             this.numSeen = 0;
+            this.nmL = 0;
+            this.nmR = 0;
         }
 
         //returns P(type/this-mixture)
@@ -275,22 +281,27 @@ public class FeatureDictionary implements Serializable {
                     Map<String,Pair<Double,Double>> ls = new LinkedHashMap<>();
                     for (String t : ts) {
                         Double v;
-                        if(si==1)
-                            v = muVectorPositive.get("L:"+t);
-                        else
-                            v = muVectorPositive.get("R:"+t);
+                        double denom;
+                        if(si==1) {
+                            v = muVectorPositive.get("L:" + t);
+                            denom = nmL;
+                        }
+                        else {
+                            v = muVectorPositive.get("R:" + t);
+                            denom = nmR;
+                        }
 
                         if (numMixture == 0)
                             continue;
                         if(v==null)
                             v=0.0;
                         if(!smooth) {
-                            s += dictionary.getConditionalOfWordWithType(l, t) * (v / numMixture);
-                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v / numMixture)));
+                            s += dictionary.getConditionalOfWordWithType(l, t) * (v / denom);
+                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v / denom)));
                         }
                         else {
-                            s += dictionary.getConditionalOfWordWithType(l, t) * ((v + 1) / (numMixture + allTypes.length + 1));
-                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v + 1) / (numMixture + allTypes.length + 1)));
+                            s += dictionary.getConditionalOfWordWithType(l, t) * ((v + 1) / (denom + allTypes.length + 1));
+                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v + 1) / (denom + allTypes.length + 1)));
                         }
                         //System.err.println(dictionary.getConditionalOfWordWithType(l, t)+", "+v+","+numMixture);
                     }
@@ -386,6 +397,8 @@ public class FeatureDictionary implements Serializable {
                     muVectorPositive.put(f, muVectorPositive.get(f) + resp);
                 }
             }
+
+            //System.err.println("Features: "+features);
             Set<String> left = new LinkedHashSet<>(), right = new LinkedHashSet<>();
             for(String f: features) {
                 if (f.startsWith("L:"))
@@ -403,14 +416,17 @@ public class FeatureDictionary implements Serializable {
                 Map<String,Double> ltop = new LinkedHashMap<>();
                 for(String t: ts)
                     ltop.put(t, dictionary.getConditionalOfWordWithType(l, t));
+
                 List<Pair<String,Double>> temp = Util.sortMapByValue(ltop);
                 if(DEBUG)
                     log.info("Left temp size: "+temp.size());
-                for(int i=0;i<Math.min(temp.size(), MAX);i++){
+                for(int i=0;i<Math.min(MAX,temp.size());i++){
                     String t = temp.get(i).first;
                     if(!muVectorPositive.containsKey("L:"+t))
                         muVectorPositive.put("L:"+t,0.0);
-                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + (resp * ltop.get(t) / Math.min(temp.size(),MAX)));
+                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + (resp * ltop.get(t) / left.size()));
+                    nmL += (resp * ltop.get(t) / left.size());
+                    //System.err.println("Adding: L:"+t+", "+resp+", "+ltop.get(t)+", "+Math.min(temp.size(),MAX));
                     if(DEBUG)
                         log.info("Adding left type: "+t+" for "+l);
                 }
@@ -420,17 +436,22 @@ public class FeatureDictionary implements Serializable {
                 Map<String,Double> rtop = new LinkedHashMap<>();
                 for(String t: ts)
                     rtop.put(t, dictionary.getConditionalOfWordWithType(r, t));
+
                 List<Pair<String,Double>> temp = Util.sortMapByValue(rtop);
                 if(DEBUG)
                     log.info("Right temp size: "+temp.size());
-                for(int i=0;i<Math.min(temp.size(), MAX);i++){
+                for(int i=0;i<Math.min(MAX,temp.size());i++){
                     String t = temp.get(i).first;
                     if(!muVectorPositive.containsKey("R:"+t))
                         muVectorPositive.put("R:"+t,0.0);
-                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + (resp * rtop.get(t) / Math.min(temp.size(), MAX)));
+                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + (resp * rtop.get(t) / right.size()));
+                    //NMR update can be outside the loop as marginal of conditional word with type sums to 0, having it inside the loop will expose any problems in the normlisation
+                    nmR += (resp * rtop.get(t) / right.size());
+                    //System.err.println("Word: "+r+", Type: "+t+", "+resp+", "+rtop.get(t)+", "+temp.size());
                     if(DEBUG)
                         log.info("Adding right type: "+t+" for "+r);
                 }
+                //System.err.println("-----");
             }
         }
 
@@ -485,6 +506,7 @@ public class FeatureDictionary implements Serializable {
                 str += "\n";
             }
             str += "NM:"+numMixture+", NS:"+numSeen+"\n";
+            str += "NMR:"+nmR+", NML:"+nmL+"\n";
             return str;
         }
     }
@@ -495,8 +517,6 @@ public class FeatureDictionary implements Serializable {
     public Map<String, MU> features = new LinkedHashMap<>();
     //priors over every type label, computed by P(t) = \sum\limits_{w} P(w)*P(t/w)
     public Map<Short, Double> typePriors = new LinkedHashMap<>();
-    //N is the total number of words seen
-    public double N;
     public static Set<String> newWords = null;
     //threshold to be classified as new word
     public static int THRESHOLD_FOR_NEW = 1;
@@ -622,15 +642,10 @@ public class FeatureDictionary implements Serializable {
         //smoothing is very important, there are two facets to it
         //by adding some numbers to bothe numerator and denominator, we are encouraging ratios with higher components than just the ratio
         //when the values are smoothed, the values are virually clamped and will be swayed only if a good evidence is found
-        boolean smooth = true;
-        if(mu!=null) {
+         if(mu!=null) {
             //System.err.println("Returning: "+((1 + mu.numSeen) / (N + features.size())) * mu.getLikelihoodWithType(Short.parseShort(type)));
-            if(smooth)
-                return (mu.getLikelihoodWithType(t)+1)/(typePriors.get(t)+allTypes.length+1);
-            else {
                 //System.err.println(t+", "+typePriors.get(t)+","+typePriors.keySet());
-                return mu.getLikelihoodWithType(t) / typePriors.get(t);
-            }
+            return mu.getLikelihoodWithType(t) / typePriors.get(t);
         }
         else {
             if(DEBUG)
@@ -907,9 +922,9 @@ public class FeatureDictionary implements Serializable {
 
     public void computeTypePriors(){
         typePriors = new LinkedHashMap<>();
-        N = 0;
-        for(String w: features.keySet())
-            N += features.get(w).numSeen;
+//        N = 0;
+//        for(String w: features.keySet())
+//            N += features.get(w).numSeen;
 
         for(Short at: allTypes)
             typePriors.put(at, 1.0);
@@ -927,7 +942,7 @@ public class FeatureDictionary implements Serializable {
 //            }
 //        }
         if(DEBUG) {
-            log.info("Type priors: "+N);
+            log.info("Type priors: ");
             for (short t : typePriors.keySet())
                 log.info(t + " " + typePriors.get(t) + "\n");
         }

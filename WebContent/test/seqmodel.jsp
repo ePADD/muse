@@ -20,19 +20,19 @@
 <%@ page import="edu.stanford.nlp.ie.AbstractSequenceClassifier" %>
 <%@ page import="edu.stanford.nlp.ling.CoreAnnotations" %><%
     class Some {
-        public Map<String, Double> find(String content, Short type, SequenceModel model) {
-            Map<String, Double> map = new LinkedHashMap<>();
-            //List<String> pns = NLPUtils.getAllProperNouns(content);
-            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> temp = model.find(content);
-            //for(String pn: pns){
-            for (String pn : temp.getFirst().get(type)) {
-                double s = model.score(pn, type);
-                if (s > 0) {
-                    map.put(pn, s);
-                }
-            }
-            return map;
-        }
+//        public Map<String, Double> find(String content, Short type, SequenceModel model) {
+//            Map<String, Double> map = new LinkedHashMap<>();
+//            //List<String> pns = NLPUtils.getAllProperNouns(content);
+//            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> temp = model.find(content);
+//            //for(String pn: pns){
+//            for (String pn : temp.getFirst().get(type)) {
+//                double s = model.score(pn, type);
+//                if (s > 0) {
+//                    map.put(pn, s);
+//                }
+//            }
+//            return map;
+//        }
 
         public String removeSW(String phrase) {
             List<String> sws = Arrays.asList("and", "for", "to", "in", "at", "on", "the", "of", "a", "an", "is");
@@ -371,7 +371,7 @@
     List<Document> docs = archive.getAllDocs();
     Map<String,Double> all = new LinkedHashMap<>();
     int i=0, si=0;
-    int MAX_SENT = 110;
+    int MAX_SENT = 1000;
     //Map<String,Integer> dict = NEREvaluator.buildDictionary(3);
     //Pair<Set<String>,Set<String>> p = new Some().readTokensDBpedia();
     Map<Short,Map<String,Double>> found = new LinkedHashMap<>();
@@ -382,6 +382,7 @@
         String c = archive.getContents(doc, true);
         String[] sents = NLPUtils.tokeniseSentence(c);
         for(String sent: sents) {
+            sent = sent.replaceAll("[><\\)\\(\"\\[\\]\\*\\+]+","");
 //            if(sent.length()>1000)
 //                continue;
             List<Triple<String,Integer,Integer>> toks = new Some().tokenizePOS(sent,FeatureDictionary.PLACE);//new CICTokenizer().tokenize(sent, false);
@@ -395,7 +396,6 @@
             for(String str: es.keySet()){
                 Set<String> entities = es.get(str);
                 for(String e: entities) {
-                    e = e.replaceAll("[><\\)\\(\"]+","");
                     line = line.replaceAll(e, "<span style='color:green'>" + e + "[" + str + "]</span> ");
                 }
             }
@@ -421,7 +421,7 @@
                         continue;
 
                     try {
-                        e = e.replaceAll("[><\\)\\(\"]+","");
+                        //e = e.replaceAll("[><\\)\\(\"\\[\\]\\*\\+]+","");
 
                         str = str.replaceAll(e, "<span style='color:" + color + "'>" + e + "[" + desc.get(p.getFirst()) + "," + p.getSecond() + "]</span> ");
                     }catch(Exception e1){
@@ -440,15 +440,17 @@
     }
     System.err.println("Done in: "+(System.currentTimeMillis()-start_time));
     for(Short type: found.keySet()) {
-        Map<String,Double> ft = found.get(type);
+        Map<String, Double> ft = found.get(type);
         List<Pair<String, Double>> sF = Util.sortMapByValue(ft);
-        out.println("<br>Type: "+desc.get(type)+"<br>");
-        if(desc.get(type)==null)
+        out.println("<br>Type: " + desc.get(type) + "<br>");
+        if (desc.get(type) == null)
             continue;
         out.println("Found: " + sF.size() + "<br>");
         out.println(" ----------------- <br>");
-        for (Pair<String, Double> p : sF)
-            out.println(p.getFirst() + " : " + p.getSecond() + "<br>");
+        for (Pair<String, Double> p : sF) {
+            if(p.getSecond()!=1.0 || (p.getSecond()==1.0 && p.getFirst().contains(" ")))
+                out.println(p.getFirst() + " : " + p.getSecond() + "<br>");
+        }
     }
     //out.println(new Some().removeSW("of AFSCME District Council")+"<br>");
 %>
