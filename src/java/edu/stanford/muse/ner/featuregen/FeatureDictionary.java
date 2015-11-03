@@ -948,11 +948,28 @@ public class FeatureDictionary implements Serializable {
         }
     }
 
-    public void EM(Map<String,String> gazettes){
-        System.err.println("Performing EM on: #"+features.size()+" words");
+    public double getIncompleteDateLogLikelihood(Map<String,String> gazettes){
+        double ll = 0;
+        for(String phrase: gazettes.keySet()) {
+            String type = gazettes.get(phrase);
+            Short et = codeType(type);
+            if(et == null)
+                continue;
+            double p = this.getConditional(phrase, et, null);
+            if(p!=0)
+                ll += Math.log(p);
+            else
+                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
+        }
+        return ll;
+    }
 
+    public void EM(Map<String,String> gazettes){
+        log.info("Performing EM on: #" + features.size() + " words");
+        double ll = getIncompleteDateLogLikelihood(gazettes);
+        log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 3;
+        int MAX_ITER = 10;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
@@ -1019,17 +1036,22 @@ public class FeatureDictionary implements Serializable {
                     revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), this);
                 }
             }
-            double change = 0;
-            for (String mi : features.keySet())
-                if (revisedMixtures.containsKey(mi))
-                    change += revisedMixtures.get(mi).difference(features.get(mi));
-            log.info("Iter: " + i + ", change: " + change);
             features = revisedMixtures;
+//            double change = 0;
+//            for (String mi : features.keySet())
+//                if (revisedMixtures.containsKey(mi))
+//                    change += revisedMixtures.get(mi).difference(features.get(mi));
+//            log.info("Iter: " + i + ", change: " + change);
+            //incomplete data log likehood is better mesure than just the change in parameters
+            //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
+            ll = getIncompleteDateLogLikelihood(gazettes);
+            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
+
             revisedMixtures = new LinkedHashMap<>();
 
             try {
                 if(i==(MAX_ITER-1)) {
-                    Short[] ats = FeatureDictionary.allTypes;//= new Short[]{FeatureDictionary.AIRLINE,FeatureDictionary.MILITARYUNIT,FeatureDictionary.PERSON, FeatureDictionary.GOVAGENCY, FeatureDictionary.UNIVERSITY};
+                    Short[] ats = FeatureDictionary.allTypes;
                     for (Short type : ats) {
                         FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
                         Map<String, Double> some = new LinkedHashMap<>();
