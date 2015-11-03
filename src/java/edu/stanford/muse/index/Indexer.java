@@ -21,6 +21,7 @@ import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.lang.Languages;
 import edu.stanford.muse.util.*;
+import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -761,12 +762,12 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				if(ireader.numDeletedDocs()>0)
                     log.warn ("!!!!!!!\nIndex reader has " + ireader.numDocs() + " doc(s) of which " + ireader.numDeletedDocs() + " are deleted)\n!!!!!!!!!!");
 				isearcher = new IndexSearcher(ireader);
-				contentDocIds = new LinkedHashMap<Integer, String>();
+				contentDocIds = new LinkedHashMap<>();
 
                 numContentDocs = ireader.numDocs();
                 numContentDeletedDocs = ireader.numDeletedDocs();
 
-                Set<String> fieldsToLoad = new HashSet<String>();
+                Set<String> fieldsToLoad = new HashSet<>();
                 fieldsToLoad.add("docId");
                 for(int i=0;i<ireader.maxDoc();i++){
 					org.apache.lucene.document.Document doc = ireader.document(i,fieldsToLoad);
@@ -1165,13 +1166,18 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		Set<edu.stanford.muse.index.Document> docs_in_cluster = null;
 		if (cluster != -1)
-			docs_in_cluster = new LinkedHashSet<edu.stanford.muse.index.Document>((Collection) getDocsInCluster(cluster));
+			docs_in_cluster = new LinkedHashSet<>((Collection) getDocsInCluster(cluster));
 
         //should retain the lucene returned order
 		List<edu.stanford.muse.index.Document> result = new ArrayList<edu.stanford.muse.index.Document>();
 		try {
+            //System.err.println("Looking up:"+term);
+            long st = System.currentTimeMillis();
 			Collection<String> hitDocIds = lookupAsDocIds(term, threshold, isearcher, qt);
-			for (String d : hitDocIds)
+            //System.err.println("took: "+(System.currentTimeMillis()-st)+"ms and found: "+hitDocIds.size());
+			log.info("Looking up term: "+term +" took: "+(System.currentTimeMillis()-st));
+            st = System.currentTimeMillis();
+            for (String d : hitDocIds)
 			{
 				EmailDocument ed = docIdToEmailDoc.get(d);
 				if (ed != null) {
@@ -1182,9 +1188,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 					log.warn("Index hit for doc id " + d + " but doc does not exist!");
 				}
 			}
+            //System.err.println("Iterating over the docs took: "+(System.currentTimeMillis()-st));
 		} catch (Exception e) {
 			Util.print_exception(e);
 		}
+
 
         //sort
         SortBy sb = options.getSortBy();
@@ -1303,6 +1311,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * returns collection of docIds of the Lucene docs that hit, at least
 	 * threshold times.
 	 * warning! only looks up body field, no others
+     * Caution: This code is not to be touched, unless something is being optimised
+     * Introducing something here can seriously affect the search times.
 	 */
 	private Pair<Collection<String>,Integer> luceneLookupAsDocIdsWithTotalHits(String q, int threshold, IndexSearcher searcher, QueryType qt, int lt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
 	{
@@ -1347,11 +1357,12 @@ public class Indexer implements StatusProvider, java.io.Serializable {
             query = parserMeta.parse(escaped_q);
 		} else
 			query = parser.parse(escaped_q);
-		log.info("Query: "+query);
 
 		//		query = convertRegex(query);
+        long st = System.currentTimeMillis();
         TopDocs tds = searcher.search(query, null, lt);
-		ScoreDoc[] hits = tds.scoreDocs;
+        log.info("Took: "+(System.currentTimeMillis()-st)+"ms for query:"+query);
+        ScoreDoc[] hits = tds.scoreDocs;
         int totalHits = tds.totalHits;
 
 		// this logging causes a 50% overhead on the query -- maybe enable it only for debugging
@@ -1374,7 +1385,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		int n_added = 0;
 		log.info("Found: " + hits.length + " hits for query: " + q);
-		for (int i = 0; i < hits.length; i++) {
+       for (int i = 0; i < hits.length; i++) {
 			int ldocId = hits[i].doc; // this is the lucene doc id, we need to map it to our doc id.
 
 			String docId = null; // this will be our doc id
@@ -1388,8 +1399,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				continue;
 			}
 
-            Explanation expl1 = searcher.explain(query, hits[i].doc);
-			if (threshold <= 1)
+            if (threshold <= 1)
 			{
 				// common case: threshold is 1.
 				result.add(docId);
@@ -1452,7 +1462,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				}
 			}
 		}
-		log.info(n_added + " docs added to docIdMap cache");
+        log.info(n_added + " docs added to docIdMap cache");
 		return new Pair<Collection<String>,Integer>(result, totalHits);
 	}
 
@@ -1802,7 +1812,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		//				"Microsoft");
 		//		EmailUtils.test("China", "NYState", "Orlando", "Elmwood", "Mykonos", "Raliegh",
 		//				"Dresden", "Northampton", "IRAQ", "New Zealand", "English in Dresden");
-		testQueries();
+		//testQueries();
 		//		try {
 		//			String aFile = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
 		//			String type = "3classes";
@@ -1815,6 +1825,19 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		//		} catch (Exception e) {
 		//			e.printStackTrace();
 		//		}
+        String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+        Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+        String queries[] = new String[]{"(teaching|learning|research|university|college|school|education|fellowship|professor|graduate)",
+                                        "(book|chapter|article|draft|submission|review|festschrift|poetry|prose|writing)",
+                                        "(award|prize|medal|fellowship|certificate)",
+                                        "(father|dad|dada|daddy|papa|pappa|pop|\"old man\"|mother|mama|mamma|mom|momma|mommy|mammy|mum|mummy|\"father in law\"|\"mother in law\"|\"brother in law\"|\"sister in law\"|stepfather|stepmother|husband|wife|son|boy|daughter|girl|sister|brother|cousin|grandfather|grandmother|grandson|granddaughter|genealogy|reunion)"
+        };
+        for(String q: queries){
+            long st = System.currentTimeMillis();
+            Collection<Document> docs = archive.indexer.docsForQuery(q,new QueryOptions());
+            long et = System.currentTimeMillis();
+            System.err.println("Took: "+(et-st)+"ms to search for: "+q+"\nFound: #"+docs.size());
+        }
 	}
 
 	private static void testQueries() throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException
