@@ -209,13 +209,14 @@ public class FeatureDictionary implements Serializable {
         //returns P(type/this-mixture)
         public double getLikelihoodWithType(String typeLabel){
             double p1, p2;
+            //System.err.println("Likelihood with: "+typeLabel);
 
             if(numMixture == 0)
                 return 0;
             for(String tl: TYPE_LABELS) {
-                if(tl.equals(typeLabel)) {
-                    if(muVectorPositive.containsKey("T:"+typeLabel)) {
-                        p1 = muVectorPositive.get("T:"+typeLabel);
+                if(("T:"+tl).equals(typeLabel)) {
+                    if(muVectorPositive.containsKey(typeLabel)) {
+                        p1 = muVectorPositive.get(typeLabel);
                         p2 = numMixture;
                         return p1 / p2;
                     }
@@ -233,7 +234,7 @@ public class FeatureDictionary implements Serializable {
         }
 
         public double getLikelihoodWithType(short typeLabel){
-            return getLikelihoodWithType(""+typeLabel);
+            return getLikelihoodWithType("T:"+typeLabel);
         }
 
         //gets number of symbols in the dimension represented by this feature
@@ -273,6 +274,7 @@ public class FeatureDictionary implements Serializable {
             boolean smooth = true;
             if (muVectorPositive.size()==TYPE_LABELS.length)
                 smooth = true;
+            //System.err.println("Smoothing is set to :"+smooth);
             int si=0;
             for (Set<String> strs : new Set[]{left, right}) {
                 si++;
@@ -313,6 +315,7 @@ public class FeatureDictionary implements Serializable {
                     p *= Math.pow(s, 1.0 / strs.size());
                 }
             }
+            //System.err.println("left and right: "+p);
             //System.err.println(numMixture+", s: "+s);
 
             for (String f : features) {
@@ -333,8 +336,6 @@ public class FeatureDictionary implements Serializable {
                 //enabling smoothing will dilute everything, and produce undesired results, for example: New York Times may be recognised as York Times, since in the former case New and York contribute some score and make it a location name.
                 //if some token is prominently appearing in many types, then the type affinities should automatically be smoothed out.
                 //also, we dont want to make any judgement about unseen tokens, hence smoothing only in that case
-                if (f.equals("L:-2") || f.equals("R:-2"))
-                    smooth = true;
                 //should not smooth type related mu params even initially
                 //TODO: set proper condition for smoothing
                 //just after initialisation, in this case the should not assign 0 mass for unseen observations
@@ -346,9 +347,7 @@ public class FeatureDictionary implements Serializable {
                     if (!smooth)
                         p *= 0;
                     else
-                        //System.err.println("!!!FATAL!!! Unknown feature: "+f);
                         p *= 1.0 / v;
-                    //System.err.println("!f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+v);
                     continue;
                 }
                 double val;
@@ -361,14 +360,11 @@ public class FeatureDictionary implements Serializable {
                 //System.err.println("f: "+f+", "+muVectorPositive.get(f)+" : "+numMixture+", "+val+", "+muVectorPositive.size()+", "+TYPE_LABELS.length+", "+smooth);
 
                 if (Double.isNaN(val)) {
-                    log.warn("Found a nan here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + val);
+                    log.warn("Found a NaN here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + val);
                     log.warn(toString());
                 }
-//                if(val == 0)
-//                    System.err.println(f+","+muVectorPositive.get(f));
                 p *= val;
             }
-            //System.err.println("Score: "+p+", "+features);
             return p;
         }
 
@@ -386,7 +382,7 @@ public class FeatureDictionary implements Serializable {
         public void add(double resp, Set<String> features, FeatureDictionary dictionary) {
             //if learn is set to false, ignore all the observations
             if (Double.isNaN(resp))
-                log.warn("Responsibility is nan for: " + features);
+                log.warn("Responsibility is NaN for: " + features);
             numMixture += resp;
             numSeen += 1;
             for (String f : features) {
@@ -799,7 +795,7 @@ public class FeatureDictionary implements Serializable {
         for(String tl: MU.TYPE_LABELS) {
             if(tl.equals(""+FeatureDictionary.OTHER))
                 continue;
-            double s = mixtures.get(word).getLikelihoodWithType(tl);
+            double s = mixtures.get(word).getLikelihoodWithType("T:"+tl);
             bs = Math.max(s, bs);
             if(s==bs)
                 bl=tl;
@@ -965,6 +961,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     public void EM(Map<String,String> gazettes){
+        computeTypePriors();
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
@@ -1152,15 +1149,20 @@ public class FeatureDictionary implements Serializable {
             Double d;
             if(features.get(mid) != null)
                 d = features.get(mid).getLikelihood(tokenFeatures.get(mid), this);
-            else
+            else {
+                //System.err.println("MID: "+mid+" not found");
                 //a likelihood that assumes nothing
-                d = 0.0;//(1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
+                d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
 //            try {
 //                if (fw != null)
 //                    fw.write("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+"\n");
 //            }catch(IOException e){
 //                e.printStackTrace();
 //            }
+            }
+//            if(d == 0)
+//                System.err.println("Score: 0 for: "+mid);
+
             if (Double.isNaN(d))
                 log.warn("Cond nan " + mid + ", " + d);
             double val = d;

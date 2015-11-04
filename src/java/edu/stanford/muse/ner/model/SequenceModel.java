@@ -385,7 +385,7 @@ public class SequenceModel implements Serializable{
                     if(mu == null)
                         label = p.getFirst();
                     else{
-                        if(mu.getLikelihoodWithType(FeatureDictionary.OTHER+"")>p.getSecond())
+                        if(mu.getLikelihoodWithType(FeatureDictionary.OTHER)>p.getSecond())
                             label = ""+FeatureDictionary.OTHER;
                         else
                             label = p.getFirst();
