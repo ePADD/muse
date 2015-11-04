@@ -117,6 +117,7 @@ public class SequenceModel implements Serializable{
         return p;
     }
 
+    //The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length
     public Map<String, Pair<Short, Double>> seqLabel(String phrase) {
         //phrase = clean(phrase);
         Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
@@ -125,6 +126,8 @@ public class SequenceModel implements Serializable{
         phrase = phrase.replaceAll("^\\W+|\\W+^","");
 
         String[] tokens = phrase.split("\\s+");
+        if(tokens.length>15)
+            return new LinkedHashMap<>();
         Set<Short> cands = new LinkedHashSet<>();
         Map<Short, Double> candTypes = new LinkedHashMap<>();
         for (String token : tokens) {
