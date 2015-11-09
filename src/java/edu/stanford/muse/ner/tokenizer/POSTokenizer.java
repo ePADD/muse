@@ -21,36 +21,42 @@ public class POSTokenizer {
             String sent = span.getCoveredText(content).toString();
             if(sent==null || sent.length()>MAX_SENT_LENGTH)
                 continue;
-            List<Pair<String, String>> posTags = NLPUtils.posTag(sent);
+            List<Pair<String,Triple<String,Integer,Integer>>> posTags = NLPUtils.posTagWithOffsets(sent);
             List<String> allowedPOSTags = Arrays.asList("NNP", "NNS", "NN", "JJ", "IN", "POS");
 
+            int startOffset = 0;
+            int endOffset = 0;
             String str = "";
             for (int pi=0;pi<posTags.size();pi++) {
-                Pair<String, String> p = posTags.get(pi);
-                String tag = p.second;
+                Pair<String, Triple<String,Integer,Integer>> p = posTags.get(pi);
+                String tag = p.second.first;
                 String nxtTag = null;
                 if(pi<posTags.size()-1)
-                    nxtTag = posTags.get(pi+1).second;
+                    nxtTag = posTags.get(pi+1).second.first;
 
                 //POS for 's
                 //should not end or start in improper tags
-                if (allowedPOSTags.contains(tag)) {
-                    if(str.equals("") && (tag.equals("POS")||tag.equals("IN")||p.getFirst().equals("'")||p.getFirst().equals("Dear")||p.getFirst().equals("from")))
-                        continue;
-                    if((nxtTag==null||!allowedPOSTags.contains(nxtTag)) && (tag.equals("POS")||tag.equals("IN")||p.getFirst().equals("'")))
-                        continue;
-                    str += p.getFirst() + " ";
+                //!!Think twice before making changes here, dont mess up the offsets!!
+                boolean startCond = str.equals("") && (tag.equals("POS")||tag.equals("IN")||p.getFirst().equals("'")||p.getFirst().equals("Dear")||p.getFirst().equals("from"));
+                boolean endCond = ((nxtTag==null||!allowedPOSTags.contains(nxtTag)) && (tag.equals("POS")||tag.equals("IN")||p.getFirst().equals("'")));
+                if (allowedPOSTags.contains(tag) && !startCond && !endCond) {
+                    str += p.getFirst()+" ";
                 }
                 else {
                     if(!str.equals("")) {
                         str = str.substring(0, str.length() - 1);
-                        ret.add(new Triple<>(str, -1, -1));
+                        ret.add(new Triple<>(str, startOffset, endOffset));
                         str = "";
                     }
+                    if(pi<posTags.size()-1)
+                        startOffset = posTags.get(pi+1).second.getSecond();
                 }
+                endOffset = p.second.getThird();
             }
             if (!str.equals(""))
-                ret.add(new Triple<>(str, -1, -1));
+                str = str.substring(0, str.length() - 1);
+                //sentence ending is the segment ending
+                ret.add(new Triple<>(str, startOffset, endOffset));
         }
         return ret;
     }
@@ -64,7 +70,6 @@ public class POSTokenizer {
     }
 
     public static void main(String[] args){
-        System.err.println(CICTokenizer.personNamePattern.pattern());
         POSTokenizer tok = new POSTokenizer();
         String content = "Hello, I am Vihari, Piratla of IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN";
         List<Triple<String,Integer,Integer>> names = tok.tokenize(content);
@@ -74,17 +79,7 @@ public class POSTokenizer {
             System.err.println(t);
         for(Triple<String,Integer,Integer> t: names)
             if(!content.substring(t.getSecond(), t.getThird()).equals(t.getFirst()))
-                System.err.println("Offset improper for: "+t+", expected: "+content.substring(t.getSecond(),t.getThird()));
+                System.err.println("Offset improper for: "+t+", expected: -"+content.substring(t.getSecond(),t.getThird())+"-");
 
-        String uc = "";
-        int prev_end = 0;
-        for(Triple<String,Integer,Integer> t: names) {
-            uc += content.substring(prev_end, t.getSecond());
-            prev_end = t.getThird();
-            uc += "<u>"+t.getFirst()+"</u>";
-            System.err.println("I: "+prev_end+", "+uc);
-        }
-        uc += content.substring(prev_end,content.length());
-        System.err.println(uc);
     }
 }

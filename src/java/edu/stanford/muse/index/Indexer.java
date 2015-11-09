@@ -1388,8 +1388,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				continue;
 			}
 
-            Explanation expl1 = searcher.explain(query, hits[i].doc);
-			if (threshold <= 1)
+           if (threshold <= 1)
 			{
 				// common case: threshold is 1.
 				result.add(docId);

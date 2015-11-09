@@ -36,13 +36,13 @@ public class FeatureDictionary implements Serializable {
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
     public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,MILITARYUNIT=8,
-            MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,DRUG=12,NEWSPAPER=13,ACADEMICJOURNAL=14,MAGAZINE=15,POLITICALPARTY=16,
-            ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,NPORG=21,GOVAGENCY=22,RECORDLABEL=23,SHOPPINGMALL=24,HOSPITAL=25,
+            MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,NEWSPAPER=13,ACADEMICJOURNAL=14,MAGAZINE=15,POLITICALPARTY=16,
+            ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,NPORG=21,GOVAGENCY=22,SHOPPINGMALL=24,HOSPITAL=25,
             POWERSTATION=26,AWARD=27,TRADEUNIN=28,PARK=29,HOTEL=30,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
             MONUMENT=35,OTHER=36;
     public static Short[] allTypes = new Short[]{PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,
-            UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,ORGANISATION,DRUG,NEWSPAPER,ACADEMICJOURNAL,
-            MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,RECORDLABEL,SHOPPINGMALL,HOSPITAL,
+            UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,ORGANISATION,NEWSPAPER,ACADEMICJOURNAL,
+            MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,SHOPPINGMALL,HOSPITAL,
             POWERSTATION,AWARD,TRADEUNIN,PARK,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,OTHER};
     static Log log = LogFactory.getLog(FeatureDictionary.class);
     public static Map<Short, String[]> aTypes = new LinkedHashMap<>();
@@ -74,7 +74,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
         aTypes.put(AIRPORT, new String[]{"Airport|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(ORGANISATION, new String[]{"Organisation"});
-        aTypes.put(DRUG, new String[]{"Drug"});
         aTypes.put(NEWSPAPER, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work"});
         aTypes.put(ACADEMICJOURNAL, new String[]{"AcademicJournal|PeriodicalLiterature|WrittenWork|Work"});
         aTypes.put(MAGAZINE, new String[]{"Magazine|PeriodicalLiterature|WrittenWork|Work"});
@@ -85,7 +84,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(AIRLINE, new String[]{"Airline|Company|Organisation"});
         aTypes.put(NPORG, new String[]{"Non-ProfitOrganisation|Organisation"});
         aTypes.put(GOVAGENCY, new String[]{"GovernmentAgency|Organisation"});
-        aTypes.put(RECORDLABEL, new String[]{"RecordLabel|Company|Organisation"});
         aTypes.put(SHOPPINGMALL, new String[]{"ShoppingMall|Building|ArchitecturalStructure|Place"});
         aTypes.put(HOSPITAL, new String[]{"Hospital|Building|ArchitecturalStructure|Place"});
         aTypes.put(POWERSTATION, new String[]{"PowerStation|Infrastructure|ArchitecturalStructure|Place"});
@@ -95,7 +93,7 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(HOTEL, new String[]{"Hotel|Building|ArchitecturalStructure|Place"});
         aTypes.put(THEATRE, new String[]{"Theatre|Building|ArchitecturalStructure|Place"});
         aTypes.put(LEGISTLATURE, new String[]{"Legislature|Organisation"});
-        aTypes.put(LIBRARY, new String[]{"Library|EducationalInstitution|Organisation|Agent|Building|ArchitecturalStructure|Place"});
+        aTypes.put(LIBRARY, new String[]{"Library|Building|ArchitecturalStructure|Place"});
         aTypes.put(LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
         aTypes.put(MONUMENT, new String[]{"Monument|Place"});
 

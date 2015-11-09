@@ -467,7 +467,7 @@ public class SequenceModel implements Serializable{
                 FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK,
                 FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
         mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.POWERSTATION,FeatureDictionary.UNIVERSITY, FeatureDictionary.MILITARYUNIT, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.ACADEMICJOURNAL,
-                FeatureDictionary.AIRLINE, FeatureDictionary.MAGAZINE, FeatureDictionary.POLITICALPARTY, FeatureDictionary.NPORG, FeatureDictionary.GOVAGENCY,FeatureDictionary.RECORDLABEL, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM});
+                FeatureDictionary.AIRLINE, FeatureDictionary.MAGAZINE, FeatureDictionary.POLITICALPARTY, FeatureDictionary.NPORG, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM});
         for(Short gt: types){
             for(Short ft: mappings.get(gt))
                 mTypes.get(gt).addAll(entities.get(ft).keySet());
@@ -492,9 +492,11 @@ public class SequenceModel implements Serializable{
                     //A new type is assigned to some words, which is of value -2
                     if(p.first<0)
                         continue;
-                    if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-6)
-                        offsets.add(new Triple<>(e, t.second, t.third));
-                    maps.get(p.getFirst()).put(e, p.second);
+                    if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-6) {
+                        //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
+                        offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
+                        maps.get(p.getFirst()).put(e, p.second);
+                    }
                 }
             }
         }
