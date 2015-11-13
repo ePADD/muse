@@ -1332,11 +1332,43 @@ public class EmailUtils {
 		return content;
 	}
 
-	public static Map<String, String> readDBpedia() {
+	public static String cleanRoad(String title){
+		String[] words = title.split(" ");
+		String lw = words[words.length-1];
+		String ct = "";
+		boolean hasNumber = false;
+		for(Character c: lw.toCharArray())
+			if(c>='0' && c<='9') {
+            	hasNumber = true;
+                break;
+			}
+		if(words.length == 1 || !hasNumber)
+			ct = title;
+		else{
+			for(int i=0;i<words.length-1;i++) {
+				ct += words[i];
+				if(i<words.length-2)
+					ct += " ";
+			}
+		}
+		return ct;
+	}
+
+	public static Map<String,String> sample(Map<String,String> full, double p){
+		Random rand = new Random();
+		Map<String,String> sample = new LinkedHashMap<>();
+		for(String e: full.keySet()){
+			if(rand.nextDouble()<p)
+				sample.put(e, full.get(e));
+		}
+		return sample;
+	}
+
+	public static Map<String, String> readDBpedia(double p) {
         String typesFile = "instance_types_2015-04.en.txt.bz2";
         if (dbpedia != null)
             return dbpedia;
-        dbpedia = new LinkedHashMap<String, String>();
+        dbpedia = new LinkedHashMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
             //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
@@ -1347,8 +1379,8 @@ public class EmailUtils {
                     break;
                 if (lines++ % 10000 == 0)
                     log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
-                if (lines > 10000)
-                    break;
+//                if (lines > 500000)
+//                    break;
 
                 if (line.contains("GivenName"))
                     continue;
@@ -1416,6 +1448,11 @@ public class EmailUtils {
                 if(!allowed)
                     continue;
 
+				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
+					//System.err.print("Cleaned: "+title);
+					title = cleanRoad(title);
+					//System.err.println(" to "+title);
+				}
                 dbpedia.put(title, type);
             }
 			lnr.close();
@@ -1426,7 +1463,11 @@ public class EmailUtils {
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
-		return dbpedia;
+		return sample(dbpedia,p);
+	}
+
+	public static Map<String,String> readDBpedia(){
+		return readDBpedia(1.0);
 	}
 
     public static void main(String[] args){

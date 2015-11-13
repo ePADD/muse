@@ -28,6 +28,7 @@ public class SequenceModel implements Serializable{
     public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
     static POSTokenizer tokenizer = new POSTokenizer();
+    public Map<String,String> dbpedia;
 
     public SequenceModel(FeatureDictionary dictionary, POSTokenizer tokenizer) {
         this.dictionary = dictionary;
@@ -119,6 +120,8 @@ public class SequenceModel implements Serializable{
 
     //The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length
     public Map<String, Pair<Short, Double>> seqLabel(String phrase) {
+        //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
+        phrase = EmailUtils.uncanonicaliseName(phrase);
         //phrase = clean(phrase);
         Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
         if(phrase==null||phrase.length()==0||!phrase.contains(" "))
@@ -252,8 +255,15 @@ public class SequenceModel implements Serializable{
         String[] tokens = phrase.split("\\s+");
         if(FeatureDictionary.sws.contains(tokens[0]) || FeatureDictionary.sws.contains(tokens[tokens.length-1]))
             return 0;
+        if(dbpedia == null){
+            Map<String,String> orig = EmailUtils.readDBpedia();
+            dbpedia = new LinkedHashMap<>();
+            for(String str: orig.keySet())
+                dbpedia.put(str.toLowerCase(),orig.get(str));
+        }
+
         double sorg = 0;
-        String dbpediaType = EmailUtils.readDBpedia().get(phrase);
+        String dbpediaType = dbpedia.get(phrase.toLowerCase());
         if(dbpediaType!=null && FeatureDictionary.aTypes.get(type)!=null){
             for(String atype: FeatureDictionary.aTypes.get(type)){
                 if(dbpediaType.endsWith(atype)) {
@@ -277,7 +287,7 @@ public class SequenceModel implements Serializable{
             int THRESH = 5;
             //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous, which could have appeared many times, but does not appear to have common template
             //TODO: this check for new token is to reduce the noise coming from lowercase words starting with the word "new"
-            if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>2)) && !mid.equals("new"))
+            if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>2)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
                 d = mu.getLikelihood(tokenFeatures.get(mid), dictionary);
             else
                 //a likelihood that assumes nothing
@@ -492,7 +502,7 @@ public class SequenceModel implements Serializable{
                     //A new type is assigned to some words, which is of value -2
                     if(p.first<0)
                         continue;
-                    if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-6) {
+                    if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-3) {
                         //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
                         offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
                         maps.get(p.getFirst()).put(e, p.second);
@@ -524,14 +534,14 @@ public class SequenceModel implements Serializable{
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
         FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
         nerModel.dictionary = dictionary;
         //nerModel.tokenizer = new CICTokenizer();
-        String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
+        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
         log.info("Performing EM...");
         nerModel.dictionary.EM(dbpedia);
@@ -568,12 +578,12 @@ public class SequenceModel implements Serializable{
                     "National Bank some. National Kidney Foundation some . University Commencement";
             System.err.println("Tokens: "+new POSTokenizer().tokenize(content));
 
-            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
-            String mwl = System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator;
+            //String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
+            String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
             String modelFile = mwl + SequenceModel.modelFileName;
             if (fdw == null) {
                 try {
-                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -584,7 +594,7 @@ public class SequenceModel implements Serializable{
             catch(IOException e){e.printStackTrace();}
             if(nerModel == null)
                 nerModel = train();
-            int di =0;
+//            int di =0;
 //            for(Document doc: docs) {
 //                String content = archive.getContents(doc, true);
 //                System.err.println("Content: "+content);
@@ -600,6 +610,16 @@ public class SequenceModel implements Serializable{
                 System.out.println(type + " : "+mapsandoffsets.first.get(type)+"<br>");
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
+            Map<String,String> dbpedia = EmailUtils.readDBpedia();
+            System.err.println("DBpedia scoring check starts");
+//            for(String entry: dbpedia.keySet()){
+//                Short type = FeatureDictionary.codeType(dbpedia.get(entry));
+//                System.err.println(entry + " " + dbpedia.get(entry) + " " + nerModel.dictionary.getConditional(entry, type, fdw));
+//            }
+            String[] check = new String[]{"California State Route 1"};
+            for(String c: check) {
+                System.err.println(c + ", " + nerModel.dictionary.getConditional(c, FeatureDictionary.ROAD, fdw));
+            }
         }catch(Exception e){
             e.printStackTrace();
         }

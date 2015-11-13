@@ -10,16 +10,29 @@
 <%@ page import="edu.stanford.muse.util.*" %>
 <%@ page import="java.util.regex.Pattern" %>
 <%@ page import="java.util.regex.Matcher" %>
-<%@ page import="edu.stanford.muse.ner.NEREvaluator" %>
 <%@ page import="opennlp.tools.util.featuregen.FeatureGeneratorUtil" %>
-<%@ page import="edu.stanford.muse.index.IndexUtils" %>
-<%@ page import="edu.stanford.muse.ner.dictionary.EnglishDictionary" %>
-<%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
+<%@ page import="edu.stanford.muse.index.EmailDocument" %>
+<%@ page import="org.json.JSONArray" %>
 <%--<%@ page import="edu.stanford.nlp.ling.CoreLabel" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ie.crf.CRFClassifier" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ie.AbstractSequenceClassifier" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ling.CoreAnnotations" %>--%>
 <%
+    class Info {
+        public int freq;
+        public Date firstDate, lastDate;
+        public void update(Date d){
+            freq ++;
+            if(firstDate==null)
+                firstDate = d;
+            else if(firstDate.after(d))
+                firstDate = d;
+            if(lastDate == null)
+                lastDate = d;
+            else if(lastDate.before(d))
+                lastDate = d;
+        }
+    }
     class Some {
         public String removeSW(String phrase) {
             List<String> sws = Arrays.asList("and", "for", "to", "in", "at", "on", "the", "of", "a", "an", "is");
@@ -167,6 +180,18 @@
             return ret;
         }
 
+        public boolean bad(String phrase){
+            int sp = 0;
+            for(Character c: phrase.toCharArray())
+                if(!((c>='A' && c<='Z') || (c>='a' && c<='z') || c==' ' || c=='.' || c=='\''))
+                    sp++;
+            if(sp>3) {
+                //System.err.println("Rejecting: "+phrase+", "+sp);
+                return true;
+            }
+            return false;
+        }
+
 //        Map<String, Set<String>> stanfordRec(String content) {
 //            Map<String, Set<String>> ret = new LinkedHashMap<>();
 //            try {
@@ -210,6 +235,17 @@
 //        }
     }
     %>
+    <title>Fine-type entities</title>
+    <script src="../js/jquery.js"></script>
+    <link href="../css/jquery.dataTables.css" rel="stylesheet" type="text/css"/>
+    <script src="../js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="../bootstrap/dist/css/bootstrap.min.css">
+
+    <jsp:include page="../css/css.jsp"/>
+    <script src="../js/epadd.js"></script>
+    <style type="text/css">
+        .js #entities {display: none;}
+    </style>
     <style>
         body{
             padding-left: 30px;
@@ -256,20 +292,34 @@
     }
 
     try {
-            nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+            nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
     } catch (Exception e) {
             e.printStackTrace();
     }
 
     List<Document> docs = archive.getAllDocs();
     int si=0;
-    int MAX_SENT = 1000;
+    int MAX_SENT = 50000;
     Map<Short,Map<String,Double>> found = new LinkedHashMap<>();
     Map<Short,String> desc = new LinkedHashMap<>();
-    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"POLITICALPARTY");desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"TRADEUNIN");desc.put(FeatureDictionary.PARK,"PARK");desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");
-    long start_time = System.currentTimeMillis();
+    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");
+        desc.put(FeatureDictionary.DISEASE,"DISEASE");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");
+        desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");
+        desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");
+        desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");
+        desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"PARTY");
+        desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");
+        desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");
+        desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");
+        desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"UNION");desc.put(FeatureDictionary.PARK,"PARK");
+        desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");
+        desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");
+        desc.put(FeatureDictionary.EVENT, "EVENT");
+        long start_time = System.currentTimeMillis();
+    Map<String,Info> infos = new LinkedHashMap<>();
     for(Document doc: docs) {
         String c = archive.getContents(doc, true);
+        EmailDocument ed = (EmailDocument)doc;
         String[] sents = NLPUtils.tokeniseSentence(c);
         for(String sent: sents) {
             sent = sent.replaceAll("[><\\)\\(\"\\[\\]\\*\\+]+","");
@@ -289,21 +339,19 @@
                 //Pair<String, Double> p = new Some().scoreSubstrs(t.getFirst(), FeatureDictionary.PLACE, nerModel, 1E-4);
                 String phrase = t.getFirst().replaceAll("^\\W+|\\W+$","");
                 phrase = new Some().removeSW(phrase);
+                if(new Some().bad(phrase))
+                    continue;
                 Map<String,Pair<Short,Double>> entities = nerModel.seqLabel(phrase);
-                String str = t.getFirst();
                 for(String e: entities.keySet()) {
                     Pair<Short,Double> p = entities.get(e);
-                    String color;
                     if(desc.get(p.first)!=null) {
                         if (!found.containsKey(p.first))
                             found.put(p.first, new LinkedHashMap<String, Double>());
                         found.get(p.first).put(e, p.getSecond());
+                        if(infos.get(e) == null)
+                            infos.put(e, new Info());
+                        infos.get(e).update(ed.getDate());
                     }
-                    if(desc.get(p.getFirst())!=null && p.getSecond()>1.0E-10)
-                        color = "red";
-                    else
-                        continue;
-
 //                    try {
 //                        str = str.replaceAll(e, "<span style='color:" + color + "'>" + e + "[" + desc.get(p.getFirst()) + "," + p.getSecond() + "]</span> ");
 //                    }catch(Exception e1){
@@ -322,19 +370,20 @@
     }
     System.err.println("Done in: "+(System.currentTimeMillis()-start_time));
     //ordered according to what I think is doing best
-    Short[] otypes = new Short[]{FeatureDictionary.AWARD, FeatureDictionary.BUILDING, FeatureDictionary.ROAD,
+    Short[] otypes = new Short[]{FeatureDictionary.AWARD, FeatureDictionary.BUILDING, FeatureDictionary.ROAD,FeatureDictionary.DISEASE,
             FeatureDictionary.UNIVERSITY, FeatureDictionary.LIBRARY, FeatureDictionary.MUSEUM, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.PERSON, FeatureDictionary.COMPANY,
             FeatureDictionary.ACADEMICJOURNAL, FeatureDictionary.AIRPORT, FeatureDictionary.LAWFIRM, FeatureDictionary.LEGISTLATURE, FeatureDictionary.MAGAZINE,
             FeatureDictionary.POLITICALPARTY,
             FeatureDictionary.HOSPITAL,FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.PLACE, FeatureDictionary.ISLAND,
             FeatureDictionary.BRIDGE,FeatureDictionary.GOVAGENCY,FeatureDictionary.NPORG, FeatureDictionary.MONUMENT,
-            FeatureDictionary.SHOPPINGMALL, FeatureDictionary.THEATRE, FeatureDictionary.TRADEUNIN, FeatureDictionary.MILITARYUNIT};
+            FeatureDictionary.SHOPPINGMALL, FeatureDictionary.THEATRE, FeatureDictionary.TRADEUNIN, FeatureDictionary.MILITARYUNIT, FeatureDictionary.EVENT};
     String shtml = "Select type: <select name='type' onchange='change()'>";
     for(Short type: otypes){
         shtml += "<option value='"+type+"'>"+desc.get(type)+"</option>";
     }
     shtml += "</select>";
     out.println(shtml);
+    Map<Short, JSONArray> tables = new LinkedHashMap<Short, JSONArray>();
     for(Short type: found.keySet()) {
         Map<String, Double> ft = found.get(type);
         List<Pair<String, Double>> sF = Util.sortMapByValue(ft);
@@ -342,15 +391,59 @@
         if (desc.get(type) == null)
             continue;
         out.println("<div class='entities' id=entities-"+type+" style='display:"+((type==FeatureDictionary.AWARD)?"block":"none")+"'>");
-        out.println("Found: " + sF.size() + "<br>");
-        out.println(" ----------------- <br>");
+        int cnt = 0;
         for (Pair<String, Double> p : sF) {
-            if(p.second<1.0E-4)
+            if(p.second<1.0E-3)
                 break;
-            if(p.getSecond()!=1.0 || (p.getSecond()==1.0 && p.getFirst().contains(" ")))
-                out.println(p.getFirst() + "<br>");
+            cnt++;
+            if(p.getSecond()!=1.0 || (p.getSecond()==1.0 && p.getFirst().contains(" "))) {
+                JSONArray arr = new JSONArray();
+                Info info = infos.get(p.getFirst());
+                String color = p.getSecond()==1.0?"green":"";
+                arr.put(0,"<span style='color:" + color + "'>" + p.getFirst() + "</span>");
+                arr.put(1, info.freq);
+                arr.put(2, info.firstDate);
+                arr.put(3,info.lastDate);
+                arr.put(4, p.getSecond());
+                if(tables.get(type)==null)
+                    tables.put(type, new JSONArray());
+                tables.get(type).put(tables.get(type).length(),arr);
+            }
         }
+        out.println("Found: " + cnt + " entities of type: "+desc.get(type)+"<br>");
+        out.println("<table id='table"+type+"'>");
+        out.println("<thead><th>Entity</th><th>Mentions</th><th>First</th><th>Last</th><th>Score</th></thead><tbody></tbody></table>");
+
         out.println("</div>");
     }
+    %>
+        <script type="text/javascript">
+            do_search = function(term) {
+                window.open ('localhost:9099/browse?term=\"' + term + '\"');
+            };
+        $(document).ready(function() {
+            var click_to_search = function ( data, type, full, meta ) {
+                // epadd.do_search will open search result in a new tab.
+                // Note, we have to insert onclick into the rendered HTML,
+                // we were earlier trying $('.search').click(epadd.do_search) - this does not work because only the few rows initially rendered to html match the $('.search') selector, not the others
+                term = data.replace(/<span .*?>/,"").replace(/<\/span>/,"");
+                console.log("You clicked: "+term);
+                return '<span style="cursor:pointer" onclick="do_search(term)">' + data + '</span>';
+            };
 
-%>
+            <%for(short type: tables.keySet()){%>
+                var entities = <%=tables.get(type).toString(4)%>;
+                //console.log("Initialising #table<%=type%> with "+entities);
+                $('#table<%=type%>').dataTable({
+                    data: entities,
+                    //pagingType: 'simple',
+                    paging: false,
+                    columnDefs: [{ className: "dt-right", "targets": [ 2,3,4 ] },{width: "600px", targets: 0},{targets: 0, render:click_to_search},
+                        {render:function(data,type,row){return Math.round(row[4]*1000)/1000}, targets:[4]}
+                    ],
+                    order:[[4, 'desc'],[1,'desc']], // col 1 (entity message count), descending
+                    fnInitComplete: function() { $('#spinner-div').hide(); $('#entities').fadeIn(); }
+                });
+            <%}%>
+        });
+    </script>
