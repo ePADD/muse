@@ -1,11 +1,16 @@
 package edu.stanford.muse.ner.tokenizer;
 
+import com.google.gson.Gson;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.NLPUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.*;
 
 /**
@@ -69,17 +74,86 @@ public class POSTokenizer {
         return tokens;
     }
 
-    public static void main(String[] args){
-        POSTokenizer tok = new POSTokenizer();
-        String content = "Hello, I am Vihari, Piratla of IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN";
-        List<Triple<String,Integer,Integer>> names = tok.tokenize(content);
-        //names = tok.tokenizeWithoutOffsets("January 30, 2002: University at Buffalo, Center for Tomorrow, Service Center\n" +
-        //"Road, North Campus", false);
-        for(Triple<String,Integer,Integer> t: names)
-            System.err.println(t);
-        for(Triple<String,Integer,Integer> t: names)
-            if(!content.substring(t.getSecond(), t.getThird()).equals(t.getFirst()))
-                System.err.println("Offset improper for: "+t+", expected: -"+content.substring(t.getSecond(),t.getThird())+"-");
+    static class WorkRecord{
+        Map<String, String> fields;
+        Set<String> tags;
+        public WorkRecord(Map<String,String> fields, Set<String> tags){
+            this.tags = tags;
+            this.fields = fields;
+        }
+    }
 
+    public static void main(String[] args) {
+        try {
+            String dataPath = System.getProperty("user.home")+File.separator+"repos/hack4hd/data";
+            BufferedReader br = new BufferedReader(new FileReader(new File(dataPath+File.separator+"all_work_records.csv")));
+            String line;
+            line = br.readLine();
+            List<String> fields = new ArrayList<>();
+
+            String[] hs = line.split(",");
+            for(String h: hs)
+                fields.add(h);
+            Set<WorkRecord> data = new LinkedHashSet<>();
+            POSTokenizer tokenizer = new POSTokenizer();
+            int lno = 0;
+            while((line=br.readLine())!=null){
+                String nl = "";
+                int li = 0;
+                boolean iq = false;
+                for(int j=0;j<line.length();j++){
+                    if(line.charAt(j)=='"')
+                        iq = !iq;
+                    else if(line.charAt(j)==',' && iq) {
+                        nl += line.substring(li, j);
+                        li = j+1;
+                    }
+                }
+                if(li<line.length())
+                    nl += line.substring(li, line.length());
+                //System.err.println("Cleaned: "+line+" to \n"+nl+"\n");
+                line = nl.replaceAll("\"","");
+
+                String[] vals = line.split(",");
+                if(vals.length!=fields.size()) {
+                    System.err.println(fields.size()+", "+ vals.length+" Skipping bad line: "+line);
+                    continue;
+                }
+                Map<String,String> rec = new LinkedHashMap<>();
+                for(int i=0;i<Math.min(vals.length,fields.size());i++){
+                    if(!fields.get(i).equals("Description Kan"))
+                        rec.put(fields.get(i), vals[i]);
+                }
+                String desc = rec.get("Description Eng");
+                int wi = desc.indexOf("ward");
+                int Wi = desc.indexOf("Ward");
+                if(wi>0)
+                    desc = desc.substring(0,wi-1);
+                else if(Wi>0)
+                    desc = desc.substring(0, Wi-1);
+                List<Triple<String,Integer,Integer>> ttags=tokenizer.tokenize(desc);
+                Set<String> tags = new LinkedHashSet<>();
+                for(Triple<String,Integer,Integer> tt: ttags) {
+                    String[] toks = tt.first.split("\\sin\\s|\\sat\\s");
+                    for(String tok: toks)
+                        if(tok.length()>3)
+                            tags.add(tok);
+                }
+                data.add(new WorkRecord(rec, tags));
+                lno++;
+                if(lno%100 == 0)
+                    System.err.println("Processed "+lno+" lines");
+//                if(lno>1000)
+//                    break;
+            }
+
+            System.err.println("Total lines read: "+lno);
+            FileWriter fw = new FileWriter(new File(dataPath+File.separator+"all_work_records.json"));
+            Gson gson = new Gson();
+            gson.toJson(data, fw);
+            fw.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
     }
 }

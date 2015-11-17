@@ -262,7 +262,8 @@ public class FeatureDictionary implements Serializable {
             }
             Set<String> ts = new LinkedHashSet<>();
             for (Short at : allTypes) {
-                ts.add(at + "");
+                if(at!=FeatureDictionary.OTHER)
+                    ts.add(at + "");
             }
             ts.add("NULL");
             boolean smooth = true;
@@ -406,8 +407,10 @@ public class FeatureDictionary implements Serializable {
                     right.add(f);
             }
             Set<String> ts = new LinkedHashSet<>();
-            for(Short at: allTypes)
-                ts.add(at+"");
+            for(Short at: allTypes) {
+                if(at!=FeatureDictionary.OTHER)
+                    ts.add(at + "");
+            }
             ts.add("NULL");
             //selct top types for every left and right word, trying to populate fields for every type blows up the space requirement
             int MAX = 2;
@@ -947,6 +950,20 @@ public class FeatureDictionary implements Serializable {
         return mixtureFeatures;
     }
 
+    public Map<String,Set<String>> generateFeatures2(String phrase, Short type){
+        if(type == FeatureDictionary.OTHER){
+            Map<String,Set<String>> features = new LinkedHashMap<>();
+            String[] words = getPatts(phrase);
+            for(String w: words){
+                Map<String,Set<String>> map = generateFeatures(w, type);
+                for(String m: map.keySet())
+                    features.put(m, map.get(m));
+            }
+            return features;
+        }
+        return generateFeatures(phrase, type);
+    }
+
     public void computeTypePriors(){
         typePriors = new LinkedHashMap<>();
 //        N = 0;
@@ -1013,7 +1030,7 @@ public class FeatureDictionary implements Serializable {
                 //responsibilities
                 Map<String, Double> gamma = new LinkedHashMap<>();
                 //Word (sort of mixture identity) -> Features
-                Map<String, Set<String>> wfeatures = generateFeatures(phrase, coarseType);
+                Map<String, Set<String>> wfeatures = generateFeatures2(phrase, coarseType);
                 //System.err.println(" ---- ");
                 for (String mi : wfeatures.keySet()) {
 //                    boolean hasNumber = false;
@@ -1050,10 +1067,8 @@ public class FeatureDictionary implements Serializable {
                     continue;
                 }
 
-                double max_resp = -1;
                 for (String g : gamma.keySet()){
                     gamma.put(g, gamma.get(g) / z);
-                    max_resp = Math.max(max_resp, gamma.get(g));
                 }
                 //System.err.println("Gammas: "+gamma);
 
@@ -1189,7 +1204,7 @@ public class FeatureDictionary implements Serializable {
 
     //not using logarithms, since the number of symbols is less
     public double getConditional(String phrase, Short type, FileWriter fw){
-        Map<String, Set<String>> tokenFeatures = generateFeatures(phrase, type);
+        Map<String, Set<String>> tokenFeatures = generateFeatures2(phrase, type);
         double sorg = 0;
         for(String mid: tokenFeatures.keySet()) {
             Double d;

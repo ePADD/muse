@@ -124,7 +124,7 @@ public class SequenceModel implements Serializable{
         phrase = EmailUtils.uncanonicaliseName(phrase);
         //phrase = clean(phrase);
         Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
-        if(phrase==null||phrase.length()==0||!phrase.contains(" "))
+        if(phrase==null||phrase.length()==0)
             return new LinkedHashMap<>();
         phrase = phrase.replaceAll("^\\W+|\\W+^","");
 
@@ -161,7 +161,8 @@ public class SequenceModel implements Serializable{
             short bt = -10;
             for (short t : cands) {
                 int tj = 0;
-                if (t == OTHER)
+                //dont allow multi word phrases with these types
+                if (t == OTHER || t == FeatureDictionary.OTHER)
                     tj = ti;
                 for (; tj <= ti; tj++) {
                     double val = 1;
@@ -251,7 +252,7 @@ public class SequenceModel implements Serializable{
 
     public double getConditional(String phrase, Short type) {
         Map<String, FeatureDictionary.MU> features = dictionary.features;
-        Map<String, Set<String>> tokenFeatures = dictionary.generateFeatures(phrase, type);
+        Map<String, Set<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
         String[] tokens = phrase.split("\\s+");
         if(FeatureDictionary.sws.contains(tokens[0]) || FeatureDictionary.sws.contains(tokens[tokens.length-1]))
             return 0;
@@ -358,7 +359,7 @@ public class SequenceModel implements Serializable{
             double s = 0;
             String frags = "";
             {
-                Map<String, Set<String>> tokenFeatures = dictionary.generateFeatures(phrase, type);
+                Map<String, Set<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
                 for (String mid : tokenFeatures.keySet()) {
                     Double d;
                     if (dictionary.features.get(mid) != null)
@@ -406,7 +407,7 @@ public class SequenceModel implements Serializable{
                     labelStr += word+":"+label+" ";
                 }
                 fdw.write(labelStr+"\n");
-                fdw.write(dictionary.generateFeatures(phrase, type).toString()+"\n");
+                fdw.write(dictionary.generateFeatures2(phrase, type).toString()+"\n");
                 fdw.write("String: " + phrase + " - " + str + "\n");
             }catch(IOException e){
                 e.printStackTrace();
@@ -616,9 +617,9 @@ public class SequenceModel implements Serializable{
 //                Short type = FeatureDictionary.codeType(dbpedia.get(entry));
 //                System.err.println(entry + " " + dbpedia.get(entry) + " " + nerModel.dictionary.getConditional(entry, type, fdw));
 //            }
-            String[] check = new String[]{"California State Route 1"};
+            String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport", "New York International Airport"};
             for(String c: check) {
-                System.err.println(c + ", " + nerModel.dictionary.getConditional(c, FeatureDictionary.ROAD, fdw));
+                System.err.println(c + ", " + nerModel.seqLabel(c));
             }
         }catch(Exception e){
             e.printStackTrace();

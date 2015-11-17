@@ -28,60 +28,115 @@
         session.setAttribute("ner", nerModel);
     }
 
-    Map<Short, Set<String>> all = new LinkedHashMap<>();
+    Map<String, Set<String>> all = new LinkedHashMap<>();
     FileWriter fw = new FileWriter(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"all-types.txt");
     Map<Short,String> desc = new LinkedHashMap<>();
+    desc.put(FeatureDictionary.DISEASE, "HEALTH");desc.put(FeatureDictionary.HOSPITAL,"HEALTH");
     desc.put(FeatureDictionary.EVENT, "EVENT");
-    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");
-    desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"POLITICALPARTY");desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");desc.put(FeatureDictionary.RECORDLABEL,"RECORDLABEL");desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"TRADEUNIN");desc.put(FeatureDictionary.PARK,"PARK");desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");
-    int di = 0;
+    desc.put(FeatureDictionary.PERSON,"PERSON");
+    desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.LEGISTLATURE,"COMPANY");
+    desc.put(FeatureDictionary.AIRPORT,"PLACE");desc.put(FeatureDictionary.PLACE,"PLACE");
+    desc.put(FeatureDictionary.RIVER,"NATURE");desc.put(FeatureDictionary.MOUNTAIN, "NATURE");
+    desc.put(FeatureDictionary.ROAD,"ROAD");
+    desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");//desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");
+    desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");
+    desc.put(FeatureDictionary.NEWSPAPER,"PRESS");desc.put(FeatureDictionary.ACADEMICJOURNAL,"PRESS");desc.put(FeatureDictionary.MAGAZINE,"PRESS");
+    desc.put(FeatureDictionary.POLITICALPARTY,"PARTY");
+    desc.put(FeatureDictionary.GOVAGENCY,"ORGANISATION");
+    desc.put(FeatureDictionary.AWARD,"AWARD");
+    desc.put(FeatureDictionary.MUSEUM,"BUILDING");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.HOTEL,"BUILDING");desc.put(FeatureDictionary.LIBRARY,"BUILDING");
+
+    int di = 0, numSent = 0;
+    Random rand = new Random();
     for(Document doc: docs){
         String content = archive.getContents(doc, true);
         String[] sents = NLPUtils.tokeniseSentence(content);
+        List<String> minorTypes = Arrays.asList("NATURE", "ROAD", "PARTY", "HEALTH", "AWARD","EVENT", "UNIVERSITY");
         for(String sent: sents) {
             //having tokens that span multiple sentences is weird
             sent = sent.replaceAll("\n"," ");
             //because OpenNLP cannot handle URLs
             sent = sent.replaceAll("https?:[^\\s]+","");
-            fw.write("#"+sent+"\n");
             Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> pair = nerModel.find(sent);
             Map<String,Short> types = new LinkedHashMap<>();
+            Set<String> typesInSent = new LinkedHashSet<String>();
             for (Short type : pair.first.keySet()) {
-                if(!all.containsKey(type))
-                    all.put(type, new LinkedHashSet<String>());
-                all.get(type).addAll(pair.first.get(type).keySet());
-                for(String e: pair.first.get(type).keySet())
-                    types.put(e,type);
+                if (!desc.containsKey(type))
+                    continue;
+                if(pair.first.get(type).size()>0)
+                    typesInSent.add(desc.get(type));
+            }
+            boolean good = false;
+            for(String t: minorTypes){
+                if(typesInSent.contains(t)) {
+                    good = true;
+                    break;
+                }
+            }
+            //if the sentence does not contribute any of minor type, then dont consider
+            if(!good) {
+                if(rand.nextDouble()<0.5)
+                    continue;
+            }
+            numSent++;
+            fw.write("#"+sent+"\n");
+            double THRESH = 1.0E-3;
+            for (Short type : pair.first.keySet()) {
+//                if(!desc.containsKey(type))
+//                    continue;
+                if(!all.containsKey(desc.get(type)))
+                    all.put(desc.get(type), new LinkedHashSet<String>());
+                for(String e: pair.first.get(type).keySet()) {
+                    //if(e.equals("Boston") || e.equals("Geneva") || e.equals("Switzerland")){
+                        System.err.println("Found "+e+" with type: "+desc.get(type)+", "+type);
+                    //}
+                    if(pair.first.get(type).get(e)<THRESH)
+                        continue;
+                    all.get(desc.get(type)).add(e);
+                    types.put(e, type);
+                }
             }
             List<Triple<String,Integer,Integer>> offsets = pair.getSecond();
             Span[] tokens = NLPUtils.tokenizer.tokenizePos(sent);
             for(Span tok: tokens){
                 String tag = "O";
-                Triple<String,Integer,Integer> moff = new Triple<>("",-1,-1);
                 for(Triple<String,Integer,Integer> off: offsets){
-                    if(off.getSecond()<=tok.getStart() && off.getThird()>=tok.getEnd()) {
-                        tag = desc.get(types.get(off.getFirst()));
-                        moff = off;
+                    if(off.getSecond()<=(tok.getStart()+1) && (off.getThird()+1)>=tok.getEnd()) {
+                        Short type = types.get(off.getFirst());
+                        tag = desc.get(type);
                         break;
                     }
                 }
-                fw.write(tok.getCoveredText(sent)+" : "+tag+"\n");//+" [ "+tok.getStart()+", "+tok.getEnd()+"]"+" <"+moff.first+", "+moff.second+", "+moff.third+">\n");
+                fw.write(tok.getCoveredText(sent)+" : "+tag+"\n");
             }
             fw.write("\n");
         }
 
         int MIN = Integer.MAX_VALUE;
-        for(Short t: all.keySet())
-            if(all.get(t).size()<MIN)
-                MIN = all.get(t).size();
-        if(MIN>=1 && all.size()>20)
+        int mMin = Integer.MAX_VALUE;
+        for(String t: all.keySet()) {
+            if (!minorTypes.contains(t)) {
+                if (all.get(t).size() < MIN)
+                    MIN = all.get(t).size();
+            }
+            else{
+                if (all.get(t).size() < mMin)
+                    mMin = all.get(t).size();
+            }
+        }
+
+        if(MIN>=30 && mMin>=10 && all.size()==new LinkedHashSet<>(desc.values()).size())
             break;
 
-        System.err.println("Considered: " + (di++) + " documents");
+        String str = "";
+        for(String a: all.keySet())
+            str += a+":"+all.get(a).size()+" ";
+
+        System.err.println("Considered: " + numSent + " sents. in "+(di++) + " documents: "+MIN+", "+mMin);
         if(di%10 == 0) {
             System.err.println("Stats");
-            for (Short t : all.keySet())
-                System.err.println(desc.get(t) + " : " +all.get(t).size());
+            for (String t : all.keySet())
+                System.err.println(t + " : " +all.get(t).size());
         }
 //        if(di>100)
 //            break;

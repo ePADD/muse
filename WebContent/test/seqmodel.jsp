@@ -370,13 +370,13 @@
     }
     System.err.println("Done in: "+(System.currentTimeMillis()-start_time));
     //ordered according to what I think is doing best
-    Short[] otypes = new Short[]{FeatureDictionary.AWARD, FeatureDictionary.BUILDING, FeatureDictionary.ROAD,FeatureDictionary.DISEASE,
+    Short[] otypes = new Short[]{FeatureDictionary.AWARD, FeatureDictionary.BUILDING, FeatureDictionary.ROAD,FeatureDictionary.DISEASE, FeatureDictionary.EVENT,
             FeatureDictionary.UNIVERSITY, FeatureDictionary.LIBRARY, FeatureDictionary.MUSEUM, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.PERSON, FeatureDictionary.COMPANY,
             FeatureDictionary.ACADEMICJOURNAL, FeatureDictionary.AIRPORT, FeatureDictionary.LAWFIRM, FeatureDictionary.LEGISTLATURE, FeatureDictionary.MAGAZINE,
             FeatureDictionary.POLITICALPARTY,
             FeatureDictionary.HOSPITAL,FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.PLACE, FeatureDictionary.ISLAND,
             FeatureDictionary.BRIDGE,FeatureDictionary.GOVAGENCY,FeatureDictionary.NPORG, FeatureDictionary.MONUMENT,
-            FeatureDictionary.SHOPPINGMALL, FeatureDictionary.THEATRE, FeatureDictionary.TRADEUNIN, FeatureDictionary.MILITARYUNIT, FeatureDictionary.EVENT};
+            FeatureDictionary.SHOPPINGMALL, FeatureDictionary.THEATRE, FeatureDictionary.TRADEUNIN, FeatureDictionary.MILITARYUNIT, FeatureDictionary.RIVER, FeatureDictionary.PARK};
     String shtml = "Select type: <select name='type' onchange='change()'>";
     for(Short type: otypes){
         shtml += "<option value='"+type+"'>"+desc.get(type)+"</option>";
@@ -427,7 +427,7 @@
                 // Note, we have to insert onclick into the rendered HTML,
                 // we were earlier trying $('.search').click(epadd.do_search) - this does not work because only the few rows initially rendered to html match the $('.search') selector, not the others
                 term = data.replace(/<span .*?>/,"").replace(/<\/span>/,"");
-                console.log("You clicked: "+term);
+                //console.log("You clicked: "+term);
                 return '<span style="cursor:pointer" onclick="do_search(term)">' + data + '</span>';
             };
 
@@ -438,8 +438,8 @@
                     data: entities,
                     //pagingType: 'simple',
                     paging: false,
-                    columnDefs: [{ className: "dt-right", "targets": [ 2,3,4 ] },{width: "600px", targets: 0},{targets: 0, render:click_to_search},
-                        {render:function(data,type,row){return Math.round(row[4]*1000)/1000}, targets:[4]}
+                    columnDefs: [{ className: "dt-right", "targets": [ 2,3,4 ] },{width: "600px", targets: 0},{targets: 0, render:click_to_search}
+                        ,{render:function(data,type,row){return Math.round(row[4]*1000)/1000}, targets:[4]}
                     ],
                     order:[[4, 'desc'],[1,'desc']], // col 1 (entity message count), descending
                     fnInitComplete: function() { $('#spinner-div').hide(); $('#entities').fadeIn(); }
