@@ -1011,8 +1011,8 @@ public class FeatureDictionary implements Serializable {
     public void EM(Map<String,String> gazettes){
         computeTypePriors();
         log.info("Performing EM on: #" + features.size() + " words");
-        double ll = getIncompleteDateLogLikelihood(gazettes);
-        log.info("Start Data Log Likelihood: "+ll);
+        //double ll = getIncompleteDateLogLikelihood(gazettes);
+        //log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
         int MAX_ITER = 3;
         int N = gazettes.size();
@@ -1102,8 +1102,8 @@ public class FeatureDictionary implements Serializable {
 //            log.info("Iter: " + i + ", change: " + change);
             //incomplete data log likehood is better mesure than just the change in parameters
             //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
-            ll = getIncompleteDateLogLikelihood(gazettes);
-            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
+            //ll = getIncompleteDateLogLikelihood(gazettes);
+            //log.info("Iter: "+i+", Data Log Likelihood: "+ll);
 
             revisedMixtures = new LinkedHashMap<>();
 

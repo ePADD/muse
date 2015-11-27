@@ -299,7 +299,7 @@
 
     List<Document> docs = archive.getAllDocs();
     int si=0;
-    int MAX_SENT = 50000;
+    int MAX_SENT = 10;
     Map<Short,Map<String,Double>> found = new LinkedHashMap<>();
     Map<Short,String> desc = new LinkedHashMap<>();
     desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");
@@ -419,7 +419,8 @@
     %>
         <script type="text/javascript">
             do_search = function(term) {
-                window.open ('localhost:9099/browse?term=\"' + term + '\"');
+                console.log("Term: "+term);
+                window.open ('http://localhost:9099/browse?term=\"' + term + '\"');
             };
         $(document).ready(function() {
             var click_to_search = function ( data, type, full, meta ) {
@@ -427,7 +428,7 @@
                 // Note, we have to insert onclick into the rendered HTML,
                 // we were earlier trying $('.search').click(epadd.do_search) - this does not work because only the few rows initially rendered to html match the $('.search') selector, not the others
                 term = data.replace(/<span .*?>/,"").replace(/<\/span>/,"");
-                //console.log("You clicked: "+term);
+                console.log("You clicked: "+term);
                 return '<span style="cursor:pointer" onclick="do_search(term)">' + data + '</span>';
             };
 

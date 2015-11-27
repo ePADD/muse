@@ -404,9 +404,9 @@ public class JSPHelper {
             log.error("Could not load NER model from: "+modelFile);
         }
 
-        NER ner = new NER(archive, nerModel);
-        session.setAttribute("statusProvider", ner);
-        ner.recongniseArchive();
+//        NER ner = new NER(archive, nerModel);
+//        session.setAttribute("statusProvider", ner);
+//        ner.recongniseArchive();
 
 //		try {
 //			//train an epadd ner ; recognise the entities and dd it to the index
