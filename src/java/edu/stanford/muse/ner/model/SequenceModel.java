@@ -268,7 +268,7 @@ public class SequenceModel implements Serializable{
         if(dbpediaType!=null && FeatureDictionary.aTypes.get(type)!=null){
             for(String atype: FeatureDictionary.aTypes.get(type)){
                 if(dbpediaType.endsWith(atype)) {
-                    if(!dbpediaType.endsWith("Settlement|PopulatedPlace|Place"))
+                    if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
                         return 1;
                     else if (phrase.contains(" "))
                         return 1;

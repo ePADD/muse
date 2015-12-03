@@ -32,6 +32,8 @@ public class POSTokenizer {
             int startOffset = 0;
             int endOffset = 0;
             String str = "";
+            boolean padded = false;
+            int padL = 0;
             for (int pi=0;pi<posTags.size();pi++) {
                 Pair<String, Triple<String,Integer,Integer>> p = posTags.get(pi);
                 String tag = p.second.first;
@@ -44,12 +46,24 @@ public class POSTokenizer {
                 //!!Think twice before making changes here, dont mess up the offsets!!
                 boolean startCond = str.equals("") && (tag.equals("POS")||tag.equals("IN")||p.getFirst().equals("'")||p.getFirst().equals("Dear")||p.getFirst().equals("from"));
                 boolean endCond = ((nxtTag==null||!allowedPOSTags.contains(nxtTag)) && (tag.equals("POS")||tag.equals("IN")||p.getFirst().equals("'")));
+                boolean isEnd = nxtTag==null||!allowedPOSTags.contains(nxtTag);
                 if (allowedPOSTags.contains(tag) && !startCond && !endCond) {
-                    str += p.getFirst()+" ";
+                    str += p.getFirst();
+                    //add the separating delimiters between tokens only if the token being considered does not end the segment
+                    //the test for end is not trivial, hence the check for if the string is padded
+                    if(!isEnd) {
+                        String pad = sent.substring(p.second.getThird(),((pi+1)<posTags.size())?posTags.get(pi+1).getSecond().getSecond():sent.length());
+                        str += pad;
+                        padL = pad.length();
+                        padded = true;
+                    }
+                    else
+                        padded = false;
                 }
                 else {
                     if(!str.equals("")) {
-                        str = str.substring(0, str.length() - 1);
+                        if(padded)
+                            str = str.substring(0,str.length()-padL);
                         ret.add(new Triple<>(str, startOffset, endOffset));
                         str = "";
                     }
@@ -58,10 +72,12 @@ public class POSTokenizer {
                 }
                 endOffset = p.second.getThird();
             }
-            if (!str.equals(""))
-                str = str.substring(0, str.length() - 1);
+            if (!str.equals("")) {
+                if(padded)
+                    str = str.substring(0,str.length()-padL);
                 //sentence ending is the segment ending
                 ret.add(new Triple<>(str, startOffset, endOffset));
+            }
         }
         return ret;
     }
@@ -74,86 +90,17 @@ public class POSTokenizer {
         return tokens;
     }
 
-    static class WorkRecord{
-        Map<String, String> fields;
-        Set<String> tags;
-        public WorkRecord(Map<String,String> fields, Set<String> tags){
-            this.tags = tags;
-            this.fields = fields;
-        }
-    }
-
     public static void main(String[] args) {
-        try {
-            String dataPath = System.getProperty("user.home")+File.separator+"repos/hack4hd/data";
-            BufferedReader br = new BufferedReader(new FileReader(new File(dataPath+File.separator+"all_work_records.csv")));
-            String line;
-            line = br.readLine();
-            List<String> fields = new ArrayList<>();
-
-            String[] hs = line.split(",");
-            for(String h: hs)
-                fields.add(h);
-            Set<WorkRecord> data = new LinkedHashSet<>();
-            POSTokenizer tokenizer = new POSTokenizer();
-            int lno = 0;
-            while((line=br.readLine())!=null){
-                String nl = "";
-                int li = 0;
-                boolean iq = false;
-                for(int j=0;j<line.length();j++){
-                    if(line.charAt(j)=='"')
-                        iq = !iq;
-                    else if(line.charAt(j)==',' && iq) {
-                        nl += line.substring(li, j);
-                        li = j+1;
-                    }
-                }
-                if(li<line.length())
-                    nl += line.substring(li, line.length());
-                //System.err.println("Cleaned: "+line+" to \n"+nl+"\n");
-                line = nl.replaceAll("\"","");
-
-                String[] vals = line.split(",");
-                if(vals.length!=fields.size()) {
-                    System.err.println(fields.size()+", "+ vals.length+" Skipping bad line: "+line);
-                    continue;
-                }
-                Map<String,String> rec = new LinkedHashMap<>();
-                for(int i=0;i<Math.min(vals.length,fields.size());i++){
-                    if(!fields.get(i).equals("Description Kan"))
-                        rec.put(fields.get(i), vals[i]);
-                }
-                String desc = rec.get("Description Eng");
-                int wi = desc.indexOf("ward");
-                int Wi = desc.indexOf("Ward");
-                if(wi>0)
-                    desc = desc.substring(0,wi-1);
-                else if(Wi>0)
-                    desc = desc.substring(0, Wi-1);
-                List<Triple<String,Integer,Integer>> ttags=tokenizer.tokenize(desc);
-                Set<String> tags = new LinkedHashSet<>();
-                for(Triple<String,Integer,Integer> tt: ttags) {
-                    String[] toks = tt.first.split("\\sin\\s|\\sat\\s");
-                    for(String tok: toks)
-                        if(tok.length()>3)
-                            tags.add(tok);
-                }
-                data.add(new WorkRecord(rec, tags));
-                lno++;
-                if(lno%100 == 0)
-                    System.err.println("Processed "+lno+" lines");
-//                if(lno>1000)
-//                    break;
-            }
-
-            System.err.println("Total lines read: "+lno);
-            FileWriter fw = new FileWriter(new File(dataPath+File.separator+"all_work_records.json"));
-            Gson gson = new Gson();
-            gson.toJson(data, fw);
-            fw.close();
-        }catch(Exception e){
-            e.printStackTrace();
+        String content = "..................  Zuckerberg Giving $100 Million Gift to Newark Schools By " +
+                "RICHARD PREZ-PEA A gift from Mark Zuckerberg, the chief executive of  Facebook " +
+                ", to the notoriously troubled Newark school  system is part of a plan to start " +
+                "an educational foundation.";
+        List<Triple<String,Integer,Integer>> offsets = new POSTokenizer().tokenize(content);
+        System.err.println(offsets);
+        for(Triple<String,Integer,Integer> t: offsets){
+            if(!content.substring(t.getSecond(),t.getThird()).equals(t.getFirst()))
+                System.err.println("Mismatch for: "+t);
         }
+        //System.err.println("PNS: "+NLPUtils.getAllProperNouns(content));
     }
 }
