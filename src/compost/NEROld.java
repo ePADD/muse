@@ -215,7 +215,7 @@ public class NEROld {
 	        	if (x.equals("PERSON") || x.equals("ORGANIZATION") || x.equals("LOCATION"))
 	        	{
 	        		tokensList.add(word.word());
-	        		System.out.print(word.word() + '/' + word.get(AnswerAnnotation.class) + ' ');
+	        		System.out.toString(word.word() + '/' + word.get(AnswerAnnotation.class) + ' ');
 	        	}
 	        }
 	        System.out.println();

@@ -59,7 +59,7 @@ public EmailAttachmentBlob (String name, long size, MimeMessage m, Part p) throw
 
 public String get_long_form() { return compute_long_form(); }
 
-// pretty print a message, ls -l style
+// pretty toString a message, ls -l style
 public String compute_long_form()
 {
     StringBuilder sb = new StringBuilder();

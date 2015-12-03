@@ -237,9 +237,9 @@ public class ProtovisUtil {
 		}
 		String info = JSPHelper.docControls(msgLink, attachmentsLink, null);
 
-	//	out.print("<td>" + names + "</td>\n");
+	//	out.toString("<td>" + names + "</td>\n");
 	//	out.println (protovisCell);
-	//	out.print("</tr>\n");
+	//	out.toString("</tr>\n");
 		// somehow the <td> below needs a specific style to suppress border, class="noborder" doesn't seem to work.
 		return (protovisCell // + "<br/>"
 			+ "<table class=\"noborder protovis-text\" width=\"100%\"><tr><td class=\"noborder\" style=\"border-style:none;border-width:0px\"><span style=\"font-size:small;font-variant:small-caps\">" + names + "</span><br/>"
@@ -289,9 +289,9 @@ public class ProtovisUtil {
 		}
 		String info = JSPHelper.docControls(msgLink, attachmentsLink, null);
 
-	//	out.print("<td>" + names + "</td>\n");
+	//	out.toString("<td>" + names + "</td>\n");
 	//	out.println (protovisCell);
-	//	out.print("</tr>\n");
+	//	out.toString("</tr>\n");
 		// somehow the <td> below needs a specific style to suppress border, class="noborder" doesn't seem to work.
 		String chartDivId = chartSpec[0].substring(chartSpec[0].startsWith("#") ? 1 : 0);
 		// the canvas div must appear before the protovis invocation 

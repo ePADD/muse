@@ -180,6 +180,17 @@
              edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()) +"</td><td>"+freqs.get(p.getFirst().toString())+"</td><td>"+ p.getFirst().numCorrs +"</td></tr>");
         }
         out.println ("</table>");
+//        String sent = "Rockwell International Corp.'s Tulsa unit said it signed a tentative agreement extending its contract with Boeing Co. to provide structural parts for Boeing's 747 jetliners";
+//        String[] tokens = NLPUtils.tokenise(sent);
+//        String[] tags = NLPUtils.posTag(tokens);
+//        String[] chunks = NLPUtils.chunker.chunk(tokens, tags);
+//        out.println((new ChunkSample(tokens, tags, chunks)).nicePrint());
+//
+//        List<String> pns = NLPUtils.getAllProperNouns(sent);
+//        out.println("Pns<br>");
+//        for(String pn: pns){
+//            out.println(pn+"<br>");
+//        }
     } catch (Throwable e) {
         e.printStackTrace();
     }

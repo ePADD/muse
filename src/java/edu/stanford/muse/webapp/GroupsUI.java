@@ -59,7 +59,7 @@ public class GroupsUI {
 
 		// recurse into children if any
 		List<SimilarGroup<String>> children = parentToChildrenMap.get(g);
-		if (children != null && children.size() > 0) // don't print <td></td> if there are no children
+		if (children != null && children.size() > 0) // don't toString <td></td> if there are no children
 		{
 	        sb.append ("<td>");
 			for (SimilarGroup<?> child: parentToChildrenMap.get(g))

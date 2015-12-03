@@ -19,9 +19,11 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.QuotedPrintableCodec;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -43,9 +45,14 @@ public class EmailUtils {
 	public static Map<String, String>	dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
+    static class DBpediaTypes {
+        //these are types identified from DBpedia that may contain some predictable tokens and omitting types with any possible tokens like TVShows and Bands
+        //also omitting types that are not very different from other types like, Company and AutomobileEngine|Device
+    }
+
 	public static String tabooEmailNames[] = new String[]{"paypal member", "info@evite.com", "evite.com"}; // could consider adding things ending in clients, members, etc.
 	/**
-	 * best effort to print something about the given message.
+	 * best effort to toString something about the given message.
 	 * use only for diagnostics, not for user-visible messages.
 	 * treads defensively, this can be called to report on a badly formatted message.
 	 */
@@ -373,7 +380,7 @@ public class EmailUtils {
 					mbox.print((char) by);
 				mbox.println();
 			} catch (DecoderException de) {
-				log.warn("Exception trying to print contents!" + de);
+				log.warn("Exception trying to toString contents!" + de);
 				mbox.println(contents);
 				mbox.println();
 			}
@@ -623,7 +630,7 @@ public class EmailUtils {
 		Set<T> set = new LinkedHashSet<T>();
 		set.addAll(docs);
 
-		// maintain a map so when we find a duplicate, we can print both the dup and the original
+		// maintain a map so when we find a duplicate, we can toString both the dup and the original
 		Map<T, T> map = new LinkedHashMap<T, T>();
 		for (T ed : docs)
 		{
@@ -1325,65 +1332,129 @@ public class EmailUtils {
 		return content;
 	}
 
-	public static Map<String, String> readDBpedia() {
-		String typesFile = "instance_types_en.nt1.gz";
-		if (dbpedia != null)
-			return dbpedia;
-		dbpedia = new LinkedHashMap<String, String>();
-		int d = 0, numPersons = 0, lines = 0;
-		try {
-			LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new GZIPInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));//EmailUtils.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));
-			while (true)
-			{
-				String line = lnr.readLine();
-				if (line == null)
-					break;
-				if (lines++ % 500000 == 0)
-					log.info ("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
-
-				if (line.contains("GivenName"))
-					continue;
-
-				String r = null;
-				StringTokenizer st = new StringTokenizer(line);
-				if (st.hasMoreTokens())
-				{
-					r = st.nextToken();
-
-					/**
-					 * The types file contains lines like this:
-					 * National_Bureau_of_Asian_Research Organisation|Agent
-					 * National_Bureau_of_Asian_Research__1 PersonFunction
-					 * National_Bureau_of_Asian_Research__2 PersonFunction
-					 * Which leads to classifying "National_Bureau_of_Asian_Research" as PersonFunction and not Org.
-					 */
-					if (r.contains("__"))
-					{
-						d++;
-						continue;
-						//					r = r.replaceAll("\\_\\_.$", "");
-						//					r = r.replaceAll("^.+?\\_\\_", "");
-					}
-					//if it still contains this, is a bad title.
-					if (r.equals("") || r.contains("__"))
-					{
-						d++;
-						continue;
-					}
-					String title = r.replaceAll("_", " ");
-					if (st.hasMoreTokens())
-					{
-						String type = st.nextToken();
-						String badSuffix = "|Agent";
-						if (type.endsWith(badSuffix) && type.length() > badSuffix.length())
-							type = type.substring(0, type.length() - badSuffix.length());
-						if (type.contains("|Person"))
-							numPersons++;
-						type = type.intern(); // type strings are repeated very often, so intern
-						dbpedia.put(title, type);
-					}
-				}
+	public static String cleanRoad(String title){
+		String[] words = title.split(" ");
+		String lw = words[words.length-1];
+		String ct = "";
+		boolean hasNumber = false;
+		for(Character c: lw.toCharArray())
+			if(c>='0' && c<='9') {
+            	hasNumber = true;
+                break;
 			}
+		if(words.length == 1 || !hasNumber)
+			ct = title;
+		else{
+			for(int i=0;i<words.length-1;i++) {
+				ct += words[i];
+				if(i<words.length-2)
+					ct += " ";
+			}
+		}
+		return ct;
+	}
+
+	public static Map<String,String> sample(Map<String,String> full, double p){
+		Random rand = new Random();
+		Map<String,String> sample = new LinkedHashMap<>();
+		for(String e: full.keySet()){
+			if(rand.nextDouble()<p)
+				sample.put(e, full.get(e));
+		}
+		return sample;
+	}
+
+	public static Map<String, String> readDBpedia(double p) {
+        String typesFile = "instance_types_2015-04.en.txt.bz2";
+        if (dbpedia != null)
+            return dbpedia;
+        dbpedia = new LinkedHashMap<>();
+        int d = 0, numPersons = 0, lines = 0;
+        try {
+            //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
+            while (true) {
+                String line = lnr.readLine();
+                if (line == null)
+                    break;
+                if (lines++ % 10000 == 0)
+                    log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
+//                if (lines > 500000)
+//                    break;
+
+                if (line.contains("GivenName"))
+                    continue;
+
+                String[] words = line.split("\\s+");
+                String r = words[0];
+
+                /**
+                 * The types file contains lines like this:
+                 * National_Bureau_of_Asian_Research Organisation|Agent
+                 * National_Bureau_of_Asian_Research__1 PersonFunction
+                 * National_Bureau_of_Asian_Research__2 PersonFunction
+                 * Which leads to classifying "National_Bureau_of_Asian_Research" as PersonFunction and not Org.
+                 */
+                if (r.contains("__")) {
+                    d++;
+                    continue;
+                    //					r = r.replaceAll("\\_\\_.$", "");
+                    //					r = r.replaceAll("^.+?\\_\\_", "");
+                }
+                //if it still contains this, is a bad title.
+                if (r.equals("") || r.contains("__")) {
+                    d++;
+                    continue;
+                }
+                String type = words[1];
+                //Royalty names, though tagged person are very weird, contains roman characters and suffixes like of_Poland e.t.c.
+                if(type.equals("PersonFunction") || type.equals("Royalty|Person|Agent"))
+                    continue;
+                //in places there are things like: Shaikh_Ibrahim,_Iraq
+                if (type.endsWith("Settlement|PopulatedPlace|Place"))
+                    r = r.replaceAll(",_.*","");
+                //so as not to allow single word entries
+//                if(!r.contains("_"))
+//                    continue;
+//                if(r.contains("(")) {
+//                    int ti = r.indexOf('(');
+//                    int ui = r.indexOf('_');
+//                    //if is a single word token, then continue;
+//                    if((ui==-1) || ti<ui || (ui+1==ti)) {
+//                        continue;
+//                    }
+//                }
+                //its very dangerous to remove things inside brackets as that may lead to terms like
+                //University_(Metrorail_Station) MetroStation|Place e.t.c.
+                //so keep them, or just skip this entry all together
+                //We are not considering single word tokens any way, so its OK to remove things inside the brackets
+                r = r.replaceAll("_\\(.*?\\)", "");
+                String title = r.replaceAll("_"," ");
+
+                String badSuffix = "|Agent";
+                if (type.endsWith(badSuffix) && type.length() > badSuffix.length())
+                    type = type.substring(0, type.length() - badSuffix.length());
+                if (type.endsWith("|Person"))
+                    numPersons++;
+                type = type.intern(); // type strings are repeated very often, so intern
+
+                boolean allowed = true;
+                //boolean allowed = DBpediaTypes.allowedTypes.contains(type);
+                for(String it: FeatureDictionary.ignoreTypes)
+                    if(type.endsWith(it)) {
+                        allowed = false;
+                        break;
+                    }
+                if(!allowed)
+                    continue;
+
+				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
+					//System.err.print("Cleaned: "+title);
+					title = cleanRoad(title);
+					//System.err.println(" to "+title);
+				}
+                dbpedia.put(title, type);
+            }
 			lnr.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1392,6 +1463,16 @@ public class EmailUtils {
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
-		return dbpedia;
+		return sample(dbpedia,p);
 	}
+
+	public static Map<String,String> readDBpedia(){
+		return readDBpedia(1.0);
+	}
+
+    public static void main(String[] args){
+//        Map<String,String> dbpedia = readDBpedia();
+//        System.err.println(dbpedia.get("Canada"));
+        System.err.println("hello".indexOf(':'));
+    }
 }

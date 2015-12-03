@@ -37,7 +37,7 @@ for (int i = 0; i < farr.length(); i++)
 		String id = fobj.getString("id");
 		String friendName = fobj.getString("name");
 		String json_for_id = f_data.getString(id);
-		json_for_id = new JSONObject(json_for_id).toString(4); // just to pretty print 
+		json_for_id = new JSONObject(json_for_id).toString(4); // just to pretty toString
 		JSPHelper.log.info ("adding data for " + id + " name=" + friendName + " body = " + Util.ellipsize(json_for_id, 100));
 		PersonDocument pd = new PersonDocument(addressBook, friendName, folder, "Facebook profile of " + friendName, json_for_id, comment, null, sourceURL, "http://graph.facebook.com/" + id + "/picture");
 		allDocs.add(pd);

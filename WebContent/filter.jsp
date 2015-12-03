@@ -211,7 +211,7 @@ for (String s: facetMap.keySet())
 	int N_INITIAL_FACETS = 5;
 	out.println ("");
 
-	// print the first 5 items, rest hidden under a More link
+	// toString the first 5 items, rest hidden under a More link
 	for (String html: htmlForFacets)
 	{
 		out.println (html);

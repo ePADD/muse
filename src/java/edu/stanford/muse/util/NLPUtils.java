@@ -95,6 +95,32 @@ public class NLPUtils {
         return posTagger.tag(tokens);
     }
 
+    public static List<String> getAllProperNouns(String content){
+        String[] sents = tokeniseSentence(content);
+        List<String> properNouns = new ArrayList<>();
+        for(String sent: sents) {
+            String[] tokens = tokenise(sent);
+            String[] tags = posTag(tokens);
+            Span[] chunks = chunker.chunkAsSpans(tokens,tags);
+            for(Span chunk: chunks){
+                String chunkText = "";
+                if("NP".equals(chunk.getType())){
+                    boolean NNP = false;
+                    for(int s = chunk.getStart();s<chunk.getEnd();s++){
+                        if("NNP".equals(tags[s]))
+                            NNP = true;
+                        chunkText += tokens[s];
+                        if(s<(chunk.getEnd()-1))
+                            chunkText+=" ";
+                    }
+                    if(NNP)
+                        properNouns.add(chunkText);
+                }
+            }
+        }
+        return properNouns;
+    }
+
     public static List<Pair<String,String>> posTag(String sent){
         String[] tokens = tokenise(sent);
         String[] tags = posTag(tokens);
@@ -103,8 +129,22 @@ public class NLPUtils {
         }
         List<Pair<String,String>> ret = new ArrayList<>();
         for(int i=0;i<Math.min(tokens.length, tags.length);i++)
-            ret.add(new Pair<String,String>(tokens[i],tags[i]));
+            ret.add(new Pair<>(tokens[i],tags[i]));
         return ret;
     }
 
+    public static List<Pair<String,Triple<String,Integer,Integer>>> posTagWithOffsets(String sent){
+        Span[] tokenSpans = tokenizer.tokenizePos(sent);
+        String[] tokens = new String[tokenSpans.length];
+        for(int si=0;si<tokenSpans.length;si++)
+            tokens[si] = tokenSpans[si].getCoveredText(sent).toString();
+        String[] tags = posTag(tokens);
+        if(tokens.length!=tags.length){
+            log.warn("Something wrong with POS tagging. Number of POS tags: " + tags.length + " not the same as number of tokens " + tokens.length);
+        }
+        List<Pair<String,Triple<String,Integer,Integer>>> ret = new ArrayList<>();
+        for(int i=0;i<Math.min(tokens.length, tags.length);i++)
+            ret.add(new Pair<>(tokens[i],new Triple<>(tags[i], tokenSpans[i].getStart(), tokenSpans[i].getEnd())));
+        return ret;
+    }
 }

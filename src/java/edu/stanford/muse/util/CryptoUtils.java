@@ -116,14 +116,14 @@ public class CryptoUtils {
 		String file = (args.length == 0) ? "/tmp/TEST" : args[0];
 		
 		byte b[] = readEncryptedBytes(file);
-		// for users file only, print the contents
+		// for users file only, toString the contents
 		if (file.endsWith("users")) {
 			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(b));
 			List<MemoryStudy.UserStats> users = (List<MemoryStudy.UserStats>) ois.readObject();
 			for (int i = 0; i < users.size(); i++)
 				System.out.println (i + ". " + Util.fieldsToString(users.get(i)));
 		}
-		else // otherwise, print as a string
+		else // otherwise, toString as a string
 			System.out.println (new String(b, "UTF-8"));
 	}
 }
