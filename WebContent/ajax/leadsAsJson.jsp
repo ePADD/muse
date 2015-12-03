@@ -1,20 +1,21 @@
-<%@ page language="java" contentType="application/x-javascript; charset=UTF-8"%>
+<%@ page language="java" contentType="application/json;charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
 <%@page language="java" import="java.util.*"%>
-<%@page language="java" import="java.io.*" %>
 <%@page language="java" import="org.json.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.lens.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="java.util.Calendar"%>
 <%@page language="java" import="java.text.SimpleDateFormat"%>
+<%//Archive needs to be loaded since NER is archive dependant%>
+<%@include file="../getArchive.jspf" %>
+<%@include file="../getNERModel.jspf" %>
+
 <%
 JSPHelper.setPageUncacheable(response);
 	// https://developer.mozilla.org/en/http_access_control
 response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
-//response.setHeader("Access-Control-Allow-Origin", "http://xenon.stanford.edu");
 response.setHeader("Access-Control-Allow-Credentials", "true");
 response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
 response.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -22,23 +23,14 @@ response.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Co
 JSONObject result = new JSONObject();
 int callout_lines = HTMLUtils.getIntAttr(session, "lens.callout.lines", 3);
 result.put("callout_lines", callout_lines);
-try {	
-	response.setContentType("application/json; charset=utf-8");
-	
-	String text = request.getParameter("refText");	
+try {
+    response.setContentType("application/json; charset=utf-8");
+	String text = request.getParameter("refText");
 	String url = request.getParameter("refURL");
 
 	String baseURL = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
-	Archive archive = JSPHelper.getArchive(session);
-	if (archive == null)
-	{
-		// display error is a message that can be displayed to the end user, i.e. something he can take action upon.
-		result.put("displayError", "<a href=\"" + baseURL + "\">Load an archive into Muse</a>.");
-		JSPHelper.log.warn ("No archive loaded for leadsAsJson");
-		return;
-	}
 	Collection<EmailDocument> allDocs = (Collection<EmailDocument>) JSPHelper.getSessionAttribute(session, "emailDocs");
-	Indexer	indexer = archive.indexer;
+	//Indexer	indexer = archive.indexer;
 	if (allDocs == null)
 		allDocs = (Collection) archive.getAllDocs();
 	
@@ -48,14 +40,27 @@ try {
 		return;
 	}
 
-	List<Pair<String,Float>> names = null;
+	List<Pair<String,Float>> names = new ArrayList<Pair<String,Float>>();
 	List<Pair<String,Integer>> namesFromArchive = null;
 	Map<String, Float> termFreqMap = new LinkedHashMap<String, Float>();
 	List<JSONObject> list=null;
 	
 	boolean normalizeByLength = request.getParameter("normalizeByLength") != null;
 	long ner_start_millis = System.currentTimeMillis();
-	names = NER.namesFromText(text, true, NER.defaultTokenTypeWeights, normalizeByLength, 1);
+
+	//names = NER.namesFromText(text, true, NER.defaultTokenTypeWeights, normalizeByLength, 1);
+	Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> p = nerModel.find(text);
+	if(p!=null){
+	    Map<Short,List<String>> map = p.getFirst();
+	    if(map!=null){
+	        for(Short k: map.keySet()){
+	            JSPHelper.log.info("Entity type: "+k+", "+map.get(k).size());
+	            for(String e: map.get(k)){
+	                names.add(new Pair<String,Float>(e,new Float(1.0)));
+	            }
+	        }
+	    }
+	}
 	//names = POS.namesFromPOS(text);
 	long ner_end_millis = System.currentTimeMillis();
 	JSPHelper.log.info("NER time " + (ner_end_millis - ner_start_millis) + " ms");

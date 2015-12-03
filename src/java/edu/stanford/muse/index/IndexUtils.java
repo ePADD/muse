@@ -904,7 +904,7 @@ public class IndexUtils {
 			{
 				String query = captionToQueryMap.get(sentiment);
                 Indexer.QueryOptions options = new Indexer.QueryOptions();
-                options.setQueryType(Indexer.QueryType.ORIGINAL);
+                //options.setQueryType(Indexer.QueryType.ORIGINAL);
 				options.setSortBy(Indexer.SortBy.RELEVANCE); // to avoid unnecessary sorting
 				Collection<Document> docsForTerm = indexer.docsForQuery(query, options);
 				docsForTerm.retainAll(docSet);

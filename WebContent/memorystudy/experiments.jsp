@@ -31,7 +31,11 @@
 <b>Entity experiments</b>
 
 <p>
+    <a target="_blank" href="sentences.jsp">Dump sentences</a>
+    <p>
     <a target="_blank" href="entities-by-last-month.jsp">Browse non-person entities by month of last occurrence</a>
+    <p>
+    <a target="_blank" href="entities-by-last-month.jsp?locations=">Browse non-person entities by month of last occurrence (locations only)</a>
     <p>
     <a target="_blank" href="contacts-by-last-month.jsp">Browse contacts by month of last occurrence</a>
     <p>
