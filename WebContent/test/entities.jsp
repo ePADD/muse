@@ -44,7 +44,7 @@
                 }
             </style>
             <%
-                if(cutoff.equals(""))
+                if(cutoff!=null && cutoff.equals(""))
                     out.println("<span style='color:red'>Please specify cutoff for quality score</span><br>");
                 out.println("Cutoff&nbsp&nbsp<span style='color:red'>*</span> &nbsp<input name='cutoff'></input><br>");
                 out.println("Include types <select name='include'>" + options + "</select><br>");
@@ -67,7 +67,8 @@
                             params += "&";
                     }
                 }
-                window.location.href=window.location.href+"?"+params;
+                var href = window.location.href;
+                window.location.href=href.substr(0,href.indexOf("?"))+"?"+params;
             }
         </script>
         </body>
@@ -96,7 +97,7 @@
             exc.add(Short.parseShort(excS));
         }
         double theta = Double.parseDouble(cutoff);
-        System.err.println("Params: "+
+        JSPHelper.log.info("Params: "+
                 "Threshold: "+theta+
                 "\nexclude: "+exc+
                 "\ninclude: "+inc+
