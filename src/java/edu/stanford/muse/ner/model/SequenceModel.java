@@ -28,10 +28,10 @@ public class SequenceModel implements Serializable{
     static Log log = LogFactory.getLog(SequenceModel.class);
     public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
-    static CICTokenizer tokenizer = new CICTokenizer();
+    static POSTokenizer tokenizer = new POSTokenizer();
     public Map<String,String> dbpedia;
 
-    public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
+    public SequenceModel(FeatureDictionary dictionary, POSTokenizer tokenizer) {
         this.dictionary = dictionary;
         this.tokenizer = tokenizer;
     }
@@ -496,7 +496,7 @@ public class SequenceModel implements Serializable{
 
         String[] sents = NLPUtils.tokeniseSentence(content);
         for(String sent: sents) {
-            List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent, false);
+            List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent);
             for (Triple<String, Integer, Integer> t : toks) {
                 Map<String,Pair<Short,Double>> entities = seqLabel(t.getFirst());
                 for(String e: entities.keySet()){
