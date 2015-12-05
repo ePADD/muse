@@ -10,6 +10,15 @@
 <%@ page import="com.google.gson.reflect.TypeToken" %>
 <%@ page import="java.lang.reflect.Type" %>
 <%@ page import="edu.stanford.muse.ner.Entity" %>
+<!--
+    General API to request for entities
+    Just navigate to test/entities.jsp to use it
+    Options:
+        1. Cutoff score
+        2. Semantic types to be included [only one]
+        3. Semantic types to be excluded [only one]
+        4. Maximum number of email documents from which entities would be collected
+-->
 <%
     class Some{
         List<Short> parse(String[] excS) {
@@ -26,7 +35,7 @@
 
     String cutoff = request.getParameter("cutoff");
     Map<Short,String> desc = new LinkedHashMap<>();
-    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");desc.put(FeatureDictionary.DRUG,"DRUG");desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"POLITICALPARTY");desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");desc.put(FeatureDictionary.RECORDLABEL,"RECORDLABEL");desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"TRADEUNIN");desc.put(FeatureDictionary.PARK,"PARK");desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");desc.put(FeatureDictionary.OTHER,"OTHER");
+    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"POLITICALPARTY");desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"TRADEUNIN");desc.put(FeatureDictionary.PARK,"PARK");desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");desc.put(FeatureDictionary.DISEASE,"DISEASE");desc.put(FeatureDictionary.EVENT,"EVENT");desc.put(FeatureDictionary.OTHER,"OTHER");
     if(cutoff==null||cutoff.equals("")){
         String options = "";
         options += "<option value='none'>NONE</option>";
@@ -44,11 +53,11 @@
                 }
             </style>
             <%
-                if(cutoff.equals(""))
+                if(cutoff!=null && cutoff.equals(""))
                     out.println("<span style='color:red'>Please specify cutoff for quality score</span><br>");
                 out.println("Cutoff&nbsp&nbsp<span style='color:red'>*</span> &nbsp<input name='cutoff'></input><br>");
-                out.println("Include <select name='include'>" + options + "</select><br>");
-                out.println("Exclude <select name='exclude'>"+options+"</select><br>");
+                out.println("Include types <select name='include'>" + options + "</select><br>");
+                out.println("Exclude types <select name='exclude'>"+options+"</select><br>");
                 out.println("Maximum Email Documents <input size='5' name='maxdoc' placeholder='1000'></input>");
             %>
             <br>
@@ -67,7 +76,8 @@
                             params += "&";
                     }
                 }
-                window.location.href=window.location.href+"?"+params;
+                var href = window.location.href;
+                window.location.href=href.substr(0,href.indexOf("?"))+"?"+params;
             }
         </script>
         </body>
@@ -96,7 +106,7 @@
             exc.add(Short.parseShort(excS));
         }
         double theta = Double.parseDouble(cutoff);
-        System.err.println("Params: "+
+        JSPHelper.log.info("Params: "+
                 "Threshold: "+theta+
                 "\nexclude: "+exc+
                 "\ninclude: "+inc+

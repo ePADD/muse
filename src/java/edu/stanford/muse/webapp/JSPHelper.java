@@ -403,11 +403,11 @@ public class JSPHelper {
         if (nerModel == null) {
             log.error("Could not load NER model from: "+modelFile);
         }
-
-//        NER ner = new NER(archive, nerModel);
-//        session.setAttribute("statusProvider", ner);
-//        ner.recongniseArchive();
-
+        else {
+            NER ner = new NER(archive, nerModel);
+            session.setAttribute("statusProvider", ner);
+            ner.recongniseArchive();
+        }
 //		try {
 //			//train an epadd ner ; recognise the entities and dd it to the index
 //			NER ner = new NER(archive);
