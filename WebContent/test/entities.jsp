@@ -10,6 +10,15 @@
 <%@ page import="com.google.gson.reflect.TypeToken" %>
 <%@ page import="java.lang.reflect.Type" %>
 <%@ page import="edu.stanford.muse.ner.Entity" %>
+<!--
+    General API to request for entities
+    Just navigate to test/entities.jsp to use it
+    Options:
+        1. Cutoff score
+        2. Semantic types to be included [only one]
+        3. Semantic types to be excluded [only one]
+        4. Maximum number of email documents from which entities would be collected
+-->
 <%
     class Some{
         List<Short> parse(String[] excS) {
