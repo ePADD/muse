@@ -299,7 +299,7 @@
 
     List<Document> docs = archive.getAllDocs();
     int si=0;
-    int MAX_SENT = 10;
+    int MAX_SENT = 10000;
     Map<Short,Map<String,Double>> found = new LinkedHashMap<>();
     Map<Short,String> desc = new LinkedHashMap<>();
     desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");

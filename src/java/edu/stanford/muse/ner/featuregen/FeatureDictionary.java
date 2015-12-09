@@ -48,12 +48,8 @@ public class FeatureDictionary implements Serializable {
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
-//        aTypes.put(FeatureDictionary.PERSON, new String[]{"Person"});
-//        aTypes.put(FeatureDictionary.PLACE, new String[]{"Place"});
-//        aTypes.put(FeatureDictionary.ORGANISATION, new String[]{"Organisation", "PeriodicalLiterature|WrittenWork|Work"});
-
-        aTypes.put(PLACE, new String[]{"Place"});
         aTypes.put(PERSON, new String[]{"Person"});
+        aTypes.put(PLACE, new String[]{"Place"});
         aTypes.put(COMPANY, new String[]{"Company|Organisation"});
         aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place"});
         aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place","Canal|Stream|BodyOfWater|NaturalPlace|Place","Stream|BodyOfWater|NaturalPlace|Place","BodyOfWater|NaturalPlace|Place", "Lake|BodyOfWater|NaturalPlace|Place"});
@@ -1042,7 +1038,7 @@ public class FeatureDictionary implements Serializable {
                     //(hasNumber&&(mi.indexOf('%')==-1)
                     //due to encoding problem, there are many words like: Milo%C5%A1
                     //the presence of numbers in words like this are not a bad signal
-                    //also, there are many drug names that contian numbers, like HMA-24, should they be restricted?
+                    //also, there are many drug names that contain numbers, like HMA-24, should they be restricted?
                     //this should not even happen
                     if (wfeatures.get(mi) == null) {
                         continue;
@@ -1094,16 +1090,17 @@ public class FeatureDictionary implements Serializable {
                     revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), this);
                 }
             }
-            features = revisedMixtures;
-//            double change = 0;
-//            for (String mi : features.keySet())
-//                if (revisedMixtures.containsKey(mi))
-//                    change += revisedMixtures.get(mi).difference(features.get(mi));
-//            log.info("Iter: " + i + ", change: " + change);
+            double change = 0;
+            for (String mi : features.keySet())
+                if (revisedMixtures.containsKey(mi))
+                    change += revisedMixtures.get(mi).difference(features.get(mi));
+            log.info("Iter: " + i + ", change: " + change);
             //incomplete data log likehood is better mesure than just the change in parameters
             //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
-            //ll = getIncompleteDateLogLikelihood(gazettes);
-            //log.info("Iter: "+i+", Data Log Likelihood: "+ll);
+            features = revisedMixtures;
+            double ll = getIncompleteDateLogLikelihood(gazettes);
+            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
+
 
             revisedMixtures = new LinkedHashMap<>();
 
@@ -1231,6 +1228,9 @@ public class FeatureDictionary implements Serializable {
                 double freq = 0;
                 if(features.get(mid) != null)
                     freq = features.get(mid).getPrior();
+
+                //heavy logging
+                log.info("Freq: "+freq+", val: "+val);
                 val *= freq;
             }
             //System.err.println("MID: " + mid + " - " + val + ", d: " + d + ", prior: " + (features.get(mid) == null ? "null" : features.get(mid).getPrior()));
