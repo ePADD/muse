@@ -6,4 +6,4 @@ do
     CP=$CP:$lib;
 done
 CP=$CP:target/muse-war-1.0.0-SNAPSHOT/WEB-INF/classes/;
-java -Xmx4g -cp $CP edu.stanford.muse.ner.model.SequenceModel
+java -Xmx10g -cp $CP edu.stanford.muse.ner.model.SequenceModel
