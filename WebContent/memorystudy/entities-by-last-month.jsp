@@ -51,33 +51,33 @@
         }
     }
 
-public static String[] stops = new String[]{"a", "an", "the", "and", "after", "before", "to", "of", "for"};
-public static Set<String> stopsSet = new LinkedHashSet<String>(Arrays.asList(stops));
-public static String[] allowedTitles = new String[]{"mr.", "ms.", "mrs.", "dr.", "prof."};
-public static Set<String> allowedTitlesSet = new LinkedHashSet<String>(Arrays.asList(allowedTitles));
+    public static String[] stops = new String[]{"a", "an", "the", "and", "after", "before", "to", "of", "for"};
+    public static Set<String> stopsSet = new LinkedHashSet<String>(Arrays.asList(stops));
+    public static String[] allowedTitles = new String[]{"mr.", "ms.", "mrs.", "dr.", "prof."};
+    public static Set<String> allowedTitlesSet = new LinkedHashSet<String>(Arrays.asList(allowedTitles));
 
-public static String canonicalize(String s) {
-    s = s.toLowerCase();
-    List<String> tokens = Util.tokenize(s);
-    tokens.removeAll(stopsSet);
-    if (Util.nullOrEmpty(tokens))
-        return null;
+    public static String canonicalize(String s) {
+        s = s.toLowerCase();
+        List<String> tokens = Util.tokenize(s);
+        tokens.removeAll(stopsSet);
+        if (Util.nullOrEmpty(tokens))
+            return null;
 
-    boolean allDict = true;
-    for (String t: tokens) {
-        if (t.startsWith("i'") || t.startsWith("you'")) // remove i've, you're, etc.
+        boolean allDict = true;
+        for (String t: tokens) {
+            if (t.startsWith("i'") || t.startsWith("you'")) // remove i've, you're, etc.
+                return null;
+            if (t.endsWith(".") && !allowedTitlesSet.contains(t))
+                return null;
+            if (!(DictUtils.fullDictWords.contains(t) || (t.endsWith("s") && DictUtils.fullDictWords.contains(t.substring(0, t.length()-1)))))
+                allDict = false;
+        }
+        if (allDict)
             return null;
-        if (t.endsWith(".") && !allowedTitlesSet.contains(t))
-            return null;
-        if (!(DictUtils.fullDictWords.contains(t) || (t.endsWith("s") && DictUtils.fullDictWords.contains(t.substring(0, t.length()-1)))))
-            allDict = false;
+
+        // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
+        return Util.join(tokens, " ");
     }
-    if (allDict)
-        return null;
-
-    // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
-    return Util.join(tokens, " ");
-}
 
 %>
 <html>
@@ -101,6 +101,17 @@ public static String canonicalize(String s) {
         .interval {font-color: black; font-weight: bold;}
     </style>
 </head>
+<h2>Length related params</h2>
+<input type="text" id="len1" placeholder="-100.0,-10.0,0" />
+<br>
+<h2>Weight for exclamation and similey</h2>
+<input type="text" id="es1" placeholder="7.0,7.0"/>
+
+<h2>Weight for number of taboo words found</h2>
+<input type="text" id="t1" placeholder="-20.0"/>
+
+<>
+
 <b>Non-person Entity listing by most recent occurrence (for testing only)</b><br/>
     <%
     try {
@@ -279,6 +290,7 @@ public static String canonicalize(String s) {
             ci.lastSeenDate = lastSeenDate;
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
+
             ci.clue = cluer.createClue(fullAnswer, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 3));
             ci.hasCoreTokens = hasCoreTokens;
             clueInfos[interval].add(ci);
@@ -316,3 +328,4 @@ public static String canonicalize(String s) {
         e.printStackTrace();
     }
 %>
+</body>

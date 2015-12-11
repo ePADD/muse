@@ -1,7 +1,6 @@
 package edu.stanford.muse.ner.model;
 
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.ner.NEREvaluator;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
@@ -9,7 +8,6 @@ import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,7 +24,7 @@ public class SequenceModel implements Serializable{
     public static String modelFileName = "SeqModel.ser";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
-    public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
+    //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
     static CICTokenizer tokenizer = new CICTokenizer();
     public Map<String,String> dbpedia;
@@ -119,7 +117,15 @@ public class SequenceModel implements Serializable{
         return p;
     }
 
-    //The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length
+    /**
+     * Does sequence labeling of a phrase; adapts a dynamic programming approach
+     * The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length
+     * O(T*W^2) where W is number of tokens in the phrase and T is number of possible types
+     * Since the word features that we are using are dependent on the boundary of the phrase i.e. the left and right semantic types, features on dictionary lookup e.t.c.
+     * @note This method only returns the entities from he best labeled sequence.
+     * @param phrase - String that is to be sequence labelled, keep this short; The string will be rejected if it contains more than 15 words
+     * @return all the entities along with their types and quality score found in the phrase
+    */
     public Map<String, Pair<Short, Double>> seqLabel(String phrase) {
         //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
         phrase = EmailUtils.uncanonicaliseName(phrase);
@@ -132,6 +138,9 @@ public class SequenceModel implements Serializable{
         String[] tokens = phrase.split("\\s+");
         if(tokens.length>15)
             return new LinkedHashMap<>();
+        //since there can be large number of types every token can take
+        //we restrict the number of possible types we consider to top 5
+        //seer the complexity of the method
         Set<Short> cands = new LinkedHashSet<>();
         Map<Short, Double> candTypes = new LinkedHashMap<>();
         for (String token : tokens) {
@@ -154,6 +163,8 @@ public class SequenceModel implements Serializable{
                 if (si++ < MAX)
                     cands.add(p.getFirst());
         }
+        //This is just a standard dynamic programming algo, the only difference is
+        //at every word we are checking for the every possible segment
         short OTHER = -2;
         cands.add(OTHER);
         for (int ti = 0; ti < tokens.length; ti++) {
@@ -186,11 +197,11 @@ public class SequenceModel implements Serializable{
                         bt = t;
                     }
                 }
-                //System.err.println("Maxval: " + max + ", " + bi + ", " + bt);
             }
             tracks.put(ti, new Triple<>(max, bi, bt));
         }
 
+        //the backtracking step
         Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
         int start = tokens.length - 1;
         while (true) {
@@ -577,7 +588,8 @@ public class SequenceModel implements Serializable{
                     "streets and at my desk. In that sense it was a moral snow.\n" +
                     "If you're in Buffalo could you stand a stop after work?\n" +
                     "My best, " +
-                    "National Bank some. National Kidney Foundation some . University Commencement";
+                    "National Bank some. National Kidney Foundation some . University Commencement.\n" +
+                    "Address of Amuse Labs.OUT HOUSE, 19/1, Ramchandra Kripa, Mahishi Road, Malmaddi Dharwad.Address of US stay.483, Fulton Street, Palo Alto";
             System.err.println("Tokens: "+new POSTokenizer().tokenize(content));
 
             //String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
@@ -618,7 +630,8 @@ public class SequenceModel implements Serializable{
 //                Short type = FeatureDictionary.codeType(dbpedia.get(entry));
 //                System.err.println(entry + " " + dbpedia.get(entry) + " " + nerModel.dictionary.getConditional(entry, type, fdw));
 //            }
-            String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport", "New York International Airport"};
+            String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",
+                    "New York International Airport", "Ramchandra Kripa, Mahishi Road"};
             for(String c: check) {
                 System.err.println(c + ", " + nerModel.seqLabel(c));
             }
