@@ -1387,6 +1387,8 @@ public class EmailUtils {
 
                 String[] words = line.split("\\s+");
                 String r = words[0];
+				if(!r.contains("_"))
+					continue;
 
                 /**
                  * The types file contains lines like this:

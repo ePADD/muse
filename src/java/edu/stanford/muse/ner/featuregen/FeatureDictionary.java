@@ -258,8 +258,9 @@ public class FeatureDictionary implements Serializable {
             }
             Set<String> ts = new LinkedHashSet<>();
             for (Short at : allTypes) {
-                if(at!=FeatureDictionary.OTHER)
-                    ts.add(at + "");
+                //Note: having the condition below uncommented leads to unexpected changes to the incomplete data log likehood when training
+                //if(at!=FeatureDictionary.OTHER)
+                ts.add(at + "");
             }
             ts.add("NULL");
             boolean smooth = true;
@@ -376,7 +377,7 @@ public class FeatureDictionary implements Serializable {
             return numMixture/numSeen;
         }
 
-        /**Maximization step in EM update, update under the assumption that add will be called only if the evidence for the corresponding mixture is seen, i.e. xk!=0
+        /**Maximization step in EM update,
          * @param resp - responsibility of this mixture in explaining the type and features
          * @param features - set of all *relevant* features to this mixture*/
         public void add(double resp, Set<String> features, FeatureDictionary dictionary) {
@@ -404,7 +405,7 @@ public class FeatureDictionary implements Serializable {
             }
             Set<String> ts = new LinkedHashSet<>();
             for(Short at: allTypes) {
-                if(at!=FeatureDictionary.OTHER)
+                //if(at!=FeatureDictionary.OTHER)
                     ts.add(at + "");
             }
             ts.add("NULL");
@@ -1007,10 +1008,10 @@ public class FeatureDictionary implements Serializable {
     public void EM(Map<String,String> gazettes){
         computeTypePriors();
         log.info("Performing EM on: #" + features.size() + " words");
-        //double ll = getIncompleteDateLogLikelihood(gazettes);
-        //log.info("Start Data Log Likelihood: "+ll);
+        double ll = getIncompleteDateLogLikelihood(gazettes);
+        log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 3;
+        int MAX_ITER = 10;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
@@ -1029,17 +1030,6 @@ public class FeatureDictionary implements Serializable {
                 Map<String, Set<String>> wfeatures = generateFeatures2(phrase, coarseType);
                 //System.err.println(" ---- ");
                 for (String mi : wfeatures.keySet()) {
-//                    boolean hasNumber = false;
-//                    for(Character c: mi.toCharArray())
-//                        if(c>='0' && c<='9') {
-//                            hasNumber = true;
-//                            break;
-//                        }
-                    //(hasNumber&&(mi.indexOf('%')==-1)
-                    //due to encoding problem, there are many words like: Milo%C5%A1
-                    //the presence of numbers in words like this are not a bad signal
-                    //also, there are many drug names that contain numbers, like HMA-24, should they be restricted?
-                    //this should not even happen
                     if (wfeatures.get(mi) == null) {
                         continue;
                     }
@@ -1098,7 +1088,7 @@ public class FeatureDictionary implements Serializable {
             //incomplete data log likehood is better mesure than just the change in parameters
             //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
             features = revisedMixtures;
-            double ll = getIncompleteDateLogLikelihood(gazettes);
+            ll = getIncompleteDateLogLikelihood(gazettes);
             log.info("Iter: "+i+", Data Log Likelihood: "+ll);
 
 
@@ -1218,8 +1208,6 @@ public class FeatureDictionary implements Serializable {
 //                e.printStackTrace();
 //            }
             }
-//            if(d == 0)
-//                System.err.println("Score: 0 for: "+mid);
 
             if (Double.isNaN(d))
                 log.warn("Cond nan " + mid + ", " + d);
@@ -1230,10 +1218,13 @@ public class FeatureDictionary implements Serializable {
                     freq = features.get(mid).getPrior();
 
                 //heavy logging
-                log.info("Freq: "+freq+", val: "+val);
+//                if(freq==0)
+//                    log.info("Freq: "+freq+", val: "+val);
                 val *= freq;
             }
-            //System.err.println("MID: " + mid + " - " + val + ", d: " + d + ", prior: " + (features.get(mid) == null ? "null" : features.get(mid).getPrior()));
+//            else{
+//                log.info("val 0");
+//            }
             sorg += val;//*dictionary.getMarginal(word);
         }
         return sorg;
