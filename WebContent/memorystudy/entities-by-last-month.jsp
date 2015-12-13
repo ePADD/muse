@@ -110,8 +110,6 @@
 <h2>Weight for number of taboo words found</h2>
 <input type="text" id="t1" placeholder="-20.0"/>
 
-<>
-
 <b>Non-person Entity listing by most recent occurrence (for testing only)</b><br/>
     <%
     try {

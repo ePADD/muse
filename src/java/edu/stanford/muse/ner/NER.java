@@ -64,20 +64,38 @@ public class NER implements StatusProvider {
 		}
 
 		//a map of entity-type key and value list of entities
-		public void update(Map<Short, List<String>> map) {
-			for (Short type : map.keySet()) {
+		public void update(Map<Short, Map<String,Double>> allTypes) {
+            Map<Short, List<String>> mergedTypes = SequenceModel.mergeTypes(allTypes);
+			for (Short type : allTypes.keySet()) {
+                //dont add type stats twice
+                if(mergedTypes.containsKey(type))
+                    continue;
 				if (!rcounts.containsKey(type))
 					rcounts.put(type, 0);
-				rcounts.put(type, rcounts.get(type) + map.get(type).size());
+				rcounts.put(type, rcounts.get(type) + allTypes.get(type).size());
 
 				if (!all.containsKey(type))
 					all.put(type, new HashSet<String>());
-				if (map.get(type) != null)
-					for (String str : map.get(type))
+				if (allTypes.get(type) != null)
+					for (String str : allTypes.get(type).keySet())
 						all.get(type).add(str);
 
 				counts.put(type, all.get(type).size());
 			}
+
+            for (Short type : mergedTypes.keySet()) {
+                if (!rcounts.containsKey(type))
+                    rcounts.put(type, 0);
+                rcounts.put(type, rcounts.get(type) + mergedTypes.get(type).size());
+
+                if (!all.containsKey(type))
+                    all.put(type, new HashSet<String>());
+                if (mergedTypes.get(type) != null)
+                    for (String str : mergedTypes.get(type))
+                        all.get(type).add(str);
+
+                counts.put(type, all.get(type).size());
+            }
 		}
 
 		@Override
@@ -332,8 +350,8 @@ public class NER implements StatusProvider {
 
 			Map<Short, List<String>> map = SequenceModel.mergeTypes(mapAndOffsets.first);
             Map<Short, List<String>> mapTitle = SequenceModel.mergeTypes(mapAndOffsetsTitle.first);
-			stats.update(map);
-            stats.update(mapTitle);
+			stats.update(mapAndOffsets.first);
+            stats.update(mapAndOffsetsTitle.first);
 			updateTime += System.currentTimeMillis() - st;
 			st = System.currentTimeMillis();
 
