@@ -19,7 +19,7 @@ import java.util.*;
  * Created by vihari on 07/09/15.
  * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
  */
-public class SequenceModel implements Serializable{
+public class SequenceModel implements NERModel, Serializable{
     public FeatureDictionary dictionary;
     public static String modelFileName = "SeqModel.ser";
     private static final long serialVersionUID = 1L;

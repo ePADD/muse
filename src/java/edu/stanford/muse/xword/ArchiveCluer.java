@@ -133,7 +133,7 @@ public class ArchiveCluer extends Cluer {
 
 	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
-		return createClue(answer, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1);
+		return createClue(answer, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, null);
 
 	}
 	/** create clue for the given answer.
@@ -141,7 +141,7 @@ public class ArchiveCluer extends Cluer {
     if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
 	 * @throws ParseException 
 	 */
-	public Clue createClue(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue createClue(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -310,7 +310,7 @@ public class ArchiveCluer extends Cluer {
 					Clue clue = new Clue(blankedSentence, originalSentence, unblankedLowerCaseSentence, blankedHint, url, ellipsisizedMessage, ed);
 					
 					Set<String> tabooNamesSet = archive.addressBook.getOwnNamesSet(); 
-					float clueScore = scoreClue(clue, answer, tabooNamesSet, nerModel);
+					float clueScore = scoreClue(clue, answer,evals, tabooNamesSet, nerModel, archive);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
@@ -435,7 +435,7 @@ public class ArchiveCluer extends Cluer {
 	
 	// returns a score for the given string as a clue. this does not take into account the doc s is a part of. 
 	// note s is not lower-cased
-	public static float scoreClue(Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) throws ClassCastException, IOException, ClassNotFoundException
+	public static float scoreClue(Clue clue, String answer, List<ClueEvaluator> evals, Set<String> tabooNames, NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
 	{
 //		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
 //		String s = clue.getFullSentenceOriginal();
@@ -459,10 +459,13 @@ public class ArchiveCluer extends Cluer {
 //		for (Pair<String, Float> namePair : names){ //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
 //			String name = (Util.canonicalizeSpaces(namePair.getFirst())).toLowerCase();
 
-		float score = 0;
+		double score = 0;
+        for(ClueEvaluator eval: evals)
+            score = eval.computeScore(score, clue,answer, tabooNames,nerModel, archive);
+
         //log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
 		log.info("Score: "+score+" "+clue.clueStats);
-        return score;
+        return (float)score;
 	}
 
 	/** checks if sentence is ok as clue. returns true if yes, false otherwise */

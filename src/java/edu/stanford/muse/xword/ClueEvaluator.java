@@ -1,5 +1,6 @@
 package edu.stanford.muse.xword;
 
+import com.google.common.collect.Sets;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.EmailDocument;
@@ -35,7 +36,7 @@ public class ClueEvaluator {
         return computeScore(score, clue, answer, tabooNames, nerModel);
     }
 
-    static class LengthEvaluator extends ClueEvaluator{
+    public static class LengthEvaluator extends ClueEvaluator{
         float[] params;
 
         /**
@@ -75,7 +76,7 @@ public class ClueEvaluator {
         }
     }
 
-    static class EmotionEvaluator extends ClueEvaluator{
+    public static class EmotionEvaluator extends ClueEvaluator{
         float[] params;
         /**Required param to weight the number of exclamations and smileys respectively in the sentence
          * default 7.0f, 7.0f*/
@@ -116,7 +117,7 @@ public class ClueEvaluator {
     /**
      * Penalises any dirty words in the clue
      * */
-    static class DirtEvaluator extends ClueEvaluator {
+    public static class DirtEvaluator extends ClueEvaluator {
         float[] params;
 
         /**
@@ -153,7 +154,7 @@ public class ClueEvaluator {
     /**
      * Penalises the existence of any non-specific words
      * */
-    static class SpecificityEvaluator extends ClueEvaluator {
+    public static class SpecificityEvaluator extends ClueEvaluator {
         float[] params;
 
         /**
@@ -184,7 +185,7 @@ public class ClueEvaluator {
         }
     }
 
-    static class NamesEvaluator extends ClueEvaluator {
+    public static class NamesEvaluator extends ClueEvaluator {
         float[] params;
 
         /**
@@ -193,8 +194,8 @@ public class ClueEvaluator {
          */
         public NamesEvaluator(float[] params) {
             this();
-            if (params == null || params.length != 1) {
-                log.error("Wrong initialisation of params in " + NamesEvaluator.class + "!! Required 1 param");
+            if (params == null || params.length != 2) {
+                log.error("Wrong initialisation of params in " + NamesEvaluator.class + "!! Required 2 param");
             } else {
                 this.params = params;
             }
@@ -209,14 +210,18 @@ public class ClueEvaluator {
             String sOrig = clue.getFullSentenceOriginal();
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
+            double CUTOFF = 0.001;
             if (nerModel != null) {
-                Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(sOrig);
-                Map<Short, List<String>> map = mapAndOffsets.first;
-                //TODO: remove these logs
+                log.info("Identifying names in the content");
+                Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(sOrig);
+                Map<Short, Map<String,Double>> map = mapAndOffsets.first;
                 log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig);
                 for (short x : map.keySet()) {
-                    log.info(x + ":" + map.get(x));
-                    names.addAll(map.get(x));
+                    //if(map.get(x).)
+                    //log.info(x + ":" + map.get(x));
+                    for(String e: map.get(x).keySet())
+                        if(map.get(x).get(e)>CUTOFF)
+                            names.add(e);
                 }
             }
             float namesScore = params[0]*names.size();
@@ -245,26 +250,40 @@ public class ClueEvaluator {
     /**Scores clue based on the presence of words from the list
      * The default lists are prepositions and list some hand-selected words
      * Whatever the list is, it should only contain words in lower case*/
-    static class ListEvaluator extends ClueEvaluator {
+    public static class ListEvaluator extends ClueEvaluator {
         float[] params;
-        List<List<String>> lists = new ArrayList<>();
+        List<Set<String>> lists = new ArrayList<>();
 
         /**
          * Requires lists and their corresponding weights
+         * default lists are
+         *     <ul>
+         *      <li>"from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name"</li>
+         *      <li>"flight", "travel", "city", "town", "visit", "arrive", "arriving", "land", "landing", "reach", "reaching", "train", "road", "bus", "college", "theatre", "restaurant", "book", "film", "movie", "play", "song", "writer", "artist", "author", "singer", "actor", "school"</li>
+         *     </ul>
+         * The default params are: 10.0 and 5.0 respectively
          */
         public ListEvaluator(float[] params, List<String[]> lists) {
             this();
-            if (params == null || lists!=null || params.length==0|| params.length!=lists.size()) {
+            if (params==null || lists==null || params.length==0 || params.length!=lists.size()) {
                 log.error("Wrong/improper initialisation of params in " + ListEvaluator.class + "!! Required "+lists.size()+" params");
             } else {
                 this.params = params;
+                this.lists = new ArrayList<>();
+                String str = "";
+                for(String[] lst: lists) {
+                    this.lists.add(Sets.newHashSet(lst));
+                    str += "Lst: "+Sets.newHashSet(lst)+"\n";
+                }
+
+                log.info("List evaluator initialised with "+this.lists.size()+" lists - "+str);
             }
         }
 
         public ListEvaluator() {
             lists = Arrays.asList(
-                    Arrays.asList("from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name"),
-                    Arrays.asList("flight", "travel", "city", "town", "visit", "arrive", "arriving", "land", "landing", "reach", "reaching", "train", "road", "bus", "college", "theatre", "restaurant", "book", "film", "movie", "play", "song", "writer", "artist", "author", "singer", "actor", "school")
+                    (Set<String>)Sets.newHashSet("from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name"),
+                    (Set<String>)Sets.newHashSet("flight", "travel", "city", "town", "visit", "arrive", "arriving", "land", "landing", "reach", "reaching", "train", "road", "bus", "college", "theatre", "restaurant", "book", "film", "movie", "play", "song", "writer", "artist", "author", "singer", "actor", "school")
             );
             this.params = new float[]{10.0f, 5.0f};
         }
@@ -272,24 +291,26 @@ public class ClueEvaluator {
         @Override
         public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
-            String[] tokens = s.split("(\\s|\\n)+");
+            String[] tokens = s.split("[\\s\\n]+");
             float boost = 0;
             for(int i=0;i<params.length;i++){
                 float b = 0;
-                for(String tok: tokens)
-                    b += lists.get(i).contains(tok)?params[i]:0.0f;
+                for(String tok: tokens) {
+                    tok = tok.replaceAll("^\\W+|\\W+$","");
+                    //log.info("New Lst:"+i+" contains "+tok+"? - "+lists.get(i).contains(tok)+", "+lists.get(i));
+                    b += lists.get(i).contains(tok) ? params[i] : 0.0f;
+                }
                 boost += b;
-                if(i == 0) clue.clueStats.prepositionScore = b;
+                if(i == 1) clue.clueStats.prepositionScore = b;
                 else clue.clueStats.sigWordScore = b;
             }
-            //TODO: Should it be logged to cluestats
             return score + boost;
         }
     }
 
     /**
      * Evaluates clue based on the email message the clue is fetched from*/
-    static class EmailDocumentEvaluator extends ClueEvaluator {
+    public static class EmailDocumentEvaluator extends ClueEvaluator {
         float[] params;
 
         /**
@@ -300,10 +321,10 @@ public class ClueEvaluator {
          * </ol>
          * default: [-1.0, 5.0]
          */
-        public EmailDocumentEvaluator(float[] params, List<String[]> lists) {
+        public EmailDocumentEvaluator(float[] params) {
             this();
-            if (params == null || params.length != lists.size()) {
-                log.error("Wrong/improper initialisation of params in " + ListEvaluator.class + "!! Required " + lists.size() + " params");
+            if (params == null || params.length != 2) {
+                log.error("Wrong/improper initialisation of params in " + EmailDocumentEvaluator.class + "!! Required " + 2 + " params");
             } else {
                 this.params = params;
             }
@@ -315,37 +336,60 @@ public class ClueEvaluator {
 
         @Override
         public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel, Archive archive) {
-            String s = clue.getFullSentenceOriginal();
-            EmailDocument ed = clue.d;
-            Indexer.QueryOptions qo = new Indexer.QueryOptions();
-            qo.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
-            Collection<Document> docs = archive.docsForQuery("\""+answer+"\"", qo);
-            if(docs.size()==0)
-                log.error("Something is not right! Did not find: "+answer);
-            else if(docs.size()==1){
-                log.info("Only one doc with the mention of "+answer);
-                clue.clueStats.timeAnswerScore = 0;
-            }else if(docs.size()>=2){
-                Date fd = ((EmailDocument)docs.iterator().next()).getDate();
-                Date ld = fd;
-                while(docs.iterator().hasNext())
-                    ld = ((EmailDocument) docs.iterator().next()).getDate();
+            if(archive!=null) {
+                //String s = clue.getFullSentenceOriginal();
+                EmailDocument ed = clue.d;
+                Indexer.QueryOptions qo = new Indexer.QueryOptions();
+                qo.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
+                String term = "\"" + answer + "\"";
+                log.info("Searching for: "+term);
+                Collection<Document> docs = archive.docsForQuery(term, qo);
+                if (docs.size() == 0)
+                    log.error("Something is not right! Did not find: " + answer + " in the index!!");
+                else if (docs.size() == 1) {
+                    log.info("Only one doc with the mention of " + answer);
+                    clue.clueStats.timeAnswerScore = 0;
+                } else if (docs.size() >= 2) {
+                    Date fd = ((EmailDocument) docs.iterator().next()).getDate();
+                    Date ld = fd;
+                    Iterator it = docs.iterator();
+                    while (it.hasNext())
+                        ld = ((EmailDocument) it.next()).getDate();
 
-                Calendar fc = Calendar.getInstance(), lc = Calendar.getInstance();
-                fc.setTime(fd); lc.setTime(ld);
+                    Calendar fc = Calendar.getInstance(), lc = Calendar.getInstance();
+                    fc.setTime(fd);
+                    lc.setTime(ld);
 
-                float timeScore = params[0]*docs.size()*(lc.get(Calendar.MONTH)-fc.get(Calendar.MONTH)+12*(lc.get(Calendar.YEAR)-fc.get(Calendar.YEAR)));
-                clue.clueStats.timeAnswerScore = timeScore;
-                score += timeScore;
+                    float timeScore = params[0] * docs.size() * (lc.get(Calendar.MONTH) - fc.get(Calendar.MONTH) + 12 * (lc.get(Calendar.YEAR) - fc.get(Calendar.YEAR)));
+                    clue.clueStats.timeAnswerScore = timeScore;
+                    score += timeScore;
+                }
+
+                //thread score
+                //proportional to number of sent mails in the thread
+                log.info("Looking for docs with thread Id: "+ed.threadID);
+                long st = System.currentTimeMillis();
+                List<Document> threads = archive.docsWithThreadId(ed.threadID);
+                log.info("Done looking for docs with thread Id: "+ed.threadID+" in "+(System.currentTimeMillis()-st));
+                score += params[1] * threads.size();
+                clue.clueStats.noisyThreadScore = params[1] * threads.size();
+            }else{
+                log.error("The archive param supplied to "+EmailDocument.class+" is null!!");
             }
-
-            //thread score, not touching this for now
-            //List<Document> threads = archive.docsWithThreadId(ed.threadID);
-            //In some modes, all the conversations in a thread could be unavailable
-            //in such cases we cannot rely on threads.size(), instead I am hacking around to
-            //look at the full content of the latest message and count the number of '>'
-            //Note: this is still not accurate, since we do not know what happened after the last sent message
             return score;
         }
+    }
+
+    public static void main(String[] args){
+        List<String[]> lists = new ArrayList<>();
+        lists.add(new String[]{"from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name", "can"});
+        lists.add(new String[]{"df","jdfg"});
+        float[] params = new float[]{1.0f,1.0f};
+        Clue clue = new Clue("Is this the address: _________________________________, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks", "Nandanavana Bansuri Music Academy");
+        clue.setFullSentenceOriginal("Is this the address: Nandanavana Bansuri Music Academy, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks");
+        ClueEvaluator eval = new ListEvaluator(params, lists);
+        double score = 0;
+        score = eval.computeScore(score,clue,"yes", null,null,null);
+        System.err.println("Score: "+score);
     }
 }

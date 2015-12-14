@@ -10,8 +10,8 @@
 <%@ page import="edu.stanford.muse.util.DictUtils" %>
 <%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
 <%@ page import="edu.stanford.muse.xword.Clue" %>
-<%@ page import="java.io.File" %>
-<%@ page import="edu.stanford.muse.ner.model.SVMModel" %>
+<%@ page import="edu.stanford.muse.xword.ClueEvaluator" %>
+<%@ page import="com.google.common.collect.Sets" %>
 <%@include file="../getArchive.jspf" %>
 <%@include file="../getNERModel.jspf" %>
 
@@ -87,11 +87,11 @@
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
     <link rel="icon" href="memorystudy/images/stanford-favicon.gif">
     <jsp:include page="../css/css.jsp"/>
-    <script type="text/javascript" src="js/jquery/jquery.js"></script>
+    <script type="text/javascript" src="../js/jquery/jquery.js"></script>
     <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
     <script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>
-    <script type="text/javascript" src="js/statusUpdate.js"></script>
-    <script type="text/javascript" src="js/muse.js"></script>
+    <script type="text/javascript" src="../js/statusUpdate.js"></script>
+    <script type="text/javascript" src="../js/muse.js"></script>
     <script type="text/javascript" src="js/ops.js"></script>
     <title>Entity stats</title>
     <style>
@@ -101,22 +101,133 @@
         .interval {font-color: black; font-weight: bold;}
     </style>
 </head>
-<h2>Length related params</h2>
-<input type="text" id="len1" placeholder="-100.0,-10.0,0" />
-<br>
-<h2>Weight for exclamation and similey</h2>
-<input type="text" id="es1" placeholder="7.0,7.0"/>
+<body>
+    <div style="background: antiquewhite none repeat scroll 0% 0%;">
+    <form action="entities-by-last-month.jsp" method="get" id="params">
+        <h2>Length related params</h2>
+        <input type="text" name="len1" placeholder="-100.0,-10.0,0" />
+        <br>
+        <h2>Weight for exclamation and similey</h2>
+        <input type="text" name="es1" placeholder="7.0,7.0"/>
 
-<h2>Weight for number of taboo words found</h2>
-<input type="text" id="t1" placeholder="-20.0"/>
+        <h2>Weight for number of taboo words found</h2>
+        <input type="text" name="t1" placeholder="-20.0"/>
+
+        <h2>Weight for number of non-specific words found</h2>
+        <input type="text" name="ns1" placeholder="-10.0"/>
+
+        <h2>Weight for number of names found in the clue and boost for when the answer is not a name</h2>
+        <input type="text" name="na1" placeholder="2.0,-20.0"/>
+
+        <h2>Boost for frequency/latest mention and thread length</h2>
+        <input type="text" name="ed1" placeholder="-1.0,5.0"/>
+
+        <h2>Lists and their corresponding weights</h2>
+        <h3>List 1</h3>
+        <input type="text" size="100" name="list1" placeholder="flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school">
+        <input type="text" name="lw1" placeholder="5.0">
+        <h3>List 2</h3>
+        <input type="text" size="100" name="list2" placeholder="from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name">
+        <input type="text" name="lw2" placeholder="10.0">
+    </form>
+    <button type="submit" form="params" value="Submit">Update</button><br>
+    </div>
+    <hr>
 
 <b>Non-person Entity listing by most recent occurrence (for testing only)</b><br/>
+
+  <script>
+      //copied from: http://www.jquerybyexample.net/2012/06/get-url-parameters-using-jquery.html
+      function getURLParameter(sParam){
+        var sPageURL = window.location.search.substring(1);
+        var sURLVariables = sPageURL.split('&');
+        for (var i = 0; i < sURLVariables.length; i++){
+            var sParameterName = sURLVariables[i].split('=');
+            if (sParameterName[0] == sParam) {
+                return sParameterName[1];
+            }
+        }
+      }
+
+      $("#params input").each(function(i){
+       var name = $(this).attr("name");
+       var val = getURLParameter(name);
+       if(typeof(val)=="undefined" || val=="")
+            $(this).val($(this).attr("placeholder"));
+       else {
+           val = decodeURIComponent(val);
+           val = val.replace(/\+/g," ");
+           $(this).val(val);
+       }
+      });
+      //$("form").submit(function(){alert("Submitting form...")});
+      if(window.location.href.indexOf("?")<0)
+        $("form").submit();
+  </script>
+
     <%
+        if(request.getParameter("len1") == null)
+            return;
+        List<ClueEvaluator> evals = new ArrayList<>();
+        float[] params = new float[3];
+        String[] pS = request.getParameter("len1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++)
+            params[i] = Float.parseFloat(pS[i]);
+        evals.add(new ClueEvaluator.LengthEvaluator(params));
+
+        params = new float[2];
+        pS = request.getParameter("es1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++)
+            params[i] = Float.parseFloat(pS[i]);
+        evals.add(new ClueEvaluator.EmotionEvaluator(params));
+
+        params = new float[1];
+        pS = request.getParameter("t1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++)
+            params[i] = Float.parseFloat(pS[i]);
+        evals.add(new ClueEvaluator.DirtEvaluator(params));
+
+        params = new float[1];
+        pS = request.getParameter("t1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++)
+            params[i] = Float.parseFloat(pS[i]);
+        evals.add(new ClueEvaluator.DirtEvaluator(params));
+
+        params = new float[1];
+        pS = request.getParameter("ns1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++)
+            params[i] = Float.parseFloat(pS[i]);
+        evals.add(new ClueEvaluator.SpecificityEvaluator(params));
+
+        params = new float[2];
+        pS = request.getParameter("na1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++)
+            params[i] = Float.parseFloat(pS[i]);
+        evals.add(new ClueEvaluator.NamesEvaluator(params));
+
+        params = new float[2];
+        pS = request.getParameter("ed1").split("[,\\s]+");
+        for(int i=0;i<pS.length;i++) {
+            params[i] = Float.parseFloat(pS[i]);
+            //System.err.println("ed params: "+params[i]);
+        }
+        evals.add(new ClueEvaluator.EmailDocumentEvaluator(params));
+
+        params = new float[2];
+        List<String[]> lists = new ArrayList<>();
+        params[0] = Float.parseFloat(request.getParameter("lw1"));
+        params[1] = Float.parseFloat(request.getParameter("lw2"));
+        lists.add(request.getParameter("list1").split("[\\s,]+"));
+        lists.add(request.getParameter("list2").split("[\\s,]+"));
+
+        JSPHelper.log.info("Request params: list initialisation: "+ Arrays.asList(request.getParameterValues("list1"))+", "+Arrays.asList(request.getParameterValues("list2")));
+        evals.add(new ClueEvaluator.ListEvaluator(params, lists));
+
     try {
         archive.assignThreadIds();
         Lexicon lex = archive.getLexicon("default");
 
-        String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
+        //String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
         out.println ("loading model...");
         out.flush();
 
@@ -289,7 +400,7 @@
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
 
-            ci.clue = cluer.createClue(fullAnswer, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 3));
+            ci.clue = cluer.createClue(fullAnswer, evals, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 3), archive);
             ci.hasCoreTokens = hasCoreTokens;
             clueInfos[interval].add(ci);
          }
@@ -327,3 +438,4 @@
     }
 %>
 </body>
+</html>
