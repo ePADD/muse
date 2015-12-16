@@ -134,14 +134,26 @@ public class ArchiveCluer extends Cluer {
 	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		return createClue(answer, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, null);
-
 	}
-	/** create clue for the given answer.
-    cannot pick clue from sentences that have taboo clues
-    if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
-	 * @throws ParseException 
-	 */
-	public Clue createClue(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+
+    /**
+     * create clue for the given answer. cannot pick clue from sentences that have taboo clues
+     * if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
+     * @throws ParseException
+     */
+    public Clue createClue(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+        Clue[] clues = createClues(answer, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
+        Clue bestClue = null;
+        double bestScore = Double.MIN_VALUE;
+        for(int i=0;i<clues.length;i++)
+            if(clues[i].clueStats.finalScore>bestScore)
+                bestClue = clues[i];
+        return bestClue;
+    }
+
+    /**
+     * returns clues formed from alternate sentences from the best context*/
+	public Clue[] createClues(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -187,7 +199,10 @@ public class ArchiveCluer extends Cluer {
 		// now find the clue with the best score
 		Clue bestClue = null; 
 		Document bestClueDoc = null;
-		float bestScore = -100.0f;
+        //set of clues formed around best clue, but different sentence choice for clue sentence
+        List<Clue> bestClueSet = new ArrayList<>();
+
+        float bestScore = -100.0f;
 		boolean useFirstLetterClue = (archive.getAllDocs().size() == 1); // if only 1 doc, must be a dummy, use first letter as clue instead
 
 		// we want a good pool of docs to select clues from. at the same time, we don't want to look at ALL docs with the term because the
@@ -253,6 +268,7 @@ public class ArchiveCluer extends Cluer {
 				if (sentences.size() < numSentences)
 					continue;
 
+                List<Clue> clueSet = new ArrayList<>();
 				for (int i = 0; i < sentences.size(); i++)
 				{
 					if (i < numSentences-1) // e.g. if nSentences = 3, we can start building candidate clues at i = 2
@@ -368,11 +384,14 @@ public class ArchiveCluer extends Cluer {
 					//	JSPHelper.log.info ("CLUELOG-1 " + p1.getFirst() + "answer,clue");
 					//	JSPHelper.log.info ("CLUELOG-2 " + p1.getSecond() + "," + answer + "," + clue.clue.replaceAll(",", " "));
 //					}
-				}
+				    clueSet.add(clue);
+                }
 				
 				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
-				if (bestClueDoc == ed)
-					bestClue.clueStats.sentencesInMessage = sentences.size();
+				if (bestClueDoc == ed) {
+                    bestClue.clueStats.sentencesInMessage = sentences.size();
+                    bestClueSet = clueSet;
+                }
 			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
 			
 			docCount++;
@@ -416,7 +435,7 @@ public class ArchiveCluer extends Cluer {
 				 bestClue.clueStats.histogramOfAnswerOccurrence = histogram;
 			}
 		}
-		return bestClue;
+		return bestClueSet.toArray(new Clue[bestClueSet.size()]);
 	}
 
 	/** this should be called when a word is commited into the grid. we will invalidate clue $ if this clue sentence has been mapped to another word */

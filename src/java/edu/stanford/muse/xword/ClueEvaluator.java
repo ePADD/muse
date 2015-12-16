@@ -13,6 +13,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by vihari on 11/12/15.
@@ -78,26 +80,30 @@ public class ClueEvaluator {
 
     public static class EmotionEvaluator extends ClueEvaluator{
         float[] params;
-        /**Required param to weight the number of exclamations and smileys respectively in the sentence
-         * default 7.0f, 7.0f*/
+        /**Required param to weight the number of exclamations, question marks and smileys respectively in the sentence
+         * default 5.0, 7.0, 7.0*/
         public EmotionEvaluator(float[] params){
             this();
-            if(params==null || params.length!=2){
-                log.error("Wrong initialisation of params in "+EmotionEvaluator.class+"!! Required 2 params");
+            if(params==null || params.length!=3){
+                log.error("Wrong initialisation of params in "+EmotionEvaluator.class+"!! Required 3 params");
             }else {
                 this.params = params;
             }
         }
         public EmotionEvaluator(){
-            this.params = new float[]{7.0f,7.0f};
+            this.params = new float[]{5.0f, 7.0f,7.0f};
         }
 
         @Override
         public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
+            //TODO: considers two exclamations and question marks as the same, is that OK?
             String s = clue.getFullSentenceOriginal().toLowerCase();
             // prefer exclamations, highly memorable
             float exclamationScore = (s.indexOf("!") >= 0) ? params[0] : 0.0f;
             clue.clueStats.exclamationScore = exclamationScore;
+
+            float questionScore = (s.indexOf("?") >= 0) ? params[1] : 0.0f;
+            clue.clueStats.questionMarkScore = questionScore;
 
             // good if it has emoticons
             int nSmileys = 0;
@@ -110,7 +116,7 @@ public class ClueEvaluator {
             clue.clueStats.nSmileys = nSmileys;
             clue.clueStats.smileyScore = smileyScore;
             //the original code for somereason adds one to the score, just retaining that here.
-            return score + 1.0f + exclamationScore + smileyScore;
+            return score + 1.0f + exclamationScore + questionScore + smileyScore;
         }
     }
 
@@ -262,6 +268,8 @@ public class ClueEvaluator {
          *      <li>"flight", "travel", "city", "town", "visit", "arrive", "arriving", "land", "landing", "reach", "reaching", "train", "road", "bus", "college", "theatre", "restaurant", "book", "film", "movie", "play", "song", "writer", "artist", "author", "singer", "actor", "school"</li>
          *     </ul>
          * The default params are: 10.0 and 5.0 respectively
+         * Though this class was implemented hoping that every list would be treated the same, the list of prepositions is treated differently.
+         * A list is checked for prepositions if it contains "from" and "to"
          */
         public ListEvaluator(float[] params, List<String[]> lists) {
             this();
@@ -288,20 +296,47 @@ public class ClueEvaluator {
             this.params = new float[]{10.0f, 5.0f};
         }
 
+        /**This is not a proper test, but sort of a hackaround*/
+        public static boolean isPrep(Set<String> list){
+            if(list.contains("from") && list.contains("to"))
+                return true;
+            return false;
+        }
+
+        public static String[] getNeighbours(String next, String tgtWord){
+            String a = tgtWord.toLowerCase();
+            String sent = next.toLowerCase();
+            int idx = sent.indexOf(a);
+            String prevToken = "", nxtToken = "";
+            String prevS = sent.substring(0,idx);
+            String nextS = sent.substring(idx+a.length());
+            Matcher pm = Pattern.compile("\\W+([a-z0-9]+)\\W+$").matcher(prevS);
+            Matcher nm = Pattern.compile("^\\W+([a-z0-9]+)\\W+").matcher(nextS);
+            while(pm.find())
+                prevToken = pm.group(1);
+
+            while(nm.find())
+                nxtToken = nm.group(1);
+
+            return new String[]{prevToken, nxtToken};
+        }
+
         @Override
         public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             String[] tokens = s.split("[\\s\\n]+");
             float boost = 0;
-            for(int i=0;i<params.length;i++){
+            for(int i=0;i<params.length;i++) {
                 float b = 0;
-                for(String tok: tokens) {
-                    tok = tok.replaceAll("^\\W+|\\W+$","");
+                if (isPrep(lists.get(i)))
+                    tokens = getNeighbours(s, answer);
+                for (String tok : tokens) {
+                    tok = tok.replaceAll("^\\W+|\\W+$", "");
                     //log.info("New Lst:"+i+" contains "+tok+"? - "+lists.get(i).contains(tok)+", "+lists.get(i));
                     b += lists.get(i).contains(tok) ? params[i] : 0.0f;
                 }
                 boost += b;
-                if(i == 1) clue.clueStats.prepositionScore = b;
+                if (i == 1) clue.clueStats.prepositionScore = b;
                 else clue.clueStats.sigWordScore = b;
             }
             return score + boost;
@@ -385,11 +420,12 @@ public class ClueEvaluator {
         lists.add(new String[]{"from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name", "can"});
         lists.add(new String[]{"df","jdfg"});
         float[] params = new float[]{1.0f,1.0f};
-        Clue clue = new Clue("Is this the address: _________________________________, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks", "Nandanavana Bansuri Music Academy");
+        String answer =  "Nandanavana Bansuri Music Academy";
+        Clue clue = new Clue("Is this the address: _________________________________, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks", answer);
         clue.setFullSentenceOriginal("Is this the address: Nandanavana Bansuri Music Academy, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks");
         ClueEvaluator eval = new ListEvaluator(params, lists);
         double score = 0;
-        score = eval.computeScore(score,clue,"yes", null,null,null);
-        System.err.println("Score: "+score);
+        //score = eval.computeScore(score,clue,"yes", null,null,null);
+        //System.err.println("Score: "+score);
     }
 }

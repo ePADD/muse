@@ -12,6 +12,7 @@
 <%@ page import="edu.stanford.muse.xword.Clue" %>
 <%@ page import="edu.stanford.muse.xword.ClueEvaluator" %>
 <%@ page import="com.google.common.collect.Sets" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@include file="../getArchive.jspf" %>
 <%@include file="../getNERModel.jspf" %>
 
@@ -19,15 +20,20 @@
 
     /* small util class -- like clue but allows answers whose clue is null */
     class ClueInfo implements Comparable<ClueInfo> {
-        Clue clue;
+        //clues corrsponding to different choice of sentences in the context
+        Clue[] clues;
         String link, displayEntity;
         int nMessages, nThreads;
         Date lastSeenDate;
         boolean hasCoreTokens;
 
         public String toHTMLString() {
-            return "<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td><td>" + (clue != null ? clue.clueStats.finalScore : "-") + "</td></tr>"
-            + "<tr><td class=\"clue\" colspan=\"6\">" + (clue != null ? (clue.clue + "<br/><br/><div class=\"stats\"> stats: " + Util.fieldsToString(clue.clueStats, false)) : "No clue") + "</div><br/><br/></td></tr>";
+            String str = "";
+            for(Clue clue: clues){
+                str += "<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td><td>" + (clue != null ? clue.clueStats.finalScore : "-") + "</td></tr>"
+                        + "<tr><td class=\"clue\" colspan=\"6\">" + (clue != null ? (clue.clue + "<br/><br/><div class=\"stats\"> stats: " + Util.fieldsToString(clue.clueStats, false)) : "No clue") + "</div><br/><br/></td></tr><br>";
+            }
+            return str;
         }
 
         public int compareTo(ClueInfo c2) {
@@ -37,16 +43,23 @@
             if (c2.hasCoreTokens && !this.hasCoreTokens)
                 return -1;
 
+            if(this.clues == null || c2.clues == null)
+                return (c2.clues==c2.clues)?1:0;
+            if(this.clues.length == 0 || c2.clues.length == 0)
+                return (c2.clues.length==this.clues.length)?1:0;
+
+            //decide based on their first clues
+            Clue clue = this.clues[0], cclue = c2.clues[0];
             // all answers with clues should come towards the end
-            if (this.clue == null && c2.clue != null)
+            if (clue == null && cclue.clue != null)
                 return 1;
-            if (this.clue != null && c2.clue == null)
+            if (clue != null && cclue == null)
                 return -1;
-            if (this.clue == null && c2.clue == null)
+            if (clue == null && cclue.clue == null)
                 return displayEntity.compareTo(c2.displayEntity); // just some order, as long as it is consistent
 
-            if (this.clue != null && c2.clue != null)
-                return (this.clue.clueStats.finalScore > c2.clue.clueStats.finalScore) ? -1 : (c2.clue.clueStats.finalScore > this.clue.clueStats.finalScore ? 1 : 0);
+            if (clue != null && cclue.clue != null)
+                return (clue.clueStats.finalScore > cclue.clueStats.finalScore) ? -1 : (cclue.clueStats.finalScore > clue.clueStats.finalScore ? 1 : 0);
             return 0;
         }
     }
@@ -107,8 +120,8 @@
         <h2>Length related params</h2>
         <input type="text" name="len1" placeholder="-100.0,-10.0,0" />
         <br>
-        <h2>Weight for exclamation and similey</h2>
-        <input type="text" name="es1" placeholder="7.0,7.0"/>
+        <h2>Weight for exclamation, question marks and smileys</h2>
+        <input type="text" name="es1" placeholder="5.0,7.0,7.0"/>
 
         <h2>Weight for number of taboo words found</h2>
         <input type="text" name="t1" placeholder="-20.0"/>
@@ -175,7 +188,7 @@
             params[i] = Float.parseFloat(pS[i]);
         evals.add(new ClueEvaluator.LengthEvaluator(params));
 
-        params = new float[2];
+        params = new float[3];
         pS = request.getParameter("es1").split("[,\\s]+");
         for(int i=0;i<pS.length;i++)
             params[i] = Float.parseFloat(pS[i]);
@@ -224,6 +237,11 @@
         evals.add(new ClueEvaluator.ListEvaluator(params, lists));
 
     try {
+        //the only types we are interested in
+        Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
+                FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK, FeatureDictionary.HOTEL,FeatureDictionary.THEATRE,
+                FeatureDictionary.LIBRARY, FeatureDictionary.LAWFIRM, FeatureDictionary.GOVAGENCY};
+        double CUTOFF = 0.001;
         archive.assignThreadIds();
         Lexicon lex = archive.getLexicon("default");
 
@@ -235,7 +253,7 @@
 
         boolean originalOnly = true;
         List<Document> docs = archive.getAllDocs();
-        Map<String, Date> entityToLastDate = new LinkedHashMap<String, Date>();
+        Map<String, Date> entityToLastDate = new LinkedHashMap<>();
         Multimap<String, EmailDocument> entityToMessages = LinkedHashMultimap.create();
         Multimap<String, Long> entityToThreads = LinkedHashMultimap.create();
         Multimap<String, String> ceToDisplayEntity = LinkedHashMultimap.create();
@@ -246,7 +264,7 @@
         Collections.sort(docs);
 
         Date earliestDate = null, latestDate = null;
-
+        Set<String> allEntities = new HashSet<>();
         for (Document doc : docs) {
             EmailDocument ed = (EmailDocument) doc;
             if (earliestDate == null || ed.date.before(earliestDate))
@@ -254,15 +272,23 @@
             if (latestDate == null || ed.date.after(latestDate))
                 latestDate = ed.date;
 
-            List<String> entities = new ArrayList<String>(), personEntities = new ArrayList<String>();
-            if (Util.nullOrEmpty(request.getParameter("locations")))
-                entities.addAll(archive.getEntitiesInDoc(doc, NER.EORG, true, originalOnly));
-            if (Util.nullOrEmpty(request.getParameter("orgs")))
-                entities.addAll(archive.getEntitiesInDoc(doc, NER.ELOC, true, originalOnly));
+            List<String> entities = new ArrayList<String>();
+            Map<Short,Map<String,Double>> es = NER.getEntities(archive.getDoc(doc),true);
+            for(Short t: itypes){
+                Map<String,Double> tes = es.get(t);
+                for(String str: tes.keySet())
+                    if(tes.get(str)>CUTOFF)
+                        entities.add(str);
+            }
+            allEntities.addAll(entities);
+//            if (Util.nullOrEmpty(request.getParameter("locations")))
+//                entities.addAll(archive.getEntitiesInDoc(doc, NER.EORG, true, originalOnly));
+//            if (Util.nullOrEmpty(request.getParameter("orgs")))
+//                entities.addAll(archive.getEntitiesInDoc(doc, NER.ELOC, true, originalOnly));
 
-            personEntities.addAll(archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly));
+            //personEntities.addAll(archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly));
 
-            entities.removeAll(personEntities);
+            //entities.removeAll(personEntities);
 
             // get entities
             for (String e : entities) {
@@ -286,6 +312,7 @@
             if ((++di)%1000==0)
                 out.println(di + " of " + docs.size() + " messages processed...<br/>");
         }
+        out.println("Considered #"+allEntities.size()+" unique entities in #"+docs.size()+" docs");
 
         JSPHelper.log.info ("earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate));
         JSPHelper.log.info ("latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
@@ -400,7 +427,8 @@
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
 
-            ci.clue = cluer.createClue(fullAnswer, evals, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 3), archive);
+            //HTMLUtils.getIntParam(request, "sentences", 2)
+            ci.clues = cluer.createClues(fullAnswer, evals, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, 2, archive);
             ci.hasCoreTokens = hasCoreTokens;
             clueInfos[interval].add(ci);
          }
@@ -414,7 +442,7 @@
                  for (ClueInfo ci: clueInfos[i]) {
                      if (request.getParameter("hideCoreTokens") != null && ci.hasCoreTokens)
                         continue;
-                     if (request.getParameter("hideNoClue") != null && ci.clue == null)
+                     if (request.getParameter("hideNoClue") != null && ci.clues == null || ci.clues.length==0)
                         continue;
                      out.println (ci.toHTMLString());
                  }

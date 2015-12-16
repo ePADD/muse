@@ -68,6 +68,7 @@ public class Clue implements Serializable {
         float sigWordScore;
         float noisyThreadScore;
         float timeAnswerScore;
+        float questionMarkScore;
 
         @Override
         public String toString(){
