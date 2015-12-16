@@ -105,6 +105,6 @@ public class DBpediaTypeParser {
 //        Map<String,String> ontology = parseOntology("dbpedia_2015-04.nt.bz2");
 //        for(String str: ontology.keySet())
 //            System.err.println(str+" : "+ontology.get(str));
-        parse("instance_types_2015-04.en.nt.bz2", "dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-ner");
+        parse("instance_types_2015-04.en.nt.bz2", "dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources");
     }
 }
