@@ -28,9 +28,9 @@ public class ArchiveCluer extends Cluer {
 	private Archive archive;
 	private Set<String> filteredIds;
 	private Map<String, Clue> wordToClueCache = new LinkedHashMap<String, Clue>();
-	private static final int MIN_CLUE_LENGTH = 25; // absolute min. clue length
-	private static final int MIN_PREFERRED_CLUE_LENGTH = 80;
-	private static final int MAX_PREFERRED_CLUE_LENGTH = 140;
+	protected static final int MIN_CLUE_LENGTH = 25; // absolute min. clue length
+	protected static final int MIN_PREFERRED_CLUE_LENGTH = 80;
+	protected static final int MAX_PREFERRED_CLUE_LENGTH = 140;
 
 	public final static Set<String> goodSentiments = new LinkedHashSet<String>();
 	static {
@@ -56,7 +56,7 @@ public class ArchiveCluer extends Cluer {
 	public Map<String, Collection<Document>> sentimentToDocs = new LinkedHashMap<>();
 
 	// https://stacks.stanford.edu/file/druid:fm335ct1355/Dissertation_Schnoebelen_final_8-29-12-augmented.pdf page ~199
-	private static String[] smileys = new String[]{":D", ":-D", ":)", "=D", "=]", "=)", "(:", ":')", ":]", ":-)", ";)", ";D", ";-)", ";P", "=P", ":P", ":-P", "=(", ":(", ":-(", ":'(", ":O"}; // don't have "XD".. could be noisy?. ideally should make sure they are not followed by a letter
+	protected static String[] smileys = new String[]{":D", ":-D", ":)", "=D", "=]", "=)", "(:", ":')", ":]", ":-)", ";)", ";D", ";-)", ";P", "=P", ":P", ":-P", "=(", ":(", ":-(", ":'(", ":O"}; // don't have "XD".. could be noisy?. ideally should make sure they are not followed by a letter
 
 	public ArchiveCluer(Crossword c, Archive archive, Set<String> filteredIds, Lexicon lex)
 	{
@@ -133,15 +133,27 @@ public class ArchiveCluer extends Cluer {
 
 	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
-		return createClue(answer, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1);
-
+		return createClue(answer, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, null);
 	}
-	/** create clue for the given answer.
-    cannot pick clue from sentences that have taboo clues
-    if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
-	 * @throws ParseException 
-	 */
-	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+
+    /**
+     * create clue for the given answer. cannot pick clue from sentences that have taboo clues
+     * if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
+     * @throws ParseException
+     */
+    public Clue createClue(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+        Clue[] clues = createClues(answer, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
+        Clue bestClue = null;
+        double bestScore = Double.MIN_VALUE;
+        for(int i=0;i<clues.length;i++)
+            if(clues[i].clueStats.finalScore>bestScore)
+                bestClue = clues[i];
+        return bestClue;
+    }
+
+    /**
+     * returns clues formed from alternate sentences from the best context*/
+	public Clue[] createClues(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -187,7 +199,10 @@ public class ArchiveCluer extends Cluer {
 		// now find the clue with the best score
 		Clue bestClue = null; 
 		Document bestClueDoc = null;
-		float bestScore = -100.0f;
+        //set of clues formed around best clue, but different sentence choice for clue sentence
+        List<Clue> bestClueSet = new ArrayList<>();
+
+        float bestScore = -100.0f;
 		boolean useFirstLetterClue = (archive.getAllDocs().size() == 1); // if only 1 doc, must be a dummy, use first letter as clue instead
 
 		// we want a good pool of docs to select clues from. at the same time, we don't want to look at ALL docs with the term because the
@@ -253,6 +268,7 @@ public class ArchiveCluer extends Cluer {
 				if (sentences.size() < numSentences)
 					continue;
 
+                List<Clue> clueSet = new ArrayList<>();
 				for (int i = 0; i < sentences.size(); i++)
 				{
 					if (i < numSentences-1) // e.g. if nSentences = 3, we can start building candidate clues at i = 2
@@ -310,7 +326,7 @@ public class ArchiveCluer extends Cluer {
 					Clue clue = new Clue(blankedSentence, originalSentence, unblankedLowerCaseSentence, blankedHint, url, ellipsisizedMessage, ed);
 					
 					Set<String> tabooNamesSet = archive.addressBook.getOwnNamesSet(); 
-					float clueScore = scoreClue(clue, answer, tabooNamesSet, nerModel);
+					float clueScore = scoreClue(clue, answer,evals, tabooNamesSet, nerModel, archive);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
@@ -368,11 +384,14 @@ public class ArchiveCluer extends Cluer {
 					//	JSPHelper.log.info ("CLUELOG-1 " + p1.getFirst() + "answer,clue");
 					//	JSPHelper.log.info ("CLUELOG-2 " + p1.getSecond() + "," + answer + "," + clue.clue.replaceAll(",", " "));
 //					}
-				}
+				    clueSet.add(clue);
+                }
 				
 				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
-				if (bestClueDoc == ed)
-					bestClue.clueStats.sentencesInMessage = sentences.size();
+				if (bestClueDoc == ed) {
+                    bestClue.clueStats.sentencesInMessage = sentences.size();
+                    bestClueSet = clueSet;
+                }
 			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
 			
 			docCount++;
@@ -416,7 +435,7 @@ public class ArchiveCluer extends Cluer {
 				 bestClue.clueStats.histogramOfAnswerOccurrence = histogram;
 			}
 		}
-		return bestClue;
+		return bestClueSet.toArray(new Clue[bestClueSet.size()]);
 	}
 
 	/** this should be called when a word is commited into the grid. we will invalidate clue $ if this clue sentence has been mapped to another word */
@@ -435,38 +454,18 @@ public class ArchiveCluer extends Cluer {
 	
 	// returns a score for the given string as a clue. this does not take into account the doc s is a part of. 
 	// note s is not lower-cased
-	public static float scoreClue(Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) throws ClassCastException, IOException, ClassNotFoundException
+	public static float scoreClue(Clue clue, String answer, List<ClueEvaluator> evals, Set<String> tabooNames, NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
 	{
-		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
-		String s = clue.getFullSentenceOriginal();
-		// first look for signs of bad clues and return a low score
-		String sOrig = s;
-		s = s.toLowerCase();
+//		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
+//		String s = clue.getFullSentenceOriginal();
+//		// first look for signs of bad clues and return a low score
+//		String sOrig = s;
+//		s = s.toLowerCase();
 
 		// other possible things to factor in, in the future... 
 		// does it start with a capital letter?
 		// does it have number tokens in it?
-		
-		// prefer exclamations, highly memorable
-		float exclamationScore = (s.indexOf("!") >= 0) ? 7.0f : 0.0f;
 
-		// good if it has emoticons
-		int nSmileys = 0;
-		for (String smiley: smileys)
-			if (s.indexOf(smiley) >= 0) {
-				nSmileys++;
-			}
-		float smileyScore = 7.0f * nSmileys;
-		
-		// clue gets points the closer it is to the preferred clue length
-		// lengthBoost is really a penalty (its -ve)
-		float lengthBoost = 0.0f;
-		if (s.length() < MIN_PREFERRED_CLUE_LENGTH)
-			lengthBoost = -100.0f * Math.abs((MIN_PREFERRED_CLUE_LENGTH - (float) s.length())/MIN_PREFERRED_CLUE_LENGTH);
-		else if (s.length() > MAX_PREFERRED_CLUE_LENGTH)
-			lengthBoost = -10.0f * Math.abs( (((float) s.length()) - MAX_PREFERRED_CLUE_LENGTH)/MAX_PREFERRED_CLUE_LENGTH );
-		else
-			lengthBoost = 0.0f;
 
 		// these are things that make the clue less interesting, but we'll use them if we can't find anything else!
 		// see if the sentence mainly consists of the word
@@ -476,61 +475,16 @@ public class ArchiveCluer extends Cluer {
 		//			score = -10.0f;
 		// how many names does it have? more names is good.
 
-		List<String> names = new ArrayList<>();
-		if (nerModel != null) {
-			Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(sOrig);
-			Map<Short, List<String>> map = mapAndOffsets.first;
-            //TODO: remove these logs
-            log.info("Found: "+mapAndOffsets.getSecond().size()+" names in sentences: "+sOrig);
-			for (short x: map.keySet()) {
-                log.info(x+":"+map.get(x));
-                names.addAll(map.get(x));
-            }
-		}
-
-//		List<Pair<String, Float>> names = edu.stanford.muse.ner.NER.namesFromText(sOrig); // do NER on the original, not after lower-casing
-		float namesScore = 2 * names.size();
-
-		// compute total score, but penalize for the following
-		float score = 1.0f + namesScore + exclamationScore + smileyScore + lengthBoost;
-		if (s.startsWith("this") || s.startsWith("that") || s.startsWith("however")) {
-			clue.clueStats.containsNonSpecificWords = true;
-			score -= 10.0f; // non-specific, depends on context
-		}
-
-		boolean found = false;
 //		for (Pair<String, Float> namePair : names){ //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
 //			String name = (Util.canonicalizeSpaces(namePair.getFirst())).toLowerCase();
-		for (String name : names) { //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
-			if (name.equals(canonicalizedanswer)) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			score -= 20.0f;
-			clue.clueStats.nameNotInClue = true;
-		}		
-		for (String badName: tabooNames) { //drop own name, as well as other terms that may be overused in the xword/memorystudy.
-			if (s.contains(badName)) {
-				score -= 20.0f;
-				clue.clueStats.containsBadName = true;
-				break;
-			}
-		}
-		
-		clue.clueStats.namesInClue = names.size();
-		clue.clueStats.nSmileys = nSmileys;
-		clue.clueStats.clueLength = clue.getFullSentenceOriginal().length();
-		
-		clue.clueStats.namesScore = namesScore;
-		clue.clueStats.exclamationScore = exclamationScore;
-		clue.clueStats.smileyScore = smileyScore;
-		clue.clueStats.lengthBoost = lengthBoost;
-		
-		//	if (log.isDebugEnabled())
-		log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
-		return score;
+
+		double score = 0;
+        for(ClueEvaluator eval: evals)
+            score = eval.computeScore(score, clue,answer, tabooNames,nerModel, archive);
+
+        //log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
+		log.info("Score: "+score+" "+clue.clueStats);
+        return (float)score;
 	}
 
 	/** checks if sentence is ok as clue. returns true if yes, false otherwise */

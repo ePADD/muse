@@ -407,7 +407,13 @@ public class JSPHelper {
             NER ner = new NER(archive, nerModel);
             session.setAttribute("statusProvider", ner);
             ner.recongniseArchive();
+            archive.processingMetadata.entityCounts = ner.stats.counts;
+			log.info(ner.stats);
         }
+        archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+        log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+
+//
 //		try {
 //			//train an epadd ner ; recognise the entities and dd it to the index
 //			NER ner = new NER(archive);
@@ -419,10 +425,7 @@ public class JSPHelper {
 //                ner.recongniseArchive(false);
 //            }else
 //                ner.recongniseArchive(true);
-//			archive.processingMetadata.entityCounts = ner.stats.counts;
-//			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
-//			log.info(ner.stats);
-//			log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+
 //		}
 //		//trying to be extra defensive during indexing.
 //		catch (Exception e) {

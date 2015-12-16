@@ -1532,15 +1532,26 @@ public class Archive implements Serializable {
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             List<Document> docs = archive.getAllDocs();
             int i=0;
+            archive.assignThreadIds();
             for(Document doc: docs) {
-                org.apache.lucene.document.Document ld = archive.getDoc(doc);
-                //Pair<StringBuilder, Boolean> p = archive.getHTMLForContents(doc, null, docId, false, null, null, null, false, false, true);
-                //System.err.println("<link rel='stylesheet' href='epadd.css'>" + p.first);
-                //System.err.println(ld);
-                System.err.println(ld.getBinaryValue(NER.NAMES_OFFSETS)+", "+NER.NAMES_OFFSETS);
-                System.err.println("Offsets: " + archive.getNamesOffsets(ld).size());
-                if(i++>10)
-                break;
+                EmailDocument ed = (EmailDocument)doc;
+                List<Document> threads = archive.docsWithThreadId(ed.threadID);
+                if(threads.size()>0){
+                    int numSent = 0;
+                    for(Document d: threads){
+                        EmailDocument thread = (EmailDocument)d;
+                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
+                        if(sent>0)
+                            numSent++;
+                    }
+                    if(threads.size()!=numSent || threads.size()>2){
+                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
+                        break;
+                    }
+                    if(i%100 == 0)
+                        System.err.println("Scanned: "+i+" docs");
+                }
+                i++;
             }
         } catch (Exception e) {
             e.printStackTrace();

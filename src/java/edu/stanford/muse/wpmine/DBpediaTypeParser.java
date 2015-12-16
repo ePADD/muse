@@ -112,6 +112,6 @@ public class DBpediaTypeParser {
 //        for(String str: ontology.keySet())
 //            System.err.println(str+" : "+ontology.get(str));
         String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
-        parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-ner");
+        parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources"+File.separator);
     }
 }

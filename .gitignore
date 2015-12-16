@@ -78,6 +78,6 @@ Thumbs.db
 /wiki
 /indexes
 /.idea
-./WebContent/WEB-INF/classes/dict.words.full
-./WebContent/WEB-INF/classes/instance_types_2015-04.en.txt.bz2
-./WebContent/WEB-INF/classes/models
+/WebContent/WEB-INF/classes/dict.words.full
+/WebContent/WEB-INF/classes/instance_types_2015-04.en.txt.bz2
+/WebContent/WEB-INF/classes/models

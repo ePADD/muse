@@ -34,7 +34,7 @@ public class SVMModel implements NERModel, Serializable {
         models = new LinkedHashMap<>();
     }
 
-    public Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> find(String content) {
+    public Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> find(String content) {
         //check if the model is initialised
 		if (fdw == null) {
 			try {
@@ -46,7 +46,7 @@ public class SVMModel implements NERModel, Serializable {
 
         List<Triple<String, Integer, Integer>> names = new ArrayList<Triple<String, Integer, Integer>>();
 
-        Map<Short, List<String>> map = new LinkedHashMap<Short, List<String>>();
+        Map<Short, Map<String,Double>> map = new LinkedHashMap<>();
         for (Short type : models.keySet()) {
             List<String> entities = new ArrayList<String>();
 
@@ -126,9 +126,12 @@ public class SVMModel implements NERModel, Serializable {
 					}
 				}
             }
-            map.put(type, entities);
+            Map<String,Double> ews = new LinkedHashMap<>();
+            for(String e: entities)
+                ews.put(e, 1.0);
+            map.put(type, ews);
         }
-        return new Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>>(map, names);
+        return new Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>>(map, names);
     }
 
     public static SVMModel loadModel(File modelFile) throws IOException{
