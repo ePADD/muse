@@ -17,7 +17,7 @@ public class DBpediaTypeParser {
 
     public static Map<String,String> parseOntology(String ontologyFile) {
         try {
-            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(DBpediaTypeParser.class.getClassLoader().getResourceAsStream(ontologyFile)), "UTF-8"));
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(ontologyFile)), "UTF-8"));
             //node -> Parent
             Map<String,String> tree = new LinkedHashMap<>();
             String line;
@@ -65,7 +65,7 @@ public class DBpediaTypeParser {
             Map<String,String> ontology = parseOntology(typeOntologyFile);
             if(ontology==null)
                 return;
-            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(DBpediaTypeParser.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(typesFile), true), "UTF-8"));
             String line;
             int titleS = "<http://dbpedia.org/resource/".length();
             int typeS = "<http://dbpedia.org/ontology/".length();
@@ -76,8 +76,12 @@ public class DBpediaTypeParser {
                     continue;
                 String title = fields[0].substring(titleS,fields[0].length()-1);
                 String type = fields[2].substring(typeS, fields[2].length()-1);
-                if(ontology.get(type) == null)
-                    System.err.println("NULL for type: "+type+" -- "+line);
+                if(ontology.get(type) == null) {
+                    //when processing 2014 instance file with DBpedia owl file of 2015, these types cannot be resolved.
+                    if(!(type.startsWith("Wikidata") || type.equals("Comics")))
+                        System.err.println("NULL for type: " + type + " -- " + line);
+                    continue;
+                }
                 //sometimes, the same title has multiple entries for type, considering the first one is the right one based on observation on a small sample set
                 if(!dbpedia.containsKey(title))
                     dbpedia.put(title, ontology.get(type));
@@ -85,7 +89,9 @@ public class DBpediaTypeParser {
                     System.err.println("Done: " + lnr.getLineNumber());
             }
             lnr.close();
-            String name = typesFile.split("\\.")[0];
+            String[] toks = typesFile.split("\\/");
+            String fn = toks[toks.length-1];
+            String name = fn.split("\\.")[0];
             OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(outPath + File.separator + name+".en.txt.bz2"))));
             int numRecords = 0;
             for(String str: dbpedia.keySet()) {
@@ -105,6 +111,7 @@ public class DBpediaTypeParser {
 //        Map<String,String> ontology = parseOntology("dbpedia_2015-04.nt.bz2");
 //        for(String str: ontology.keySet())
 //            System.err.println(str+" : "+ontology.get(str));
-        parse("instance_types_2015-04.en.nt.bz2", "dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-ner");
+        String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
+        parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources"+File.separator);
     }
 }

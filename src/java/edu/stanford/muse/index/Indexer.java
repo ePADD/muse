@@ -1084,8 +1084,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		try {
 			iwriter.updateDocument(new Term("docId", doc.get("docId")), doc);
 		} catch (Exception e) {
-			e.printStackTrace();
-			Util.print_exception("Exception while updating document: " + doc, e, log);
+			//e.printStackTrace();
+			Util.print_exception("Exception while updating document: " + doc.get("docId"), e, log);
 		}
 	}
 

@@ -64,20 +64,38 @@ public class NER implements StatusProvider {
 		}
 
 		//a map of entity-type key and value list of entities
-		public void update(Map<Short, List<String>> map) {
-			for (Short type : map.keySet()) {
+		public void update(Map<Short, Map<String,Double>> allTypes) {
+            Map<Short, List<String>> mergedTypes = SequenceModel.mergeTypes(allTypes);
+			for (Short type : allTypes.keySet()) {
+                //dont add type stats twice
+                if(mergedTypes.containsKey(type))
+                    continue;
 				if (!rcounts.containsKey(type))
 					rcounts.put(type, 0);
-				rcounts.put(type, rcounts.get(type) + map.get(type).size());
+				rcounts.put(type, rcounts.get(type) + allTypes.get(type).size());
 
 				if (!all.containsKey(type))
 					all.put(type, new HashSet<String>());
-				if (map.get(type) != null)
-					for (String str : map.get(type))
+				if (allTypes.get(type) != null)
+					for (String str : allTypes.get(type).keySet())
 						all.get(type).add(str);
 
 				counts.put(type, all.get(type).size());
 			}
+
+            for (Short type : mergedTypes.keySet()) {
+                if (!rcounts.containsKey(type))
+                    rcounts.put(type, 0);
+                rcounts.put(type, rcounts.get(type) + mergedTypes.get(type).size());
+
+                if (!all.containsKey(type))
+                    all.put(type, new HashSet<String>());
+                if (mergedTypes.get(type) != null)
+                    for (String str : mergedTypes.get(type))
+                        all.get(type).add(str);
+
+                counts.put(type, all.get(type).size());
+            }
 		}
 
 		@Override
@@ -332,8 +350,8 @@ public class NER implements StatusProvider {
 
 			Map<Short, List<String>> map = SequenceModel.mergeTypes(mapAndOffsets.first);
             Map<Short, List<String>> mapTitle = SequenceModel.mergeTypes(mapAndOffsetsTitle.first);
-			stats.update(map);
-            stats.update(mapTitle);
+			stats.update(mapAndOffsets.first);
+            stats.update(mapAndOffsetsTitle.first);
 			updateTime += System.currentTimeMillis() - st;
 			st = System.currentTimeMillis();
 
@@ -506,33 +524,33 @@ public class NER implements StatusProvider {
 		return cancelled || statusProvider.isCancelled();
 	}
 
-	public static void main1(String[] args) {
-		try {
-			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            NER ner = new NER(archive, null);
-            System.err.println("Loading model...");
-            long start = System.currentTimeMillis();
-            NERModel model = ner.trainModel(false);
-            System.err.println("Trained model in: " + (System.currentTimeMillis() - start));
-            System.err.println("Done loading model");
-            String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
-            String[] locs = new String[]{"Florida", "Plantation"};
-            String[] orgs = new String[]{"Broward Republican Executive Committee", "National Education Association"};
-            String text = "First I would like to tell you who I am. I am a lifelong Republican and have served on the Broward Republican Executive Committee since 1991. I have followed education issues in Florida since I moved here in 1973. All four of my children went to public schools here in Plantation. I continued to study education issues when I worked for Senator Jim Scott for six years, and more recently as I worked for Rep. Bill Andrews for the past eight years.\n" +
-                    "On the amendment, I would like to join any effort to get it repealed. Second, if the amendment is going to be implemented, I believe that decisions about how money is spent should be taken out of the hands of the school boards. I know the trend has been to provide more local control, however, there has been little or no accountability for school boards that fritter away money on consultants, shoddy construction work, and promoting the agenda of the National Education Association and the local teachers’ unions. Third, while the teachers’ union is publicly making “nice” with you and other Republican legislators, they continue to undermine education reform measures, and because school board members rely heavily on the unions to get elected and re-elected, they pretty much call the shots on local policies. ";
-            Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
-            boolean testPass = true;
-            for(Short type: ret.getFirst().keySet()) {
-                System.err.print("Type: " + type);
-                for (String str : ret.getFirst().get(type))
-                    System.err.print(":::" + str + ":::");
-                System.err.println();
-            }
-        } catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+//	public static void main1(String[] args) {
+//		try {
+//			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//            NER ner = new NER(archive, null);
+//            System.err.println("Loading model...");
+//            long start = System.currentTimeMillis();
+//            NERModel model = ner.trainModel(false);
+//            System.err.println("Trained model in: " + (System.currentTimeMillis() - start));
+//            System.err.println("Done loading model");
+//            String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
+//            String[] locs = new String[]{"Florida", "Plantation"};
+//            String[] orgs = new String[]{"Broward Republican Executive Committee", "National Education Association"};
+//            String text = "First I would like to tell you who I am. I am a lifelong Republican and have served on the Broward Republican Executive Committee since 1991. I have followed education issues in Florida since I moved here in 1973. All four of my children went to public schools here in Plantation. I continued to study education issues when I worked for Senator Jim Scott for six years, and more recently as I worked for Rep. Bill Andrews for the past eight years.\n" +
+//                    "On the amendment, I would like to join any effort to get it repealed. Second, if the amendment is going to be implemented, I believe that decisions about how money is spent should be taken out of the hands of the school boards. I know the trend has been to provide more local control, however, there has been little or no accountability for school boards that fritter away money on consultants, shoddy construction work, and promoting the agenda of the National Education Association and the local teachers’ unions. Third, while the teachers’ union is publicly making “nice” with you and other Republican legislators, they continue to undermine education reform measures, and because school board members rely heavily on the unions to get elected and re-elected, they pretty much call the shots on local policies. ";
+//            Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
+//            boolean testPass = true;
+//            for(Short type: ret.getFirst().keySet()) {
+//                System.err.print("Type: " + type);
+//                for (String str : ret.getFirst().get(type))
+//                    System.err.print(":::" + str + ":::");
+//                System.err.println();
+//            }
+//        } catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
 
     public static void main(String[] args) {
         try {
@@ -614,31 +632,31 @@ public class NER implements StatusProvider {
                     "Early work by Creeley appeared in the avant garde little magazine Nomad at the beginning of the 1960s. Posthumous publications of Creeley's work have included the second volume of his Collected Poems, which was published in 2006, and The Selected Letters of Robert Creeley edited by Rod Smith, Kaplan Harris and Peter Baker, published in 2014 by the University of California Press.\n" +
                     "\n";
 
-            content = "Faculty and Graduate Students";
-            Pair<Map<Short,List<String>>,List<Triple<String,Integer,Integer>>> mapAndOffsets = nerModel.find(content);
-            Map<Short, List<String>> map = mapAndOffsets.getFirst();
-
-            for(Short k: map.keySet()){
-                List<String> names = map.get(k);
-                for(String n: names){
-                    System.err.println("<" +k+":"+n+">");
-                }
-            }
-            List<Document> docs = archive.getAllDocs();
-            FileWriter fw = new FileWriter(cacheDir+File.separator+"orgs.txt");
-            for(Document doc: docs){
-                String dc = archive.getContents(doc, true);
-                mapAndOffsets = nerModel.find(dc);
-                map = mapAndOffsets.getFirst();
-                fw.write(doc.getUniqueId());
-                for(Short k: map.keySet()){
-                    List<String> names = map.get(k);
-                    for(String n: names){
-                        fw.write(n + "\n");
-                    }
-                }
-            }
-            fw.close();
+//            content = "Faculty and Graduate Students";
+//            Pair<Map<Short,List<String>>,List<Triple<String,Integer,Integer>>> mapAndOffsets = nerModel.find(content);
+//            Map<Short, List<String>> map = mapAndOffsets.getFirst();
+//
+//            for(Short k: map.keySet()){
+//                List<String> names = map.get(k);
+//                for(String n: names){
+//                    System.err.println("<" +k+":"+n+">");
+//                }
+//            }
+//            List<Document> docs = archive.getAllDocs();
+//            FileWriter fw = new FileWriter(cacheDir+File.separator+"orgs.txt");
+//            for(Document doc: docs){
+//                String dc = archive.getContents(doc, true);
+//                mapAndOffsets = nerModel.find(dc);
+//                map = mapAndOffsets.getFirst();
+//                fw.write(doc.getUniqueId());
+//                for(Short k: map.keySet()){
+//                    List<String> names = map.get(k);
+//                    for(String n: names){
+//                        fw.write(n + "\n");
+//                    }
+//                }
+//            }
+            //fw.close();
         }catch(Exception e){
             e.printStackTrace();
         }

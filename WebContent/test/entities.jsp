@@ -106,21 +106,23 @@
             exc.add(Short.parseShort(excS));
         }
         double theta = Double.parseDouble(cutoff);
-        JSPHelper.log.info("Params: "+
-                "Threshold: "+theta+
-                "\nexclude: "+exc+
-                "\ninclude: "+inc+
-                "\nmaxdoc: "+mds);
+        JSPHelper.log.info("Params: " +
+                "Threshold: " + theta +
+                "\nexclude: " + exc +
+                "\ninclude: " + inc +
+                "\nmaxdoc: " + mds);
         Archive archive = JSPHelper.getArchive(session);
         Map<String,Entity> entities = new LinkedHashMap();
         int di=0;
         for(Document doc: archive.getAllDocs()){
             if(di++>md)
                 break;
+            //System.err.println("120");
             Map<Short,Map<String,Double>> es = NER.getEntities(archive.getDoc(doc),true);
+            //System.err.println("122");
             for(Short type: inc)
                 if(!exc.contains(type)){
-                    if(es.containsKey(type))
+                    if(es != null && es.containsKey(type))
                         for(String e: es.get(type).keySet()) {
                             double s = es.get(type).get(e);
                             if(s<theta)
@@ -133,8 +135,10 @@
                 }
         }
         Map<Entity, Double> vals = new LinkedHashMap<>();
-        for(Entity e: entities.values())
+        for(Entity e: entities.values()) {
             vals.put(e, e.score);
+            //System.err.println("Putting: "+e+", "+e.score);
+        }
         List<Pair<Entity,Double>> lst = Util.sortMapByValue(vals);
         List<Entity> lst1 = new ArrayList<>();
         for(Pair<Entity,Double> p: lst)

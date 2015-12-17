@@ -1154,6 +1154,7 @@ public class EmailUtils {
 			return null;
 		List<String> sws = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
 
+        str = str.replaceAll("^\\W+|\\W+$","");
 		String res = "";
 		String[] tokens = str.split("\\s+");
 		for (int i = 0; i < tokens.length; i++) {
@@ -1387,6 +1388,8 @@ public class EmailUtils {
 
                 String[] words = line.split("\\s+");
                 String r = words[0];
+				if(!r.contains("_"))
+					continue;
 
                 /**
                  * The types file contains lines like this:

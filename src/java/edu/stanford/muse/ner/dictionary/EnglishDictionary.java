@@ -43,7 +43,7 @@ public class EnglishDictionary {
                     int num = Integer.parseInt(fields[2]);
                     dictStats.put(fields[0], new Pair<>(cnum, num));
                 }
-            }catch(IOException e){
+            }catch(Exception e){
                 log.warn("Cannot read file: "+dictStatsFile);
                 e.printStackTrace();
             }

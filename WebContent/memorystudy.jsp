@@ -15,7 +15,7 @@ if (ua != null)
 		return;
 	}
 
-	if (ua.indexOf("chrome") < 0 && ua.indexOf("safari")  < 0)
+	if (ua.indexOf("chrome") < 0 && ua.indexOf("safari")  < 0 && ua.indexOf("firefox") < 0)
 	{%>
 		<html><script> alert('Sorry, this browser is not supported. Please use the Chrome or Safari browsers.');</script></html>
 	<%
