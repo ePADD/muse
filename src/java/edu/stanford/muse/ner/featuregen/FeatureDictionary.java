@@ -33,6 +33,8 @@ public class FeatureDictionary implements Serializable {
             UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,ORGANISATION,NEWSPAPER,ACADEMICJOURNAL,
             MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,SHOPPINGMALL,HOSPITAL,
             POWERSTATION,AWARD,TRADEUNIN,PARK,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
+
+    public static Map<Short,String> desc = new LinkedHashMap<>();
     static Log log = LogFactory.getLog(FeatureDictionary.class);
     public static Map<Short, String[]> aTypes = new LinkedHashMap<>();
     public FeatureGenerator[] featureGens = null;
@@ -104,6 +106,14 @@ public class FeatureDictionary implements Serializable {
                 "OrganisationMember|Person",
                 "PersonFunction"
         );
+        desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
+        desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MILITARYUNIT,"MILITARYUNIT");desc.put(MOUNTAIN,"MOUNTAIN");
+        desc.put(AIRPORT,"AIRPORT");desc.put(ORGANISATION,"ORGANISATION");desc.put(NEWSPAPER,"NEWSPAPER");desc.put(ACADEMICJOURNAL,"ACADEMICJOURNAL");
+        desc.put(MAGAZINE,"MAGAZINE");desc.put(POLITICALPARTY,"POLITICALPARTY");desc.put(ISLAND,"ISLAND");desc.put(MUSEUM,"MUSEUM");
+        desc.put(BRIDGE,"BRIDGE");desc.put(AIRLINE,"AIRLINE");desc.put(NPORG,"NPORG");desc.put(GOVAGENCY,"GOVAGENCY");desc.put(SHOPPINGMALL,"SHOPPINGMALL");
+        desc.put(HOSPITAL,"HOSPITAL");desc.put(POWERSTATION,"POWERSTATION");desc.put(AWARD,"AWARD");desc.put(TRADEUNIN,"TRADEUNIN");desc.put(PARK,"PARK");
+        desc.put(HOTEL,"HOTEL");desc.put(THEATRE,"THEATRE");desc.put(LEGISTLATURE,"LEGISTLATURE");desc.put(LIBRARY,"LIBRARY");desc.put(LAWFIRM,"LAWFIRM");
+        desc.put(MONUMENT,"MONUMENT");desc.put(DISEASE,"DISEASE");desc.put(EVENT,"EVENT");desc.put(OTHER,"OTHER");
     }
     /**
      * Features for a word that corresponds to a mixture
@@ -714,6 +724,9 @@ public class FeatureDictionary implements Serializable {
     //codes a given DBpedia type into type coding of this class
     public static Short codeType(String type){
         Short ct = FeatureDictionary.OTHER;
+        if(type == null)
+            return ct;
+
         String[] fs = type.split("\\|");
         outer:
         for(int ti=0;ti<fs.length;ti++) {

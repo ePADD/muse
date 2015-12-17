@@ -1,5 +1,6 @@
 package edu.stanford.muse.wpmine;
 
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
@@ -107,11 +108,52 @@ public class DBpediaTypeParser {
         }
     }
 
+    public static void printStats(String typesFile, String ontologyFile){
+        Map<String,String> ontology = parseOntology(ontologyFile);
+        int nlines = 0;
+        Set<String> uniqetitles = new LinkedHashSet<String>();
+        Map<Short,Set<String>> typeTitles = new LinkedHashMap<>();
+        try {
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(typesFile), true), "UTF-8"));
+            String line;
+            int titleS = "<http://dbpedia.org/resource/".length();
+            int typeS = "<http://dbpedia.org/ontology/".length();
+            while ((line = lnr.readLine()) != null) {
+                nlines++;
+                String[] fields = line.split("\\s+");
+                if (fields.length < 3 || !fields[2].startsWith("<http://dbpedia.org/ontology/") || fields[0].contains("__"))
+                    continue;
+                String title = fields[0].substring(titleS, fields[0].length() - 1);
+                String type = ontology.get(fields[2].substring(typeS, fields[2].length() - 1));
+                if(type == null)
+                    continue;
+                uniqetitles.add(title);
+                Short ct = FeatureDictionary.codeType(type);
+                if(!typeTitles.containsKey(ct))
+                    typeTitles.put(ct, new LinkedHashSet<String>());
+                typeTitles.get(ct).add(title);
+
+                if (lnr.getLineNumber() % 10000 == 0)
+                    System.err.println("Done: " + lnr.getLineNumber());
+            }
+            lnr.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        Set<String> allTypes = new LinkedHashSet<>();
+        allTypes.addAll(ontology.keySet());
+        System.out.println("Total number of types in DBpedia ontology: "+allTypes.size());
+        System.out.println(typesFile+" contains "+nlines+" lines and "+uniqetitles.size()+" unique titles");
+        for(Short type: typeTitles.keySet())
+            System.out.println(FeatureDictionary.desc.get(type) + " : "+typeTitles.get(type).size());
+    }
+
     public static void main(String[] args){
 //        Map<String,String> ontology = parseOntology("dbpedia_2015-04.nt.bz2");
 //        for(String str: ontology.keySet())
 //            System.err.println(str+" : "+ontology.get(str));
         String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
-        parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources"+File.separator);
+        //parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources"+File.separator);
+        printStats(fldr + "instance_types_2014-04.en.nt.bz2", fldr + "dbpedia_2015-04.nt.bz2");
     }
 }
