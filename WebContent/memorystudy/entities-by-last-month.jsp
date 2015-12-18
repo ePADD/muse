@@ -146,6 +146,15 @@
         <h3>List 2</h3>
         <input type="text" size="100" name="list2" placeholder="from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name">
         <input type="text" name="lw2" placeholder="10.0">
+        <h3>List 3</h3>
+        <input type="text" size="200" name="list3" placeholder="absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder">
+        <input type="text" name="lw3" placeholder="0.0">
+        <h3>List 4</h3>
+        <input type="text" size="100" name="list4" placeholder="he,she,i,me,you">
+        <input type="text" name="lw4" placeholder="0.0">
+
+        <br>
+        <input type="text" size="10" name="mode">
     </form>
     <button type="submit" form="params" value="Submit">Update</button><br>
     </div>
@@ -168,17 +177,27 @@
 
       $("#params input").each(function(i){
        var name = $(this).attr("name");
+       var mode = getURLParameter("mode");
        var val = getURLParameter(name);
-       if(typeof(val)=="undefined" || val=="")
-            $(this).val($(this).attr("placeholder"));
-       else {
+       if(typeof(val)=="undefined" || val=="") {
+           val = $(this).attr("placeholder");
+           if(typeof(mode)!="undefined" && mode == "person" && (name=="lw3" || name=="lw4")) {
+               val = "10.0";
+           }
+           if(name=="mode") val = mode;
+           $(this).val(val);
+       } else {
            val = decodeURIComponent(val);
            val = val.replace(/\+/g," ");
+           if(typeof(mode)!="undefined" && mode == "person" && (name=="lw3" || name=="lw4")) {
+               val = "10.0";
+           }
+           if(name=="mode") val = mode;
            $(this).val(val);
        }
       });
       //$("form").submit(function(){alert("Submitting form...")});
-      if(window.location.href.indexOf("?")<0)
+      if(window.location.href.indexOf("&")<0)
         $("form").submit();
   </script>
 
@@ -230,20 +249,24 @@
         }
         evals.add(new ClueEvaluator.EmailDocumentEvaluator(params));
 
-        params = new float[2];
+        params = new float[4];
         List<String[]> lists = new ArrayList<>();
         params[0] = Float.parseFloat(request.getParameter("lw1"));
         params[1] = Float.parseFloat(request.getParameter("lw2"));
+        params[2] = Float.parseFloat(request.getParameter("lw3"));
+        params[3] = Float.parseFloat(request.getParameter("lw4"));
         lists.add(request.getParameter("list1").split("[\\s,]+"));
         lists.add(request.getParameter("list2").split("[\\s,]+"));
+        lists.add(request.getParameter("list3").split("[\\s,]+"));
+        lists.add(request.getParameter("list4").split("[\\s,]+"));
 
-        JSPHelper.log.info("Request params: list initialisation: "+ Arrays.asList(request.getParameterValues("list1"))+", "+Arrays.asList(request.getParameterValues("list2")));
+        JSPHelper.log.info("Request params: list initialisation: "+ Arrays.asList(request.getParameterValues("list1"))+", "+Arrays.asList(request.getParameterValues("list2"))+", "+Arrays.asList(request.getParameterValues("list3"))+", "+Arrays.asList(request.getParameterValues("list4")));
         evals.add(new ClueEvaluator.ListEvaluator(params, lists));
 
     try {
         //the only types we are interested in
-        List<Short> type = new ArrayList<Short>();
-
+        List<Short> type = new ArrayList<>();
+        String mode = request.getParameter("mode");
         //for(Short )
         Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
                 FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK, FeatureDictionary.HOTEL,FeatureDictionary.THEATRE,
@@ -280,12 +303,17 @@
                 latestDate = ed.date;
 
             List<String> entities = new ArrayList<String>();
-            Map<Short,Map<String,Double>> es = NER.getEntities(archive.getDoc(doc),true);
-            for(Short t: itypes){
-                Map<String,Double> tes = es.get(t);
-                for(String str: tes.keySet())
-                    if(tes.get(str)>CUTOFF)
-                        entities.add(str);
+            if(mode==null || !mode.equals("person")) {
+                Map<Short, Map<String, Double>> es = NER.getEntities(archive.getDoc(doc), true);
+                for (Short t : itypes) {
+                    Map<String, Double> tes = es.get(t);
+                    for (String str : tes.keySet())
+                        if (tes.get(str) > CUTOFF)
+                            entities.add(str);
+                }
+            }
+            else{
+                entities = ed.getAllNames();
             }
             allEntities.addAll(entities);
 //            if (Util.nullOrEmpty(request.getParameter("locations")))
