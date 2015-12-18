@@ -9,6 +9,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.index.CorruptIndexException;
@@ -303,7 +304,7 @@ public class ArchiveCluer extends Cluer {
 					int MAX_CLUE_CHARS = 200 * numSentences;
 
 					if (originalSentence.length() >= MAX_CLUE_CHARS) {
-                      //  System.err.println("rejecting for extra size");
+                        JSPHelper.log.warn("Rejecting for extra size");
                         continue;
                     }
 
@@ -311,16 +312,16 @@ public class ArchiveCluer extends Cluer {
 					// we can't just check length of sentence == length of word
 					// because sometimes we get a sentence like <X + punctuation> as a clue for X and we want to eliminate such sentences
 					if (Util.nLetterChars(originalSentence) == Util.nLetterChars(answer)) {
-                        //System.err.println("L313");
+						JSPHelper.log.warn("Rejecting due to unequal letter chars!! " + answer);
                         continue;
                     }
 
 					if (!sentenceIsValidAsClue(lowerCaseSentence, numSentences)) {
-                        //System.err.println("L318");
+						JSPHelper.log.warn("Rejecting because it failed the valid clue check!! " + lowerCaseSentence);
                         continue;
                     }
 					if (tabooClues != null && (tabooClues.contains(lowerCaseSentence) || tabooClues.contains(originalSentence))) {
-                        //System.err.println("L322");
+						JSPHelper.log.warn("Rejecting because it is a taboo clue!! " + originalSentence);
                         continue;
                     }
 					

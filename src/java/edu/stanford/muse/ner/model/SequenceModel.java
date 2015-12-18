@@ -547,7 +547,7 @@ public class SequenceModel implements NERModel, Serializable{
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0);
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
