@@ -202,7 +202,7 @@ public class ArchiveCluer extends Cluer {
         //set of clues formed around best clue, but different sentence choice for clue sentence
         List<Clue> bestClueSet = new ArrayList<>();
 
-        float bestScore = -100.0f;
+        float bestScore = -Float.MAX_VALUE;
 		boolean useFirstLetterClue = (archive.getAllDocs().size() == 1); // if only 1 doc, must be a dummy, use first letter as clue instead
 
 		// we want a good pool of docs to select clues from. at the same time, we don't want to look at ALL docs with the term because the
@@ -277,6 +277,7 @@ public class ArchiveCluer extends Cluer {
 					String originalSentence = "";
 					for (int j = i - numSentences+1; j <= i; j++)
 						originalSentence += sentences.get(j);
+                    String oos = originalSentence;
 					originalSentence = originalSentence.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
 
 					//
@@ -293,24 +294,35 @@ public class ArchiveCluer extends Cluer {
 					originalSentence = Util.canonicalizeSpaces(originalSentence);
 					String lowerCaseSentence = originalSentence.toLowerCase();
 
-					if (!Util.occursOnlyAsWholeWord(lowerCaseSentence, answer))
-						continue;
+                    //System.err.println("Original: "+oos+" -> lcs: "+lowerCaseSentence);
+					if (!Util.occursOnlyAsWholeWord(lowerCaseSentence, answer)) {
+                        //System.err.println("Rejecting because no whole word!! "+answer);
+                        continue;
+                    }
 
 					int MAX_CLUE_CHARS = 200 * numSentences;
 
-					if (originalSentence.length() >= MAX_CLUE_CHARS)
-						continue;
+					if (originalSentence.length() >= MAX_CLUE_CHARS) {
+                      //  System.err.println("rejecting for extra size");
+                        continue;
+                    }
 
 					// check if #letter chars in sentence = #letters chars in word.
 					// we can't just check length of sentence == length of word
 					// because sometimes we get a sentence like <X + punctuation> as a clue for X and we want to eliminate such sentences
-					if (Util.nLetterChars(originalSentence) == Util.nLetterChars(answer))
-						continue; 
+					if (Util.nLetterChars(originalSentence) == Util.nLetterChars(answer)) {
+                        //System.err.println("L313");
+                        continue;
+                    }
 
-					if (!sentenceIsValidAsClue(lowerCaseSentence, numSentences))
-						continue;
-					if (tabooClues != null && (tabooClues.contains(lowerCaseSentence) || tabooClues.contains(originalSentence)))
-						continue;
+					if (!sentenceIsValidAsClue(lowerCaseSentence, numSentences)) {
+                        //System.err.println("L318");
+                        continue;
+                    }
+					if (tabooClues != null && (tabooClues.contains(lowerCaseSentence) || tabooClues.contains(originalSentence))) {
+                        //System.err.println("L322");
+                        continue;
+                    }
 					
 					originalSentence = originalSentence.replaceAll("\n", " ");
 
