@@ -267,6 +267,10 @@
         //the only types we are interested in
         List<Short> type = new ArrayList<>();
         String mode = request.getParameter("mode");
+        Set<String> ownerNames = new LinkedHashSet<>();
+        for(String str: archive.ownerNames) {
+            ownerNames.add(str.toLowerCase());
+        }
         //for(Short )
         Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
                 FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK, FeatureDictionary.HOTEL,FeatureDictionary.THEATRE,
@@ -313,7 +317,11 @@
                 }
             }
             else{
-                entities = ed.getAllNames();
+                List<String> names = ed.getAllNames();
+                for(String name: names){
+                    if(!ownerNames.contains(name))
+                        entities.add(name);
+                }
             }
             allEntities.addAll(entities);
 //            if (Util.nullOrEmpty(request.getParameter("locations")))
@@ -349,6 +357,7 @@
                 out.println(di + " of " + docs.size() + " messages processed...<br/>");
         }
         out.println("Considered #"+allEntities.size()+" unique entities and #"+ceToDisplayEntity.size()+" good ones in #"+docs.size()+" docs<br>");
+        out.println("Owner Names: "+ownerNames);
         JSPHelper.log.info("Considered #"+allEntities.size()+" unique entities and #"+ceToDisplayEntity.size()+" good ones in #"+docs.size()+"docs");
 
         JSPHelper.log.info ("earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate));
