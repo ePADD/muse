@@ -12,6 +12,8 @@
 <%@ page import="edu.stanford.muse.xword.Clue" %>
 <%@ page import="edu.stanford.muse.xword.ClueEvaluator" %>
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="javax.mail.Address" %>
+<%@ page import="edu.stanford.muse.email.Contact" %>
 <%@include file="../getArchive.jspf" %>
 <%@include file="../getNERModel.jspf" %>
 
@@ -55,11 +57,11 @@
             //decide based on their first clues
             Clue clue = this.clues[0], cclue = c2.clues[0];
             // all answers with clues should come towards the end
-            if (clue == null && cclue.clue != null)
+            if (clue == null && cclue != null)
                 return 1;
             if (clue != null && cclue == null)
                 return -1;
-            if (clue == null && cclue.clue == null)
+            if (clue == null && cclue == null)
                 return displayEntity.compareTo(c2.displayEntity); // just some order, as long as it is consistent
 
             if (clue != null && cclue.clue != null)
@@ -181,8 +183,11 @@
        var val = getURLParameter(name);
        if(typeof(val)=="undefined" || val=="") {
            val = $(this).attr("placeholder");
-           if(typeof(mode)!="undefined" && mode == "person" && (name=="lw3" || name=="lw4")) {
-               val = "10.0";
+           if(typeof(mode)!="undefined" && mode == "person"){
+               if(name=="lw3" || name=="lw4")
+                   val = "10.0";
+               else if(name=="lw2")
+                   val = "0";
            }
            if(name=="mode") val = mode;
            $(this).val(val);
@@ -265,7 +270,7 @@
 
     try {
         //the only types we are interested in
-        List<Short> type = new ArrayList<>();
+        List<Short> type = new ArrayList<>(); 
         String mode = request.getParameter("mode");
         Set<String> ownerNames = new LinkedHashSet<>();
         for(String str: archive.ownerNames) {
@@ -317,7 +322,22 @@
                 }
             }
             else{
-                List<String> names = ed.getAllNames();
+                List<Address> addrs = new ArrayList<Address>();
+                if(ed.to!=null)
+                    for(Address addr: ed.to)
+                        addrs.add(addr);
+                if(ed.cc!=null)
+                    for(Address addr: ed.cc)
+                        addrs.add(addr);
+                if(ed.bcc!=null)
+                    for(Address addr: ed.bcc)
+                        addrs.add(addr);
+
+                List<String> names = new ArrayList<>();
+                for(Address addr: addrs) {
+                    Contact c = archive.addressBook.lookupByAddress(addr);
+                    names.add(c.pickBestName());
+                }
                 for(String name: names){
                     if(!ownerNames.contains(name))
                         entities.add(name);
@@ -474,7 +494,8 @@
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
 
-            ci.clues = cluer.createClues(fullAnswer, evals, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+            short clueType = (short)((mode==null||!mode.equals("person"))?0:1);
+            ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
             if(ci.clues == null || ci.clues.length == 0){
                 JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);
             }
@@ -494,9 +515,11 @@
                  out.println ("<h2>Interval #" + i + ": " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(intervals.get(i).getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(intervals.get(i).getSecond()) + "</h2>");
                  out.println ("<table><th><i>Non person name</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></td><td>Clue score</td></th>");
                  for (ClueInfo ci: clueInfos[i]) {
+                     if(ci == null || ci.clues==null || ci.clues.length==0)
+                         continue;
                      if (request.getParameter("hideCoreTokens") != null && ci.hasCoreTokens)
                         continue;
-                     if (request.getParameter("hideNoClue") != null && ci.clues == null || ci.clues.length==0)
+                     if (request.getParameter("hideNoClue") != null && (ci.clues == null || ci.clues.length==0))
                         continue;
                      out.println (ci.toHTMLString());
                  }

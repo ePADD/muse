@@ -134,7 +134,7 @@ public class ArchiveCluer extends Cluer {
 
 	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
-		return createClue(answer, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, null);
+		return createClue(answer, (short)0, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, null);
 	}
 
     /**
@@ -142,8 +142,8 @@ public class ArchiveCluer extends Cluer {
      * if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
      * @throws ParseException
      */
-    public Clue createClue(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
-        Clue[] clues = createClues(answer, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
+    public Clue createClue(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+        Clue[] clues = createClues(answer, mode, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
         Clue bestClue = null;
         double bestScore = Double.MIN_VALUE;
         for(int i=0;i<clues.length;i++)
@@ -153,22 +153,39 @@ public class ArchiveCluer extends Cluer {
     }
 
     /**
-     * returns clues formed from alternate sentences from the best context*/
-	public Clue[] createClues(String answer, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+     * This method handles two clue types
+     * <ol>
+     *     <li>Fill in the blank type where the answer is blanked out in the best context found</li>
+     *     <li>Can also generate clues that best serve as the remainders of the subjects in a conversation (correspondents)</li>
+     * </ol>
+     * The type of clue can be selected by setting the mode value, 0 for type 1, and 1 for type 2
+     * when mode is 0, i.e. first type of clue, then returns clues formed from alternate sentences from the best context (in a doc)
+     * when mode is 1, i.e. second type of clue, returns the top 5 best clues in all the docs*/
+	public Clue[] createClues(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
-		Collection<Document> docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
-	    boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
+        Collection<Document> docs;
+        boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
+        if(mode == 0)
+            docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
+        else{
+            Contact c = archive.addressBook.lookupByName(answer);
+            if(c == null) {
+                log.error("Contact: "+answer+" not found!! returning");
+                return null;
+            }
+            docs = IndexUtils.selectDocsByContact(archive.addressBook,(Collection)archive.getAllDocs(),c);
+        }
 
-	    // find all messages with the answer in them (original content only)
-	    List<Document> docsWithAnswer = new ArrayList<>();
-		for (Document doc: docs) {
-			DatedDocument dd = (DatedDocument) doc;
-			if (dd.date.before(startDate) || dd.date.after(endDate))
-				continue;
-			docsWithAnswer.add(doc);
-		}
+        // find all messages with the answer in them (original content only)
+        List<Document> docsWithAnswer = new ArrayList<>();
+        for (Document doc : docs) {
+            DatedDocument dd = (DatedDocument) doc;
+            if (dd.date.before(startDate) || dd.date.after(endDate))
+                continue;
+            docsWithAnswer.add(doc);
+        }
 
 		// note: docsWithAnswer is not sorted by time
 		
@@ -201,7 +218,8 @@ public class ArchiveCluer extends Cluer {
 		Clue bestClue = null; 
 		Document bestClueDoc = null;
         //set of clues formed around best clue, but different sentence choice for clue sentence
-        List<Clue> bestClueSet = new ArrayList<>();
+        List<Clue> bestCtxClues = new ArrayList<>();
+        Map<Clue, Float> scoredClues = new LinkedHashMap<>();
 
         float bestScore = -Float.MAX_VALUE;
 		boolean useFirstLetterClue = (archive.getAllDocs().size() == 1); // if only 1 doc, must be a dummy, use first letter as clue instead
@@ -296,9 +314,25 @@ public class ArchiveCluer extends Cluer {
 					String lowerCaseSentence = originalSentence.toLowerCase();
 
                     //System.err.println("Original: "+oos+" -> lcs: "+lowerCaseSentence);
-					if (!Util.occursOnlyAsWholeWord(lowerCaseSentence, answer)) {
+                    //this test is valid only for first type of clues
+					if (mode==0 && !Util.occursOnlyAsWholeWord(lowerCaseSentence, answer)) {
                         //System.err.println("Rejecting because no whole word!! "+answer);
                         continue;
+                    }
+
+                    if(mode==1){
+                        //should not see any of the archive owner name in the clue and also the answer in the clue
+                        Set<String> ownerNames = archive.ownerNames;
+                        boolean dirty = false;
+                        for(String str: archive.ownerNames)
+                            if(Util.occursOnlyAsWholeWord(lowerCaseSentence, str.toLowerCase())) {
+                                dirty = true;
+                                break;
+                            }
+                        if(!dirty && Util.occursOnlyAsWholeWord(lowerCaseSentence, answer))
+                            dirty = true;
+                        if(dirty)
+                            continue;
                     }
 
 					int MAX_CLUE_CHARS = 200 * numSentences;
@@ -358,7 +392,8 @@ public class ArchiveCluer extends Cluer {
 						bestClue = clue;
 						bestClueDoc = ed;
 						bestScore = clueScore;
-					} 
+					}
+                    scoredClues.put(clue, clueScore);
 					
 					// the below should ideally be updated only inside the above if
 					
@@ -403,7 +438,7 @@ public class ArchiveCluer extends Cluer {
 				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
 				if (bestClueDoc == ed) {
                     bestClue.clueStats.sentencesInMessage = sentences.size();
-                    bestClueSet = clueSet;
+                    bestCtxClues = clueSet;
                 }
 			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
 			
@@ -448,8 +483,21 @@ public class ArchiveCluer extends Cluer {
 				 bestClue.clueStats.histogramOfAnswerOccurrence = histogram;
 			}
 		}
-		return bestClueSet.toArray(new Clue[bestClueSet.size()]);
-	}
+        if(mode == 0)
+		    return bestCtxClues.toArray(new Clue[bestCtxClues.size()]);
+	    else{
+            List<Pair<Clue, Float>> sclues = Util.sortMapByValue(scoredClues);
+            List<Clue> clues = new ArrayList<>();
+            final int MAX = 5;
+            int i=0;
+            for(Pair<Clue, Float> p: sclues) {
+                clues.add(p.getFirst());
+                if(++i>=MAX)
+                    break;
+            }
+            return clues.toArray(new Clue[clues.size()]);
+        }
+    }
 
 	/** this should be called when a word is commited into the grid. we will invalidate clue $ if this clue sentence has been mapped to another word */
 	@Override

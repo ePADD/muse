@@ -307,6 +307,8 @@ public class ClueEvaluator {
             String a = tgtWord.toLowerCase();
             String sent = next.toLowerCase();
             int idx = sent.indexOf(a);
+            if(idx<0)
+                return new String[]{};
             String prevToken = "", nxtToken = "";
             String prevS = sent.substring(0,idx);
             String nextS = sent.substring(idx+a.length());
@@ -327,6 +329,8 @@ public class ClueEvaluator {
             String[] tokens = s.split("[\\s\\n]+");
             float boost = 0;
             for(int i=0;i<params.length;i++) {
+                if(params[i]==0)
+                    continue;
                 float b = 0;
                 if (isPrep(lists.get(i)))
                     tokens = getNeighbours(s, answer);
