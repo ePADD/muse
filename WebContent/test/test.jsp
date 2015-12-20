@@ -2,6 +2,9 @@
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
+<%@ page import="java.util.List" %>
+<%@ page import="edu.stanford.muse.email.AddressBook" %>
+<%@ page import="java.util.Collection" %>
 
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
   "http://www.w3.org/TR/html4/loose.dtd">
@@ -13,18 +16,11 @@
 <link href="muse.css" rel="stylesheet" type="text/css"/>
 <link href="cloud.css" rel="stylesheet" type="text/css"/>
 </head>
-<body>
-
-<button id="foo" onclick="func()">Open</button>
-<script>
-$(document).ready(function() { 
-	$('#foo').click();
-});
-
-function func() { 
-	window.open ('http://stanford.edu');
-}
-</script>
-
-</body>
+<%
+    Archive archive = JSPHelper.getArchive(session);
+    List<EmailDocument> emailDocs = (List)archive.getAllDocs();
+    AddressBook addressBook = archive.addressBook;
+    GroupAssigner ga = JSPHelper.doGroups(request, session, emailDocs, addressBook);
+    archive.setGroupAssigner(ga);
+%>
 </html>
