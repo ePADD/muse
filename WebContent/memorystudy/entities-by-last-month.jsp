@@ -270,7 +270,7 @@
 
     try {
         //the only types we are interested in
-        List<Short> type = new ArrayList<>(); 
+        List<Short> type = new ArrayList<>();
         String mode = request.getParameter("mode");
         Set<String> ownerNames = new LinkedHashSet<>();
         for(String str: archive.ownerNames) {
@@ -513,7 +513,7 @@
              for (int i = 0; i < clueInfos.length; i++) {
                  Collections.sort(clueInfos[i]);
                  out.println ("<h2>Interval #" + i + ": " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(intervals.get(i).getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(intervals.get(i).getSecond()) + "</h2>");
-                 out.println ("<table><th><i>Non person name</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></td><td>Clue score</td></th>");
+                 out.println ("<table><th><i>"+((mode==null||!mode.equals("person"))?"Non person name":"Person name")+"</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></td><td>Clue score</td></th>");
                  for (ClueInfo ci: clueInfos[i]) {
                      if(ci == null || ci.clues==null || ci.clues.length==0)
                          continue;
