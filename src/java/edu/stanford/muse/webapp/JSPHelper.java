@@ -804,6 +804,9 @@ public class JSPHelper {
 					// DON'T put grouper in session, it points to things like GrouperStats that are not serializable
 					//    session.setAttribute("grouper", grouper);
 				}
+                else{
+                    log.error("Grouping failed, not setting groups of groupsAssigner");
+                }
 				session.removeAttribute("statusProvider");
 			}
 			else
@@ -817,6 +820,9 @@ public class JSPHelper {
 					List<SimilarGroup<String>> selectedGroups = SimilarGroupMethods.topGroups(hierarchy, 15);
 					ga.setupGroups(allDocs, selectedGroups, addressBook, 5);
 				}
+                else{
+                    log.error("Grouping failed, not setting groups of groupsAssigner");
+                }
 			}
 
 			if (hierarchy != null)
@@ -826,6 +832,7 @@ public class JSPHelper {
 				rootGroups.addAll(hierarchy.rootGroups);
 				GroupUtils.sortByMass(allDocs, addressBook, rootGroups);
 			}
+
 			return ga;
 		} catch (Exception e) {
 			log.warn("Grouper failed!");

@@ -498,6 +498,8 @@ public class EmailUtils {
 		for (String s : in)
 		{
 			s = EmailUtils.cleanPersonName(s);
+            if(s == null)
+                continue;
 			if (s.startsWith("undisclosed-recipients"))
 			{
 				log.info("Dropping undisclosed recipients: " + s);
