@@ -18,7 +18,12 @@
 <%@include file="../getNERModel.jspf" %>
 
 <%!
-
+        /**
+         * This is a test page used mostly for playing with parameters and seeing the questions
+         * To replicate the same way in which questions are generated, replicate the list of clue evaluators and the
+         * way the entities are generated.
+         * Should consider implementing ClueFilter/EntityFilter along with ClueEvaluator
+         */
     /* small util class -- like clue but allows answers whose clue is null */
     class ClueInfo implements Comparable<ClueInfo> {
         //clues corrsponding to different choice of sentences in the context
@@ -260,10 +265,10 @@
         params[1] = Float.parseFloat(request.getParameter("lw2"));
         params[2] = Float.parseFloat(request.getParameter("lw3"));
         params[3] = Float.parseFloat(request.getParameter("lw4"));
-        lists.add(request.getParameter("list1").split("[\\s,]+"));
-        lists.add(request.getParameter("list2").split("[\\s,]+"));
-        lists.add(request.getParameter("list3").split("[\\s,]+"));
-        lists.add(request.getParameter("list4").split("[\\s,]+"));
+        lists.add(request.getParameter("list1").split("\\s*,\\s*"));
+        lists.add(request.getParameter("list2").split("\\s*,\\s*"));
+        lists.add(request.getParameter("list3").split("\\s*,\\s*"));
+        lists.add(request.getParameter("list4").split("\\s*,\\s*"));
 
         JSPHelper.log.info("Request params: list initialisation: "+ Arrays.asList(request.getParameterValues("list1"))+", "+Arrays.asList(request.getParameterValues("list2"))+", "+Arrays.asList(request.getParameterValues("list3"))+", "+Arrays.asList(request.getParameterValues("list4")));
         evals.add(new ClueEvaluator.ListEvaluator(params, lists));
@@ -273,7 +278,8 @@
         List<Short> type = new ArrayList<>();
         String mode = request.getParameter("mode");
         Set<String> ownerNames = new LinkedHashSet<>();
-        for(String str: archive.ownerNames) {
+        Contact sc = archive.addressBook.getContactForSelf();
+        for(String str: sc.names) {
             ownerNames.add(str.toLowerCase());
         }
         //for(Short )
@@ -322,15 +328,12 @@
                 }
             }
             else{
-                List<Address> addrs = new ArrayList<Address>();
+                //do not consider mailing lists
+                if(ed.sentToMailingLists!=null && ed.sentToMailingLists.length>0)
+                    continue;
+                List<Address> addrs = new ArrayList<>();
                 if(ed.to!=null)
                     for(Address addr: ed.to)
-                        addrs.add(addr);
-                if(ed.cc!=null)
-                    for(Address addr: ed.cc)
-                        addrs.add(addr);
-                if(ed.bcc!=null)
-                    for(Address addr: ed.bcc)
                         addrs.add(addr);
 
                 List<String> names = new ArrayList<>();
@@ -339,19 +342,12 @@
                     names.add(c.pickBestName());
                 }
                 for(String name: names){
-                    if(!ownerNames.contains(name))
+                    if(!ownerNames.contains(name) && !DictUtils.hasDictionaryWord(name)) {
                         entities.add(name);
+                    }
                 }
             }
             allEntities.addAll(entities);
-//            if (Util.nullOrEmpty(request.getParameter("locations")))
-//                entities.addAll(archive.getEntitiesInDoc(doc, NER.EORG, true, originalOnly));
-//            if (Util.nullOrEmpty(request.getParameter("orgs")))
-//                entities.addAll(archive.getEntitiesInDoc(doc, NER.ELOC, true, originalOnly));
-
-            //personEntities.addAll(archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly));
-
-            //entities.removeAll(personEntities);
 
             // get entities
             for (String e : entities) {

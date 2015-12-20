@@ -240,6 +240,17 @@ public class DictUtils {
 		return true;
 	}
 
+    public static boolean hasDictionaryWord(String s){
+        StringTokenizer st = new StringTokenizer(s);
+        while (st.hasMoreTokens())
+        {
+            String t = st.nextToken().toLowerCase();
+            if (fullDictWords.contains(t))
+                return true;
+        }
+        return false;
+    }
+
 	@SuppressWarnings("unused")
 	private boolean isDictionaryWord(String term)
 	{

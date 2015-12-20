@@ -66,9 +66,21 @@ public class Clue implements Serializable {
 		float lengthBoost; // score boost due to ideal-ness of sentence length
         float prepositionScore;
         float sigWordScore;
+        float refWordScore;
+        float pronounScore;
         float noisyThreadScore;
         float timeAnswerScore;
         float questionMarkScore;
+        //boost score for when the recipients is above a certain threshold
+        float recipientScore;
+        //boost score related to number of concversations between two people in a certain interval
+        float nMessageScore;
+        //time difference between first and last mentions of either answer/corr
+        float timeDiff;
+        //Reflective words found in the clue
+        String refWord = "";
+        //first and last mentions of the answer
+        Date firstMention, lastMention;
 
         @Override
         public String toString(){

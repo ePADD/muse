@@ -109,12 +109,13 @@ public class EnglishDictionary {
     public static Set<String> readFile(String fileName){
         Set<String> entries = new LinkedHashSet<>();
         try{
-            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
+            //new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));
+            BufferedReader br = new BufferedReader(new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));//new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
             String line;
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
                     continue;
-                entries.add(line.trim());
+                entries.add(line.trim().toLowerCase());
             }
         }catch(IOException e){
             log.warn("Cannot read file: "+fileName);

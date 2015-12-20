@@ -373,7 +373,7 @@ public class ArchiveCluer extends Cluer {
 					Clue clue = new Clue(blankedSentence, originalSentence, unblankedLowerCaseSentence, blankedHint, url, ellipsisizedMessage, ed);
 					
 					Set<String> tabooNamesSet = archive.addressBook.getOwnNamesSet(); 
-					float clueScore = scoreClue(clue, answer,evals, tabooNamesSet, nerModel, archive);
+					float clueScore = scoreClue(clue, mode, answer,evals, startDate, endDate, tabooNamesSet, nerModel, archive);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
@@ -384,7 +384,7 @@ public class ArchiveCluer extends Cluer {
 					clueScore += sentenceNumBoost;
 
 					clue.clueStats.finalScore = clueScore;
-					log.info ("clue score for " + answer + " is " + clueScore + " (docscore: " + docSentimentScore + ") for sentence# " + i + " in doc #" + docCount + ":" + clue + " lines boost = " + linesBoost);
+					log.info("clue score for " + answer + " is " + clueScore + " (docscore: " + docSentimentScore + ") for sentence# " + i + " in doc #" + docCount + ":" + clue + " lines boost = " + linesBoost);
 
 					if (clueScore > bestScore)
 					{
@@ -515,7 +515,7 @@ public class ArchiveCluer extends Cluer {
 	
 	// returns a score for the given string as a clue. this does not take into account the doc s is a part of. 
 	// note s is not lower-cased
-	public static float scoreClue(Clue clue, String answer, List<ClueEvaluator> evals, Set<String> tabooNames, NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
+	public static float scoreClue(Clue clue, short mode, String answer, List<ClueEvaluator> evals, Date startDate, Date endDate, Set<String> tabooNames,NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
 	{
 //		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
 //		String s = clue.getFullSentenceOriginal();
@@ -541,7 +541,7 @@ public class ArchiveCluer extends Cluer {
 
 		double score = 0;
         for(ClueEvaluator eval: evals)
-            score = eval.computeScore(score, clue,answer, tabooNames,nerModel, archive);
+            score = eval.computeScore(score, mode, clue,answer, startDate, endDate, tabooNames,nerModel, archive);
 
         //log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
 		log.info("Score: "+score+" "+clue.clueStats);

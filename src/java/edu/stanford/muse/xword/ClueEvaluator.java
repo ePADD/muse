@@ -1,17 +1,19 @@
 package edu.stanford.muse.xword;
 
 import com.google.common.collect.Sets;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.Indexer;
+import edu.stanford.muse.email.Contact;
+import edu.stanford.muse.index.*;
+import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import javax.mail.Address;
+import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,13 +31,8 @@ public class ClueEvaluator {
         return evals;
     }
 
-    public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel){
+    public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
         return score;
-    }
-
-    public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel, Archive archive){
-        //if not overloaded then pass it to the method that does not take the archive argument
-        return computeScore(score, clue, answer, tabooNames, nerModel);
     }
 
     public static class LengthEvaluator extends ClueEvaluator{
@@ -61,7 +58,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel){
+        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
             String s = clue.getFullSentenceOriginal();
             // clue gets points the closer it is to the preferred clue length
             // lengthBoost is really a penalty (its -ve)
@@ -95,7 +92,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
+        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             //TODO: considers two exclamations and question marks as the same, is that OK?
             String s = clue.getFullSentenceOriginal().toLowerCase();
             // prefer exclamations, highly memorable
@@ -144,7 +141,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
+        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             for (String badName : tabooNames) { //drop own name, as well as other terms that may be overused in the xword/memorystudy.
                 if (s.contains(badName)) {
@@ -181,7 +178,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
+        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerMode, Archive archivel) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             if (s.startsWith("this") || s.startsWith("that") || s.startsWith("however")) {
                 clue.clueStats.containsNonSpecificWords = true;
@@ -212,7 +209,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
+        public double computeScore(double score, short mode, Clue clue, String answer,Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             String sOrig = clue.getFullSentenceOriginal();
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
@@ -279,9 +276,10 @@ public class ClueEvaluator {
                 this.params = params;
                 this.lists = new ArrayList<>();
                 String str = "";
+                int p = 0;
                 for(String[] lst: lists) {
                     this.lists.add(Sets.newHashSet(lst));
-                    str += "Lst: "+Sets.newHashSet(lst)+"\n";
+                    str += "Param: "+params[p++]+" - Lst: "+Sets.newHashSet(lst)+"\n";
                 }
 
                 log.info("List evaluator initialised with "+this.lists.size()+" lists - "+str);
@@ -299,6 +297,11 @@ public class ClueEvaluator {
         /**This is not a proper test, but sort of a hackaround*/
         public static boolean isPrep(Set<String> list){
             if(list.contains("from") && list.contains("to"))
+                return true;
+            return false;
+        }
+        public static boolean isReflective(Set<String> list){
+            if(list.contains("absorb")&&list.contains("accept"))
                 return true;
             return false;
         }
@@ -323,25 +326,62 @@ public class ClueEvaluator {
             return new String[]{prevToken, nxtToken};
         }
 
+        public static String[] getNeighboursOfPronouns(String[] tokens){
+            Set<String> pronouns = EnglishDictionary.getTopPronouns();
+            List<String> sts = new ArrayList<>();
+            if(tokens != null && tokens.length>0) {
+                for (int ti = 0; ti < tokens.length; ti++) {
+                    if (pronouns.contains(tokens[ti]) && ti < tokens.length - 1) {
+                        String phrase = "";
+                        int k = Math.min(ti+5, tokens.length);
+                        for(int j=ti+1;j<k;j++) {
+                            phrase += tokens[j];
+                            if(j<k-1)
+                                phrase += " ";
+                        }
+                        sts.add(phrase);
+                    }
+                }
+            }
+            return sts.toArray(new String[sts.size()]);
+        }
+
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel) {
+        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
-            String[] tokens = s.split("[\\s\\n]+");
             float boost = 0;
             for(int i=0;i<params.length;i++) {
                 if(params[i]==0)
                     continue;
+                String[] tokens = s.split("[\\s\\n]+");
+
                 float b = 0;
                 if (isPrep(lists.get(i)))
                     tokens = getNeighbours(s, answer);
+                else if(isReflective(lists.get(i)))
+                    tokens = getNeighboursOfPronouns(tokens);
                 for (String tok : tokens) {
                     tok = tok.replaceAll("^\\W+|\\W+$", "");
                     //log.info("New Lst:"+i+" contains "+tok+"? - "+lists.get(i).contains(tok)+", "+lists.get(i));
-                    b += lists.get(i).contains(tok) ? params[i] : 0.0f;
+                    if(isReflective(lists.get(i))) {
+                        Set<String> prefixes = IndexUtils.computeAllPrefixes(tok);
+                        for(String prefix: prefixes)
+                            if(lists.get(i).contains(prefix)) {
+                                clue.clueStats.refWord = clue.clueStats.refWord + "-" + prefix;
+                                b += params[i];
+                                break;
+                            }
+                    }else{
+                        b += lists.get(i).contains(tok) ? params[i] : 0.0f;
+                        if(lists.get(i).contains(tok))
+                            System.err.println("Found the token: "+tok+" in "+lists.get(i));
+                    }
                 }
                 boost += b;
-                if (i == 1) clue.clueStats.prepositionScore = b;
-                else clue.clueStats.sigWordScore = b;
+                if(i==0) clue.clueStats.sigWordScore = b;
+                else if (i == 1) clue.clueStats.prepositionScore = b;
+                else if (i==2) clue.clueStats.refWordScore = b;
+                else clue.clueStats.pronounScore = b;
             }
             return score + boost;
         }
@@ -374,7 +414,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             if(archive!=null) {
                 //String s = clue.getFullSentenceOriginal();
                 EmailDocument ed = clue.d;
@@ -382,7 +422,19 @@ public class ClueEvaluator {
                 qo.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
                 String term = "\"" + answer + "\"";
                 log.info("Searching for: "+term);
-                Collection<Document> docs = archive.docsForQuery(term, qo);
+                Collection<Document> docs = new ArrayList<>();
+                if(mode == 0) {
+                    docs = archive.docsForQuery(term, qo);
+                }else {
+                    Contact c = archive.addressBook.lookupByName(answer);
+                    Collection<DatedDocument> allDocs = archive.docsInDateRange(startDate, endDate);
+                    for(DatedDocument dd: allDocs) {
+                        EmailDocument edd = (EmailDocument)dd;
+                        if(edd.getAllAddrs()!=null && c.emails!=null)
+                            if(Sets.intersection(new LinkedHashSet<String>(edd.getAllAddrs()), c.emails).size()>0)
+                                docs.add(edd);
+                    }
+                }
                 if (docs.size() == 0)
                     log.error("Something is not right! Did not find: " + answer + " in the index!!");
                 else if (docs.size() == 1) {
@@ -399,9 +451,44 @@ public class ClueEvaluator {
                     fc.setTime(fd);
                     lc.setTime(ld);
 
-                    float timeScore = params[0] * docs.size() * (lc.get(Calendar.MONTH) - fc.get(Calendar.MONTH) + 12 * (lc.get(Calendar.YEAR) - fc.get(Calendar.YEAR)));
+                    //float timeScore = params[0] * docs.size() * (lc.getTime().lc.get(Calendar.MONTH) - fc.get(Calendar.MONTH) + 12 * (lc.get(Calendar.YEAR) - fc.get(Calendar.YEAR)));
+                    double timeDiff = (lc.getTime().getTime()-fc.getTime().getTime())/(3600.0*1000*24*30);
+                    float timeScore = params[0]*docs.size()* (float)timeDiff;
+                    clue.clueStats.firstMention = fc.getTime();
+                    clue.clueStats.lastMention = lc.getTime();
                     clue.clueStats.timeAnswerScore = timeScore;
+                    clue.clueStats.timeDiff = (float)timeDiff;
                     score += timeScore;
+                }
+                //some rules are valid ony when we are generating questions for person names i.e. type 1 questions
+                if(mode==1) {
+                    //if the number of recipients in an email exceeds 2, penalise
+                    List<Address> addrs = new ArrayList<>();
+                    if(ed.to!=null)
+                        for(Address adr: ed.to)
+                            addrs.add(adr);
+                    if (ed.cc!=null)
+                        for(Address adr: ed.cc)
+                            addrs.add(adr);
+                    if(ed.bcc!=null)
+                        for(Address adr: ed.bcc)
+                            addrs.add(adr);
+                    if(addrs.size()>2) {
+                        float s = (float)-10.0*(addrs.size()-2);
+                        score += s;
+                        clue.clueStats.recipientScore = s;
+                    }
+
+                    int nMessages = docs.size();
+                    float boost = 0;
+                    if(nMessages>5 && nMessages<10)
+                        boost = 30;
+                    else if(nMessages>=10 && nMessages<15)
+                        boost = 50;
+                    else if(nMessages>=15)
+                        boost = 100;
+                    score += boost;
+                    clue.clueStats.nMessageScore = boost;
                 }
 
                 //thread score
@@ -420,16 +507,44 @@ public class ClueEvaluator {
     }
 
     public static void main(String[] args){
-        List<String[]> lists = new ArrayList<>();
-        lists.add(new String[]{"from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name", "can"});
-        lists.add(new String[]{"df","jdfg"});
-        float[] params = new float[]{1.0f,1.0f};
-        String answer =  "Nandanavana Bansuri Music Academy";
-        Clue clue = new Clue("Is this the address: _________________________________, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks", answer);
-        clue.setFullSentenceOriginal("Is this the address: Nandanavana Bansuri Music Academy, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks");
-        ClueEvaluator eval = new ListEvaluator(params, lists);
-        double score = 0;
-        //score = eval.computeScore(score,clue,"yes", null,null,null);
-        //System.err.println("Score: "+score);
+        try {
+//            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//            String answer = "Robert Creeley";
+//            Clue clue = new Clue("Is this the address: _________________________________, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks", answer);
+//            clue.setFullSentenceOriginal("Is this the address: Nandanavana Bansuri Music Academy, Plot No: 8, Srinilaya, Radha krishna nagar, Dharwad, Karnataka 580003 can you please confirm.Also, can you please provide your mobile number.Thanks");
+//            ClueEvaluator eval = new EmailDocumentEvaluator();
+//            double score = 0;
+//            Calendar sc = Calendar.getInstance(), lc = Calendar.getInstance();
+//            sc.set(1993, 2, 11); lc.set(1993, 3, 11);
+//            eval.computeScore(score, (short)1, clue, answer, sc.getTime(), lc.getTime(), new LinkedHashSet<String>(), null, archive);
+//            System.err.println(Util.fieldsToString(clue.clueStats));
+            //score = eval.computeScore(score,clue,"yes", null,null,null);
+            //System.err.println("Score: "+score);
+
+//            Indexer.QueryOptions qo = new Indexer.QueryOptions();
+//            qo.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
+//            String term = "\"San Jose\"";
+//            log.info("Searching for: "+term);
+//            //Collection<Document> docs = archive.docsForQuery(term, qo);
+//            Collection<Document> docs = archive.docsForQuery(term, qo);
+//            Date fd = ((EmailDocument) docs.iterator().next()).getDate();
+//            Date ld = fd;
+//            Iterator it = docs.iterator();
+//            while (it.hasNext())
+//                ld = ((EmailDocument) it.next()).getDate();
+//            System.err.println("Fd: "+fd+" ::: LD: "+ld);
+//            System.err.println("Fd ms: "+fd.getTime()+", Ld ms: "+ld.getTime());
+//            System.err.println("Months: "+((ld.getTime()-fd.getTime())/(3600.0*1000*24*30)));
+            String sent = "btw, can you please take a look at expenses sheet and let me know if I am doing it right.Thanks.";
+            //new ListEvaluator();
+            System.err.println("Done!");
+//            String test = "absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder";
+//            String[] tokens = test.split("\\s*,\\s*");
+//            for(String tok: tokens)
+//                System.err.println(tok);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 }
