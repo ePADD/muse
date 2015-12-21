@@ -427,11 +427,11 @@ public class ClueEvaluator {
                     docs = archive.docsForQuery(term, qo);
                 }else {
                     Contact c = archive.addressBook.lookupByName(answer);
-                    Collection<DatedDocument> allDocs = archive.docsInDateRange(startDate, endDate);
-                    for(DatedDocument dd: allDocs) {
-                        EmailDocument edd = (EmailDocument)dd;
+                    Collection<Document> allDocs = archive.getAllDocs();
+                    for(Document doc: allDocs) {
+                        EmailDocument edd = (EmailDocument)doc;
                         if(edd.getAllAddrs()!=null && c.emails!=null)
-                            if(Sets.intersection(new LinkedHashSet<String>(edd.getAllAddrs()), c.emails).size()>0)
+                            if(Sets.intersection(new LinkedHashSet<>(edd.getAllAddrs()), c.emails).size()>0)
                                 docs.add(edd);
                     }
                 }
@@ -462,6 +462,14 @@ public class ClueEvaluator {
                 }
                 //some rules are valid ony when we are generating questions for person names i.e. type 1 questions
                 if(mode==1) {
+                    Collection<Document> docsInInterval = new ArrayList<>();
+                    for(Document doc: docs) {
+                        EmailDocument ed1 = (EmailDocument)doc;
+                        if(ed1!=null && ed1.date.after(startDate) && ed1.date.before(endDate))
+                            docsInInterval.add(ed1);
+                    }
+                    docs = docsInInterval;
+                    
                     //if the number of recipients in an email exceeds 2, penalise
                     List<Address> addrs = new ArrayList<>();
                     if(ed.to!=null)

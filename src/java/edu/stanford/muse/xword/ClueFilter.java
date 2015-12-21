@@ -19,10 +19,9 @@ public class ClueFilter {
     public static List<ClueFilter> getDefaultFilters(short mode){
         List<ClueFilter> filters = new ArrayList<>();
         if(mode==1) {
-            filters.add(new TextFilter());
             filters.add(new AnswerFilter());
+            filters.add(new TextFilter());
         }
-        filters.add(new SelfFilter());
         return filters;
     }
 
