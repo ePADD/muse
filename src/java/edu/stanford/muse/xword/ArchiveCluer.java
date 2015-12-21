@@ -229,6 +229,7 @@ public class ArchiveCluer extends Cluer {
 		int N_DOCS_TO_CHECK_FOR_CLUES = 50;
 		int docCount = 0;
 		int nValidClueCandidates = 0;
+        List<ClueFilter> clueFilters = ClueFilter.getDefaultFilters(mode);
 		for (Document doc: docsWithAnswer)
 		{
             EmailDocument ed = (EmailDocument)doc;
@@ -372,8 +373,18 @@ public class ArchiveCluer extends Cluer {
 					String ellipsisizedMessage = Util.ellipsize(messageContentOriginal, 3000);
 					Clue clue = new Clue(blankedSentence, originalSentence, unblankedLowerCaseSentence, blankedHint, url, ellipsisizedMessage, ed);
 					
-					Set<String> tabooNamesSet = archive.addressBook.getOwnNamesSet(); 
-					float clueScore = scoreClue(clue, mode, answer,evals, startDate, endDate, tabooNamesSet, nerModel, archive);
+					Set<String> tabooNamesSet = archive.addressBook.getOwnNamesSet();
+
+                    boolean dirty = false;
+                    for(ClueFilter clueFilter: clueFilters) {
+                        if (!clueFilter.filter(clue, mode, answer, startDate, endDate, tabooNamesSet, nerModel, archive)) {
+                            dirty = true;
+                            break;
+                        }
+                    }
+                    if(dirty)
+                        continue;
+                    float clueScore = scoreClue(clue, mode, answer,evals, startDate, endDate, tabooNamesSet, nerModel, archive);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important

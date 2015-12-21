@@ -317,7 +317,7 @@
             if (latestDate == null || ed.date.after(latestDate))
                 latestDate = ed.date;
 
-            List<String> entities = new ArrayList<String>();
+            List<String> entities = new ArrayList<>();
             if(mode==null || !mode.equals("person")) {
                 Map<Short, Map<String, Double>> es = NER.getEntities(archive.getDoc(doc), true);
                 for (Short t : itypes) {

@@ -536,13 +536,16 @@ public class ClueEvaluator {
 //            System.err.println("Fd: "+fd+" ::: LD: "+ld);
 //            System.err.println("Fd ms: "+fd.getTime()+", Ld ms: "+ld.getTime());
 //            System.err.println("Months: "+((ld.getTime()-fd.getTime())/(3600.0*1000*24*30)));
-            String sent = "btw, can you please take a look at expenses sheet and let me know if I am doing it right.Thanks.";
             //new ListEvaluator();
-            System.err.println("Done!");
-//            String test = "absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder";
-//            String[] tokens = test.split("\\s*,\\s*");
-//            for(String tok: tokens)
-//                System.err.println(tok);
+//            System.err.println("Done!");
+            String test = "absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder";
+            String[] tokens = test.split("\\s*,\\s*");
+            for(String tok: tokens)
+                System.err.println(tok);
+            List<String[]> some = new ArrayList<>();
+            some.add(tokens);
+            ClueEvaluator ce = new ListEvaluator(new float[]{1.0f}, some);
+            //ce.computeScore();
         }catch (Exception e){
             e.printStackTrace();
         }

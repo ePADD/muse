@@ -110,7 +110,7 @@ public class EnglishDictionary {
         Set<String> entries = new LinkedHashSet<>();
         try{
             //new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));
-            BufferedReader br = new BufferedReader(new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));//new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
+            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
             String line;
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
