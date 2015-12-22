@@ -26,7 +26,7 @@ public class SequenceModel implements NERModel, Serializable{
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
-    static CICTokenizer tokenizer = new CICTokenizer();
+    public static CICTokenizer tokenizer = new CICTokenizer();
     public Map<String,String> dbpedia;
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {

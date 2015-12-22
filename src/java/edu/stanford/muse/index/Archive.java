@@ -1289,8 +1289,9 @@ public class Archive implements Serializable {
 
     /**
      * Assign Ids to threads, can help in making out if two emails belong to the same thread
-     * Subject/Title of the a message can also be used for the same purpose*/
-    public void assignThreadIds() {
+     * Subject/Title of the a message can also be used for the same purpose
+     * @return the maximum thread id value assignbed to any thread in th arhchive*/
+    public int assignThreadIds() {
         Collection<Collection<EmailDocument>> threads = EmailUtils.threadEmails((Collection) allDocs);
         int thrId = 1; // note: valid thread ids must be > 1
         for (Collection<EmailDocument> thread : threads) {
@@ -1298,6 +1299,7 @@ public class Archive implements Serializable {
                 doc.threadID = thrId;
             thrId++;
         }
+        return thrId;
     }
 
     public void postDeserialized(String baseDir, boolean readOnly) throws IOException {

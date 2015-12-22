@@ -5,6 +5,7 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
+import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.*;
 import edu.stanford.muse.ner.model.NERModel;
@@ -307,6 +308,33 @@ public class NER implements StatusProvider {
         return nerModel;
     }
 
+    /**
+     * @arg content - text to be processed for entities
+     * @arg eMap - a super set of all the possible entities that can appear in content
+     * @return entities found in the content in the style of NERModel interface
+     */
+    public static Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> getEntitiesInDoc(String content, Map<Short,Map<String,Double>> eMap){
+        CICTokenizer tokenizer = SequenceModel.tokenizer;
+        List<Triple<String,Integer,Integer>> offsets = tokenizer.tokenize(content, false), offDoc = new ArrayList<>();
+        Map<Short,Map<String,Double>> eDoc = new LinkedHashMap<>();
+        Map<String,Short> entities = new LinkedHashMap<>();
+        for(Short t: eMap.keySet())
+            for(String e: eMap.get(t).keySet())
+                entities.put(e,t);
+
+        for(Triple<String,Integer,Integer> off: offsets){
+            if(entities.containsKey(off.getFirst())) {
+                Short type = entities.get(off.getFirst());
+                if(!eDoc.containsKey(type))
+                    eDoc.put(type, new LinkedHashMap<String, Double>());
+
+                eDoc.get(type).put(off.getFirst(),eMap.get(type).get(off.getFirst()));
+                offDoc.add(off);
+            }
+        }
+        return new Pair<>(eDoc, offDoc);
+    }
+
 	//TODO: Consider using Atomic reader for accessing the index, if it improves performance
 	//main method trains the model, recognizes the entities and updates the doc.
 	public void recongniseArchive() throws CancelledException, IOException {
@@ -319,118 +347,140 @@ public class NER implements StatusProvider {
 			throw new CancelledException();
 		}
 
-		List<Document> docs = archive.getAllDocs();
+        int maxThrdId = archive.assignThreadIds();
+        //List<Document> docs = archive.getAllDocs();
 
 		if (cancelled) {
 			status = "Cancelling...";
 			throw new CancelledException();
 		}
 
-		int di = 0, ds = docs.size();
+		int di = 0, ds = archive.getAllDocs().size();
 		int ps = 0, ls = 0, os = 0;
 
 		long totalTime = 0, updateTime = 0, recTime = 0, duTime = 0, snoTime = 0;
-		for (Document doc : docs) {
-			long st1 = System.currentTimeMillis();
-			long st = System.currentTimeMillis();
-			org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
-			//pass the lucene doc instead of muse doc, else a major performance penalty
-			//do not recognise names in original content and content separately
-			//Its possible to improve the performance further by using linear kernel
-			// instead of RBF kernel and classifier instead of a regression model
-			// (the confidence scores of regression model can be useful in segmentation)
-         	String originalContent = archive.getContents(ldoc, true);
-			String content = archive.getContents(ldoc, false);
-            String title = archive.getTitle(ldoc);
-			//original content is substring of content;
-            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
-            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
-			recTime += System.currentTimeMillis() - st;
-			st = System.currentTimeMillis();
+		for(int tid = 0;tid<maxThrdId;tid++) {
+            Collection<Document> thread = archive.docsWithThreadId(tid);
+            //the title will be the same for all the docs in the thread, should not invoke NER on them individually
+            String title = null;
+            Map<Short, Map<String, Double>> allE = new LinkedHashMap<>();
+            for (Document doc : thread) {
+                EmailDocument ed = (EmailDocument) doc;
+                org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+                if (title != null)
+                    title = archive.getTitle(ldoc);
+                String content = archive.getContents(ldoc, true);
+                Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
+                Map<Short, Map<String, Double>> entities = mapAndOffsets.first;
+                for (Short type : entities.keySet()) {
+                    if (allE.containsKey(type))
+                        allE.put(type, new LinkedHashMap<String, Double>());
+                    allE.get(type).putAll(entities.get(type));
+                }
+            }
 
-			Map<Short, List<String>> map = SequenceModel.mergeTypes(mapAndOffsets.first);
+            Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
             Map<Short, List<String>> mapTitle = SequenceModel.mergeTypes(mapAndOffsetsTitle.first);
-			stats.update(mapAndOffsets.first);
-            stats.update(mapAndOffsetsTitle.first);
-			updateTime += System.currentTimeMillis() - st;
-			st = System.currentTimeMillis();
+            //now iterate over the docs in the thread and update them
+            for (Document doc : thread) {
+                long st1 = System.currentTimeMillis();
+                long st = System.currentTimeMillis();
+                org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+                //pass the lucene doc instead of muse doc, else a major performance penalty
+                //do not recognise names in original content and content separately
+                String originalContent = archive.getContents(ldoc, true);
+                String content = archive.getContents(ldoc, false);
+                //original content is substring of content;
+                Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = getEntitiesInDoc(content, allE);
+                recTime += System.currentTimeMillis() - st;
+                st = System.currentTimeMillis();
 
-			//!!!!!!SEVERE!!!!!!!!!!
-			//TODO: an entity name is stored in NAMES, NAMES_ORIGINAL, nameoffsets, and one or more of EPER, ELOC, EORG fields, that is a lot of redundancy
-			//!!!!!!SEVERE!!!!!!!!!!
-			storeSerialized(ldoc, NAMES_OFFSETS, mapAndOffsets.second);
-            storeSerialized(ldoc, TITLE_NAMES_OFFSETS, mapAndOffsetsTitle.second);
-            storeSerialized(ldoc, FINE_ENTITIES, mapAndOffsets.getFirst());
-            storeSerialized(ldoc, TITLE_FINE_ENTITIES, mapAndOffsets.getSecond());
+                Map<Short, List<String>> map = SequenceModel.mergeTypes(mapAndOffsets.first);
+                stats.update(mapAndOffsets.first);
+                stats.update(mapAndOffsetsTitle.first);
+                updateTime += System.currentTimeMillis() - st;
+                st = System.currentTimeMillis();
 
-			List<String> persons = map.get(FeatureDictionary.PERSON);
-			List<String> locs = map.get(FeatureDictionary.PLACE);
-			List<String> orgs = map.get(FeatureDictionary.ORGANISATION);
-            List<String> personsTitle = mapTitle.get(FeatureDictionary.PERSON);
-            List<String> locsTitle = mapTitle.get(FeatureDictionary.PLACE);
-            List<String> orgsTitle = mapTitle.get(FeatureDictionary.ORGANISATION);
-			ps += persons.size() + personsTitle.size();
-			ls += locs.size() + locsTitle.size();
-			os += orgs.size() + orgsTitle.size();
-			snoTime += System.currentTimeMillis() - st;
-			st = System.currentTimeMillis();
+                //!!!!!!SEVERE!!!!!!!!!!
+                //TODO: an entity name is stored in NAMES, NAMES_ORIGINAL, nameoffsets, and one or more of EPER, ELOC, EORG fields, that is a lot of redundancy
+                //!!!!!!SEVERE!!!!!!!!!!
+                storeSerialized(ldoc, NAMES_OFFSETS, mapAndOffsets.second);
+                storeSerialized(ldoc, TITLE_NAMES_OFFSETS, mapAndOffsetsTitle.second);
+                storeSerialized(ldoc, FINE_ENTITIES, mapAndOffsets.getFirst());
+                storeSerialized(ldoc, TITLE_FINE_ENTITIES, mapAndOffsets.getSecond());
 
-		    ldoc.removeField(EPER);	ldoc.removeField(EPER_TITLE);
-            ldoc.removeField(ELOC); ldoc.removeField(ELOC_TITLE);
-            ldoc.removeField(EORG); ldoc.removeField(EORG_TITLE);
+                List<String> persons = map.get(FeatureDictionary.PERSON);
+                List<String> locs = map.get(FeatureDictionary.PLACE);
+                List<String> orgs = map.get(FeatureDictionary.ORGANISATION);
+                List<String> personsTitle = mapTitle.get(FeatureDictionary.PERSON);
+                List<String> locsTitle = mapTitle.get(FeatureDictionary.PLACE);
+                List<String> orgsTitle = mapTitle.get(FeatureDictionary.ORGANISATION);
+                ps += persons.size() + personsTitle.size();
+                ls += locs.size() + locsTitle.size();
+                os += orgs.size() + orgsTitle.size();
+                snoTime += System.currentTimeMillis() - st;
+                st = System.currentTimeMillis();
 
-			ldoc.add(new StoredField(EPER, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
-			ldoc.add(new StoredField(ELOC, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
-			ldoc.add(new StoredField(EORG, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EPER_TITLE, Util.join(personsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(ELOC_TITLE, Util.join(locsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EORG_TITLE, Util.join(orgsTitle, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.removeField(EPER);
+                ldoc.removeField(EPER_TITLE);
+                ldoc.removeField(ELOC);
+                ldoc.removeField(ELOC_TITLE);
+                ldoc.removeField(EORG);
+                ldoc.removeField(EORG_TITLE);
 
-			List<String> names_original = new ArrayList<String>(), names = new ArrayList<String>();
-			if(persons!=null)
-				names.addAll(persons);
-			if(locs!=null)
-				names.addAll(locs);
-			if(orgs!=null)
-				names.addAll(orgs);
-			int ocs = originalContent.length();
-			List<Triple<String,Integer,Integer>> offsets = mapAndOffsets.getSecond();
-			for (int oi=0;oi<offsets.size();oi++) {
-				Triple<String,Integer,Integer> offset = offsets.get(oi);
-				String name = offset.getFirst();
-				if(offset  == null) {
-					log.warn("No offset found for: "+name);
-					break;
-				}
-				if(offset.getSecond() < ocs )
-					names_original.add(name);
-			}
+                ldoc.add(new StoredField(EPER, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(ELOC, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(EORG, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(EPER_TITLE, Util.join(personsTitle, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(ELOC_TITLE, Util.join(locsTitle, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(EORG_TITLE, Util.join(orgsTitle, Indexer.NAMES_FIELD_DELIMITER)));
 
-			ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
-			//log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
+                List<String> names_original = new ArrayList<String>(), names = new ArrayList<String>();
+                if (persons != null)
+                    names.addAll(persons);
+                if (locs != null)
+                    names.addAll(locs);
+                if (orgs != null)
+                    names.addAll(orgs);
+                int ocs = originalContent.length();
+                List<Triple<String, Integer, Integer>> offsets = mapAndOffsets.getSecond();
+                for (int oi = 0; oi < offsets.size(); oi++) {
+                    Triple<String, Integer, Integer> offset = offsets.get(oi);
+                    String name = offset.getFirst();
+                    if (offset == null) {
+                        log.warn("No offset found for: " + name);
+                        break;
+                    }
+                    if (offset.getSecond() < ocs)
+                        names_original.add(name);
+                }
 
-            //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance
-			//Makes me think building a new index could be faster
-			archive.updateDocument(ldoc);
-			duTime += System.currentTimeMillis() - st;
-			di++;
+                ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
+                //log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
 
-			totalTime += System.currentTimeMillis() - st1;
-			pctComplete = 30 + ((double)di/(double)ds) * 70;
-			double ems = (double) (totalTime * (ds-di)) / (double) (di*1000);
-			status = "Recognized entities in " + Util.commatize(di) + " of " + Util.commatize(ds) + " emails ";
-			//Util.approximateTimeLeft((long)ems/1000);
-			eta = (long)ems;
+                //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance
+                //Makes me think building a new index could be faster
+                archive.updateDocument(ldoc);
+                duTime += System.currentTimeMillis() - st;
+                di++;
 
-			if(di%100 == 0)
-                log.info(status);
-			time += System.currentTimeMillis() - st;
+                totalTime += System.currentTimeMillis() - st1;
+                pctComplete = 30 + ((double) di / (double) ds) * 70;
+                double ems = (double) (totalTime * (ds - di)) / (double) (di * 1000);
+                status = "Recognized entities in " + Util.commatize(di) + " of " + Util.commatize(ds) + " emails ";
+                //Util.approximateTimeLeft((long)ems/1000);
+                eta = (long) ems;
 
-			if (cancelled) {
-				status = "Cancelling...";
-				throw new CancelledException();
-			}
-		}
+                if (di % 100 == 0)
+                    log.info(status);
+                time += System.currentTimeMillis() - st;
+
+                if (cancelled) {
+                    status = "Cancelling...";
+                    throw new CancelledException();
+                }
+            }
+        }
 
 		log.info("Trained and recognised entities in " + di + " docs in " + totalTime + "ms" + "\nPerson: " + ps + "\nOrgs:" + os + "\nLocs:" + ls);
 		archive.close();

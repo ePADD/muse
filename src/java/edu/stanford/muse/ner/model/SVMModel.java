@@ -19,6 +19,11 @@ import org.apache.commons.logging.LogFactory;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Its possible to improve the performance further by using linear kernel
+ * instead of RBF kernel and classifier instead of a regression model
+ * (the confidence scores of regression model can be useful in segmentation)
+ * */
 public class SVMModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
     public FeatureGenerator[] fgs;
