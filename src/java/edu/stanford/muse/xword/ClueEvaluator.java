@@ -373,8 +373,6 @@ public class ClueEvaluator {
                             }
                     }else{
                         b += lists.get(i).contains(tok) ? params[i] : 0.0f;
-                        if(lists.get(i).contains(tok))
-                            System.err.println("Found the token: "+tok+" in "+lists.get(i));
                     }
                 }
                 boost += b;
@@ -469,7 +467,7 @@ public class ClueEvaluator {
                             docsInInterval.add(ed1);
                     }
                     docs = docsInInterval;
-                    
+
                     //if the number of recipients in an email exceeds 2, penalise
                     List<Address> addrs = new ArrayList<>();
                     if(ed.to!=null)

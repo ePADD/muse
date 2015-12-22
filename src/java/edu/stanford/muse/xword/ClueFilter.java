@@ -22,6 +22,7 @@ public class ClueFilter {
             filters.add(new AnswerFilter());
             filters.add(new TextFilter());
         }
+        filters.add(new SelfFilter());
         return filters;
     }
 
@@ -36,6 +37,18 @@ public class ClueFilter {
         @Override
         public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
             if(DictUtils.hasDictionaryWord(answer))
+                return false;
+            return true;
+        }
+    }
+
+    /**
+     * Checks if the answer is not one of the self name*/
+    public static class SelfFilter extends ClueFilter{
+        @Override
+        public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
+            Contact sc = archive.addressBook.getContactForSelf();
+            if(sc.names.contains(answer))
                 return false;
             return true;
         }
@@ -64,13 +77,14 @@ public class ClueFilter {
                     log.info("Rejecting answer: " + answer + "\nclue: " + s);
                     return false;
                 }
+
             return true;
         }
     }
 
     /**
      * Checks for self instance in the clue text*/
-    public static class SelfFilter extends ClueFilter{
+    public static class SelfTextFilter extends ClueFilter{
         @Override
         public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
             String s = clue.fullSentenceOriginal.toLowerCase();

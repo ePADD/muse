@@ -76,9 +76,9 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(POWERSTATION, new String[]{"PowerStation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(AWARD, new String[]{"Award"});
         aTypes.put(TRADEUNIN, new String[]{"TradeUnion|Organisation"});
-        aTypes.put(PARK, new String[]{"Park|ArchitecturalStructure|Place"});
+        aTypes.put(PARK, new String[]{"Park|Place","ProtectedArea|Place"});
         aTypes.put(HOTEL, new String[]{"Hotel|Building|ArchitecturalStructure|Place"});
-        aTypes.put(THEATRE, new String[]{"Theatre|Building|ArchitecturalStructure|Place"});
+        aTypes.put(THEATRE, new String[]{"Theatre|Venue|ArchitecturalStructure|Place"});
         aTypes.put(LEGISTLATURE, new String[]{"Legislature|Organisation"});
         aTypes.put(LIBRARY, new String[]{"Library|Building|ArchitecturalStructure|Place"});
         aTypes.put(LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
@@ -727,7 +727,11 @@ public class FeatureDictionary implements Serializable {
         if(type == null)
             return ct;
 
+        //strip "|Agent" in the end
+        if(type.endsWith("|Agent"))
+            type = type.substring(0, type.length()-6);
         String[] fs = type.split("\\|");
+        //the loop codes the string type that may look like "University|EducationalInstitution|Organisation|Agent" into the most specific type by looking at the biggest to smallest prefix.
         outer:
         for(int ti=0;ti<fs.length;ti++) {
             String st = "";
