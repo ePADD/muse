@@ -172,7 +172,7 @@ public class SequenceModel implements NERModel, Serializable{
             int bi = -1;
             short bt = -10;
             for (short t : cands) {
-                int tj = 0;
+                int tj = Math.max(ti-6,0);
                 //dont allow multi word phrases with these types
                 if (t == OTHER || t == FeatureDictionary.OTHER)
                     tj = ti;
