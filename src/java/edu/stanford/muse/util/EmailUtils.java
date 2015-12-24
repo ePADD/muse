@@ -1369,8 +1369,12 @@ public class EmailUtils {
 
 	public static Map<String, String> readDBpedia(double p) {
         String typesFile = "instance_types_2014-04.en.txt.bz2";
-        if (dbpedia != null)
-            return dbpedia;
+        if (dbpedia != null) {
+            if(p==1)
+                return dbpedia;
+            else
+                return sample(dbpedia, p);
+        }
         dbpedia = new LinkedHashMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
