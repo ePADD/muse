@@ -573,7 +573,7 @@ public class SequenceModel implements NERModel, Serializable {
                 dict2.put(str, dict.get(str));
             }
         }
-        System.err.println("Sliced "+dict.size()+" entries into "+dict1.size()+" and "+dict2.size());
+        System.err.println("Sliced " + dict.size() + " entries into " + dict1.size() + " and " + dict2.size());
         return new Pair<>(dict1, dict2);
     }
 
@@ -582,7 +582,9 @@ public class SequenceModel implements NERModel, Serializable {
         //1. lookup method, disable the lookup
         System.err.println("DBpedia scoring check starts");
         String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1, "twl");
+        //clear the cache
+        EmailUtils.dbpedia = null;
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1, twl);
         //NOther == Not OTHER
         //number of things shown (NON-OTHER) and number of things that should be shown
         int ne = 0, neShown = 0, neShouldShown = 0;
@@ -596,9 +598,10 @@ public class SequenceModel implements NERModel, Serializable {
         for(String entry: dbpedia.keySet()){
             if(!entry.contains(" "))
                 continue;
-            entry = EmailUtils.uncanonicaliseName(entry);
-
+            String fullType = dbpedia.get(entry);
             Short type = FeatureDictionary.codeType(dbpedia.get(entry));
+
+            entry = EmailUtils.uncanonicaliseName(entry);
             if(entry.length()>=15)
                 continue;
             Pair<Map<Short,Map<String,Double>>, List<Triple<String,Integer,Integer>>> p = nerModel.find(entry);
@@ -637,13 +640,13 @@ public class SequenceModel implements NERModel, Serializable {
                     }
                     if (found) {
                         missAssigned++;
-                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + dbpedia.get(entry) + " found: " + assignedTo + "\n" + p.getFirst() + "--------");
+                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + p.getFirst() + "--------");
                     } else if (any) {
-                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + dbpedia.get(entry) + "\n" + p.getFirst() + "--------");
+                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + p.getFirst() + "--------");
                         missSegmentation++;
                     } else {
                         missNoEvidence++;
-                        System.err.println("Not enough evidence for: " + entry + " - " + dbpedia.get(entry));
+                        System.err.println("Not enough evidence for: " + entry + " - " + fullType);
                     }
                 }
             }
@@ -720,9 +723,12 @@ public class SequenceModel implements NERModel, Serializable {
             OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
             int numTest = 0;
             for(String str: test.keySet()) {
-                osw.write(str + " " + test.get(str) + "\n");
+                String orig = str;
+                str = str.replaceAll(" ","_");
+                osw.write(str + " " + test.get(orig) + "\n");
                 numTest++;
             }
+            osw.close();
             System.err.println("Wrote "+numTest+" records in test split to: "+twl);
         }catch(IOException e){
             e.printStackTrace();
@@ -799,7 +805,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     public static void main(String[] args){
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
         if (fdw == null) {
