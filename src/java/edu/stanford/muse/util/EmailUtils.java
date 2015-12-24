@@ -1387,7 +1387,7 @@ public class EmailUtils {
             if(resourceFile)
                 lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
             else
-                lnr = new LineNumberReader(new InputStreamReader(new FileInputStream(typesFile), "UTF-8"));
+                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(typesFile),true)));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
@@ -1484,7 +1484,7 @@ public class EmailUtils {
 	}
 
     public static Map<String,String> readDBpedia(double fraction) {
-        return readDBpedia(1.0, null);
+        return readDBpedia(fraction, null);
     }
 
 	public static Map<String,String> readDBpedia(){
