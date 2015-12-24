@@ -723,6 +723,7 @@ public class SequenceModel implements NERModel, Serializable {
                 osw.write(str + " " + test.get(str) + "\n");
                 numTest++;
             }
+            osw.close();
             System.err.println("Wrote "+numTest+" records in test split to: "+twl);
         }catch(IOException e){
             e.printStackTrace();

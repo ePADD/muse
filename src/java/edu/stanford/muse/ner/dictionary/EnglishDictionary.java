@@ -5,10 +5,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class EnglishDictionary {
     static String adverbsFile = "dictionaries/en-pure-adv.txt";
@@ -106,6 +103,75 @@ public class EnglishDictionary {
         return prepositions;
     }
 
+    /**
+     * Based on the rules from: https://docs.lucidworks.com/display/lweug/Lucid+Plural+Stemming+Rules
+     * Also see: http://www.csse.monash.edu.au/~damian/papers/HTML/Plurals.html
+     * */
+    public static String getSingular(String word){
+        word = word.toLowerCase();
+        if(word.length()<4)
+            return word;
+        List<Character> vowels = Arrays.asList('a','e','i','o','u');
+
+
+        String[] signals = new String[]{"elves","indices","theses","aderies","ies","hes"};
+        String[] replace = new String[]{"elf","index","thesis","aderie","y","h"};
+        for(int si=0;si<signals.length;si++)
+            if(word.endsWith(signals[si]))
+                return word.replaceAll(signals[si]+"$",replace[si]);
+
+        if (word.endsWith("oes") && word.length()>=6)
+            return word.replaceAll("oes$","o");
+        else if (word.equals("goes")) return "go";
+        else if (word.equals("does")) return "do";
+        else if (word.endsWith("oes") && (word.length()==4 || word.length()==5))
+            return word.replaceAll("oes$","oe");
+        signals = new String[]{"sses","igases","gases","mases"};
+        replace = new String[]{"ss","igase","gas","mas"};
+        for(int si=0;si<signals.length;si++)
+            if(word.endsWith(signals[si]))
+                return word.replaceAll(signals[si]+"$",replace[si]);
+        if(word.endsWith("vases")&&word.length()>=6)
+            return word.replaceAll("vases$","vas");
+
+        signals = new String[]{"iases","abuses","cuses","fuses"};
+        replace = new String[]{"ias", "abuse","cuse","fuse"};
+        for(int si=0;si<signals.length;si++)
+            if(word.endsWith(signals[si]))
+                return word.replaceAll(signals[si]+"$",replace[si]);
+        if(word.endsWith("uses") && word.length()>=5 && !vowels.contains(word.charAt(word.length()-5)))
+            return word.replaceAll("uses$","us");
+
+        signals = new String[]{"xes","zes","es","ras","oci","cti"};
+        replace = new String[]{"x","z","e","ra","ocus","ctus"};
+        for(int si=0;si<signals.length;si++)
+            if(word.endsWith(signals[si]))
+                return word.replaceAll(signals[si]+"$",replace[si]);
+
+        if(word.endsWith("s") && word.length()>1){
+            char c = word.charAt(word.length()-2);
+            if((!vowels.contains(c) && c!='s') || c=='o')
+                return word.replaceAll("s$","");
+        }
+        List<Pair<String,String>> exactMatches = new ArrayList<>();
+        exactMatches.add(new Pair<>("plusses","plus"));
+        exactMatches.add(new Pair<>("gasses","gas"));
+        exactMatches.add(new Pair<>("classes","class"));
+        exactMatches.add(new Pair<>("mice", "mouse"));
+        exactMatches.add(new Pair<>("data", "datum"));
+        exactMatches.add(new Pair<>("bases", "basis"));
+        exactMatches.add(new Pair<>("amebiases", "amebiasis"));
+        exactMatches.add(new Pair<>("atlases", "atlas"));
+        exactMatches.add(new Pair<>("Eliases", "Elias"));
+        exactMatches.add(new Pair<>("feet", "foot"));
+        exactMatches.add(new Pair<>("backhoes", "backhoe"));
+        exactMatches.add(new Pair<>("calories", "calorie"));
+        for(Pair<String,String> em: exactMatches)
+            if(em.getFirst().equals(word))
+                return em.getSecond();
+        return word;
+    }
+
     public static Set<String> readFile(String fileName){
         Set<String> entries = new LinkedHashSet<>();
         try{
@@ -125,6 +191,33 @@ public class EnglishDictionary {
     }
 
     public static void main(String[] args){
-        System.err.println(getDictStats().get("john"));
+        List<Pair<String,String>> plurals = new ArrayList<>();
+        plurals.add(new Pair<>("selves","self"));
+        plurals.add(new Pair<>("indices", "index"));
+        plurals.add(new Pair<>("hypotheses","hypothesis"));
+        plurals.add(new Pair<>("camaraderies","camaraderie"));
+        plurals.add(new Pair<>("potatoes","potato"));
+        plurals.add(new Pair<>("dishes","dish"));
+        plurals.add(new Pair<>("countries", "country"));
+        plurals.add(new Pair<>("toes","toe"));
+        plurals.add(new Pair<>("passes","pass"));
+        plurals.add(new Pair<>("ligases","ligase"));
+        plurals.add(new Pair<>("gases","gas"));
+        plurals.add(new Pair<>("christamases","christamas"));
+        plurals.add(new Pair<>("canvases","canvas"));
+        plurals.add(new Pair<>("aliases", "alias"));
+        plurals.add(new Pair<>("disabuses", "disabuse"));
+        plurals.add(new Pair<>("accuses","accuse"));
+        plurals.add(new Pair<>("diffuses","diffuse"));
+        plurals.add(new Pair<>("buses","bus"));
+        plurals.add(new Pair<>("buzzes","buzz"));
+        plurals.add(new Pair<>("cats","cat"));
+        plurals.add(new Pair<>("cacti","cactus"));
+        plurals.add(new Pair<>("houses","house"));
+        for(Pair<String,String> p: plurals)
+            if(!getSingular(p.first).equals(p.second))
+                System.err.println("Fails at: "+p.first);
+        System.err.println("Done testing!");
+        //System.err.println(getDictStats().get("john"));
     }
 }
