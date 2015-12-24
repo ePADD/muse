@@ -9,6 +9,7 @@ import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -576,10 +577,12 @@ public class SequenceModel implements NERModel, Serializable {
         return new Pair<>(dict1, dict2);
     }
 
-    public static void test(NERModel nerModel, Map<String,String> dbpedia){
+    public static void test(NERModel nerModel){
         //when testing remember to change
         //1. lookup method, disable the lookup
         System.err.println("DBpedia scoring check starts");
+        String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1, "twl");
         //NOther == Not OTHER
         //number of things shown (NON-OTHER) and number of things that should be shown
         int ne = 0, neShown = 0, neShouldShown = 0;
@@ -695,18 +698,32 @@ public class SequenceModel implements NERModel, Serializable {
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
         Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        //This split is essential to isolate some entries that trained model has not seen
+        Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
+        Map<String,String> train = p.getFirst();
+        Map<String, String> test = p.getSecond();
+
         //split the dictionary into train and test sets
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
-        FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
+        FeatureDictionary dictionary = new FeatureDictionary(train, fgs);
         nerModel.dictionary = dictionary;
-        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
-        log.info("Performing EM...");
-        nerModel.dictionary.EM(dbpedia);
+        nerModel.dictionary.EM(train);
         try {
+            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
+            String modelFile = mwl + SequenceModel.modelFileName;
+            log.info("Performing EM...");
             nerModel.writeModel(new File(modelFile));
+            //also write the test split
+            String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
+            OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
+            int numTest = 0;
+            for(String str: test.keySet()) {
+                osw.write(str + " " + test.get(str) + "\n");
+                numTest++;
+            }
+            System.err.println("Wrote "+numTest+" records in test split to: "+twl);
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -799,11 +816,8 @@ public class SequenceModel implements NERModel, Serializable {
         if(nerModel == null)
             nerModel = train();
 
-        Pair<Map<String,String>, Map<String,String>> p = split(dbpedia, 0.98f);
-        //Map<String,String> trainDict = p.first;
-        Map<String,String> testDict = p.second;
         if(nerModel!=null){
-            test(nerModel, testDict);
+            test(nerModel);
         }
     }
 }

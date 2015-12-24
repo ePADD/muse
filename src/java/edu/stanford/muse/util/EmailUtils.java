@@ -1367,8 +1367,12 @@ public class EmailUtils {
 		return sample;
 	}
 
-	public static Map<String, String> readDBpedia(double p) {
-        String typesFile = "instance_types_2014-04.en.txt.bz2";
+	public static Map<String, String> readDBpedia(double p, String typesFile) {
+        boolean resourceFile = false;
+        if(typesFile == null) {
+            typesFile = "instance_types_2014-04.en.txt.bz2";
+            resourceFile = true;
+        }
         if (dbpedia != null) {
             if(p==1)
                 return dbpedia;
@@ -1379,7 +1383,11 @@ public class EmailUtils {
         int d = 0, numPersons = 0, lines = 0;
         try {
             //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
-            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
+            LineNumberReader lnr;
+            if(resourceFile)
+                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
+            else
+                lnr = new LineNumberReader(new InputStreamReader(new FileInputStream(typesFile), "UTF-8"));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
@@ -1474,6 +1482,10 @@ public class EmailUtils {
 
 		return sample(dbpedia,p);
 	}
+
+    public static Map<String,String> readDBpedia(double fraction) {
+        return readDBpedia(1.0, null);
+    }
 
 	public static Map<String,String> readDBpedia(){
 		return readDBpedia(1.0);
