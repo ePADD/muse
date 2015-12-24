@@ -1381,7 +1381,7 @@ public class EmailUtils {
                 if (line == null)
                     break;
                 if (lines++ % 10000 == 0)
-                    log.info("Processed " + lines + " lines of approx. 2.35M in " + typesFile);
+                    log.info("Processed " + lines + " lines of approx. 3.02M in " + typesFile);
 //                if (lines > 500000)
 //                    break;
 
@@ -1466,7 +1466,7 @@ public class EmailUtils {
 		}
 
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
-		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
+        log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
 		return sample(dbpedia,p);
 	}

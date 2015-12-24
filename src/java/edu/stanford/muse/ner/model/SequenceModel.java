@@ -1,5 +1,6 @@
 package edu.stanford.muse.ner.model;
 
+import com.sun.javafx.binding.StringFormatter;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -13,13 +14,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 
 /**
  * Created by vihari on 07/09/15.
  * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
  */
-public class SequenceModel implements NERModel, Serializable{
+public class SequenceModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
     public static String modelFileName = "SeqModel.ser";
     private static final long serialVersionUID = 1L;
@@ -27,18 +29,19 @@ public class SequenceModel implements NERModel, Serializable{
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
     public static CICTokenizer tokenizer = new CICTokenizer();
-    public Map<String,String> dbpedia;
+    public Map<String, String> dbpedia;
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
         this.tokenizer = tokenizer;
     }
 
-    public SequenceModel(){
+    public SequenceModel() {
     }
 
     /**
-     * @param other boolean if is of other type*/
+     * @param other boolean if is of other type
+     */
     public static double getLikelihoodWithOther(String phrase, boolean other) {
         phrase = phrase.replaceAll("^\\W+|\\W+$", "");
         if (phrase.length() == 0) {
@@ -50,7 +53,7 @@ public class SequenceModel implements NERModel, Serializable{
 
         String[] tokens = phrase.split("\\s+");
         double p = 1;
-        for(String token: tokens) {
+        for (String token : tokens) {
             String orig = token;
             token = token.toLowerCase();
             List<String> noise = Arrays.asList("P.M", "P.M.", "A.M.", "today", "saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "thanks");
@@ -85,7 +88,6 @@ public class SequenceModel implements NERModel, Serializable{
                 }
                 continue;
             }
-            //thats pretty much no O token for initial capital word
             double v = (double) pair.getFirst() / (double) pair.getSecond();
             //System.err.println("Phrase: "+token+", "+v+", "+p+", "+other);
 //            if (other)
@@ -93,20 +95,18 @@ public class SequenceModel implements NERModel, Serializable{
 //            else
 //                p *= v;
             if (v > 0.25) {
-                if(other)
+                if (other)
                     return 1.0 / Double.MAX_VALUE;
                 else
                     return 1.0;
-            }
-            else {
+            } else {
                 if (token.charAt(0) == orig.charAt(0)) {
-                    if(other)
+                    if (other)
                         return 1;
                     else
-                        return 1.0/Double.MAX_VALUE;
-                }
-                else {
-                    if(other)
+                        return 1.0 / Double.MAX_VALUE;
+                } else {
+                    if (other)
                         return 1.0 / Double.MAX_VALUE;
                     else
                         return 1.0;
@@ -115,6 +115,20 @@ public class SequenceModel implements NERModel, Serializable{
             }
         }
         return p;
+    }
+
+    short lookup(String phrase) {
+        if (dbpedia == null) {
+            Map<String, String> orig = EmailUtils.readDBpedia();
+            dbpedia = new LinkedHashMap<>();
+            for (String str : orig.keySet())
+                dbpedia.put(str.toLowerCase(), orig.get(str));
+        }
+
+        String dbpediaType = dbpedia.get(phrase.toLowerCase());
+        Short ct = FeatureDictionary.codeType(dbpediaType);
+        return -1;
+        //return ct;
     }
 
     /**
@@ -127,6 +141,18 @@ public class SequenceModel implements NERModel, Serializable{
      * @return all the entities along with their types and quality score found in the phrase
     */
     public Map<String, Pair<Short, Double>> seqLabel(String phrase) {
+        Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
+        short ct = lookup(phrase);
+        String dbpediaType = dbpedia.get(phrase.toLowerCase());
+        if(dbpediaType!=null && ct>=0 && (phrase.contains(" ")||dbpediaType.endsWith("Country|PopulatedPlace|Place"))){
+            segments.put(phrase, new Pair<>(ct, 1.0));
+            //System.err.println("Found: "+phrase+","+dbpediaType+","+ct);
+            return segments;
+        }
+//        else{
+//            System.err.println("Did not consider: "+phrase+","+dbpediaType+","+ct);
+//        }
+
         //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
         phrase = EmailUtils.uncanonicaliseName(phrase);
         //phrase = clean(phrase);
@@ -202,7 +228,6 @@ public class SequenceModel implements NERModel, Serializable{
         }
 
         //the backtracking step
-        Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
         int start = tokens.length - 1;
         while (true) {
             Triple<Double, Integer, Short> t = tracks.get(start);
@@ -268,25 +293,17 @@ public class SequenceModel implements NERModel, Serializable{
         String[] tokens = phrase.split("\\s+");
         if(FeatureDictionary.sws.contains(tokens[0]) || FeatureDictionary.sws.contains(tokens[tokens.length-1]))
             return 0;
-        if(dbpedia == null){
-            Map<String,String> orig = EmailUtils.readDBpedia();
-            dbpedia = new LinkedHashMap<>();
-            for(String str: orig.keySet())
-                dbpedia.put(str.toLowerCase(),orig.get(str));
-        }
 
         double sorg = 0;
+        Short ct = lookup(phrase);
         String dbpediaType = dbpedia.get(phrase.toLowerCase());
-        if(dbpediaType!=null && FeatureDictionary.aTypes.get(type)!=null){
-            for(String atype: FeatureDictionary.aTypes.get(type)){
-                if(dbpediaType.endsWith(atype)) {
-                    if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
-                        return 1;
-                    else if (phrase.contains(" "))
-                        return 1;
-                }
-            }
+        if(dbpediaType!=null && ct==type){
+            if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
+                return 1;
+            else if (phrase.contains(" "))
+                return 1;
         }
+
         String[] patts = FeatureDictionary.getPatts(phrase);
         Map<String, Integer> map = new LinkedHashMap<>();
         for (int si = 0; si < patts.length; si++) {
@@ -297,10 +314,10 @@ public class SequenceModel implements NERModel, Serializable{
         for (String mid : tokenFeatures.keySet()) {
             Double d;
             MU mu = features.get(mid);
-            int THRESH = 5;
+            int THRESH = 0;
             //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous, which could have appeared many times, but does not appear to have common template
             //TODO: this check for new token is to reduce the noise coming from lowercase words starting with the word "new"
-            if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>2)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
+            if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>0)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
                 d = mu.getLikelihood(tokenFeatures.get(mid), dictionary);
             else
                 //a likelihood that assumes nothing
@@ -515,11 +532,11 @@ public class SequenceModel implements NERModel, Serializable{
                     //A new type is assigned to some words, which is of value -2
                     if(p.first<0)
                         continue;
-                    if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-3) {
+                    //if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-3) {
                         //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
-                        offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
-                        maps.get(p.getFirst()).put(e, p.second);
-                    }
+                    offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
+                    maps.get(p.getFirst()).put(e, p.second);
+                    //}
                 }
             }
         }
@@ -545,15 +562,149 @@ public class SequenceModel implements NERModel, Serializable{
         }
     }
 
+    //samples [fraction] fraction of entries from dictionary supplied and splices the supplied dict
+    public static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
+        Map<String,String> dict1 = new LinkedHashMap<>(), dict2 = new LinkedHashMap<>();
+        Random rand = new Random();
+        for(String str: dict.keySet()){
+            if(rand.nextFloat()<fraction){
+                dict1.put(str, dict.get(str));
+            }else{
+                dict2.put(str, dict.get(str));
+            }
+        }
+        System.err.println("Sliced "+dict.size()+" entries into "+dict1.size()+" and "+dict2.size());
+        return new Pair<>(dict1, dict2);
+    }
+
+    public static void test(NERModel nerModel, Map<String,String> dbpedia){
+        //when testing remember to change
+        //1. lookup method, disable the lookup
+        System.err.println("DBpedia scoring check starts");
+        //NOther == Not OTHER
+        //number of things shown (NON-OTHER) and number of things that should be shown
+        int ne = 0, neShown = 0, neShouldShown = 0;
+        //number of entries assigned to wrong type and number missed because they are assigned OTHER
+        int missAssigned=0, missSegmentation = 0, missNoEvidence = 0;
+        int correct = 0;
+        //these are the entries which are not completely tagged as OTHER by NER, but may have some segments that are not OTHER, hence visible
+        double CUTOFF = 0;
+        Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
+        Map<Short, Integer> freqs = new LinkedHashMap<>();
+        for(String entry: dbpedia.keySet()){
+            if(!entry.contains(" "))
+                continue;
+            entry = EmailUtils.uncanonicaliseName(entry);
+
+            Short type = FeatureDictionary.codeType(dbpedia.get(entry));
+            if(entry.length()>=15)
+                continue;
+            Pair<Map<Short,Map<String,Double>>, List<Triple<String,Integer,Integer>>> p = nerModel.find(entry);
+            Map<Short, Map<String,Double>> es = p.getFirst();
+            Map<Short, Map<String,Double>> temp = new LinkedHashMap<>();
+            for(Short t: es.keySet()) {
+                if(es.get(t).size()==0)
+                    continue;
+                temp.put(t, new LinkedHashMap<String, Double>());
+                for (String str : es.get(t).keySet())
+                    if(es.get(t).get(str)>CUTOFF)
+                        temp.get(t).put(str, es.get(t).get(str));
+            }
+            es = temp;
+
+            short assignedTo = type;
+            boolean shown = false;
+            //we should not bother about segmentation in the case of OTHER
+            if(!(es.containsKey(FeatureDictionary.OTHER) && es.size()==1)) {
+                shown = true;
+                boolean any = true;
+                if (type!=FeatureDictionary.OTHER && es.containsKey(type) && es.get(type).containsKey(entry))
+                    correct++;
+                else {
+                    any = false;
+                    boolean found = false;
+                    assignedTo = -1;
+                    for (Short t : es.keySet()) {
+                        if (es.get(t).containsKey(entry)) {
+                            found = true;
+                            assignedTo = t;
+                            break;
+                        }
+                        if (es.get(t).size() > 0)
+                            any = true;
+                    }
+                    if (found) {
+                        missAssigned++;
+                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + dbpedia.get(entry) + " found: " + assignedTo + "\n" + p.getFirst() + "--------");
+                    } else if (any) {
+                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + dbpedia.get(entry) + "\n" + p.getFirst() + "--------");
+                        missSegmentation++;
+                    } else {
+                        missNoEvidence++;
+                        System.err.println("Not enough evidence for: " + entry + " - " + dbpedia.get(entry));
+                    }
+                }
+            }
+            if(shown)
+                neShown++;
+            if(type!=FeatureDictionary.OTHER)
+                neShouldShown++;
+
+
+            if(ne++%100 == 0)
+                System.err.println("Done testing on "+ne+" of "+dbpedia.size());
+            if(!confMat.containsKey(type))
+                confMat.put(type, new LinkedHashMap<Short, Integer>());
+            if(!confMat.get(type).containsKey(assignedTo))
+                confMat.get(type).put(assignedTo, 0);
+            confMat.get(type).put(assignedTo, confMat.get(type).get(assignedTo)+1);
+
+            if(!freqs.containsKey(type))
+                freqs.put(type, 0);
+            freqs.put(type, freqs.get(type)+1);
+        }
+        List<Short> allTypes = new ArrayList<>();
+        for(Short type: confMat.keySet())
+            allTypes.add(type);
+        Collections.sort(allTypes);
+        allTypes.add((short)-1);
+        System.err.println("------------------------");
+        String ln = "  ";
+        for(Short type: allTypes)
+            ln += String.format("%5s",type);
+        System.err.println(ln);
+        for(Short t1: allTypes){
+            ln = String.format("%2s",t1);
+            for(Short t2: allTypes) {
+                if(confMat.containsKey(t1) && confMat.get(t1).containsKey(t2) && freqs.containsKey(t1))
+                    ln += String.format("%5s", new DecimalFormat("#.##").format((double)confMat.get(t1).get(t2)/freqs.get(t1)));//new DecimalFormat("#.##").format((double) confMat.get(t1).get(t2) / freqs.get(t1)));
+                else
+                    ln += String.format("%5s","-");
+            }
+            System.err.println(ln);
+        }
+        System.err.println("------------------------\n");
+        double precision = (double)(correct)/(neShown);
+        double recall = (double)correct/neShouldShown;
+        //miss and misAssigned are number of things we are missing we are missing, but for different reasons, miss is due to segmentation problem, assignment to OTHER; misAssigned is due to wrong type assignment
+        //visible = ne - number of entries that are assigned OTHER label and hence visible
+        System.err.println("Missed #"+missAssigned+" due to improper assignment\n#"+missSegmentation+"due to improper segmentation\n" +
+                "#"+missNoEvidence+" due to single word or no evidence");
+        System.err.println("Precision: "+precision+"\nRecall: "+recall);
+    }
+
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
         Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0);
+        //split the dictionary into train and test sets
+        Pair<Map<String,String>, Map<String,String>> p = split(dbpedia, 0.85f);
+        Map<String,String> trainDict = p.first;
+        Map<String,String> testDict = p.second;
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
-        FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
+        FeatureDictionary dictionary = new FeatureDictionary(trainDict, fgs);
         nerModel.dictionary = dictionary;
-        //nerModel.tokenizer = new CICTokenizer();
         String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
         log.info("Performing EM...");
@@ -563,10 +714,11 @@ public class SequenceModel implements NERModel, Serializable{
         }catch(IOException e){
             e.printStackTrace();
         }
+        test(nerModel, testDict);
         return nerModel;
     }
 
-    public static void main(String[] args){
+    public static void main1(String[] args){
         try {
             String content = "Bob,\n" +
                     "Are you back from Maine: how is your sister?\n" +
@@ -624,12 +776,6 @@ public class SequenceModel implements NERModel, Serializable{
                 System.out.println(type + " : "+mapsandoffsets.first.get(type)+"<br>");
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
-            Map<String,String> dbpedia = EmailUtils.readDBpedia();
-            System.err.println("DBpedia scoring check starts");
-//            for(String entry: dbpedia.keySet()){
-//                Short type = FeatureDictionary.codeType(dbpedia.get(entry));
-//                System.err.println(entry + " " + dbpedia.get(entry) + " " + nerModel.dictionary.getConditional(entry, type, fdw));
-//            }
             String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",
                     "New York International Airport", "Ramchandra Kripa, Mahishi Road"};
             for(String c: check) {
@@ -640,10 +786,29 @@ public class SequenceModel implements NERModel, Serializable{
         }
     }
 
-    public static void main1(String[] args){
-        System.err.println(getLikelihoodWithOther("SUnday saturday", true));
-        System.err.println(getLikelihoodWithOther("SUnday saturday", false));
-        System.err.println(getLikelihoodWithOther("Robert John", true));
-        System.err.println(getLikelihoodWithOther("Robert John", false));
+    public static void main(String[] args){
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
+        String modelFile = mwl + SequenceModel.modelFileName;
+        if (fdw == null) {
+            try {
+                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        System.err.println("Loading model...");
+        SequenceModel nerModel = null;
+        try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+        catch(IOException e){e.printStackTrace();}
+        if(nerModel == null)
+            nerModel = train();
+
+        Pair<Map<String,String>, Map<String,String>> p = split(dbpedia, 0.98f);
+        //Map<String,String> trainDict = p.first;
+        Map<String,String> testDict = p.second;
+        if(nerModel!=null){
+            test(nerModel, testDict);
+        }
     }
 }

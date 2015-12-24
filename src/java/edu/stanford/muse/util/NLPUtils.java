@@ -39,8 +39,7 @@ public class NLPUtils {
                 .getResourceAsStream("models/en-token.bin");
         InputStream chunkerStream = NLPUtils.class.getClassLoader()
                 .getResourceAsStream("models/en-chunker.bin");
-        POSModel posModel;
-		try {
+        try {
 			if (sentStream == null) {
 				File SentFile = new File("WebContent/WEB-INF/classes/models/en-sent.bin");
 				if (SentFile.exists())
@@ -50,7 +49,7 @@ public class NLPUtils {
 			} else
 				model = new SentenceModel(sentStream);
 
-            posModel = new POSModel(posStream);
+            POSModel posModel = new POSModel(posStream);
             posTagger = new POSTaggerME(posModel);
             TokenizerModel tokenizerModel = new TokenizerModel(tokenStream);
             tokenizer = new TokenizerME(tokenizerModel);
@@ -62,10 +61,10 @@ public class NLPUtils {
 			log.warn("Exception in init'ing sentence model");
 		    Util.print_exception(e, log);
         }finally {
-            close(sentStream);
-            close(posStream);
-            close(tokenStream);
-            close(chunkerStream);
+            InputStream[] streams = new InputStream[]{sentStream, posStream, tokenStream, chunkerStream};
+            for(InputStream is: streams)
+                if(is!=null)
+                    close(is);
         }
         sentenceDetector = new SentenceDetectorME(model);
 	}
