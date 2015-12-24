@@ -1028,7 +1028,7 @@ public class FeatureDictionary implements Serializable {
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 10;
+        int MAX_ITER = 4;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {

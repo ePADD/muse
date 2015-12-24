@@ -1,6 +1,5 @@
 package edu.stanford.muse.ner.model;
 
-import com.sun.javafx.binding.StringFormatter;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -695,15 +694,12 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         //split the dictionary into train and test sets
-        Pair<Map<String,String>, Map<String,String>> p = split(dbpedia, 0.85f);
-        Map<String,String> trainDict = p.first;
-        Map<String,String> testDict = p.second;
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
-        FeatureDictionary dictionary = new FeatureDictionary(trainDict, fgs);
+        FeatureDictionary dictionary = new FeatureDictionary(dbpedia, fgs);
         nerModel.dictionary = dictionary;
         String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
@@ -714,7 +710,6 @@ public class SequenceModel implements NERModel, Serializable {
         }catch(IOException e){
             e.printStackTrace();
         }
-        test(nerModel, testDict);
         return nerModel;
     }
 
