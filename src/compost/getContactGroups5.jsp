@@ -103,7 +103,7 @@ function toggleVisibility()
     algoParamValues.put("numGroups", Integer.toString(NUM_GROUPS));
     socialflowsTopology.putOpt("algoParams", algoParamValues);
 
-    String json = socialflowsTopology.toString(2); // indent factor, pretty print the json;
+    String json = socialflowsTopology.toString(2); // indent factor, pretty toString the json;
 
 	new File(rootDir).mkdirs();
 	String file = rootDir + File.separator + "json.txt";

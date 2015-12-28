@@ -18,5 +18,5 @@
 	Archive archive = JSPHelper.getArchive(session);
 	GroupAssigner ga = new GroupAssigner (groups, archive.addressBook);
 	archive.setGroupAssigner(ga);
-	// ideally, should print some status back here
+	// ideally, should toString some status back here
 %>

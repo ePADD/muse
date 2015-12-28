@@ -22,6 +22,7 @@ import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -1288,8 +1289,9 @@ public class Archive implements Serializable {
 
     /**
      * Assign Ids to threads, can help in making out if two emails belong to the same thread
-     * Subject/Title of the a message can also be used for the same purpose*/
-    public void assignThreadIds() {
+     * Subject/Title of the a message can also be used for the same purpose
+     * @return the maximum thread id value assignbed to any thread in th arhchive*/
+    public int assignThreadIds() {
         Collection<Collection<EmailDocument>> threads = EmailUtils.threadEmails((Collection) allDocs);
         int thrId = 1; // note: valid thread ids must be > 1
         for (Collection<EmailDocument> thread : threads) {
@@ -1297,6 +1299,7 @@ public class Archive implements Serializable {
                 doc.threadID = thrId;
             thrId++;
         }
+        return thrId;
     }
 
     public void postDeserialized(String baseDir, boolean readOnly) throws IOException {
@@ -1531,15 +1534,26 @@ public class Archive implements Serializable {
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             List<Document> docs = archive.getAllDocs();
             int i=0;
+            archive.assignThreadIds();
             for(Document doc: docs) {
-                org.apache.lucene.document.Document ld = archive.getDoc(doc);
-                //Pair<StringBuilder, Boolean> p = archive.getHTMLForContents(doc, null, docId, false, null, null, null, false, false, true);
-                //System.err.println("<link rel='stylesheet' href='epadd.css'>" + p.first);
-                //System.err.println(ld);
-                System.err.println(ld.getBinaryValue(NER.NAMES_OFFSETS)+", "+NER.NAMES_OFFSETS);
-                System.err.println("Offsets: " + archive.getNamesOffsets(ld).size());
-                if(i++>10)
-                break;
+                EmailDocument ed = (EmailDocument)doc;
+                List<Document> threads = archive.docsWithThreadId(ed.threadID);
+                if(threads.size()>0){
+                    int numSent = 0;
+                    for(Document d: threads){
+                        EmailDocument thread = (EmailDocument)d;
+                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
+                        if(sent>0)
+                            numSent++;
+                    }
+                    if(threads.size()!=numSent || threads.size()>2){
+                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
+                        break;
+                    }
+                    if(i%100 == 0)
+                        System.err.println("Scanned: "+i+" docs");
+                }
+                i++;
             }
         } catch (Exception e) {
             e.printStackTrace();

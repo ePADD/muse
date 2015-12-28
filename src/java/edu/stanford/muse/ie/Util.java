@@ -358,7 +358,7 @@ public class Util {
         for (String word : words) {
             for (int i = 0; i < word.length(); i++) {
                 char c = word.charAt(i);
-                if (c >= 'A' && c <= 'Z')
+                if ((c >= 'A' && c <= 'Z') || c=='.')
                     acr += c;
                 else
                     break;

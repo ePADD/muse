@@ -316,7 +316,7 @@ if (!noFacets)
 		htmlForAllFacets.addAll(htmlForUnSelectedFacets);
 
 		int N_INITIAL_FACETS = 5;
-		// print the first 5 items, rest hidden under a More link
+		// toString the first 5 items, rest hidden under a More link
 		int count = 0;
 		for (String html: htmlForAllFacets)
 		{

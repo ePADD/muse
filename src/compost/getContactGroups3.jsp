@@ -128,7 +128,7 @@ function toggleVisibility()
 	groupsList.addAll(rootGroups);
 	AddressBook.sortByMass(allEmails, addressBook, groupsList);
 	List<SimilarGroup<String>> orderedRootGroups = SimilarGroupMethods.orderGroupsBySimilarity(groupsList);
-	String json = JSONUtils.jsonForHierarchy(addressBook, orderedRootGroups, parentToChildGroupMap).toString(2); // indent factor, pretty print the json;
+	String json = JSONUtils.jsonForHierarchy(addressBook, orderedRootGroups, parentToChildGroupMap).toString(2); // indent factor, pretty toString the json;
 
 	if ("socialflow".equals(JSPHelper.getSessionAttribute(session, "mode")))
 	{
@@ -188,7 +188,7 @@ function toggleVisibility()
 					url.append ("&");
 			}
 
-			out.print ("<a href=\"" + url + "\">G" + count +"</a> ");
+			out.toString ("<a href=\"" + url + "\">G" + count +"</a> ");
 			out.println (group);
 			out.println ("<br/>");
 			count++;

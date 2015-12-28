@@ -1984,7 +1984,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 	
-	/** DEBUG ONLY (destructive) tries to print relative memory usage for the various indexes, 
+	/** DEBUG ONLY (destructive) tries to toString relative memory usage for the various indexes,
 	 * to get some sort of memory profile */
 	String getMemoryStatsAndReleaseMemory() throws IOException
 	{

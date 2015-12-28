@@ -52,7 +52,7 @@ private static String dumpForContact(Contact c) {
 }
 %>
 <%
-// always print first contact as self
+// always toString first contact as self
 Contact self = addressBook.getContactForSelf();
 if (self != null)
 	out.print(dumpForContact(self));
@@ -65,7 +65,7 @@ if (!alphaSort)
 }
 else
 {
-	// build up a map of best name -> contact, sort it by best name and print contacts in the resulting order
+	// build up a map of best name -> contact, sort it by best name and toString contacts in the resulting order
 	List<Contact> allContacts = addressBook.allContacts();
 	Map<String, Contact> canonicalBestNameToContact = new LinkedHashMap<String, Contact>();
 	for (Contact c: allContacts)

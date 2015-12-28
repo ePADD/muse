@@ -17,11 +17,13 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+/**
+ * Its possible to improve the performance further by using linear kernel
+ * instead of RBF kernel and classifier instead of a regression model
+ * (the confidence scores of regression model can be useful in segmentation)
+ * */
 public class SVMModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
     public FeatureGenerator[] fgs;
@@ -31,26 +33,25 @@ public class SVMModel implements NERModel, Serializable {
     private static final long serialVersionUID	= 1L;
     static Log log	= LogFactory.getLog(SVMModel.class);
     public static final int		MIN_NAME_LENGTH		= 3, MAX_NAME_LENGTH = 100;
+    public static FileWriter fdw=null;
 
     public SVMModel(){
-        models = new LinkedHashMap<Short, svm_model>();
+        models = new LinkedHashMap<>();
     }
 
-    public Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> find(String content) {
+    public Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> find(String content) {
         //check if the model is initialised
-//		if (fdw == null) {
-//			try {
-//				fdw = new FileWriter(new File(archive.baseDir + File.separator + "cache" + File.separator + "features.dump"));
-//			} catch (Exception e) {
-//				;
-//			}
-//		}
+		if (fdw == null) {
+			try {
+				fdw = new FileWriter(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache" + File.separator + "features.dump"));
+			} catch (Exception e) {
+				;
+			}
+		}
 
         List<Triple<String, Integer, Integer>> names = new ArrayList<Triple<String, Integer, Integer>>();
-        Short[] types = new Short[] { FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION };
-        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
 
-        Map<Short, List<String>> map = new LinkedHashMap<Short, List<String>>();
+        Map<Short, Map<String,Double>> map = new LinkedHashMap<>();
         for (Short type : models.keySet()) {
             List<String> entities = new ArrayList<String>();
 
@@ -71,11 +72,16 @@ public class SVMModel implements NERModel, Serializable {
                 svm_node[] sx = wfv.getSVMNode();
                 double[] probs = new double[2];
                 svm_model svmModel = models.get(type);
+                if(sx == null)
+                    continue;
                 double v = svm.svm_predict_probability(svmModel, sx, probs);
                 //log.info("Name: "+name+", predict: "+v+", fv:"+wfv);
                 if (v > 0) {
                     //clean before passing for annotation.
-                    name = name.replaceAll("^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam)\\W+", "");
+                    if(FeatureDictionary.PERSON == type) {
+                        Pair<String, Boolean> p1 = WordSurfaceFeature.checkAndStrip(name, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON), true, true);
+                        name = p1.getFirst();
+                    }
                     if (DictUtils.tabooNames.contains(name.toLowerCase()) || DictUtils.hasOnlyCommonDictWords(name.toLowerCase())) {
                         if (log.isDebugEnabled())
                             log.debug("Skipping entity: " + name);
@@ -91,18 +97,46 @@ public class SVMModel implements NERModel, Serializable {
                         log.debug("Found entity name: " + name + ", type: " + type);
                 }
                     //TODO: Should comment out these writes in the final version as the dump can get too big and also brings down the performance
-//				if (fdw != null) {
-//					try {
-//						fdw.write("name:" + name + ", Type: " + type + ", pred: " + v + ", " + wfv + "\n");
-//						fdw.flush();
-//					} catch (Exception e) {
-//						e.printStackTrace();
-//					}
-//				}
+				if (fdw != null) {
+					try {
+                        Map<String,List<String>> temp = FeatureGenerator.generateFeatures(name, null, null, type, dictionary.featureGens);
+                        if(temp!=null && temp.get("words")!=null) {
+                            String max = null, min = null;
+                            double maxs = -1,mins = 2;
+                            for(String w: temp.get("words")) {
+                                double r;
+                                if(dictionary.features.get("words")==null)
+                                    r = 0;
+                                else {
+                                    Pair<Double, Double> p = new Pair<>(0.0,0.0);
+                                    FeatureDictionary.MU mu = dictionary.features.get(w);
+                                    p.first = mu.getLikelihoodWithType(type)*mu.getPrior();
+                                    p.second = mu.numMixture;
+                                    r = p.getFirst() / p.getSecond();
+                                }
+                                maxs = Math.max(r, maxs);
+                                mins = Math.min(r, mins);
+                                if(maxs == r)
+                                    max = w;
+                                if(mins == r)
+                                    min = w;
+                            }
+                            fdw.write("name:" + name + ", Type: " + type + ", pred: " + v + ", " + wfv + ":::" + new LinkedHashSet<>() + ":::" + max + ":::" + min + "\n");
+                        }
+                        else
+                            fdw.write("name:" + name + ", Type: " + type + ", pred: " + v + ", " + wfv +"\n");
+                        fdw.flush();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
             }
-            map.put(type, entities);
+            Map<String,Double> ews = new LinkedHashMap<>();
+            for(String e: entities)
+                ews.put(e, 1.0);
+            map.put(type, ews);
         }
-        return new Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>>(map, names);
+        return new Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>>(map, names);
     }
 
     public static SVMModel loadModel(File modelFile) throws IOException{

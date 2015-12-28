@@ -115,7 +115,7 @@ public class GrouperStats<T extends Comparable<? super T>> {
 		orderedMoves.add(move);
 	}
 		
-	//TODO: print out hierarchy
+	//TODO: toString out hierarchy
 	
 	private JSONArray getJSONStartingGroups(){
 
@@ -229,7 +229,7 @@ public class GrouperStats<T extends Comparable<? super T>> {
 		JSONObject result = new JSONObject();
 		result.put ("group", jsonForGroup (g));	// the top level group
 		List<SimilarGroup<T>> children = parentToChildrenMap.get(g);
-		if (children != null && children.size() > 0) // don't print <td></td> if there are no children
+		if (children != null && children.size() > 0) // don't toString <td></td> if there are no children
 		{
 			JSONArray subsets = new JSONArray();
 			for (int i = 0; i < children.size(); i++)

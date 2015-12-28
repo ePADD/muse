@@ -55,7 +55,7 @@ boolean messagesEnabled = c.haveMessages;
 <script type='text/javascript' src="js/muse.js"></script>
 <script type="text/javascript" src="js/statusUpdate.js"></script>
 <link type="text/css" rel="stylesheet" href="css/xword.css"/>
-<!--  <link rel="stylesheet" type"text/css" href="css/printxword.css" media="print">  -->
+<!--  <link rel="stylesheet" type"text/css" href="css/printxword.css" media="toString">  -->
 <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 
 <%

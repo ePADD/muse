@@ -1,3 +1,23 @@
+/build
+/target
+/assembly
+/target
+/target
+/\.settings
+*.zip
+*.nt
+*.ser
+*.model
+*~
+\#*\#
+/src/resources/models/
+/results
+/target
+/test
+/target
+/\.idea
+*.iml
+=======
 # Compiled source #
 ###################
 *.com
@@ -60,4 +80,8 @@ Thumbs.db
 /.idea
 /WebContent/WEB-INF/classes/instance_types_2015-04.en.txt.bz2
 /WebContent/WEB-INF/classes/instance_types_2014-04.en.txt.bz2
+<<<<<<< HEAD
 /WebContent/WEB-INF/classes/models
+=======
+/WebContent/WEB-INF/classes/models
+>>>>>>> 57544bc4d39bd4b5d25cadbc23c6d0f956e82196
