@@ -11,6 +11,8 @@ import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.tartarus.snowball.SnowballProgram;
+import org.tartarus.snowball.ext.PorterStemmer;
 
 import javax.mail.Address;
 import java.io.File;
@@ -214,19 +216,20 @@ public class ClueEvaluator {
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
             double CUTOFF = 0.001;
-            if (nerModel != null) {
-                log.info("Identifying names in the content");
-                Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(sOrig);
-                Map<Short, Map<String,Double>> map = mapAndOffsets.first;
-                log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig);
-                for (short x : map.keySet()) {
-                    //if(map.get(x).)
-                    //log.info(x + ":" + map.get(x));
-                    for(String e: map.get(x).keySet())
-                        if(map.get(x).get(e)>CUTOFF)
-                            names.add(e);
-                }
+            log.info("Identifying names in the content");
+
+            Map<Short, Map<String,Double>> eMap = edu.stanford.muse.ner.NER.getEntities(clue.d, true, archive);
+            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = edu.stanford.muse.ner.NER.getEntitiesInDoc(sOrig,eMap);
+            Map<Short, Map<String,Double>> map = mapAndOffsets.first;
+            log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig+"["+map+"]");
+            for (short x : map.keySet()) {
+                //if(map.get(x).)
+                //log.info(x + ":" + map.get(x));
+                for(String e: map.get(x).keySet())
+                    if(map.get(x).get(e)>CUTOFF)
+                        names.add(e);
             }
+
             float namesScore = params[0]*names.size();
             score += namesScore;
 
@@ -331,19 +334,40 @@ public class ClueEvaluator {
             List<String> sts = new ArrayList<>();
             if(tokens != null && tokens.length>0) {
                 for (int ti = 0; ti < tokens.length; ti++) {
-                    if (pronouns.contains(tokens[ti]) && ti < tokens.length - 1) {
+                    if (pronouns.contains(tokens[ti]) && ti < tokens.length-1) {
+
                         String phrase = "";
-                        int k = Math.min(ti+5, tokens.length);
-                        for(int j=ti+1;j<k;j++) {
-                            phrase += tokens[j];
-                            if(j<k-1)
-                                phrase += " ";
+                        int[] sis = new int[]{ti+1, ti+2, ti+3};
+                        for(int si: sis) {
+                            phrase = "";
+                            if(si>=tokens.length) {
+                                break;
+                            }
+                            int k = Math.min(si+5, tokens.length);
+                            for (int j = si; j < k; j++) {
+                                phrase += tokens[j];
+                                if (j < k - 1)
+                                    phrase += " ";
+                            }
+                            sts.add(phrase);
                         }
-                        sts.add(phrase);
                     }
                 }
             }
             return sts.toArray(new String[sts.size()]);
+        }
+
+        static String canonicalize(String phrase){
+            String[] words = phrase.split("\\s+");
+            String cp = "";
+            for(int wi=0;wi<words.length;wi++){
+                String word = EnglishDictionary.getSingular(words[wi]);
+                word = EnglishDictionary.getSimpleForm(word);
+                cp += word;
+                if(wi<words.length-1)
+                    cp+=" ";
+            }
+            return cp;
         }
 
         @Override
@@ -360,17 +384,23 @@ public class ClueEvaluator {
                     tokens = getNeighbours(s, answer);
                 else if(isReflective(lists.get(i)))
                     tokens = getNeighboursOfPronouns(tokens);
-                for (String tok : tokens) {
+
+                //if there is a pronoun at index ti, then it would have covered the ref words in ti+1, ti+2, ti+3
+                //we navigate tokens at 3 offset to avoid considering the same ref word multiple times.
+                for (int ti=0;ti<tokens.length;ti+=3) {
+                    String tok = tokens[ti];
                     tok = tok.replaceAll("^\\W+|\\W+$", "");
                     //log.info("New Lst:"+i+" contains "+tok+"? - "+lists.get(i).contains(tok)+", "+lists.get(i));
                     if(isReflective(lists.get(i))) {
                         Set<String> prefixes = IndexUtils.computeAllPrefixes(tok);
-                        for(String prefix: prefixes)
-                            if(lists.get(i).contains(prefix)) {
+                        for(String prefix: prefixes) {
+                            prefix = canonicalize(prefix);
+                            if (lists.get(i).contains(prefix)) {
                                 clue.clueStats.refWord = clue.clueStats.refWord + "-" + prefix;
                                 b += params[i];
                                 break;
                             }
+                        }
                     }else{
                         b += lists.get(i).contains(tok) ? params[i] : 0.0f;
                     }
@@ -393,7 +423,7 @@ public class ClueEvaluator {
         /**
          * requires params to weigh these features
          * <ol>
-         *     <li>clues for every other month mentioned score+[this parameter]*frequency of the answer*Number of months between the last mention and the latest</li>
+         *     <li>clues for every other month mentioned score: [this parameter]*frequency of the answer*Number of months between the last mention and the latest</li>
          *     <li>penalising thread length: score+[this parameter]*(number of sent mails in the thread/thread size)</li>
          * </ol>
          * default: [-1.0, 5.0]
@@ -545,12 +575,10 @@ public class ClueEvaluator {
             //new ListEvaluator();
 //            System.err.println("Done!");
             String test = "absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder";
-            String[] tokens = test.split("\\s*,\\s*");
-            for(String tok: tokens)
-                System.err.println(tok);
-            List<String[]> some = new ArrayList<>();
-            some.add(tokens);
-            ClueEvaluator ce = new ListEvaluator(new float[]{1.0f}, some);
+            String[] toks = "Thank you for accepting to update.Please find the updated CV attached.".toLowerCase().split("\\s+");
+            String[] nbrs = ListEvaluator.getNeighboursOfPronouns(toks);
+            for(String nbr: nbrs)
+                System.err.println(nbr);
             //ce.computeScore();
         }catch (Exception e){
             e.printStackTrace();

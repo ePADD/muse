@@ -21,6 +21,7 @@ public class EnglishDictionary {
     static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
+    public static List<String> sws = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
 
     /**
      * @return dictionary entry -> #times appeared in capitalised form, total number of occurrences */
@@ -169,6 +170,17 @@ public class EnglishDictionary {
         for(Pair<String,String> em: exactMatches)
             if(em.getFirst().equals(word))
                 return em.getSecond();
+        return word;
+    }
+
+    public static String getSimpleForm(String word){
+        word = word.toLowerCase();
+        if(word.endsWith("ied"))
+            word = word.replaceAll("ied$","y");
+        else if(word.endsWith("ed"))
+            word = word.replaceAll("ed$","");
+        else if(word.endsWith("ing"))
+            word = word.replaceAll("ing$","");
         return word;
     }
 

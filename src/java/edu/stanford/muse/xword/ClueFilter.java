@@ -36,8 +36,10 @@ public class ClueFilter {
     public static class AnswerFilter extends ClueFilter{
         @Override
         public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
-            if(DictUtils.hasDictionaryWord(answer))
+            if(DictUtils.hasDictionaryWord(answer)) {
+                log.info("Filtering "+answer+" based on dictionary");
                 return false;
+            }
             return true;
         }
     }

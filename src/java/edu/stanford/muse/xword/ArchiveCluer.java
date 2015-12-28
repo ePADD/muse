@@ -161,7 +161,7 @@ public class ArchiveCluer extends Cluer {
      * The type of clue can be selected by setting the mode value, 0 for type 1, and 1 for type 2
      * when mode is 0, i.e. first type of clue, then returns clues formed from alternate sentences from the best context (in a doc)
      * when mode is 1, i.e. second type of clue, returns the top 5 best clues in all the docs*/
-	public Clue[] createClues(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue[] createClues(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -499,7 +499,7 @@ public class ArchiveCluer extends Cluer {
 	    else{
             List<Pair<Clue, Float>> sclues = Util.sortMapByValue(scoredClues);
             List<Clue> clues = new ArrayList<>();
-            final int MAX = 5;
+            final int MAX = 2;
             int i=0;
             for(Pair<Clue, Float> p: sclues) {
                 clues.add(p.getFirst());

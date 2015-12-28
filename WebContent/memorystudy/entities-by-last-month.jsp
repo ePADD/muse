@@ -15,7 +15,6 @@
 <%@ page import="javax.mail.Address" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
 <%@include file="../getArchive.jspf" %>
-<%@include file="../getNERModel.jspf" %>
 
 <%!
         /**
@@ -129,7 +128,7 @@
     <div style="background: antiquewhite none repeat scroll 0% 0%;">
     <form action="entities-by-last-month.jsp" method="get" id="params">
         <h2>Length related params</h2>
-        <input type="text" name="len1" placeholder="-100.0,-10.0,0" />
+        <input type="text" name="len1" placeholder="-100.0,-20.0,0" />
         <br>
         <h2>Weight for exclamation, question marks and smileys</h2>
         <input type="text" name="es1" placeholder="5.0,7.0,7.0"/>
@@ -141,10 +140,10 @@
         <input type="text" name="ns1" placeholder="-10.0"/>
 
         <h2>Weight for number of names found in the clue and boost for when the answer is not a name</h2>
-        <input type="text" name="na1" placeholder="2.0,-20.0"/>
+        <input type="text" name="na1" placeholder="5.0,-20.0"/>
 
         <h2>Boost for frequency/latest mention and thread length</h2>
-        <input type="text" name="ed1" placeholder="-1.0,5.0"/>
+        <input type="text" name="ed1" placeholder="-0.5,5.0"/>
 
         <h2>Lists and their corresponding weights</h2>
         <h3>List 1</h3>
@@ -152,7 +151,7 @@
         <input type="text" name="lw1" placeholder="5.0">
         <h3>List 2</h3>
         <input type="text" size="100" name="list2" placeholder="from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name">
-        <input type="text" name="lw2" placeholder="10.0">
+        <input type="text" name="lw2" placeholder="7.0">
         <h3>List 3</h3>
         <input type="text" size="200" name="list3" placeholder="absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder">
         <input type="text" name="lw3" placeholder="0.0">
@@ -199,8 +198,11 @@
        } else {
            val = decodeURIComponent(val);
            val = val.replace(/\+/g," ");
-           if(typeof(mode)!="undefined" && mode == "person" && (name=="lw3" || name=="lw4")) {
-               val = "10.0";
+           if(typeof(mode)!="undefined" && mode == "person") {
+               if (name=="lw3")
+                   val = "20.0";
+               else if(name=="lw4")
+                   val = "10.0";
            }
            if(name=="mode") val = mode;
            $(this).val(val);
@@ -296,7 +298,6 @@
 
         ArchiveCluer cluer = new ArchiveCluer(null, archive, null, lex);
 
-        boolean originalOnly = true;
         List<Document> docs = archive.getAllDocs();
         Map<String, Date> entityToLastDate = new LinkedHashMap<>();
         Multimap<String, EmailDocument> entityToMessages = LinkedHashMultimap.create();
@@ -461,6 +462,8 @@
                 displayEntity = displayEntity.trim();
                 fullAnswer = fullAnswer.trim();
             }
+            //dont want the answer to be scored low just because it has extra non-word chars in the begin or end
+            fullAnswer = fullAnswer.replaceAll("^\\W+|\\W+$","");
 
             // which interval does this date belong to?
             int interval = -1;
@@ -490,8 +493,13 @@
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
 
-            short clueType = (short)((mode==null||!mode.equals("person"))?0:1);
-            ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<String>(), nerModel, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+            short clueType = (short) ((mode == null || !mode.equals("person")) ? 0 : 1);
+            if (clueType == 0) {
+                Clue clue = cluer.createClue(fullAnswer, clueType, evals, new LinkedHashSet<String>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+                ci.clues = new Clue[]{clue};
+            }else
+                ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<String>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+
             if(ci.clues == null || ci.clues.length == 0){
                 JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);
             }
@@ -525,7 +533,7 @@
 
         // dump core tokens
         {
-            out.println ("<p><hr/><b>Core tokens</b><p>");
+            out.println("<p><hr/><b>Core tokens</b><p>");
             int i = 0;
             for (String t: coreTokens) {
                 out.println (++i + ". " + t + ": ");

@@ -26,7 +26,7 @@ public class DictUtils {
 	/**
 	 * some common word sets. static so that all indexers share the same objects
 	 */
-	static Set<String>			stopWords		= new HashSet<String>();
+	public static Set<String>			stopWords		= new HashSet<String>();
 	public static Set<String>	commonDictWords	= new HashSet<String>();				// these will be pruned from the output
 	public static Set<String>	fullDictWords	= new HashSet<String>();
 	public static Set<String>	commonDictWords5000 = new HashSet<String>();
@@ -241,10 +241,9 @@ public class DictUtils {
 	}
 
     public static boolean hasDictionaryWord(String s){
-        StringTokenizer st = new StringTokenizer(s);
-        while (st.hasMoreTokens())
-        {
-            String t = st.nextToken().toLowerCase();
+        String[] words = s.split("\\s+");
+        for(String t: words) {
+            t = t.toLowerCase();
             if (fullDictWords.contains(t))
                 return true;
         }

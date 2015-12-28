@@ -220,6 +220,16 @@ public class NER implements StatusProvider {
 		return result;
 	}
 
+    public static Map<Short,Map<String,Double>> getEntities(Document doc, boolean body, Archive archive) {
+        try {
+            org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+            return getEntities(ldoc, body);
+        } catch(IOException e){
+            Util.print_exception("!!Exception while accessing named entities in the doc", e, log);
+            return null;
+        }
+    }
+
     public static Map<Short,Map<String,Double>> getEntities(org.apache.lucene.document.Document doc, boolean body) {
         String fieldName;
         if(body)
@@ -309,9 +319,11 @@ public class NER implements StatusProvider {
     }
 
     /**
+     * This method is used to get entities in unoriginal content in a message, for example the quoted text.
+     * We process all the email content in a thread at once, to reduce the computation.
      * @arg content - text to be processed for entities
      * @arg eMap - a super set of all the possible entities that can appear in content
-     * @return entities found in the content in the style of NERModel interface
+     * @return entities found in the content in the structure used by NERModel interface
      */
     public static Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> getEntitiesInDoc(String content, Map<Short,Map<String,Double>> eMap){
         CICTokenizer tokenizer = SequenceModel.tokenizer;
@@ -323,14 +335,25 @@ public class NER implements StatusProvider {
                 entities.put(e,t);
 
         for(Triple<String,Integer,Integer> off: offsets){
-            if(entities.containsKey(off.getFirst())) {
-                Short type = entities.get(off.getFirst());
-                if(!eDoc.containsKey(type))
-                    eDoc.put(type, new LinkedHashMap<String, Double>());
-
-                eDoc.get(type).put(off.getFirst(),eMap.get(type).get(off.getFirst()));
-                offDoc.add(off);
+            String bestMatch = null;
+            int bl = -1;
+            for(String e: entities.keySet()) {
+                if (e.length()>bl && off.getFirst().contains(e)) {
+                    bestMatch = e;
+                    bl = e.length();
+                }
             }
+            if(bestMatch == null || bl == -1)
+                continue;
+            Short type = entities.get(bestMatch);
+            if(!eDoc.containsKey(type))
+                eDoc.put(type, new LinkedHashMap<String, Double>());
+
+            off.second = off.second+off.first.indexOf(bestMatch);
+            off.third = off.second+bestMatch.length();
+            off.first = bestMatch;
+            eDoc.get(type).put(bestMatch,eMap.get(type).get(bestMatch));
+            offDoc.add(off);
         }
         return new Pair<>(eDoc, offDoc);
     }
