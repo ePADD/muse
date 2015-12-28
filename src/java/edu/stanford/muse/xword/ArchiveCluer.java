@@ -145,7 +145,7 @@ public class ArchiveCluer extends Cluer {
     public Clue createClue(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
         Clue[] clues = createClues(answer, mode, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
         Clue bestClue = null;
-        double bestScore = Double.MIN_VALUE;
+        double bestScore = -Double.MAX_VALUE;
         for(int i=0;i<clues.length;i++)
             if(clues[i].clueStats.finalScore>bestScore)
                 bestClue = clues[i];
@@ -323,7 +323,6 @@ public class ArchiveCluer extends Cluer {
 
                     if(mode==1){
                         //should not see any of the archive owner name in the clue and also the answer in the clue
-                        Set<String> ownerNames = archive.ownerNames;
                         boolean dirty = false;
                         for(String str: archive.ownerNames)
                             if(Util.occursOnlyAsWholeWord(lowerCaseSentence, str.toLowerCase())) {
