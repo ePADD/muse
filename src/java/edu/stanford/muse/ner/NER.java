@@ -330,6 +330,9 @@ public class NER implements StatusProvider {
         List<Triple<String,Integer,Integer>> offsets = tokenizer.tokenize(content, false), offDoc = new ArrayList<>();
         Map<Short,Map<String,Double>> eDoc = new LinkedHashMap<>();
         Map<String,Short> entities = new LinkedHashMap<>();
+        if(eMap == null)
+            return new Pair<>(eDoc, offDoc);
+
         for(Short t: eMap.keySet())
             for(String e: eMap.get(t).keySet())
                 entities.put(e,t);

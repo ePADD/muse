@@ -124,7 +124,7 @@ public class ArchiveCluer extends Cluer {
 			}
 		}
 		
-		return new Pair<Float, Map<String, Integer>>(score, map);
+		return new Pair<>(score, map);
 	}
 
 	public Clue createClue(String answer, Set<String> tabooClues) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException

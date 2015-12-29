@@ -309,7 +309,7 @@ public class SimpleSessions {
 		return archive;
 	}
 
-	public static void prepareAndLoadArchive(MuseEmailFetcher m, HttpServletRequest request) throws CorruptIndexException, LockObtainFailedException, IOException
+	public static void prepareAndLoadArchive(MuseEmailFetcher m, HttpServletRequest request) throws IOException
 	{
 		HttpSession session = request.getSession();
 
@@ -343,7 +343,7 @@ public class SimpleSessions {
 			session.setAttribute("lexicon", lex); // set up default general lexicon, so something is in the session as default lexicon (so facets can show it)
 	}
 
-	public static void main(String args[]) throws CorruptIndexException, LockObtainFailedException, IOException
+	public static void main(String args[]) throws IOException
 	{
 		// just use as <basedir> <string to find>
 		Archive a = readArchiveIfPresent(args[0]);

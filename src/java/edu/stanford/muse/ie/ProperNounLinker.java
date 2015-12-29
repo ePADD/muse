@@ -10,7 +10,6 @@ import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.tartarus.snowball.SnowballProgram;
 import org.tartarus.snowball.ext.PorterStemmer;
 
 import java.io.File;
@@ -28,7 +27,6 @@ public class ProperNounLinker {
     static Set<String> bow(String phrase) {
         String[] tokens = phrase.split("\\s+");
         Set<String> bows = new LinkedHashSet<>();
-        SnowballProgram stemmer = new PorterStemmer();
         for (String tok : tokens) {
             tok = tok.replaceAll("^\\W+|\\W+$", "");
             if(EnglishDictionary.sws.contains(tok))
@@ -307,8 +305,8 @@ public class ProperNounLinker {
                             continue;
                         if(c1.isValidMerge(c)){
                             found = true;
-                            //System.err.println("Found valid merge: "+c1);
-                            mergeClusters(c1, c);
+                            System.err.println("("+c1+", "+c+"), level:"+f);
+                            //mergeClusters(c1, c);
                             break;
                         }
                     }
@@ -356,6 +354,7 @@ public class ProperNounLinker {
         try{
             String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+            archive.assignThreadIds();
             Hierarchy hierarchy = new EmailHierarchy();
             Clusters clusters = getMentionClusters(archive, (List)archive.getAllDocs(), hierarchy);
             for(Clusters.Cluster cluster: clusters.clusters) {
@@ -364,6 +363,7 @@ public class ProperNounLinker {
                 System.err.println("-------------");
                 System.err.println(cluster);
             }
+            archive.close();
 //            EmailDocument ed = (EmailDocument)archive.getAllDocs().get(2);
 //            System.err.println(archive.getDoc(ed));
         }catch(Exception e){
