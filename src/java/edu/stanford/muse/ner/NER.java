@@ -337,6 +337,9 @@ public class NER implements StatusProvider {
             for(String e: eMap.get(t).keySet())
                 entities.put(e,t);
 
+        for(Short type: FeatureDictionary.allTypes)
+            eDoc.put(type, new LinkedHashMap<String, Double>());
+
         for(Triple<String,Integer,Integer> off: offsets){
             String bestMatch = null;
             int bl = -1;
@@ -349,8 +352,6 @@ public class NER implements StatusProvider {
             if(bestMatch == null || bl == -1)
                 continue;
             Short type = entities.get(bestMatch);
-            if(!eDoc.containsKey(type))
-                eDoc.put(type, new LinkedHashMap<String, Double>());
 
             off.second = off.second+off.first.indexOf(bestMatch);
             off.third = off.second+bestMatch.length();
@@ -399,7 +400,7 @@ public class NER implements StatusProvider {
                 Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
                 Map<Short, Map<String, Double>> entities = mapAndOffsets.first;
                 for (Short type : entities.keySet()) {
-                    if (allE.containsKey(type))
+                    if (!allE.containsKey(type))
                         allE.put(type, new LinkedHashMap<String, Double>());
                     allE.get(type).putAll(entities.get(type));
                 }

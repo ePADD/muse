@@ -510,7 +510,8 @@ public class SequenceModel implements NERModel, Serializable {
                 FeatureDictionary.AIRLINE, FeatureDictionary.MAGAZINE, FeatureDictionary.POLITICALPARTY, FeatureDictionary.NPORG, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM});
         for(Short gt: types){
             for(Short ft: mappings.get(gt))
-                mTypes.get(gt).addAll(entities.get(ft).keySet());
+                if(entities.containsKey(ft))
+                    mTypes.get(gt).addAll(entities.get(ft).keySet());
         }
         return mTypes;
     }
@@ -526,6 +527,10 @@ public class SequenceModel implements NERModel, Serializable {
         for(String sent: sents) {
             List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent, false);
             for (Triple<String, Integer, Integer> t : toks) {
+                //this should never happen
+                if(t==null || t.first == null)
+                    continue;
+
                 Map<String,Pair<Short,Double>> entities = seqLabel(t.getFirst());
                 for(String e: entities.keySet()){
                     Pair<Short,Double> p = entities.get(e);
