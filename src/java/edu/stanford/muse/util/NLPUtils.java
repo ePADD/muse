@@ -77,7 +77,7 @@ public class NLPUtils {
         }
     }
 
-    //TODO: OpenNLP is too bad with tokenisation of special chars except period. Atleast handle new lines, '>' whicgh are common in the case of ePADD and muse
+    //TODO: OpenNLP is too bad with tokenisation of special chars except period. At least handle new lines, '>' whicgh are common in the case of ePADD and muse
 	public static String[] tokeniseSentence(String text) {
         if(text == null)
             return new String[]{};
