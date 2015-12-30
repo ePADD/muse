@@ -293,6 +293,14 @@ public class JSPHelper {
         return false;
     }
 
+	public static boolean runningOnAshokaMachine(HttpServletRequest request){
+		String sn = request.getServerName();
+		if(sn!=null){
+			return sn.contains("ashoka.edu.in");
+		}
+		return false;
+	}
+
 	//	/* this version of fetchemails must have folders defined in request since there is no primary email address */
 	//	public static Triple<Collection<EmailDocument>, AddressBook, BlobStore> fetchEmails(HttpServletRequest request, HttpSession session, boolean download) throws Exception
 	//	{

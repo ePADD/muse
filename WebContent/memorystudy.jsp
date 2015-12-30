@@ -80,7 +80,7 @@ if(request.getLocalPort() == 8043) {
             googleClientId = "1072171428245-lj239vjtemn7cgstafptk0c46c20kgih.apps.googleusercontent.com"; // this is for the muse installed at https://muse.stanford.edu:8443/muse
         }
         //running on cell account at Ashoka
-        else{
+        else if (JSPHelper.runningOnAshokaMachine(request)) {
             googleClientId = "8392513058-0oq4g55m7fhtgnqf8lrbhcgigfhuhmu4.apps.googleusercontent.com"; //for http://125.22.40.138:8080
         }
     }
