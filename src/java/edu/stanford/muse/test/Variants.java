@@ -8,15 +8,16 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Created by hangal on 12/29/15.
- */
+/** Util program to generate tokens that are candidates to be variants of each other from Wikipedia surface text.
+ * prints token pairs that occur at least THRESHOLD times.
+ * Needs stop words file and SurfaceForms_LRD-WAT.nofilter.tsv in ~/data and writes out to variants.txt in the same dir */
 public class Variants {
-    static final String BASE_DIR = "/Users/hangal/data";
-    static final int THRESHOLD = 10;
+    private static final String BASE_DIR = System.getProperty("user.home") + File.separator + "data";
+    private static final int THRESHOLD = 10; // min. #times a token pair should appear in order to be output
+    private static final String TSV_FILE = "SurfaceForms_LRD-WAT.nofilter.tsv", STOP_WORDS_FILE = "stop.words.full", OUTPUT_FILE = "variants.txt";
 
     // remove unnecessary punctuation
-    public static String withoutPunctuation(String s) {
+    private static String withoutPunctuation(String s) {
         // replace Cancer_(constellation) with just Cancer by stripping the _(...type...) part of the Wikipedia title, if its present;
         s = s.replaceAll("_\\(.*\\)", "");
 
@@ -25,7 +26,7 @@ public class Variants {
     }
 
     /** returns true if s's chars are not all alpha num, period, dash or comma */
-    public static boolean hasFunnyChars(String s) {
+    private static boolean hasFunnyChars(String s) {
         for (char ch: s.toCharArray()) {
             if (!Character.isAlphabetic(ch) && !Character.isDigit(ch) && !Character.isSpaceChar(ch) && ch != '.' && ch != '-' && ch != ',')
                 return true;
@@ -36,16 +37,15 @@ public class Variants {
     public static void main (String args[]) throws IOException {
 
         // set up stop words
-        Set<String> stopWords = new LinkedHashSet<>();
-        InputStream is = new FileInputStream(BASE_DIR + File.separator + "stop.words.full");
-        stopWords = DictUtils.readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+        InputStream is = new FileInputStream(BASE_DIR + File.separator + STOP_WORDS_FILE);
+        Set<String> stopWords = DictUtils.readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
         is.close();
 
-        PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(BASE_DIR + File.separator + "variants.txt")));
+        PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(BASE_DIR + File.separator + OUTPUT_FILE)));
         Multiset<String> variantTitleSet = HashMultiset.create(); // contains strings like "variant → title", using a set because it may be too expensive to keep a map/multimap of variant -> title -> count
         Map<String, String> example = new HashMap<>();
 
-        LineNumberReader lnr = new LineNumberReader(new FileReader(BASE_DIR + File.separator + "SurfaceForms_LRD-WAT.nofilter.tsv"));
+        LineNumberReader lnr = new LineNumberReader(new FileReader(BASE_DIR + File.separator + TSV_FILE));
         int count = 0;
         while (true) {
             if (++count % 100000 == 0)
