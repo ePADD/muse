@@ -60,6 +60,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	private String rootPath;
 
 	static {
+        //http://sourceforge.net/projects/mstor/files/mstor/0.9.13/
 		mstorProps = new Properties();
 		mstorProps.put("mstor.mbox.metadataStrategy", "NONE");
 		//the following two properties are actually different.
@@ -178,6 +179,8 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 		Store store = session.getStore(new URLName("mstor:" + fname));
 		store.connect();
 
+        //This is the root folder in the namespace provided
+        //see http://docs.oracle.com/javaee/5/api/javax/mail/Store.html#getDefaultFolder%28%29
 		Folder folder = store.getDefaultFolder();
 		if (folder == null)
 			throw new RuntimeException ("Invalid folder: " + fname);
@@ -203,7 +206,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 		if (folder != null)
 			count = folder.getMessageCount(); // warning, do not close, we need to return an open folder
 
-		return new Pair<Folder,Integer>(folder, count);
+		return new Pair<>(folder, count);
 	}
 
 	@Override

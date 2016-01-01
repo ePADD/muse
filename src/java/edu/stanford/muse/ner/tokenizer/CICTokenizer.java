@@ -1,6 +1,5 @@
 package edu.stanford.muse.ner.tokenizer;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.NLPUtils;
