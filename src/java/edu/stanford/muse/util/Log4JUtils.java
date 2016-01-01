@@ -88,7 +88,7 @@ public class Log4JUtils {
 			String message = "________________________________________________________________________________________________ ";
 			System.out.println(message);
 			log.info (message);
-
+            
 			message = "Log messages will be recorded in " + LOG_FILE;
 			System.out.println(message);
 			log.info (message);
