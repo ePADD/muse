@@ -923,6 +923,29 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		}
 	}
 
+    private void fetchHeaders(int nMessages) throws MessagingException
+    {
+        // fetch headers (don't do it for mbox folders, waste of time)
+        // this is an essential perf. step so that we fetch the headers in bulk.
+        // otherwise it takes a long time to fetch header info one at a time for each message
+        if (!(emailStore instanceof MboxEmailStore))
+        {
+            long startTimeMillis = System.currentTimeMillis();
+            currentStatus = JSONUtils.getStatusJSON("Reading headers from " + folder.getName() + "...");
+            FetchProfile fp = new FetchProfile();
+            fp.add(FetchProfile.Item.ENVELOPE);
+            fp.add(FetchProfile.Item.CONTENT_INFO);
+            fp.add(UIDFolder.FetchProfileItem.UID); // important, otherwise reading UIDs takes a long time later
+            fp.add("List-Post");
+            for(int i=0;i<nMessages;i++) {
+                Message[] messages = new Message[]{folder.getMessage(i)};
+                folder.fetch(messages, fp);
+            }
+            long endTimeMillis = System.currentTimeMillis();
+            log.info("Done fetching headers: " + Util.commatize(endTimeMillis - startTimeMillis) + "ms");
+        }
+    }
+
 	private Message[] removeMessagesAlreadyInArchive(Archive archive, Message[] messages)
 	{
 		// early out for the common case that we have an empty archive
@@ -1208,14 +1231,23 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		return fetchedFolderInfo;
 	}
 
-	private Message[] openFolderAndGetMessages() throws AuthenticationFailedException, NoSuchProviderException, MessagingException
-	{
-		folder = null;
-		Message[] messages = null;
+    private int openFolderAndGetMessageCount() throws MessagingException{
+        folder = null;
 
-		store = emailStore.connect();
-		folder = emailStore.get_folder(store, folder_name());
-		if (folder == null)
+        store = emailStore.connect();
+        folder = emailStore.get_folder(store, folder_name());
+        if(folder!=null)
+            return folder.getMessageCount();
+        else
+            return 0;
+    }
+
+	private Message[] openFolderAndGetMessages() throws MessagingException
+	{
+		openFolderAndGetMessageCount();
+
+        Message[] messages = null;
+        if (folder == null)
 			return messages;
 
 		String descr = emailStore.getAccountID() + ":" + folder;
@@ -1278,7 +1310,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		return messages;
 	}
 
-	/** main fetch+index method */
+	/** main fetch+index method
+     * The assumptions that the heap is big enough to enough to fit all the messages i the folder is not scalable for larger archive.
+     * Instead, we process each message individually.
+     * fetchHeaders may be penalised due to multiple requests of fetch?
+     * In order to make indexing of large archives possible, fetch of NON-MBOXEmailstrore formats is penalised. It is possible to avoid this by handling MBox and IMAP/POP formats differently.*/
 	public void run()
 	{
 		currentStatus = JSONUtils.getStatusJSON("Starting to process " + folder_name());
@@ -1286,46 +1322,50 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		isCancelled = false;
 		Thread.currentThread().setName("EmailFetcher");
 		nErrors = 0;
-		Message[] messages = null;
+		//Message[] messages = null;
 		// use_uid is set only if we are reading the whole folder. otherwise we won't use it, and we won't update the highest UID seen for the folder in the archive.
 		try
 		{
 			//			long t1 = System.currentTimeMillis();
 
-			messages = openFolderAndGetMessages();
-			nMessagesProcessedSuccess = 0;
+			int nMessages = openFolderAndGetMessageCount();
+            final int BATCH = 100;
+            int nbatches = nMessages/BATCH;
+            nMessagesProcessedSuccess = 0;
+            log.info("Total number of messages: "+nMessages);
+            long st = System.currentTimeMillis();
+            int b;
+            for(b=0;b<nbatches+1;b++) {
+                Message[] messages = folder.getMessages(b*nbatches, Math.min((b+1)*nbatches, nMessages));
 
-			currentStatus = JSONUtils.getStatusJSON("");
-			if (isCancelled)
-				return;
+                currentStatus = JSONUtils.getStatusJSON("");
+                if (isCancelled)
+                    return;
 
-			if (messages.length > 0)
-			{
-				try {
-					fetchHeaders(messages); // always fetch headers
-					if (fetchConfig.downloadMessages)
-					{
-						log.info(messages.length + " messages will be fetched for indexing");
-						fetchAndIndexMessages(folder, messages);
-					}
-					else
-					{
-						// this is for memory test screening mode.
-						// we create a dummy archive without any real contents
-						for (int i = 0; i < messages.length; i++)
-						{
-							String unique_id_as_string = Long.toString(i);
+                if (messages.length > 0) {
+                    try {
+                        fetchHeaders(messages); // always fetch headers
+                        if (fetchConfig.downloadMessages) {
+                            log.info(nMessages + " messages will be fetched for indexing");
+                            fetchAndIndexMessages(folder, messages);
+                        } else {
+                            // this is for memory test screening mode.
+                            // we create a dummy archive without any real contents
+                            for (int i = 0; i < nMessages; i++) {
+                                String unique_id_as_string = Long.toString(i);
 
-							// well, we already converted to emaildoc above during removeMessagesAlreadyInArchive
-							// not a serious perf. concern now, but revisit if needed
-							EmailDocument ed = convertToEmailDocument((MimeMessage) messages[i], unique_id_as_string); // this messageNum is mostly for debugging, it should not be used for equals etc.
-							archive.addDocWithoutContents(ed);
-						}
-					}
-				} catch (Exception e) {
-					log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
-				}
-			}
+                                // well, we already converted to emaildoc above during removeMessagesAlreadyInArchive
+                                // not a serious perf. concern now, but revisit if needed
+                                EmailDocument ed = convertToEmailDocument((MimeMessage) messages[i], unique_id_as_string); // this messageNum is mostly for debugging, it should not be used for equals etc.
+                                archive.addDocWithoutContents(ed);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
+                    }
+                }
+            }
+            log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis()-st)+"ms");
 		} catch (Exception e) {
 			Util.print_exception(e);
 		} finally {
