@@ -1242,9 +1242,15 @@ public class EmailFetcherThread implements Runnable, Serializable {
             return 0;
     }
 
+	/**
+	 * Comment by @vihari
+	 * Not sure what uid id and folder are,I think this code should be more predictable
+	 * The params begin idx and end idx are used for both uid filtering and Mbox message indexing.
+	 * does not make sense*/
 	private Message[] openFolderAndGetMessages() throws MessagingException
 	{
-		openFolderAndGetMessageCount();
+		if(folder == null)
+			openFolderAndGetMessageCount();
 
         Message[] messages = null;
         if (folder == null)
@@ -1286,7 +1292,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 			if (!haveUID)
 			{
 				log.info("All " + count + " messages in " + descr + " will be fetched");
-				messages = folder.getMessages();
+				//messages = folder.getMessages();
 
 				if (begin_msg_index > 0 && end_msg_index > 0)
 				{
@@ -1299,8 +1305,8 @@ public class EmailFetcherThread implements Runnable, Serializable {
 						int nMessages = end_msg_index - begin_msg_index;
 						Message[] newMessages = new Message[nMessages];
 						for (int i = 0; i < end_msg_index - begin_msg_index; i++)
-							newMessages[i] = messages[begin_msg_index - 1 + i]; // -1 cos messages array is indexed from 0, but begin_msg_index from 1
-						log.info("total # of messages: " + messages.length + " reduced # of messages: " + newMessages.length);
+							newMessages[i] = folder.getMessage(begin_msg_index+i);//messages[begin_msg_index - 1 + i]; // -1 cos messages array is indexed from 0, but begin_msg_index from 1
+						log.info("total # of messages: " + count + " reduced # of messages: " + newMessages.length);
 						messages = newMessages;
 					}
 				}
@@ -1329,15 +1335,18 @@ public class EmailFetcherThread implements Runnable, Serializable {
 			//			long t1 = System.currentTimeMillis();
 
 			int nMessages = openFolderAndGetMessageCount();
-            final int BATCH = 100;
+            final int BATCH = 10000;
             int nbatches = nMessages/BATCH;
             nMessagesProcessedSuccess = 0;
             log.info("Total number of messages: "+nMessages);
             long st = System.currentTimeMillis();
             int b;
             for(b=0;b<nbatches+1;b++) {
-                Message[] messages = folder.getMessages(b*nbatches, Math.min((b+1)*nbatches, nMessages));
-
+                //Message[] messages = folder.getMessages(b*nbatches, Math.min((b+1)*BATCH, nMessages)-1);
+				begin_msg_index = b*BATCH+1;
+				end_msg_index = Math.min((b+1)*BATCH, nMessages)+1;
+				log.info("Fetching messages in index ["+begin_msg_index+", "+end_msg_index+"] batch: "+b+"/"+nbatches+"\nTotal Messages: "+nMessages);
+				Message[] messages = openFolderAndGetMessages();
                 currentStatus = JSONUtils.getStatusJSON("");
                 if (isCancelled)
                     return;

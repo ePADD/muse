@@ -17,7 +17,7 @@
 	    <id>project_lib</id>
 	    <name>Repository in project's lib dir</name>
 	    <layout>default</layout>
-	    <url>file:///${project.basedir}/lib</url>
+	    <url>file:///${basedir}/lib</url>
 	  </repository>
 	</repositories>
 	

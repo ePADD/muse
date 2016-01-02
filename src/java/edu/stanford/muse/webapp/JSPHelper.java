@@ -398,26 +398,26 @@ public class JSPHelper {
 		archive.setBaseDir(getBaseDir(m, request));
 		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
 
-        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
-        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
-        log.info("Loading NER sequence model from: " + modelFile + " ...");
-        try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
-        } catch (IOException e) {
-            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
-        }
-        if (nerModel == null) {
-            log.error("Could not load NER model from: "+modelFile);
-        }
-        else {
-            NER ner = new NER(archive, nerModel);
-            session.setAttribute("statusProvider", ner);
-            ner.recongniseArchive();
-            archive.processingMetadata.entityCounts = ner.stats.counts;
-			log.info(ner.stats);
-        }
+//        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
+//        String modelFile = mwl + SequenceModel.modelFileName;
+//        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+//        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
+//        log.info("Loading NER sequence model from: " + modelFile + " ...");
+//        try {
+//            nerModel = SequenceModel.loadModel(new File(modelFile));
+//        } catch (IOException e) {
+//            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
+//        }
+//        if (nerModel == null) {
+//            log.error("Could not load NER model from: "+modelFile);
+//        }
+//        else {
+//            NER ner = new NER(archive, nerModel);
+//            session.setAttribute("statusProvider", ner);
+//            ner.recongniseArchive();
+//            archive.processingMetadata.entityCounts = ner.stats.counts;
+//			log.info(ner.stats);
+//        }
         archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
         log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
