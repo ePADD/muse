@@ -53,7 +53,6 @@ public class CICTokenizer implements Tokenizer, Serializable {
             if(mapping.containsKey(tokenStartOffset))
                 return sents.get(mapping.get(tokenStartOffset));
             else{
-                NER.log.isDebugEnabled()
                 NER.log.warn("Did not find enclosing sentence for offset: "+tokenStartOffset);
                 return null;
             }
