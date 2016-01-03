@@ -22,6 +22,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.HTMLUtils;
+import net.fortuna.mstor.data.MboxFile;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
@@ -1334,19 +1335,54 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		{
 			//			long t1 = System.currentTimeMillis();
 
-			int nMessages = openFolderAndGetMessageCount();
-            final int BATCH = 10000;
-            int nbatches = nMessages/BATCH;
-            nMessagesProcessedSuccess = 0;
-            log.info("Total number of messages: "+nMessages);
-            long st = System.currentTimeMillis();
-            int b;
-            for(b=0;b<nbatches+1;b++) {
-                //Message[] messages = folder.getMessages(b*nbatches, Math.min((b+1)*BATCH, nMessages)-1);
-				begin_msg_index = b*BATCH+1;
-				end_msg_index = Math.min((b+1)*BATCH, nMessages)+1;
-				log.info("Fetching messages in index ["+begin_msg_index+", "+end_msg_index+"] batch: "+b+"/"+nbatches+"\nTotal Messages: "+nMessages);
-				Message[] messages = openFolderAndGetMessages();
+            if(emailStore instanceof MboxEmailStore) {
+                int nMessages = openFolderAndGetMessageCount();
+                //TODO: Ideally, should cap on buffer size rather than on number of messages.
+                final int BATCH = 10000;
+                int nbatches = nMessages / BATCH;
+                nMessagesProcessedSuccess = 0;
+                log.info("Total number of messages: " + nMessages);
+                long st = System.currentTimeMillis();
+                int b;
+                for (b = 0; b < nbatches + 1; b++) {
+                    begin_msg_index = b * BATCH + 1;
+                    end_msg_index = Math.min((b + 1) * BATCH, nMessages) + 1;
+                    log.info("Fetching messages in index [" + begin_msg_index + ", " + end_msg_index + "] batch: " + b + "/" + nbatches + "\nTotal Messages: " + nMessages);
+                    Message[] messages = openFolderAndGetMessages();
+                    currentStatus = JSONUtils.getStatusJSON("");
+                    if (isCancelled)
+                        return;
+
+                    if (messages.length > 0) {
+                        try {
+                            if (fetchConfig.downloadMessages) {
+                                log.info(nMessages + " messages will be fetched for indexing");
+                                fetchAndIndexMessages(folder, messages);
+                            } else {
+                                // this is for memory test screening mode.
+                                // we create a dummy archive without any real contents
+                                for (int i = 0; i < nMessages; i++) {
+                                    String unique_id_as_string = Long.toString(i);
+
+                                    // well, we already converted to emaildoc above during removeMessagesAlreadyInArchive
+                                    // not a serious perf. concern now, but revisit if needed
+                                    EmailDocument ed = convertToEmailDocument((MimeMessage) messages[i], unique_id_as_string); // this messageNum is mostly for debugging, it should not be used for equals etc.
+                                    archive.addDocWithoutContents(ed);
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
+                        }
+                    }
+                }
+                log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis() - st) + "ms");
+            }
+            else {
+                Message[] messages = openFolderAndGetMessages();
+                int nMessages = messages.length;
+                nMessagesProcessedSuccess = 0;
+                log.info("Total number of messages: " + messages.length);
+                long st = System.currentTimeMillis();
                 currentStatus = JSONUtils.getStatusJSON("");
                 if (isCancelled)
                     return;
@@ -1373,8 +1409,8 @@ public class EmailFetcherThread implements Runnable, Serializable {
                         log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
                     }
                 }
+                log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
-            log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis()-st)+"ms");
 		} catch (Exception e) {
 			Util.print_exception(e);
 		} finally {
