@@ -22,7 +22,6 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.HTMLUtils;
-import net.fortuna.mstor.data.MboxFile;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
