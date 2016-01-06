@@ -998,9 +998,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		return true;
 	}
 
-	/** fetch given message idx's in given folder -- @performance critical */
+	/** fetch given message idx's in given folder -- @performance critical
+	 * @param offset - the original offset of the first message in the messages array, important to initialize
+	 * 				   for proper assignment of unique id or doc Id*/
 	//private void fetchUncachedMessages(String sanitizedFName, Folder folder, DocCache cache, List<Integer> msgIdxs) throws MessagingException, FileNotFoundException, IOException, GeneralSecurityException {
-	private void fetchAndIndexMessages(Folder folder, Message[] messages) throws MessagingException, FileNotFoundException, IOException, GeneralSecurityException {
+	private void fetchAndIndexMessages(Folder folder, Message[] messages, int offset, int totalMessages) throws MessagingException, FileNotFoundException, IOException, GeneralSecurityException {
 		currentStatus = JSONUtils.getStatusJSON((emailStore instanceof MboxEmailStore) ? "Parsing " + folder.getName() + " (can take a while)..." : "Reading " + folder.getName() + "...");
 
 		// bulk fetch of all message headers
@@ -1053,12 +1055,12 @@ public class EmailFetcherThread implements Runnable, Serializable {
 					}
 				}
 
-				int pctDone = (i * 100) / messages.length;
+				int pctDone = ((i+offset) * 100) / totalMessages;
 				long elapsedMillis = System.currentTimeMillis() - startTimeMillis;
 				long unprocessedSecs = Util.getUnprocessedMessage(i, messages.length, elapsedMillis);
 				int N_TEASERS = 50; // 50 ok here, because it takes a long time to fetch and process messages, so teaser computation is relatively not expensive
 				int nTriesForThisMessage = 0;
-				currentStatus = getStatusJSONWithTeasers("Reading " + Util.commatize(messages.length) + " messages from " + folder.getName() + "...", pctDone, elapsedMillis / 1000, unprocessedSecs, emails, N_TEASERS);
+				currentStatus = getStatusJSONWithTeasers("Reading " + Util.commatize(totalMessages) + " messages from " + folder.getName() + "...", pctDone, elapsedMillis / 1000, unprocessedSecs, emails, N_TEASERS);
 
 				int messageNum = mm.getMessageNumber();
 
@@ -1074,7 +1076,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 						unique_id = uid;
 					}
 					else
-						unique_id = lastAssignedUID + 1 + i; // +1 since i starts from 0 (but lastAssignedUID can be -1 -- is that safe? -sgh)
+						unique_id = lastAssignedUID + 1 + i + offset; // +1 since i starts from 0 (but lastAssignedUID can be -1 -- is that safe? -sgh)
 
 					if (unique_id > highestUID)
 						highestUID = unique_id;
@@ -1356,7 +1358,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                         try {
                             if (fetchConfig.downloadMessages) {
                                 log.info(nMessages + " messages will be fetched for indexing");
-                                fetchAndIndexMessages(folder, messages);
+                                fetchAndIndexMessages(folder, messages, begin_msg_index, nMessages);
                             } else {
                                 // this is for memory test screening mode.
                                 // we create a dummy archive without any real contents
@@ -1391,7 +1393,9 @@ public class EmailFetcherThread implements Runnable, Serializable {
                         fetchHeaders(messages); // always fetch headers
                         if (fetchConfig.downloadMessages) {
                             log.info(nMessages + " messages will be fetched for indexing");
-                            fetchAndIndexMessages(folder, messages);
+							//we process all the messages together here unlike the case of mstor
+							//hence the begin index is always 0
+                            fetchAndIndexMessages(folder, messages, 0, messages.length);
                         } else {
                             // this is for memory test screening mode.
                             // we create a dummy archive without any real contents

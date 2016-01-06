@@ -397,6 +397,9 @@ public class JSPHelper {
 
 		archive.setBaseDir(getBaseDir(m, request));
 		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
+		//make sure the archive is dumped at this point
+		archive.close();
+		archive.openForRead();
 
 //        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
 //        String modelFile = mwl + SequenceModel.modelFileName;

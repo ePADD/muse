@@ -1360,11 +1360,16 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		//		query = convertRegex(query);
         long st = System.currentTimeMillis();
-        TopDocs tds = searcher.search(query, null, lt);
-        log.info("Took: "+(System.currentTimeMillis()-st)+"ms for query:"+query);
-        ScoreDoc[] hits = tds.scoreDocs;
-        int totalHits = tds.totalHits;
-
+		int totalHits = 0;
+		ScoreDoc[] hits = null;
+		if(query!=null) {
+			TopDocs tds = searcher.search(query, null, lt);
+			log.info("Took: " + (System.currentTimeMillis() - st) + "ms for query:" + query);
+			hits = tds.scoreDocs;
+			totalHits = tds.totalHits;
+		}else{
+			log.error("Query is null!!");
+		}
 		// this logging causes a 50% overhead on the query -- maybe enable it only for debugging
 		// log.info (hits.length + " hits for query " + Util.ellipsize(q, 30) + " => " + Util.ellipsize(escaped_q, 30) + " = " + Util.ellipsize(query.toString(), 30) + " :");
 
