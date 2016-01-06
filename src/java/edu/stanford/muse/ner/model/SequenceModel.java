@@ -521,7 +521,7 @@ public class SequenceModel implements NERModel, Serializable {
         List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
 
         for(Short at: FeatureDictionary.allTypes)
-            maps.put(at, new LinkedHashMap<String, Double>());
+            maps.put(at, new LinkedHashMap<>());
 
         String[] sents = NLPUtils.tokeniseSentence(content);
         for(String sent: sents) {
@@ -600,11 +600,25 @@ public class SequenceModel implements NERModel, Serializable {
         double CUTOFF = 0;
         Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
         Map<Short, Integer> freqs = new LinkedHashMap<>();
+        String[] badSuffixTypes = new String[]{"MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
+                "EthnicGroup","RadioStation|Broadcaster|Organisation", "MeanOfTransportation", "TelevisionShow|Work",
+                "Play|WrittenWork|Work","Language", "Book|WrittenWork|Work","Genre|TopicalConcept", "InformationAppliance|Device",
+                "SportsTeam|Organisation", "Eukaryote|Species","Software|Work", "TelevisionEpisode|Work", "Comic|WrittenWork|Work",
+                "Mayor", "Website|Work", "Cartoon|Work"
+        };
+        ol:
         for(String entry: dbpedia.keySet()){
             if(!entry.contains(" "))
                 continue;
             String fullType = dbpedia.get(entry);
             Short type = FeatureDictionary.codeType(dbpedia.get(entry));
+
+            if(fullType.equals("Agent"))
+                type = FeatureDictionary.PERSON;
+            else
+                for (String bst: badSuffixTypes)
+                    if(fullType.endsWith(bst))
+                        continue ol;
 
             entry = EmailUtils.uncanonicaliseName(entry);
             if(entry.length()>=15)
@@ -615,7 +629,7 @@ public class SequenceModel implements NERModel, Serializable {
             for(Short t: es.keySet()) {
                 if(es.get(t).size()==0)
                     continue;
-                temp.put(t, new LinkedHashMap<String, Double>());
+                temp.put(t, new LinkedHashMap<>());
                 for (String str : es.get(t).keySet())
                     if(es.get(t).get(str)>CUTOFF)
                         temp.get(t).put(str, es.get(t).get(str));

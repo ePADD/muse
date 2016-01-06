@@ -68,7 +68,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         //simplified this pattern: "[A-Z]+[A-Za-z]*(['\\-][A-Za-z]+)?"
         //nameP can end in funny chars this way
         //ignoring period at he end of the name may not be desired, "Rockwell International Corp.", the period here is part of the name
-		String nameP = "[A-Z][A-Za-z'\\-\\.]*";
+		String nameP = "[A-Z][A-Za-z0-9'\\-\\.]*";
 		//comma is a terrible character to allow, it sometimes crawls in the full list the entity is contained in.
 		String allowedCharsOther = "\\s&'", allowedCharsPerson = "\\s";
 
@@ -291,7 +291,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	public static void main(String[] args) {
 		System.err.println(CICTokenizer.personNamePattern.pattern());
         Tokenizer tok = new CICTokenizer();
-        Set<String> names = tok.tokenizeWithoutOffsets("Hello, I am Vihari, Piratla of the IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN", true);
+        Set<String> names = tok.tokenizeWithoutOffsets("A174 Road", true);
         //names = tok.tokenizeWithoutOffsets("January 30, 2002: University at Buffalo, Center for Tomorrow, Service Center\n" +
                 //"Road, North Campus", false);
         for(String name: names)
