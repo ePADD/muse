@@ -504,10 +504,10 @@ public class SequenceModel implements NERModel, Serializable {
         Map<Short, Short[]>mappings = new LinkedHashMap<>();
         mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
         mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
-                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.SHOPPINGMALL,
+                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,,
                 FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
-        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.POWERSTATION,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
-                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
+        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
+                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
                 FeatureDictionary.PERIODICAL_LITERATURE
         });
         for(Short gt: types){
