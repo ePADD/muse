@@ -24,15 +24,16 @@ import java.util.regex.Pattern;
 public class FeatureDictionary implements Serializable {
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
-    public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,MILITARYUNIT=8,
-            MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,NEWSPAPER=13,ACADEMICJOURNAL=14,MAGAZINE=15,POLITICALPARTY=16,
-            ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,NPORG=21,GOVAGENCY=22,SHOPPINGMALL=24,HOSPITAL=25,
-            POWERSTATION=26,AWARD=27,TRADEUNIN=28,PARK=29,HOTEL=30,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
+    //merged political party into organisation
+    public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,
+            MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,PERIODICAL_LITERATURE=13,
+            ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,GOVAGENCY=22,SHOPPINGMALL=24,HOSPITAL=25,
+            POWERSTATION=26,AWARD=27,TRADEUNIN=28,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
             MONUMENT=35,DISEASE = 36,EVENT=37, OTHER=38;
     public static Short[] allTypes = new Short[]{PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,
-            UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,ORGANISATION,NEWSPAPER,ACADEMICJOURNAL,
-            MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,SHOPPINGMALL,HOSPITAL,
-            POWERSTATION,AWARD,TRADEUNIN,PARK,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
+            UNIVERSITY,MOUNTAIN,AIRPORT,ORGANISATION,PERIODICAL_LITERATURE,
+            ISLAND,MUSEUM,BRIDGE,AIRLINE,GOVAGENCY,SHOPPINGMALL,HOSPITAL,
+            POWERSTATION,AWARD,TRADEUNIN,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
 
     public static Map<Short,String> desc = new LinkedHashMap<>();
     static Log log = LogFactory.getLog(FeatureDictionary.class);
@@ -51,33 +52,26 @@ public class FeatureDictionary implements Serializable {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
         aTypes.put(PERSON, new String[]{"Person"});
-        aTypes.put(PLACE, new String[]{"Place"});
-        aTypes.put(COMPANY, new String[]{"Company|Organisation"});
-        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place"});
+        aTypes.put(PLACE, new String[]{"Place","Park|Place","ProtectedArea|Place"});
+        aTypes.put(COMPANY, new String[]{"Company|Organisation","Non-ProfitOrganisation|Organisation"});
+        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place","Hotel|Building|ArchitecturalStructure|Place"});
         aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place","Canal|Stream|BodyOfWater|NaturalPlace|Place","Stream|BodyOfWater|NaturalPlace|Place","BodyOfWater|NaturalPlace|Place", "Lake|BodyOfWater|NaturalPlace|Place"});
         aTypes.put(ROAD, new String[]{"Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation","School|EducationalInstitution|Organisation","College|EducationalInstitution|Organisation"});
-        aTypes.put(MILITARYUNIT, new String[]{"MilitaryUnit|Organisation"});
         aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
         aTypes.put(AIRPORT, new String[]{"Airport|Infrastructure|ArchitecturalStructure|Place"});
-        aTypes.put(ORGANISATION, new String[]{"Organisation"});
-        aTypes.put(NEWSPAPER, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work"});
-        aTypes.put(ACADEMICJOURNAL, new String[]{"AcademicJournal|PeriodicalLiterature|WrittenWork|Work"});
-        aTypes.put(MAGAZINE, new String[]{"Magazine|PeriodicalLiterature|WrittenWork|Work"});
-        aTypes.put(POLITICALPARTY, new String[]{"PoliticalParty|Organisation"});
+        aTypes.put(ORGANISATION, new String[]{"Organisation","PoliticalParty|Organisation"});
+        aTypes.put(PERIODICAL_LITERATURE, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work","AcademicJournal|PeriodicalLiterature|WrittenWork|Work","Magazine|PeriodicalLiterature|WrittenWork|Work"});
         aTypes.put(ISLAND, new String[]{"Island|PopulatedPlace|Place"});
         aTypes.put(MUSEUM, new String[]{"Museum|Building|ArchitecturalStructure|Place"});
         aTypes.put(BRIDGE, new String[]{"Bridge|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(AIRLINE, new String[]{"Airline|Company|Organisation"});
-        aTypes.put(NPORG, new String[]{"Non-ProfitOrganisation|Organisation"});
         aTypes.put(GOVAGENCY, new String[]{"GovernmentAgency|Organisation"});
         aTypes.put(SHOPPINGMALL, new String[]{"ShoppingMall|Building|ArchitecturalStructure|Place"});
         aTypes.put(HOSPITAL, new String[]{"Hospital|Building|ArchitecturalStructure|Place"});
         aTypes.put(POWERSTATION, new String[]{"PowerStation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(AWARD, new String[]{"Award"});
         aTypes.put(TRADEUNIN, new String[]{"TradeUnion|Organisation"});
-        aTypes.put(PARK, new String[]{"Park|Place","ProtectedArea|Place"});
-        aTypes.put(HOTEL, new String[]{"Hotel|Building|ArchitecturalStructure|Place"});
         aTypes.put(THEATRE, new String[]{"Theatre|Venue|ArchitecturalStructure|Place"});
         aTypes.put(LEGISTLATURE, new String[]{"Legislature|Organisation"});
         aTypes.put(LIBRARY, new String[]{"Library|Building|ArchitecturalStructure|Place"});
@@ -107,12 +101,12 @@ public class FeatureDictionary implements Serializable {
                 "PersonFunction"
         );
         desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
-        desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MILITARYUNIT,"MILITARYUNIT");desc.put(MOUNTAIN,"MOUNTAIN");
-        desc.put(AIRPORT,"AIRPORT");desc.put(ORGANISATION,"ORGANISATION");desc.put(NEWSPAPER,"NEWSPAPER");desc.put(ACADEMICJOURNAL,"ACADEMICJOURNAL");
-        desc.put(MAGAZINE,"MAGAZINE");desc.put(POLITICALPARTY,"POLITICALPARTY");desc.put(ISLAND,"ISLAND");desc.put(MUSEUM,"MUSEUM");
-        desc.put(BRIDGE,"BRIDGE");desc.put(AIRLINE,"AIRLINE");desc.put(NPORG,"NPORG");desc.put(GOVAGENCY,"GOVAGENCY");desc.put(SHOPPINGMALL,"SHOPPINGMALL");
-        desc.put(HOSPITAL,"HOSPITAL");desc.put(POWERSTATION,"POWERSTATION");desc.put(AWARD,"AWARD");desc.put(TRADEUNIN,"TRADEUNIN");desc.put(PARK,"PARK");
-        desc.put(HOTEL,"HOTEL");desc.put(THEATRE,"THEATRE");desc.put(LEGISTLATURE,"LEGISTLATURE");desc.put(LIBRARY,"LIBRARY");desc.put(LAWFIRM,"LAWFIRM");
+        desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
+        desc.put(AIRPORT,"AIRPORT");desc.put(ORGANISATION,"ORGANISATION");desc.put(PERIODICAL_LITERATURE,"PERIODICAL_LITERATURE");
+        desc.put(ISLAND,"ISLAND");desc.put(MUSEUM,"MUSEUM");desc.put(BRIDGE,"BRIDGE");desc.put(AIRLINE,"AIRLINE");
+        desc.put(GOVAGENCY,"GOVAGENCY");desc.put(SHOPPINGMALL,"SHOPPINGMALL");
+        desc.put(HOSPITAL,"HOSPITAL");desc.put(POWERSTATION,"POWERSTATION");desc.put(AWARD,"AWARD");desc.put(TRADEUNIN,"TRADEUNIN");
+        desc.put(THEATRE,"THEATRE");desc.put(LEGISTLATURE,"LEGISTLATURE");desc.put(LIBRARY,"LIBRARY");desc.put(LAWFIRM,"LAWFIRM");
         desc.put(MONUMENT,"MONUMENT");desc.put(DISEASE,"DISEASE");desc.put(EVENT,"EVENT");desc.put(OTHER,"OTHER");
     }
     /**

@@ -504,10 +504,12 @@ public class SequenceModel implements NERModel, Serializable {
         Map<Short, Short[]>mappings = new LinkedHashMap<>();
         mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
         mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
-                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK,
-                FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
-        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.POWERSTATION,FeatureDictionary.UNIVERSITY, FeatureDictionary.MILITARYUNIT, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.ACADEMICJOURNAL,
-                FeatureDictionary.AIRLINE, FeatureDictionary.MAGAZINE, FeatureDictionary.POLITICALPARTY, FeatureDictionary.NPORG, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM});
+                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.SHOPPINGMALL,
+                FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
+        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.POWERSTATION,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
+                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
+                FeatureDictionary.PERIODICAL_LITERATURE
+        });
         for(Short gt: types){
             for(Short ft: mappings.get(gt))
                 if(entities.containsKey(ft))
@@ -641,7 +643,7 @@ public class SequenceModel implements NERModel, Serializable {
             //we should not bother about segmentation in the case of OTHER
             if(!(es.containsKey(FeatureDictionary.OTHER) && es.size()==1)) {
                 shown = true;
-                boolean any = true;
+                boolean any;
                 if (type!=FeatureDictionary.OTHER && es.containsKey(type) && es.get(type).containsKey(entry))
                     correct++;
                 else {
@@ -678,7 +680,7 @@ public class SequenceModel implements NERModel, Serializable {
             if(ne++%100 == 0)
                 System.err.println("Done testing on "+ne+" of "+dbpedia.size());
             if(!confMat.containsKey(type))
-                confMat.put(type, new LinkedHashMap<Short, Integer>());
+                confMat.put(type, new LinkedHashMap<>());
             if(!confMat.get(type).containsKey(assignedTo))
                 confMat.get(type).put(assignedTo, 0);
             confMat.get(type).put(assignedTo, confMat.get(type).get(assignedTo)+1);
@@ -692,6 +694,7 @@ public class SequenceModel implements NERModel, Serializable {
             allTypes.add(type);
         Collections.sort(allTypes);
         allTypes.add((short)-1);
+        System.err.println("Tested on "+ne+" entries");
         System.err.println("------------------------");
         String ln = "  ";
         for(Short type: allTypes)
