@@ -46,7 +46,6 @@ import java.util.*;
  * including multiple folders.
  * and MuseEmailFetcher is responsible for multiple accounts.
  */
-
 /* email fetcher stats is associated with a single email fetcher */
 class EmailFetcherStats implements Cloneable, Serializable {
 	private final static long	serialVersionUID	= 1L;

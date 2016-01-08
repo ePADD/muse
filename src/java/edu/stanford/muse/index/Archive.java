@@ -21,8 +21,6 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -1042,7 +1040,7 @@ public class Archive implements Serializable {
         List<String> cpeople = getEntitiesInDoc(d, NER.EPER, true);
         List<String> corgs = getEntitiesInDoc(d, NER.EORG, true);
         List<String> cplaces = getEntitiesInDoc(d, NER.ELOC, true);
-        Set<String> acrs = CICTokenizer.getAcronyms(indexer.getContents(d, false));
+        Set<String> acrs = Util.getAcronyms(indexer.getContents(d, false));
 
         List<String> e = getEntitiesInDoc(d, type, true);
         List<String> orgs = getEntitiesInDoc(d, otype, true);

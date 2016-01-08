@@ -9,15 +9,18 @@ import java.util.List;
 import opennlp.tools.chunker.Chunker;
 import opennlp.tools.chunker.ChunkerME;
 import opennlp.tools.chunker.ChunkerModel;
+import opennlp.tools.dictionary.Dictionary;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
+import opennlp.tools.sentdetect.SentenceDetectorFactory;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.util.Span;
+import opennlp.tools.util.StringList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -40,15 +43,18 @@ public class NLPUtils {
         InputStream chunkerStream = NLPUtils.class.getClassLoader()
                 .getResourceAsStream("models/en-chunker.bin");
         try {
-			if (sentStream == null) {
-				File SentFile = new File("WebContent/WEB-INF/classes/models/en-sent.bin");
-				if (SentFile.exists())
-					model = new SentenceModel(SentFile);
-				else
-					log.info(SentFile.getAbsolutePath() + " doesnt exist");
-			} else
-				model = new SentenceModel(sentStream);
+            //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
+            //case-insesitive dictionary
+            Dictionary dictionary = new Dictionary(false);
+            dictionary.put(new StringList("Mr.","Mt."));
+            SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,dictionary,new char[] { '.', '!', '?', '\n' });
+            SentenceModel dummyModel = new SentenceModel(sentStream);
 
+            //this way of getting maxent model from the initialised sentence model may look improper
+            //proper way to initialise the maxent model is:
+            //AbstractModel model = new GenericModelReader(new File(modelName)).getModel()
+            //but it was throwing java.io.UTFDataFormatException: malformed input around byte 48
+            model = new SentenceModel("en",dummyModel.getMaxentModel(), null, cf);
             POSModel posModel = new POSModel(posStream);
             posTagger = new POSTaggerME(posModel);
             TokenizerModel tokenizerModel = new TokenizerModel(tokenStream);
