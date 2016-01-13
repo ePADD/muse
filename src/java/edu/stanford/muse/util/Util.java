@@ -27,6 +27,8 @@
 
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 
 import java.io.*;
@@ -37,6 +39,7 @@ import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
@@ -1606,7 +1609,32 @@ public class Util
 			warnIf(true, "Sorry, can't delete path because it doesn't even exist: " + path);
 	}
 
-	public static class MyFilenameFilter implements FilenameFilter {
+    static String cleanEmailStuff(String content){
+        content = content.replaceAll("(Email:|To:|From:|Date:|Subject: Re:|Subject:)\\W+","");
+        return content;
+    }
+
+    public static Set<String> getAcronyms(String content) {
+        if (content == null)
+            return null;
+        Pattern acronymPattern = Pattern.compile("[A-Z]{3,}");
+
+        content = cleanEmailStuff(content);
+
+        Set<String> acrs = new HashSet<String>();
+        Matcher m = acronymPattern.matcher(content);
+        while (m.find()) {
+            String acr = m.group();
+            String tt = FeatureGeneratorUtil.tokenFeature(acr);
+            if (!tt.equals("ac")) {
+                continue;
+            }
+            acrs.add(acr);
+        }
+        return acrs;
+    }
+
+    public static class MyFilenameFilter implements FilenameFilter {
 		private String	prefix, suffix; // suffix is optional
 
 		public MyFilenameFilter(String prefix) {
@@ -2189,7 +2217,7 @@ public class Util
 	// e.g. a.b.c.d to d
 	public static String stripPackageFromClassName(String class_name)
 	{
-		// System.out.print ("input is " + s);
+		// System.out.toString ("input is " + s);
 
 		int z = class_name.lastIndexOf('.');
 		if (z >= 0)

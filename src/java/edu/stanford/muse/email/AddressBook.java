@@ -181,6 +181,11 @@ public class AddressBook implements Serializable {
 				linesForContact.clear();
 			}
 		}
+        String firstLines = text.substring(0,text.substring(3).indexOf("--"));
+        if(contactForSelf == null || contactForSelf.emails == null || contactForSelf.emails.size() == 0)
+            log.info("Could not identify self in the starting lines: \n" +firstLines);
+        else
+            log.info("Initialised self contact: "+contactForSelf);
 		reassignContactIds();
 	}
 

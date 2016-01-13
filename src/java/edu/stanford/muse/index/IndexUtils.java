@@ -1369,7 +1369,7 @@ public class IndexUtils {
 		return computeAllSubstrings(set, sort);
 	}
 
-	static Set<String> computeAllPrefixes(Set<String> set)
+	public static Set<String> computeAllPrefixes(Set<String> set)
 	{
 		Set<String> result = new LinkedHashSet<String>();
 		for (String s : set)
@@ -1387,7 +1387,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	static Set<String> computeAllPrefixes(String s)
+	public static Set<String> computeAllPrefixes(String s)
 	{
 		Set<String> set = new LinkedHashSet<String>();
 		set.add(s);

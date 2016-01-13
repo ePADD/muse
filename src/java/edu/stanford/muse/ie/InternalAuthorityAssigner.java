@@ -34,7 +34,7 @@ import java.util.*;
  * 
  * This should be the flow to use this class:
  * 1. get instance from load(Archive), feed it to statusprovider.
- * 2. irrespecitive of whether the class is already initialized, call
+ * 2. Irrespective of whether the class is already initialized, call
  * initialize(Archive)
  * 3. call checkFeaturesIndex(Archive) finally
  * 4. Call isCancelled to check if the object is properly initiated,
@@ -99,8 +99,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 	/** Initializes the object */
 	public void initialize(Archive archive) {
-		Indexer indexer = (Indexer) archive.indexer;
-
 		//initiate KillPhrases to make sure the static methods are initiated.
 		//http://stackoverflow.com/questions/3499214/java-static-class-initialization
 		new KillPhrases();

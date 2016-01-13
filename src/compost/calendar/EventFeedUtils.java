@@ -156,8 +156,8 @@ public class EventFeedUtils {
    * Prints the titles of all events in a specified date/time range.
    * 
    * @param service An authenticated CalendarService object.
-   * @param startTime Start time (inclusive) of events to print.
-   * @param endTime End time (exclusive) of events to print.
+   * @param startTime Start time (inclusive) of events to toString.
+   * @param endTime End time (exclusive) of events to toString.
    * @throws ServiceException If the service is unable to handle the request.
    * @throws IOException Error communicating with the server.
    */

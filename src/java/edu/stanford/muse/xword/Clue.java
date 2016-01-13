@@ -64,6 +64,28 @@ public class Clue implements Serializable {
 		float exclamationScore; // score boost due to exclamations 
 		float smileyScore; // score boost due to smilies
 		float lengthBoost; // score boost due to ideal-ness of sentence length
+        float prepositionScore;
+        float sigWordScore;
+        float refWordScore;
+        float pronounScore;
+        float noisyThreadScore;
+        float timeAnswerScore;
+        float questionMarkScore;
+        //boost score for when the recipients is above a certain threshold
+        float recipientScore;
+        //boost score related to number of concversations between two people in a certain interval
+        float nMessageScore;
+        //time difference between first and last mentions of either answer/corr
+        float timeDiff;
+        //Reflective words found in the clue
+        String refWord = "";
+        //first and last mentions of the answer
+        Date firstMention, lastMention;
+
+        @Override
+        public String toString(){
+            return "namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost;
+        }
 	}
 	
 	public String refText;
@@ -71,6 +93,8 @@ public class Clue implements Serializable {
 	public long date; 
 	MyAddr to[], cc[], bcc[], from[]; 
 	String subject;
+    //some of the clue scorer functions wants to look at the thread from which the message was fetched
+    EmailDocument d;
 			
 	public transient ClueStats clueStats = new ClueStats();
 	public String clue; // actual clue, with the answer blanked out
@@ -142,6 +166,7 @@ public class Clue implements Serializable {
 	public void setFullSentenceOriginal(String fullSentenceOriginal) {
 		this.fullSentenceOriginal = fullSentenceOriginal;
 	}
+    public EmailDocument getEmailDocument(){return this.d;}
 	
 	String url;
 	public String getUrl() {
@@ -202,6 +227,7 @@ public class Clue implements Serializable {
 			this.bcc = convertAddressToMyAddr(d.bcc);
 			this.from = convertAddressToMyAddr(d.from);
 			this.subject = d.description;
+            this.d = d;
 		}
 		
 		this.clue = c; 

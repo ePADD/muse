@@ -1,18 +1,18 @@
 package edu.stanford.muse.ner.tokenizer;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.NLPUtils;
+import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,35 +20,36 @@ import java.util.regex.Pattern;
  * CIC Pattern based tokenizer
  * This is a utility class to segment pseudo proper nouns from text and emit them
  *
- * @TODO: Why is parser looking beyond a single new line as in Harvard Law School\n\nDr. West?
- * @TODO: initialise a method to get the acronyms from the content
- * @TODO: CICTokenizer is not handling names that start with '>' well for ex: ">Holly Crumpton" will emit Holly and Crumpton as two tokens
- * also is not handling '-' well, sometimes this signals continuation of a name.
- * !!!!!This is a serious bug, fix it asap!!!!!!
- *
- * @TODO: Clean email related stuff like: "Subject: Re:", "Subject:", "Date:", "Email:", ">"
- * @TODO: Having two dashes in the name is not ok
+ * TODO: CIC tokenizer fails when the sentence tokenizer fails, it is required to make the sentence tokenizer handle at least a few common abbreviations (such as Col. Mt. Inc. Corp. etc.) to make the application look less stupid
  */
 public class CICTokenizer implements Tokenizer, Serializable {
-	static Pattern	personNamePattern, entityPattern, acronymPattern;
-	static String[] stopWords =  new String[]{"the","for"};//new String[]{"and", "for","on","a","the","to","at","of", "in"};
-	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
+    public static Log log						= LogFactory.getLog(CICTokenizer.class);
 
-	static {
+    static Pattern	personNamePattern, entityPattern, multipleStopWordPattern, cswPatt;
+    static String[] commonStartWords = new String[]{"The","A","Hello","Dear","Hi","Met","From","Quote","From:","And"};
+
+    //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
+    //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
+	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at", "in", "of",
+            //based on occurrence frequency of more than 100 in English DBpedia personal names of 2014
+            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
+	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
+    private static final long serialVersionUID = 1L;
+
+    static {
 		initPattern();
 	}
 
-	public static String cleanEmailStuff(String content){
-		content = content.replaceAll("(Email:|To:|From:|Date:|Subject: Re:|Subject:)\\W+","");
-		return content;
-	}
-
-	public static void initPattern() {
+	static void initPattern() {
         //simplified this pattern: "[A-Z]+[A-Za-z]*(['\\-][A-Za-z]+)?"
         //nameP can end in funny chars this way
-		String nameP = "[A-Z][A-Za-z'\\-]*";
+        //ignoring period at he end of the name may not be desired, "Rockwell International Corp.", the period here is part of the name
+
+        //This the def. of a word that can appear in person or non-person names
+		String nameP = "[A-Z][A-Za-z0-9'\\-\\.]*";
+        //these are the chars that are allowed to appear between words in the chunk
 		//comma is a terrible character to allow, it sometimes crawls in the full list the entity is contained in.
-		String allowedCharsOther = "\\s\\.", allowedCharsPerson = "\\s\\.";
+		String allowedCharsOther = "\\s&'", allowedCharsPerson = "\\s";
 
 		StringBuilder sp = new StringBuilder("");
 		int i = 0;
@@ -59,11 +60,14 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		}
 		String stopWordsPattern = "(" + sp.toString() + ")";
 
+        //defines the number of occurrences of allowed chars between words
+        String recur = "{1,3}";
+        //the person name pattern or entity pattern can match more than one consecutive stop word or multiple appearances of [-.'] which is undesired
+        //Hence we do another level of tokenisation with the pattern below
+        multipleStopWordPattern = Pattern.compile("("+stopWordsPattern+"["+allowedCharsOther+"]"+recur+"){2,}|(['-\\.]{2,})|'s(\\s|$)");
+
 		//[\"'_:\\s]*
 		//number of times special chars between words can recur
-		String recur = "{1,3}";
-		//doe not allow more than two stop words occuring between two ic words.
-		//should more than one sw be allowed? "The Supreme Court of the United States" or "The Supreme Court"?
 		String nps = "(" + nameP + "([" + allowedCharsOther + "]" + recur + "(" + nameP + "[" + allowedCharsOther + "]" + recur + "|(" + stopWordsPattern + "[" + allowedCharsOther + "]" + recur + "))*" + nameP + ")?)";
 		entityPattern = Pattern.compile(nps);
 		NER.log.info("EP: " + nps);
@@ -72,160 +76,98 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		personNamePattern = Pattern.compile(nps);
 		NER.log.info("PNP: " + nps);
 
-		acronymPattern = Pattern.compile("[A-Z]{3,}");
-	}
+        String cswPattern = "";
+        for(int swi=0;swi<commonStartWords.length;swi++)
+            cswPattern += commonStartWords[swi]+((swi==commonStartWords.length-1)?"":"|");
+        cswPattern = "^("+cswPattern+") ";
+        cswPatt = Pattern.compile(cswPattern);
+        NER.log.info("CSWP: "+cswPattern);
+    }
 
+    /**
+     * {@inheritDoc}
+     * */
     @Override
 	public Set<String> tokenizeWithoutOffsets(String content, boolean pn) {
 		List<Triple<String, Integer, Integer>> offsets = tokenize(content, pn);
-		Set<String> names = new HashSet<String>();
+		Set<String> names = new HashSet<>();
 		for (Triple<String, Integer, Integer> t : offsets)
 			names.add(t.first);
 		return names;
 	}
 
-	public static Set<String> getAcronyms(String content) {
-		if (content == null)
-			return null;
-
-		content = cleanEmailStuff(content);
-
-		if (acronymPattern == null)
-			initPattern();
-
-		Pattern namePattern = acronymPattern;
-
-		Set<String> acrs = new HashSet<String>();
-		Matcher m = namePattern.matcher(content);
-		while (m.find()) {
-			String acr = m.group();
-			String tt = FeatureGeneratorUtil.tokenFeature(acr);
-			if (!tt.equals("ac")) {
-				continue;
-			}
-			acrs.add(acr);
-		}
-		return acrs;
-	}
-
-    private String[] tokeniseQuoteS(String name){
-        List<String> tokens = new ArrayList<String>();
-        if(name.contains("'s")) {
-            String sp = "";
-            int i = 0;
-            for (String stopWord : stopWords) {
-                sp += stopWord;
-                if (i++ < (stopWords.length - 1))
-                    sp += "|";
-            }
-            sp = "(" + sp + ")";
-
-            String[] snames = name.split("'s(\\s|$)");
-            for (String sname : snames) {
-                //separated by atleast two stop words
-                String str = "[\\s\\.\\:]" + sp + "([\\s\\.\\:]+" + sp + ")*" + "[\\s\\.\\:]" + sp;
-                String[] sns = sname.split(str);
-                for (String sn : sns) {
-                    //the emitted string should not start or end with stop word.
-                    sn = sn.replaceAll("^\\W*"+sp+"\\W+|\\W+"+sp+"\\W*$", "");
-                    tokens.add(sn);
-                }
-            }
-        }else
-            tokens.add(name);
-        return tokens.toArray(new String[tokens.size()]);
-    }
-
+    /**
+     * {@inheritDoc}
+     * */
     @Override
 	public List<Triple<String, Integer, Integer>> tokenize(String content, boolean pn) {
 		List<Triple<String, Integer, Integer>> matches = new ArrayList<Triple<String, Integer, Integer>>();
 		if (content == null)
 			return null;
 
-		//!!!!!!!!!!!
-		//Imagine a skull drwan with ascii text here
-		//!!!!!!!!!!!
-		//trying to do this, will mess the offsets and hence creates problems for redaction;
-		//TODO: is there someplace safe we can do this?
-		//content = cleanEmailStuff(content);
-
 		if (personNamePattern == null || entityPattern == null) {
-			//System.err.println("Initiating pattern for: " + personNames);
 			initPattern();
 		}
-		Pattern namePattern = null;
+		Pattern namePattern;
 		if (pn)
 			namePattern = personNamePattern;
 		else
 			namePattern = entityPattern;
 
 		//we need a proper sentence splitter, as some of the names can contain period.
-		//String[] sents = content.split("[\\.\\n]+");
 		String[] lines = content.split("\\n");
 		//dont change the length of the content, so that the offsets are not messed up.
 		content = "";
 		for (String line : lines) {
 			//for very short lines, new line is used as a sentence breaker.
 			if (line.length() < 40)
-				//dont want to rely on the sentence tokeniser for breaking of this sentence, should be robust and handle even when sentence tokeniser merges this line eith the next.
-				//some is a non-stopword word that will do this, but this is still a hack
-				//!!!!!!!!!!HACKY CODE!!!!!!!!!!!!!!!!!
-				//be careful not to append more chars than that are being replaced, so as not to mess up the tokenizer offsets
-				//% is not considered a special char in any of the entity names and hence is added.
-				content += line + "%";
+				content += line + "\n";
 			else
 				content += line + " ";
 		}
 
 		Span[] sentenceSpans = NLPUtils.tokeniseSentenceAsSpan(content);
-		for (Span sentenceSpan : sentenceSpans) {
-			int sentenceStartOffset = sentenceSpan.getStart();
+        for (Span sentenceSpan : sentenceSpans) {
+          	int sentenceStartOffset = sentenceSpan.getStart();
 			String sent = sentenceSpan.getCoveredText(content).toString();
             //TODO: sometimes these long sentences are actually long list of names, which we cannot afford to lose.
             //Is there an easy way to test with the sentence is good or bad quickly and easy way to tokenize it further if it is good?
+            //Sometimes there can be junk in the content such as a byte code or a randomly long string of characters,
+            //we don't want to process such sentences and feed the many CIC tokens it would generate to the entity recogniser
             if(sent.length()>=2000)
                 continue;
 
-            //NER.log.info(sent.length());
-//			if(!content.substring(sentenceSpan.getStart(), sentenceSpan.getEnd()).equals(sent))
-//				NER.log.warn("Warning: Sentence offset wrong for sent:"+sent);
 			Matcher m = namePattern.matcher(sent);
-			Set<String> temp = new HashSet<String>();
 			while (m.find()) {
 				if (m.groupCount() > 0) {
 					String name = m.group(1);
 					//email related stuff
 					if(estuff.contains(name))
 						continue;
-					name = name.replaceAll(", [A-Za-z]{1,3}$", "");
-					name = name.replaceAll("^[A-Za-z]{1,3}, ", "");
 					int start = m.start(1) + sentenceStartOffset, end = m.end(1) + sentenceStartOffset;
-//					if(!content.substring(start,end).equals(name))
-//						NER.log.warn("Serious warning: offsets not proper for: "+name);
-
 					//if the length is less than 3, accept only if it is all capitals.
 					if (name.length() < 3) {
 						String tt = FeatureGeneratorUtil.tokenFeature(name);
 						if (tt.equals("ac")) {
-							matches.add(new Triple<String, Integer, Integer>(name, start, end));
-							temp.add(name);
-						}
+							matches.add(new Triple<>(name, start, end));
+                        }
 					}
 					else {
-						//if the name contains, person start markers, then trim the offset
-						String[] markers = FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON);
-						String lc = name.toLowerCase();
-						//does this slow down things a lot?
-						for (String marker : markers)
-							if (lc.startsWith(marker+" ")) {
-								start += marker.length()+1;
-								break;
-							}
 						//further cleaning to remove "'s" pattern
-						//@TODO: Can these "'s" be put to a good use?
-						String[] cns = tokeniseQuoteS(name);
-                        for(String cn: cns)
-                            matches.add(new Triple<String,Integer,Integer>(cn, start, end));
+						//@TODO: Can these "'s" be put to a good use? Right now, we are just throwing them away
+//						String[] cns = tokeniseQuoteS(name);
+//                        for(String cn: cns) {
+                            String[] tokens = clean(name, m.start(1));
+                            for(String token: tokens) {
+                                int s = name.indexOf(token);
+                                if(s<0) {
+                                    log.error("Did not find " + token + " extracted and cleaned from " +name);
+                                    continue;
+                                }
+                                int e = s+token.length();
+                                matches.add(new Triple<>(canonicalise(token), s, s+token.length()));
+                            }
+                        //}
 					}
 				}
 			}
@@ -233,11 +175,151 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		return matches;
 	}
 
+    /**
+     * Just cleans more than one extra space in the phrase*/
+    static String canonicalise(String phrase){
+        if(!phrase.contains("  "))
+            return phrase;
+        return phrase.replaceAll("\\s{2,}"," ");
+    }
+
+    /**
+     * Ensures the sanity of the entity chunk, does the following checks:
+     * <ul>
+     *  <li>tokenizes on multiple stop words or more than one occurrence of {',-,.} (chars that are allowed in an entity word) or quote-s ie. 's, see multipleStopWordPattern</li>
+     *  <li>ensures that the token does not end in space or period or hyphen</li>
+     *  <li>If the chunk starts the sentence, then removes articles or other common words that start the sentence</li>
+     *  <li>If the chunk starts the sentence, then drops the chunk if it is member of dictionary</li>
+     * </ul>
+     * @param phrase is the string that is to be cleaned
+     * @param offset of the phrase being considered in the original sentence, character/word offset
+     * @return the tokenized, cleaned and filtered sub-chunks in the phrase passed.
+     * */
+    static String[] clean(String phrase, int offset){
+        List<String> tokenL = new ArrayList<>();
+        Matcher m = multipleStopWordPattern.matcher(phrase);
+        int end = 0;
+        while(m.find()){
+            tokenL.add(phrase.substring(end, m.start()));
+            end = m.end();
+        }
+        if(end!=phrase.length())
+            tokenL.add(phrase.substring(end, phrase.length()));
+        //we have all the split tokens, will have to filter now
+        List<String> nts = new ArrayList<>();
+        for(int i=0;i<tokenL.size();i++){
+            String t = tokenL.get(i);
+            t = t.replaceAll("^\\W+|\\W+$","");
+            //if the chunk is the first word then, double check the capitalisation
+            if(i==0 && offset==0) {
+                if (DictUtils.fullDictWords.contains(t.toLowerCase()))
+                    continue;
+                //remove common start words
+                //the replace pattern is a costly operations because it can contain many '|', double check if using the pattern is required
+                boolean hasCSW = false;
+                for(String cw: commonStartWords)
+                    if(t.startsWith(cw+" ")) {
+                        hasCSW = true;
+                        break;
+                    }
+                if(hasCSW) {
+                    Matcher matcher = cswPatt.matcher(t);
+                    t = matcher.replaceAll("");
+                }
+            }
+            nts.add(t);
+        }
+        return nts.toArray(new String[nts.size()]);
+    }
+
+    public static void test(){
+        Tokenizer tokenizer = new CICTokenizer();
+        String[] contents = new String[]{
+                "A book named Information Retrieval by Christopher Manning",
+                "I have visited Museum of Modern Arts aka. MoMA, MMA, MoMa",
+                "Sound of the Music and Arts program by SALL Studios",
+                "Performance by Chaurasia, Hariprasad was great!",
+                "Dummy of the and Something",
+                "Mr. HariPrasad was present.",
+                "We traveled through A174 Road.",
+                "The MIT school has many faculty members who were awarded the Nobel Prize in Physics",
+                "We are celebrating Amy's first birthday",
+                "We are meeting at Barnie's and then go to Terry's",
+                "Patrick's portrayal of Barney is wonderful",
+                "He won a gold in 1874 Winter Olympics",
+                "India got independence in 1947",
+                ">Holly Crumpton in an interview said he will never speak to public directly",
+                "The popular Ellen de Generes show made a Vincent van Gogh themed episode",
+                "Barack-O Obama is the President of USA",
+                "CEO--Sundar attended a meeting in Delhi",
+                "Subject: Jeb Bush, the presidential candidate",
+                "From: Ted Cruz on Jan 15th, 2015",
+                "Harvard Law School\n\nDr. West is on a holiday trip now.",
+                "I met Frank'O Connor in the CCD",
+                "I have met him in the office yesterday",
+                "Annapoorna Residence,\nHouse No: 1975,\nAlma Street,\nPalo Alto,\nCalifornia",
+                //It fails here, because OpenNLP sentence model marks Mt. as end of the sentence.
+                "I have been thinking about it, and I should say it out loud. I am going to climb Mt. \nEverest",
+                "Met Mr. Robert Creeley at his place yesterday",
+                "Dear Folks, it is party time!",
+                "Few years ago, I wrote an article on \"Met The President\"",
+                "This is great! I am meeting with Barney   Stinson"
+        };
+        String[][] tokens = new String[][]{
+                new String[]{"Information Retrieval","Christopher Manning"},
+                new String[]{"Museum of Modern Arts","MoMA","MMA","MoMa"},
+                new String[]{"Music and Arts", "SALL Studios"},
+                new String[]{"Chaurasia, Hariprasad"},
+                new String[]{"Something"},
+                new String[]{"Mr. HariPrasad"},
+                new String[]{"A174 Road"},
+                new String[]{"MIT","Nobel Prize in Physics"},
+                new String[]{"Amy"},
+                new String[]{"Barnie","Terry"},
+                new String[]{"Patrick","Barney"},
+                new String[]{"Winter Olympics"},
+                new String[]{"India"},
+                new String[]{"Holly Crumpton"},
+                new String[]{"Ellen de Generes","Vincent van Gogh"},
+                new String[]{"Barack-O Obama", "President of USA"},
+                new String[]{"CEO","Sundar","Delhi"},
+                new String[]{"Jeb Bush"},
+                //Can we do a better job here? without knowing that Ted Cruz is a person.
+                new String[]{"Ted Cruz on Jan"},
+                new String[]{"Harvard Law School","Dr. West"},
+                new String[]{"Frank'O Connor","CCD"},
+                new String[]{},
+                new String[]{"Annapoorna Residence","House No","Alma Street","Palo Alto","California"},
+                new String[]{"Mt. Everest"},
+                new String[]{"Mr. Robert Creeley"},
+                new String[]{"Folks"},
+                new String[]{"Met The President"},
+                new String[]{"Barney Stinson"}
+        };
+        for(int ci=0;ci<contents.length;ci++){
+            String content = contents[ci];
+            List<String> ts = Arrays.asList(tokens[ci]);
+            //want to specifically test person names tokenizer for index 3.
+            Set<String> cics = tokenizer.tokenizeWithoutOffsets(content, ci==3?true:false);
+            boolean missing  = false;
+            for(String cic: cics)
+                if(!ts.contains(cic)) {
+                    missing = true;
+                    break;
+                }
+            if(cics.size()!=ts.size() || missing) {
+                String str = "------------\n" +
+                             "Test failed!\n" +
+                             "Content: "+content+"\n"+
+                             "Expected tokens: "+ts+"\n"+
+                             "Found: "+cics+"\n";
+                System.err.println(str);
+            }
+        }
+        System.out.println("All tests done!");
+    }
+
 	public static void main(String[] args) {
-		System.err.println(CICTokenizer.personNamePattern.pattern());
-        Tokenizer tok = new CICTokenizer();
-        Set<String> names = tok.tokenizeWithoutOffsets("Hello, I am Vihari, Piratla'. Some thing IIT Mandi, I went to college in UCB, GH then joined NASA after a brief tenure at CERN", true);
-        for(String name: names)
-            System.err.println(name);
+		test();
 	}
 }

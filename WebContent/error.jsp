@@ -73,7 +73,7 @@ if (e instanceof TimedOutException)
 	}
 	else
 	{
-		// print error details
+		// toString error details
 		String x = (String) session.getAttribute("errorMessage");
 		if (e != null)
 		{

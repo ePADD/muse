@@ -12,13 +12,22 @@
 	<name>Muse</name>
 	<url>http://maven.apache.org</url>
 
- <pluginRepositories>
-    <pluginRepository>
-      <id>apache.snapshots</id>
-      <url>http://repository.apache.org/snapshots/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
+	<repositories>
+	  <repository>
+	    <id>project_lib</id>
+	    <name>Repository in project's lib dir</name>
+	    <layout>default</layout>
+	    <url>file:///${basedir}/lib</url>
+	  </repository>
+	</repositories>
+	
+	<pluginRepositories>
+	  <pluginRepository>
+	    <id>apache.snapshots</id>
+	    <url>http://repository.apache.org/snapshots/</url>
+	  </pluginRepository>
+	</pluginRepositories>
+	
 	<dependencies>
 		<dependency>
 			<groupId>tw.edu.ntu.csie</groupId>
@@ -106,12 +115,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.mnode.mstor</groupId>
-			<artifactId>mstor</artifactId>
-			<version>0.9.13</version>
-		</dependency>
-
-		<dependency>
 			<groupId>net.sf.jtidy</groupId>
 			<artifactId>jtidy</artifactId>
 			<version>r938</version>
@@ -192,6 +195,23 @@
 		  <version>18.0</version>
 		</dependency>
 		
+		<dependency>
+		  <groupId>org.mnode.mstor</groupId>
+		  <artifactId>mstor</artifactId>
+		  <version>0.9.14</version>
+		</dependency>
+
+		<!--<dependency>
+		  <groupId>edu.stanford.nlp</groupId>
+		  <artifactId>stanford-corenlp</artifactId>
+		  <version>3.5.2</version>
+		</dependency>
+		<dependency>
+		  <groupId>edu.stanford.nlp</groupId>
+		  <artifactId>stanford-corenlp</artifactId>
+		  <version>3.5.2</version>
+		  <classifier>models</classifier>
+		</dependency>-->
 	</dependencies>
 	<build>
 	  <defaultGoal>install</defaultGoal>

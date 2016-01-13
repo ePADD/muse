@@ -35,6 +35,8 @@ import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 
 import edu.stanford.muse.datacache.BlobStore;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -72,6 +74,7 @@ public class EmailDocument extends DatedDocument implements Serializable
 	// default constructor for serialization
 	public EmailDocument() { /* */ }
 	public EmailDocument(String id) { this.id = id; } /* prob. useful only for errors */
+    public static Log log						= LogFactory.getLog(EmailDocument.class);
 
 	public EmailDocument(String id, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
 	{
@@ -406,9 +409,9 @@ public class EmailDocument extends DatedDocument implements Serializable
 			// expect only one from address, warn if more than one
 			if (from.length > 1)
 			{
-				System.err.println ("SERIOUS WARNING!: froms.length > 1: " + from.length);
+				log.warn("SERIOUS WARNING!: froms.length > 1: " + from.length);
 				for (Address f: from)
-					System.err.println (f);
+					log.warn(f);
 			}
 
 			if (from[0] instanceof InternetAddress)
@@ -431,9 +434,9 @@ public class EmailDocument extends DatedDocument implements Serializable
 			// expect only one from address, warn if more than one
 			if (from.length > 1)
 			{
-				System.err.println ("Alert!: froms.length > 1: " + from.length);
+				log.warn("Alert!: froms.length > 1: " + from.length);
 				for (Address f: from)
-					System.err.println (f);
+					log.warn (f);
 			}
 			for (Address f: from)
 			{

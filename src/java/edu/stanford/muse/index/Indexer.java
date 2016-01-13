@@ -620,7 +620,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * 
 	 * multiDocsIndexed++; // IndexUtils.dumpDocument(clusterPrefix,
 	 * clusterText); // i don't think we need to do this except for debugging
-	 * System.out.print("."); // goes to console, that's ok...
+	 * System.out.toString("."); // goes to console, that's ok...
 	 * 
 	 * if (md.docs.size() > 0) { String stat2 = ("Memory status after indexing "
 	 * + docsIndexed + " of " + allDocs.size() + " documents in " +
@@ -1084,8 +1084,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		try {
 			iwriter.updateDocument(new Term("docId", doc.get("docId")), doc);
 		} catch (Exception e) {
-			e.printStackTrace();
-			Util.print_exception("Exception while updating document: " + doc, e, log);
+			//e.printStackTrace();
+			Util.print_exception("Exception while updating document: " + doc.get("docId"), e, log);
 		}
 	}
 
@@ -1360,11 +1360,16 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		//		query = convertRegex(query);
         long st = System.currentTimeMillis();
-        TopDocs tds = searcher.search(query, null, lt);
-        log.info("Took: "+(System.currentTimeMillis()-st)+"ms for query:"+query);
-        ScoreDoc[] hits = tds.scoreDocs;
-        int totalHits = tds.totalHits;
-
+		int totalHits = 0;
+		ScoreDoc[] hits = null;
+		if(query!=null) {
+			TopDocs tds = searcher.search(query, null, lt);
+			log.info("Took: " + (System.currentTimeMillis() - st) + "ms for query:" + query);
+			hits = tds.scoreDocs;
+			totalHits = tds.totalHits;
+		}else{
+			log.error("Query is null!!");
+		}
 		// this logging causes a 50% overhead on the query -- maybe enable it only for debugging
 		// log.info (hits.length + " hits for query " + Util.ellipsize(q, 30) + " => " + Util.ellipsize(escaped_q, 30) + " = " + Util.ellipsize(query.toString(), 30) + " :");
 

@@ -39,7 +39,7 @@ public class Log4JUtils {
 			return;
 
 		// LOG FILE will be set only once, either to <home>/.muse/muse.log (default) or overwritten with the help of muse.dirname and muse.log system props, typically to <home>/ePADD/epadd.log
-		LOG_FILE = System.getProperty("user.home") + File.separatorChar + ".muse" + "muse.log";
+		LOG_FILE = System.getProperty("user.home") + File.separatorChar + ".muse" + File.separatorChar + "muse.log";
 		String newLogFile = System.getProperty("muse.log"); // for epadd this will be epadd.log, set in EpaddInitializer
 		if (!Util.nullOrEmpty(newLogFile))
 			LOG_FILE = newLogFile;
@@ -88,7 +88,7 @@ public class Log4JUtils {
 			String message = "________________________________________________________________________________________________ ";
 			System.out.println(message);
 			log.info (message);
-
+            
 			message = "Log messages will be recorded in " + LOG_FILE;
 			System.out.println(message);
 			log.info (message);

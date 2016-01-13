@@ -60,11 +60,17 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	private String rootPath;
 
 	static {
+        //http://sourceforge.net/projects/mstor/files/mstor/0.9.13/
 		mstorProps = new Properties();
 		mstorProps.put("mstor.mbox.metadataStrategy", "NONE");
-		mstorProps.put("mstor.mbox.cacheBuffers", "enabled");
+		//the following two properties are actually different.
+		//while cache buffers option enables/disables the caching of the message content to optimise the message content retieval
+		//cache.disabled option controls what kind of CacheAdapter is used by Mstor; CacheAdapter (dummy) or EhCacheAdapter
+		mstorProps.put("mstor.mbox.cacheBuffers", "disabled");
+		mstorProps.put("mstor.cache.disabled", "true");
 		// http://code.google.com/p/coucou/source/browse/src/main/resources/mstor.properties?spec=svn9e5ed7be0c8e39027c72a220f745d87b944be826&r=9e5ed7be0c8e39027c72a220f745d87b944be826
-		mstorProps.put("mstor.mbox.parsing.relaxed", "true");
+		//relaxed parsing uses a relaxed pattern that is adapted to FoxMail export
+		//mstorProps.put("mstor.mbox.parsing.relaxed", "true");
 		mstorProps.put("mstor.mbox.encoding", "UTF-8"); // note: we are assuming utf-8 because that's what gmail+thunderbird will save as
 		// consider adding mstor.cache.disabled true, then won't need ehcache etc
 		// see: https://sourceforge.net/tracker/?func=detail&aid=2791167&group_id=114229&atid=667640
@@ -173,6 +179,8 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 		Store store = session.getStore(new URLName("mstor:" + fname));
 		store.connect();
 
+        //This is the root folder in the namespace provided
+        //see http://docs.oracle.com/javaee/5/api/javax/mail/Store.html#getDefaultFolder%28%29
 		Folder folder = store.getDefaultFolder();
 		if (folder == null)
 			throw new RuntimeException ("Invalid folder: " + fname);
@@ -198,7 +206,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 		if (folder != null)
 			count = folder.getMessageCount(); // warning, do not close, we need to return an open folder
 
-		return new Pair<Folder,Integer>(folder, count);
+		return new Pair<>(folder, count);
 	}
 
 	@Override

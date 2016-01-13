@@ -9,15 +9,18 @@ import java.util.List;
 import opennlp.tools.chunker.Chunker;
 import opennlp.tools.chunker.ChunkerME;
 import opennlp.tools.chunker.ChunkerModel;
+import opennlp.tools.dictionary.Dictionary;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
+import opennlp.tools.sentdetect.SentenceDetectorFactory;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.util.Span;
+import opennlp.tools.util.StringList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -39,18 +42,20 @@ public class NLPUtils {
                 .getResourceAsStream("models/en-token.bin");
         InputStream chunkerStream = NLPUtils.class.getClassLoader()
                 .getResourceAsStream("models/en-chunker.bin");
-        POSModel posModel;
-		try {
-			if (sentStream == null) {
-				File SentFile = new File("WebContent/WEB-INF/classes/models/en-sent.bin");
-				if (SentFile.exists())
-					model = new SentenceModel(SentFile);
-				else
-					log.info(SentFile.getAbsolutePath() + " doesnt exist");
-			} else
-				model = new SentenceModel(sentStream);
+        try {
+            //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
+            //case-insesitive dictionary
+            Dictionary dictionary = new Dictionary(false);
+            dictionary.put(new StringList("Mr.","Mt."));
+            SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,dictionary,new char[] { '.', '!', '?', '\n' });
+            SentenceModel dummyModel = new SentenceModel(sentStream);
 
-            posModel = new POSModel(posStream);
+            //this way of getting maxent model from the initialised sentence model may look improper
+            //proper way to initialise the maxent model is:
+            //AbstractModel model = new GenericModelReader(new File(modelName)).getModel()
+            //but it was throwing java.io.UTFDataFormatException: malformed input around byte 48
+            model = new SentenceModel("en",dummyModel.getMaxentModel(), null, cf);
+            POSModel posModel = new POSModel(posStream);
             posTagger = new POSTaggerME(posModel);
             TokenizerModel tokenizerModel = new TokenizerModel(tokenStream);
             tokenizer = new TokenizerME(tokenizerModel);
@@ -62,10 +67,10 @@ public class NLPUtils {
 			log.warn("Exception in init'ing sentence model");
 		    Util.print_exception(e, log);
         }finally {
-            close(sentStream);
-            close(posStream);
-            close(tokenStream);
-            close(chunkerStream);
+            InputStream[] streams = new InputStream[]{sentStream, posStream, tokenStream, chunkerStream};
+            for(InputStream is: streams)
+                if(is!=null)
+                    close(is);
         }
         sentenceDetector = new SentenceDetectorME(model);
 	}
@@ -78,8 +83,10 @@ public class NLPUtils {
         }
     }
 
-    //TODO: OpenNLP is too bad with tokenisation of special chars except period. Atleast handle new lines, '>' whicgh are common in the case of ePADD and muse
+    //TODO: OpenNLP is too bad with tokenisation of special chars except period. At least handle new lines, '>' whicgh are common in the case of ePADD and muse
 	public static String[] tokeniseSentence(String text) {
+        if(text == null)
+            return new String[]{};
         return sentenceDetector.sentDetect(text);
 	}
 
@@ -95,6 +102,32 @@ public class NLPUtils {
         return posTagger.tag(tokens);
     }
 
+    public static List<String> getAllProperNouns(String content){
+        String[] sents = tokeniseSentence(content);
+        List<String> properNouns = new ArrayList<>();
+        for(String sent: sents) {
+            String[] tokens = tokenise(sent);
+            String[] tags = posTag(tokens);
+            Span[] chunks = chunker.chunkAsSpans(tokens,tags);
+            for(Span chunk: chunks){
+                String chunkText = "";
+                if("NP".equals(chunk.getType())){
+                    boolean NNP = false;
+                    for(int s = chunk.getStart();s<chunk.getEnd();s++){
+                        if("NNP".equals(tags[s]))
+                            NNP = true;
+                        chunkText += tokens[s];
+                        if(s<(chunk.getEnd()-1))
+                            chunkText+=" ";
+                    }
+                    if(NNP)
+                        properNouns.add(chunkText);
+                }
+            }
+        }
+        return properNouns;
+    }
+
     public static List<Pair<String,String>> posTag(String sent){
         String[] tokens = tokenise(sent);
         String[] tags = posTag(tokens);
@@ -103,8 +136,22 @@ public class NLPUtils {
         }
         List<Pair<String,String>> ret = new ArrayList<>();
         for(int i=0;i<Math.min(tokens.length, tags.length);i++)
-            ret.add(new Pair<String,String>(tokens[i],tags[i]));
+            ret.add(new Pair<>(tokens[i],tags[i]));
         return ret;
     }
 
+    public static List<Pair<String,Triple<String,Integer,Integer>>> posTagWithOffsets(String sent){
+        Span[] tokenSpans = tokenizer.tokenizePos(sent);
+        String[] tokens = new String[tokenSpans.length];
+        for(int si=0;si<tokenSpans.length;si++)
+            tokens[si] = tokenSpans[si].getCoveredText(sent).toString();
+        String[] tags = posTag(tokens);
+        if(tokens.length!=tags.length){
+            log.warn("Something wrong with POS tagging. Number of POS tags: " + tags.length + " not the same as number of tokens " + tokens.length);
+        }
+        List<Pair<String,Triple<String,Integer,Integer>>> ret = new ArrayList<>();
+        for(int i=0;i<Math.min(tokens.length, tags.length);i++)
+            ret.add(new Pair<>(tokens[i],new Triple<>(tags[i], tokenSpans[i].getStart(), tokenSpans[i].getEnd())));
+        return ret;
+    }
 }

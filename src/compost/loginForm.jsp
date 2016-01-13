@@ -54,7 +54,7 @@ muse.addServerLoginAccount = function()
 
 <%
 session.setMaxInactiveInterval(-1);
-//print initial config.
+//toString initial config.
 Log log = LogFactory.getLog("configuration");
 JSPHelper.checkContainer(request);
 log.info ("Logging: Info mode is on");
@@ -104,7 +104,7 @@ if (error != null && !"".equals(error))
 <div class="db-hint" style="padding: 0px 0px 0px 20px;line-height:1.6em;">Choose your own email server or files on your local system.
 <br/>Please provide information for one or more accounts and enter all your own addresses in the box provided below.
 <%
-//print the thunderbird logo and accounts only if installed
+//toString the thunderbird logo and accounts only if installed
 List<List<String>> tbirdAccounts = ThunderbirdUtils.getThunderbirdAccounts();
 
 if (tbirdAccounts != null && tbirdAccounts.size() > 0) { %>

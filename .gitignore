@@ -1,3 +1,23 @@
+/build
+/target
+/assembly
+/target
+/target
+/\.settings
+*.zip
+*.nt
+*.ser
+*.model
+*~
+\#*\#
+/src/resources/models/
+/results
+/target
+/test
+/target
+/\.idea
+*.iml
+=======
 # Compiled source #
 ###################
 *.com
@@ -19,7 +39,6 @@
 *.tar
 *.zip
 *.war
-*.jar
 
 # Logs and databases #
 ######################

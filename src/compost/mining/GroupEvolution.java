@@ -155,7 +155,7 @@ public class GroupEvolution {
 
 			if (docs.size() == 0)
 			{
-				// empty cluster, print header... more for debugging
+				// empty cluster, toString header... more for debugging
 				fullHtml += "<hr><h3>" + description + "</h3><br/>";
 				continue;
 			}

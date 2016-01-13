@@ -5,10 +5,12 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
+import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.*;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SVMModel;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.ner.train.NERTrainer;
@@ -36,11 +38,13 @@ public class NER implements StatusProvider {
 	public static String		EPER				= "en_person", ELOC = "en_loc", EORG = "en_org", NAMES_ORIGINAL = "en_names_original";
     public static String		EPER_TITLE			= "en_person_title", ELOC_TITLE = "en_loc_title", EORG_TITLE = "en_org_title";
     public static String		NAMES_OFFSETS		= "en_names_offsets", TITLE_NAMES_OFFSETS = "en_names_offsets_title";
+    public static String        FINE_ENTITIES = "en_fine_entities", TITLE_FINE_ENTITIES = "en_fine_entities_title";
 
 	String						status;
 	double						pctComplete			= 0;
 	boolean						cancelled			= false;
 	Archive						archive				= null;
+    SequenceModel               nerModel;
 	//in seconds
 	long						time				= -1, eta = -1;
 	static FieldType			ft;
@@ -61,20 +65,38 @@ public class NER implements StatusProvider {
 		}
 
 		//a map of entity-type key and value list of entities
-		public void update(Map<Short, List<String>> map) {
-			for (Short type : map.keySet()) {
+		public void update(Map<Short, Map<String,Double>> allTypes) {
+            Map<Short, List<String>> mergedTypes = SequenceModel.mergeTypes(allTypes);
+			for (Short type : allTypes.keySet()) {
+                //dont add type stats twice
+                if(mergedTypes.containsKey(type))
+                    continue;
 				if (!rcounts.containsKey(type))
 					rcounts.put(type, 0);
-				rcounts.put(type, rcounts.get(type) + map.get(type).size());
+				rcounts.put(type, rcounts.get(type) + allTypes.get(type).size());
 
 				if (!all.containsKey(type))
 					all.put(type, new HashSet<String>());
-				if (map.get(type) != null)
-					for (String str : map.get(type))
+				if (allTypes.get(type) != null)
+					for (String str : allTypes.get(type).keySet())
 						all.get(type).add(str);
 
 				counts.put(type, all.get(type).size());
 			}
+
+            for (Short type : mergedTypes.keySet()) {
+                if (!rcounts.containsKey(type))
+                    rcounts.put(type, 0);
+                rcounts.put(type, rcounts.get(type) + mergedTypes.get(type).size());
+
+                if (!all.containsKey(type))
+                    all.put(type, new HashSet<String>());
+                if (mergedTypes.get(type) != null)
+                    for (String str : mergedTypes.get(type))
+                        all.get(type).add(str);
+
+                counts.put(type, all.get(type).size());
+            }
 		}
 
 		@Override
@@ -87,7 +109,7 @@ public class NER implements StatusProvider {
 	}
 
 	public static class NEROptions {
-		public boolean addressbook = true, dbpedia = true, segmentation = true, latentgroupexpansion = false;
+		public boolean addressbook = true, dbpedia = true, segmentation = true;
 		public String prefix = "";
 		public String wfsName = "WordFeatures.ser", modelName = "svm.model";
 		public String evaluatorName = "ePADD NER complete";
@@ -133,27 +155,23 @@ public class NER implements StatusProvider {
 		ft.freeze();
 	}
 
-	public NER(Archive archive) {
+	public NER(Archive archive, SequenceModel nerModel) {
 		this.archive = archive;
+        this.nerModel = nerModel;
 		time = 0;
 		eta = 10 * 60;
 		stats = new NERStats();
 	}
 
-	private static void storeNameOffsets(org.apache.lucene.document.Document doc, boolean body, List<Triple<String, Integer, Integer>> offsets)
+	private static void storeSerialized(org.apache.lucene.document.Document doc, String fieldName, Object obj)
 	{
-        String fieldName = null;
-        if(body)
-            fieldName = NAMES_OFFSETS;
-        else
-            fieldName = TITLE_NAMES_OFFSETS;
-		FieldType storeOnly_ft = new FieldType();
+        FieldType storeOnly_ft = new FieldType();
 		storeOnly_ft.setStored(true);
 		storeOnly_ft.freeze();
 		try {
 			ByteArrayOutputStream bs = new ByteArrayOutputStream();
 			ObjectOutputStream oos = new ObjectOutputStream(bs);
-			oos.writeObject(offsets);
+			oos.writeObject(obj);
 			oos.close();
 			bs.close();
 			doc.removeField(fieldName);
@@ -175,7 +193,7 @@ public class NER implements StatusProvider {
     }
 
     public static List<Triple<String, Integer, Integer>> getNameOffsets(org.apache.lucene.document.Document doc, boolean body) {
-        String fieldName = null;
+        String fieldName;
         if(body)
             fieldName = NAMES_OFFSETS;
         else
@@ -196,11 +214,49 @@ public class NER implements StatusProvider {
 		} catch (Exception e) {
 			log.warn("Failed to deserialize field: "+fieldName);
 			e.printStackTrace();
-			result = new ArrayList<Triple<String, Integer, Integer>>();
+			result = new ArrayList<>();
 		}
 
 		return result;
 	}
+
+    public static Map<Short,Map<String,Double>> getEntities(Document doc, boolean body, Archive archive) {
+        try {
+            org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+            return getEntities(ldoc, body);
+        } catch(IOException e){
+            Util.print_exception("!!Exception while accessing named entities in the doc", e, log);
+            return null;
+        }
+    }
+
+    public static Map<Short,Map<String,Double>> getEntities(org.apache.lucene.document.Document doc, boolean body) {
+        String fieldName;
+        if(body)
+            fieldName = FINE_ENTITIES;
+        else
+            fieldName = TITLE_FINE_ENTITIES;
+        BytesRef bytesRef = doc.getBinaryValue(fieldName);
+        if (bytesRef == null)
+            return null;
+        byte[] data = bytesRef.bytes;
+        if (data == null)
+            return null;
+
+        ByteArrayInputStream bs = new ByteArrayInputStream(data);
+        Map<Short,Map<String,Double>> result;
+        ObjectInputStream ois;
+        try {
+            ois = new ObjectInputStream(bs);
+            result = (Map<Short,Map<String,Double>>) ois.readObject();
+        } catch (Exception e) {
+            log.warn("Failed to deserialize field: "+fieldName);
+            e.printStackTrace();
+            result = new LinkedHashMap<>();
+        }
+
+        return result;
+    }
 
     public NERModel loadModel() throws IOException{
         String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
@@ -214,7 +270,10 @@ public class NER implements StatusProvider {
         Tokenizer tokenizer = new CICTokenizer();
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
         SVMModelTrainer trainer = new SVMModelTrainer();
-        List<Short> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
+        List<Short> types = Arrays.asList(
+                //FeatureDictionary.PERSON,
+                //FeatureDictionary.PLACE,
+                FeatureDictionary.ORGANISATION);
         List<String[]> aTypes = Arrays.asList(
                 FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
                 FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
@@ -259,9 +318,53 @@ public class NER implements StatusProvider {
         return nerModel;
     }
 
+    /**
+     * This method is used to get entities in unoriginal content in a message, for example the quoted text.
+     * We process all the email content in a thread at once, to reduce the computation.
+     * @arg content - text to be processed for entities
+     * @arg eMap - a super set of all the possible entities that can appear in content
+     * @return entities found in the content in the structure used by NERModel interface
+     */
+    public static Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> getEntitiesInDoc(String content, Map<Short,Map<String,Double>> eMap){
+        CICTokenizer tokenizer = SequenceModel.tokenizer;
+        List<Triple<String,Integer,Integer>> offsets = tokenizer.tokenize(content, false), offDoc = new ArrayList<>();
+        Map<Short,Map<String,Double>> eDoc = new LinkedHashMap<>();
+        Map<String,Short> entities = new LinkedHashMap<>();
+        if(eMap == null)
+            return new Pair<>(eDoc, offDoc);
+
+        for(Short t: eMap.keySet())
+            for(String e: eMap.get(t).keySet())
+                entities.put(e,t);
+
+        for(Short type: FeatureDictionary.allTypes)
+            eDoc.put(type, new LinkedHashMap<String, Double>());
+
+        for(Triple<String,Integer,Integer> off: offsets){
+            String bestMatch = null;
+            int bl = -1;
+            for(String e: entities.keySet()) {
+                if (e.length()>bl && off.getFirst().contains(e)) {
+                    bestMatch = e;
+                    bl = e.length();
+                }
+            }
+            if(bestMatch == null || bl == -1)
+                continue;
+            Short type = entities.get(bestMatch);
+
+            off.second = off.second+off.first.indexOf(bestMatch);
+            off.third = off.second+bestMatch.length();
+            off.first = bestMatch;
+            eDoc.get(type).put(bestMatch,eMap.get(type).get(bestMatch));
+            offDoc.add(off);
+        }
+        return new Pair<>(eDoc, offDoc);
+    }
+
 	//TODO: Consider using Atomic reader for accessing the index, if it improves performance
 	//main method trains the model, recognizes the entities and updates the doc.
-	public void trainAndRecognise(boolean dumpModel) throws CancelledException, IOException {
+	public void recongniseArchive() throws CancelledException, IOException {
 		time = 0;
 		archive.openForRead();
 		archive.setupForWrite();
@@ -271,122 +374,140 @@ public class NER implements StatusProvider {
 			throw new CancelledException();
 		}
 
-        String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
-		List<Document> docs = archive.getAllDocs();
-		NERModel nerModel = SVMModel.loadModel(new File(modelFile));
-        if(nerModel == null) {
-            status = "Did not find ner model in " + modelFile;
-            status = "Building model";
-            nerModel = trainModel(dumpModel);
-        }
+        int maxThrdId = archive.assignThreadIds();
+        //List<Document> docs = archive.getAllDocs();
 
 		if (cancelled) {
 			status = "Cancelling...";
 			throw new CancelledException();
 		}
 
-		int di = 0, ds = docs.size();
+		int di = 0, ds = archive.getAllDocs().size();
 		int ps = 0, ls = 0, os = 0;
 
 		long totalTime = 0, updateTime = 0, recTime = 0, duTime = 0, snoTime = 0;
-		for (Document doc : docs) {
-			long st1 = System.currentTimeMillis();
-			long st = System.currentTimeMillis();
-			org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
-			//pass the lucene doc instead of muse doc, else a major performance penalty
-			//do not recognise names in original content and content separately
-			//Its possible to improve the performance further by using linear kernel
-			// instead of RBF kernel and classifier instead of a regression model
-			// (the confidence scores of regression model can be useful in segmentation)
-         	String originalContent = archive.getContents(ldoc, true);
-			String content = archive.getContents(ldoc, false);
-            String title = archive.getTitle(ldoc);
-			//original content is substring of content;
-            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
-            Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
-			recTime += System.currentTimeMillis() - st;
-			st = System.currentTimeMillis();
+		for(int tid = 0;tid<maxThrdId;tid++) {
+            Collection<Document> thread = archive.docsWithThreadId(tid);
+            //the title will be the same for all the docs in the thread, should not invoke NER on them individually
+            String title = null;
+            Map<Short, Map<String, Double>> allE = new LinkedHashMap<>();
+            for (Document doc : thread) {
+                EmailDocument ed = (EmailDocument) doc;
+                org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+                if (title != null)
+                    title = archive.getTitle(ldoc);
+                String content = archive.getContents(ldoc, true);
+                Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
+                Map<Short, Map<String, Double>> entities = mapAndOffsets.first;
+                for (Short type : entities.keySet()) {
+                    if (!allE.containsKey(type))
+                        allE.put(type, new LinkedHashMap<String, Double>());
+                    allE.get(type).putAll(entities.get(type));
+                }
+            }
 
-			Map<Short, List<String>> map = mapAndOffsets.first;
-            Map<Short, List<String>> mapTitle = mapAndOffsetsTitle.first;
-			stats.update(map);
-            stats.update(mapTitle);
-			updateTime += System.currentTimeMillis() - st;
-			st = System.currentTimeMillis();
+            Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
+            Map<Short, List<String>> mapTitle = SequenceModel.mergeTypes(mapAndOffsetsTitle.first);
+            //now iterate over the docs in the thread and update them
+            for (Document doc : thread) {
+                long st1 = System.currentTimeMillis();
+                long st = System.currentTimeMillis();
+                org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+                //pass the lucene doc instead of muse doc, else a major performance penalty
+                //do not recognise names in original content and content separately
+                String originalContent = archive.getContents(ldoc, true);
+                String content = archive.getContents(ldoc, false);
+                //original content is substring of content;
+                Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = getEntitiesInDoc(content, allE);
+                recTime += System.currentTimeMillis() - st;
+                st = System.currentTimeMillis();
 
-			//!!!!!!SEVERE!!!!!!!!!!
-			//TODO: an entity name is stored in NAMES, NAMES_ORIGINAL, nameoffsets, and one or more of EPER, ELOC, EORG fields, that is a lot of redundancy
-			//!!!!!!SEVERE!!!!!!!!!!
-			storeNameOffsets(ldoc, true, mapAndOffsets.second);
-            storeNameOffsets(ldoc, false, mapAndOffsetsTitle.second);
-			List<String> persons = map.get(FeatureDictionary.PERSON);
-			List<String> locs = map.get(FeatureDictionary.PLACE);
-			List<String> orgs = map.get(FeatureDictionary.ORGANISATION);
-            List<String> personsTitle = mapTitle.get(FeatureDictionary.PERSON);
-            List<String> locsTitle = mapTitle.get(FeatureDictionary.PLACE);
-            List<String> orgsTitle = mapTitle.get(FeatureDictionary.ORGANISATION);
-			ps += persons.size() + personsTitle.size();
-			ls += locs.size() + locsTitle.size();
-			os += orgs.size() + orgsTitle.size();
-			snoTime += System.currentTimeMillis() - st;
-			st = System.currentTimeMillis();
+                Map<Short, List<String>> map = SequenceModel.mergeTypes(mapAndOffsets.first);
+                stats.update(mapAndOffsets.first);
+                stats.update(mapAndOffsetsTitle.first);
+                updateTime += System.currentTimeMillis() - st;
+                st = System.currentTimeMillis();
 
-		    ldoc.removeField(EPER);	ldoc.removeField(EPER_TITLE);
-            ldoc.removeField(ELOC); ldoc.removeField(ELOC_TITLE);
-            ldoc.removeField(EORG); ldoc.removeField(EORG_TITLE);
+                //!!!!!!SEVERE!!!!!!!!!!
+                //TODO: an entity name is stored in NAMES, NAMES_ORIGINAL, nameoffsets, and one or more of EPER, ELOC, EORG fields, that is a lot of redundancy
+                //!!!!!!SEVERE!!!!!!!!!!
+                storeSerialized(ldoc, NAMES_OFFSETS, mapAndOffsets.second);
+                storeSerialized(ldoc, TITLE_NAMES_OFFSETS, mapAndOffsetsTitle.second);
+                storeSerialized(ldoc, FINE_ENTITIES, mapAndOffsets.getFirst());
+                storeSerialized(ldoc, TITLE_FINE_ENTITIES, mapAndOffsets.getSecond());
 
-			ldoc.add(new StoredField(EPER, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
-			ldoc.add(new StoredField(ELOC, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
-			ldoc.add(new StoredField(EORG, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EPER_TITLE, Util.join(personsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(ELOC_TITLE, Util.join(locsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EORG_TITLE, Util.join(orgsTitle, Indexer.NAMES_FIELD_DELIMITER)));
+                List<String> persons = map.get(FeatureDictionary.PERSON);
+                List<String> locs = map.get(FeatureDictionary.PLACE);
+                List<String> orgs = map.get(FeatureDictionary.ORGANISATION);
+                List<String> personsTitle = mapTitle.get(FeatureDictionary.PERSON);
+                List<String> locsTitle = mapTitle.get(FeatureDictionary.PLACE);
+                List<String> orgsTitle = mapTitle.get(FeatureDictionary.ORGANISATION);
+                ps += persons.size() + personsTitle.size();
+                ls += locs.size() + locsTitle.size();
+                os += orgs.size() + orgsTitle.size();
+                snoTime += System.currentTimeMillis() - st;
+                st = System.currentTimeMillis();
 
-			List<String> names_original = new ArrayList<String>(), names = new ArrayList<String>();
-			if(persons!=null)
-				names.addAll(persons);
-			if(locs!=null)
-				names.addAll(locs);
-			if(orgs!=null)
-				names.addAll(orgs);
-			int ocs = originalContent.length();
-			List<Triple<String,Integer,Integer>> offsets = mapAndOffsets.getSecond();
-			for (int oi=0;oi<offsets.size();oi++) {
-				Triple<String,Integer,Integer> offset = offsets.get(oi);
-				String name = offset.getFirst();
-				if(offset  == null) {
-					log.warn("No offset found for: "+name);
-					break;
-				}
-				if(offset.getSecond() < ocs )
-					names_original.add(name);
-			}
+                ldoc.removeField(EPER);
+                ldoc.removeField(EPER_TITLE);
+                ldoc.removeField(ELOC);
+                ldoc.removeField(ELOC_TITLE);
+                ldoc.removeField(EORG);
+                ldoc.removeField(EORG_TITLE);
 
-			ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
-			//log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
+                ldoc.add(new StoredField(EPER, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(ELOC, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(EORG, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(EPER_TITLE, Util.join(personsTitle, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(ELOC_TITLE, Util.join(locsTitle, Indexer.NAMES_FIELD_DELIMITER)));
+                ldoc.add(new StoredField(EORG_TITLE, Util.join(orgsTitle, Indexer.NAMES_FIELD_DELIMITER)));
 
-            //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance
-			//Makes me think building a new index could be faster
-			archive.updateDocument(ldoc);
-			duTime += System.currentTimeMillis() - st;
-			di++;
+                List<String> names_original = new ArrayList<String>(), names = new ArrayList<String>();
+                if (persons != null)
+                    names.addAll(persons);
+                if (locs != null)
+                    names.addAll(locs);
+                if (orgs != null)
+                    names.addAll(orgs);
+                int ocs = originalContent.length();
+                List<Triple<String, Integer, Integer>> offsets = mapAndOffsets.getSecond();
+                for (int oi = 0; oi < offsets.size(); oi++) {
+                    Triple<String, Integer, Integer> offset = offsets.get(oi);
+                    String name = offset.getFirst();
+                    if (offset == null) {
+                        log.warn("No offset found for: " + name);
+                        break;
+                    }
+                    if (offset.getSecond() < ocs)
+                        names_original.add(name);
+                }
 
-			totalTime += System.currentTimeMillis() - st1;
-			pctComplete = 30 + ((double)di/(double)ds) * 70;
-			double ems = (double) (totalTime * (ds-di)) / (double) (di*1000);
-			status = "Recognized entities in " + Util.commatize(di) + " of " + Util.commatize(ds) + " emails ";
-			//Util.approximateTimeLeft((long)ems/1000);
-			eta = (long)ems;
+                ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
+                //log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
 
-			if(di%100 == 0)
-                log.info(status);
-			time += System.currentTimeMillis() - st;
+                //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance
+                //Makes me think building a new index could be faster
+                archive.updateDocument(ldoc);
+                duTime += System.currentTimeMillis() - st;
+                di++;
 
-			if (cancelled) {
-				status = "Cancelling...";
-				throw new CancelledException();
-			}
-		}
+                totalTime += System.currentTimeMillis() - st1;
+                pctComplete = 30 + ((double) di / (double) ds) * 70;
+                double ems = (double) (totalTime * (ds - di)) / (double) (di * 1000);
+                status = "Recognized entities in " + Util.commatize(di) + " of " + Util.commatize(ds) + " emails ";
+                //Util.approximateTimeLeft((long)ems/1000);
+                eta = (long) ems;
+
+                if (di % 100 == 0)
+                    log.info(status);
+                time += System.currentTimeMillis() - st;
+
+                if (cancelled) {
+                    status = "Cancelling...";
+                    throw new CancelledException();
+                }
+            }
+        }
 
 		log.info("Trained and recognised entities in " + di + " docs in " + totalTime + "ms" + "\nPerson: " + ps + "\nOrgs:" + os + "\nLocs:" + ls);
 		archive.close();
@@ -480,40 +601,45 @@ public class NER implements StatusProvider {
 		return cancelled || statusProvider.isCancelled();
 	}
 
-	public static void main1(String[] args) {
-		try {
-			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            NER ner = new NER(archive);
-            System.err.println("Loading model...");
-            long start = System.currentTimeMillis();
-            NERModel model = ner.trainModel(false);
-            System.err.println("Trained model in: " + (System.currentTimeMillis() - start));
-            System.err.println("Done loading model");
-            String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
-            String[] locs = new String[]{"Florida", "Plantation"};
-            String[] orgs = new String[]{"Broward Republican Executive Committee", "National Education Association"};
-            String text = "First I would like to tell you who I am. I am a lifelong Republican and have served on the Broward Republican Executive Committee since 1991. I have followed education issues in Florida since I moved here in 1973. All four of my children went to public schools here in Plantation. I continued to study education issues when I worked for Senator Jim Scott for six years, and more recently as I worked for Rep. Bill Andrews for the past eight years.\n" +
-                    "On the amendment, I would like to join any effort to get it repealed. Second, if the amendment is going to be implemented, I believe that decisions about how money is spent should be taken out of the hands of the school boards. I know the trend has been to provide more local control, however, there has been little or no accountability for school boards that fritter away money on consultants, shoddy construction work, and promoting the agenda of the National Education Association and the local teachers’ unions. Third, while the teachers’ union is publicly making “nice” with you and other Republican legislators, they continue to undermine education reform measures, and because school board members rely heavily on the unions to get elected and re-elected, they pretty much call the shots on local policies. ";
-            Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
-            boolean testPass = true;
-            for(Short type: ret.getFirst().keySet()) {
-                System.err.print("Type: " + type);
-                for (String str : ret.getFirst().get(type))
-                    System.err.print(":::" + str + ":::");
-                System.err.println();
-            }
-        } catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+//	public static void main1(String[] args) {
+//		try {
+//			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//            NER ner = new NER(archive, null);
+//            System.err.println("Loading model...");
+//            long start = System.currentTimeMillis();
+//            NERModel model = ner.trainModel(false);
+//            System.err.println("Trained model in: " + (System.currentTimeMillis() - start));
+//            System.err.println("Done loading model");
+//            String[] pers = new String[]{"Senator Jim Scott", "Rep. Bill Andrews"};
+//            String[] locs = new String[]{"Florida", "Plantation"};
+//            String[] orgs = new String[]{"Broward Republican Executive Committee", "National Education Association"};
+//            String text = "First I would like to tell you who I am. I am a lifelong Republican and have served on the Broward Republican Executive Committee since 1991. I have followed education issues in Florida since I moved here in 1973. All four of my children went to public schools here in Plantation. I continued to study education issues when I worked for Senator Jim Scott for six years, and more recently as I worked for Rep. Bill Andrews for the past eight years.\n" +
+//                    "On the amendment, I would like to join any effort to get it repealed. Second, if the amendment is going to be implemented, I believe that decisions about how money is spent should be taken out of the hands of the school boards. I know the trend has been to provide more local control, however, there has been little or no accountability for school boards that fritter away money on consultants, shoddy construction work, and promoting the agenda of the National Education Association and the local teachers’ unions. Third, while the teachers’ union is publicly making “nice” with you and other Republican legislators, they continue to undermine education reform measures, and because school board members rely heavily on the unions to get elected and re-elected, they pretty much call the shots on local policies. ";
+//            Pair<Map<Short,List<String>>, List<Triple<String, Integer, Integer>>> ret = model.find(text);
+//            boolean testPass = true;
+//            for(Short type: ret.getFirst().keySet()) {
+//                System.err.print("Type: " + type);
+//                for (String str : ret.getFirst().get(type))
+//                    System.err.print(":::" + str + ":::");
+//                System.err.println();
+//            }
+//        } catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
 
     public static void main(String[] args) {
         try {
             String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
+//            String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
+            String cacheDir = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache";
+            String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
+            SVMModelTrainer.TrainingParam tparam = SVMModelTrainer.TrainingParam.initialize(cacheDir, mwl, true);
+            String modelFile = mwl + SVMModel.modelFileName;
             NERModel nerModel = SVMModel.loadModel(new File(modelFile));
+            //NERModel nerModel = trainArchiveIndependentModel(tparam);
             String content = "\n" +
                     "\n" +
                     "    Import\n" +
@@ -580,15 +706,34 @@ public class NER implements StatusProvider {
                     "\n" +
                     "Jazz bassist Steve Swallow released the albums Home (ECM, 1979) and So There (ECM, 2005) featuring poems by Creeley put to music.\n" +
                     "\n" +
-                    "Early work by Creeley appeared in the avant garde little magazine Nomad at the beginning of the 1960s. Posthumous publications of Creeley's work have included the second volume of his Collected Poems, which was published in 2006, and The Selected Letters of Robert Creeley edited by Rod Smith, Kaplan Harris and Peter Baker, published in 2014 by the University of California Press.\n";
-            Pair<Map<Short,List<String>>,List<Triple<String,Integer,Integer>>> mapAndOffsets = nerModel.find(content);
-            Map<Short, List<String>> map = mapAndOffsets.getFirst();
-            for(Short k: map.keySet()){
-                List<String> names = map.get(k);
-                for(String n: names){
-                    System.err.println("<" +k+":"+n+">");
-                }
-            }
+                    "Early work by Creeley appeared in the avant garde little magazine Nomad at the beginning of the 1960s. Posthumous publications of Creeley's work have included the second volume of his Collected Poems, which was published in 2006, and The Selected Letters of Robert Creeley edited by Rod Smith, Kaplan Harris and Peter Baker, published in 2014 by the University of California Press.\n" +
+                    "\n";
+
+//            content = "Faculty and Graduate Students";
+//            Pair<Map<Short,List<String>>,List<Triple<String,Integer,Integer>>> mapAndOffsets = nerModel.find(content);
+//            Map<Short, List<String>> map = mapAndOffsets.getFirst();
+//
+//            for(Short k: map.keySet()){
+//                List<String> names = map.get(k);
+//                for(String n: names){
+//                    System.err.println("<" +k+":"+n+">");
+//                }
+//            }
+//            List<Document> docs = archive.getAllDocs();
+//            FileWriter fw = new FileWriter(cacheDir+File.separator+"orgs.txt");
+//            for(Document doc: docs){
+//                String dc = archive.getContents(doc, true);
+//                mapAndOffsets = nerModel.find(dc);
+//                map = mapAndOffsets.getFirst();
+//                fw.write(doc.getUniqueId());
+//                for(Short k: map.keySet()){
+//                    List<String> names = map.get(k);
+//                    for(String n: names){
+//                        fw.write(n + "\n");
+//                    }
+//                }
+//            }
+            //fw.close();
         }catch(Exception e){
             e.printStackTrace();
         }

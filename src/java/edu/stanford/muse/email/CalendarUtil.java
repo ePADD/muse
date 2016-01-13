@@ -230,7 +230,7 @@ public class CalendarUtil {
 			colorString += colorString;
 			colorString += "00";
 			// colorString += "0000"; // assuming colorString is going into red
-			// print a dummy space with the appropriate background color
+			// toString a dummy space with the appropriate background color
 			sb.append ("<x style=\"background-color:#" + colorString + "\">&nbsp;</x>");  // inactive unless above a miniscule percentage
 		}
 		return sb.toString();
