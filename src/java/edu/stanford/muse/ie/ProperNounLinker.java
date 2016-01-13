@@ -1,18 +1,17 @@
 package edu.stanford.muse.ie;
 
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
-import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.tartarus.snowball.ext.PorterStemmer;
 
-import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,20 +22,26 @@ import java.util.regex.Pattern;
  */
 public class ProperNounLinker {
     static Log log = LogFactory.getLog(ProperNounLinker.class);
+    static Pattern some = Pattern.compile("[A-Z][^a-z][A-Z][a-z]+");
 
     static Set<String> bow(String phrase) {
         String[] tokens = phrase.split("\\s+");
         Set<String> bows = new LinkedHashSet<>();
         for (String tok : tokens) {
-            tok = tok.replaceAll("^\\W+|\\W+$", "");
+            //don't touch the period or other special chars suffixed
+            tok = tok.replaceAll("^\\W+", "");
             if(EnglishDictionary.sws.contains(tok))
                 continue;
+          
             String ct = EnglishDictionary.getSingular(tok.toLowerCase());
             bows.add(ct);
         }
         return bows;
     }
 
+    /**All the words in the phrase that follow the pattern of Capital word followed by lower-case letters
+     * US Supreme Court -> [Supreme, Court]
+     * NYTimes -> Times*/
     static Set<String> nonAcronymWords(String phrase){
         String[] tokens = phrase.split("\\s+");
         Set<String> naw = new LinkedHashSet<>();
@@ -44,44 +49,173 @@ public class ProperNounLinker {
         for(String tok: tokens) {
             Matcher m = p.matcher(tok);
             while(m.find()) {
-                //there should be only one such if any
+                //There can be more than one sequence of upper-case letter followed by lower-case
+                //e.g. DaVinci
                 naw.add(m.group());
-                break;
             }
         }
         return naw;
     }
 
+    static String stripTitles(String str){
+        String[] personTitles = new String[]{"Dear", "Hi", "Hello", "Mr", "Mr.", "Mrs", "Mrs.", "Miss", "Sir", "Madam", "Dr.", "Prof", "Dr", "Prof.", "Dearest", "Governor", "Gov.", "Col.", "CEO", "Cpl.", "Gen.", "St.",
+                //also including articles
+                "The", "A", "An"
+        };
+        for(String pt: personTitles)
+            if(str.startsWith(pt+" "))
+                return str.substring(pt.length()+1);
+        return str;
+    }
+
+    static Map<Character, Integer> charHist(String str){
+        Map<Character, Integer> map = new LinkedHashMap<>();
+        for(Character c: str.toCharArray()) {
+            if(!Character.isLetter(c))
+                continue;
+            if (!map.containsKey(c))
+                map.put(c, 0);
+            map.put(c, map.get(c)+1);
+        }
+        return map;
+    }
+
+    /**
+     * Checks if c2 is an acronym of c1
+     * can handle MoMA, Museum of Modern Arts
+     * does not handle WaPo, Washington Post are acronyms like these common enough to bother?
+     */
+    static boolean isAcronymOf(String c1, String c2){
+        if(c2.equals("WaPo") && (c1.equals("The Washington Post")||c1.equals("Washington Post")))
+            return true;
+        int uc = 0, lc = 0;
+        //a single word cannot have an acronym and acronym cannot span multiple words
+        if(!c1.contains(" ") || c2.contains(" "))
+            return false;
+        for(int ci=0;ci<c2.length();ci++) {
+            if (Character.isUpperCase(c2.charAt(ci)))
+                uc++;
+            else
+                lc++;
+        }
+        //there can be equal number of upper-case and lower-case, as in WaPo
+        if(uc<lc)
+            return false;
+
+
+        if(Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2))
+            return true;
+        return false;
+    }
+
+    static String flipComma(String str) {
+        if (!str.contains(", "))
+            return str;
+        String fields[] = str.split(", ");
+        //What are some of these cases?
+        if (fields.length != 2) {
+            log.warn("Flip comma cannot handle: " + str);
+            return str;
+        } else {
+            return fields[1] + " " + fields[0];
+        }
+    }
+
+    /**
+     * Strip all known titles
+     * return false if one of the phrases is empty at this stage
+     * [want to be able to quickly say something is bad] check if the character (excluding periods, apostrophe, hyphen) histogram of one is subset of other (there are 11 different people names and short names in which case this is not true)
+     * if one is acronym of other
+     * if one of the phrases has ', ' flip the order of words before and after the char and remove ','
+     * if both of them have the same acronym, check if they also share non-acronym word
+     * if one of the phrases has all the words in the other and if the smaller phrase is not a dictionary word.
+     *         Canonicalize words being compared: stemmed, lower-cased, expanded if found in the abbreviation dictionary
+     *         Scan the canonicalized words in both the phrases and see if the other set contains two contiguous words in one set, if so merge the words into one
+     * */
     static boolean isValidCandidate(String c1, String c2) {
         if (c1 == null && c2 == null)
             return true;
         if (c1 == null || c2 == null)
             return false;
+        c1 = stripTitles(c1);
+        c2 = stripTitles(c2);
+
+        if(c1.length()==1 || c2.length()==1)
+            return false;
+
         if (c1.equals(c2))
             return true;
 
+        Map<Character, Integer> charHist1 = charHist(c1);
+        Map<Character, Integer> charHist2 = charHist(c2);
+        if(charHist2.size()==charHist1.size() && Sets.intersection(charHist1.keySet(),charHist2.keySet()).size()==charHist1.size()) {
+            Map<Character,Integer> sch = c1.length()<c2.length()?charHist1:charHist2;
+            Map<Character,Integer> lch = c1.length()>c2.length()?charHist1:charHist2;
+            for (Character ch: sch.keySet())
+                if(lch.get(ch)<sch.get(ch))
+                    return false;
+        }
+
+        //there is no point moving forward if this is the case
+        if(FeatureDictionary.sws.contains(c1.toLowerCase()) || FeatureDictionary.sws.contains(c2.toLowerCase()))
+            return false;
+
+        c1 = flipComma(c1);
+        c2 = flipComma(c2);
+
         //acronym check
-        String acr1 = Util.getAcronym(c1), acr2 = Util.getAcronym(c2);
-        if (acr1.equals(c2) || acr2.equals(c1))
+        if (isAcronymOf(c2, c1) || isAcronymOf(c1, c2))
             return true;
 
-        //same bag of words
-        //covers all the order, stemming variants and also missing words
         Set<String> bow1, bow2;
-        bow1 = bow(c1);
-        bow2 = bow(c2);
-        int minS = bow1.size()<bow2.size()?bow1.size():bow2.size();
-        if(Sets.intersection(bow1,bow2).size() == minS)
-            return  true;
-
+        //They have same acronyms and share non-acronym words
         //handles [US Supreme Court, United States Supreme Court], [NY Times, NYTimes, New York Times]
-        if(acr1.equals(acr2)) {
+        if(Util.getAcronym(c1).equals(Util.getAcronym(c2))) {
             bow1 = nonAcronymWords(c1);
             bow2 = nonAcronymWords(c2);
-            minS = bow1.size()<bow2.size()?bow1.size():bow2.size();
-            if(Sets.intersection(bow1,bow2).size() == minS)
+            int minS = bow1.size() < bow2.size() ? bow1.size() : bow2.size();
+            if (minS > 0 && Sets.intersection(bow1, bow2).size() == minS)
                 return true;
         }
+
+        //same bag of words
+        //covers order, stemming variants and also missing words
+        bow1 = bow(c1);
+        bow2 = bow(c2);
+        int minS = bow1.size() < bow2.size() ? bow1.size() : bow2.size();
+        Set<String> sbow, lbow;
+        if(minS == bow1.size()) {
+            sbow = bow1;
+            lbow = bow2;
+        }
+        else {
+            sbow = bow2;
+            lbow = bow1;
+        }
+        int numMatches = 0;
+        Multimap abb = EnglishDictionary.getAbbreviations();
+        for(String bw1: sbow) {
+            for (String bw2 : lbow) {
+                String lbw1, lbw2;
+                if(bw1.length()<bw2.length()) {
+                    lbw1 = bw1.toLowerCase();
+                    lbw2 = bw2.toLowerCase();
+                }else{
+                    lbw1 = bw2.toLowerCase();
+                    lbw2 = bw1.toLowerCase();
+                }
+                if (bw1.equals(bw2)
+                        || (lbw1.length()>1 && lbw1.charAt(lbw1.length()-1)=='.' && lbw2.startsWith(lbw1.substring(0,lbw1.length()-1)))
+                        || abb.containsEntry(lbw1, lbw2) || abb.containsEntry(lbw1+".", lbw2)) {
+                    numMatches++;
+                    break;
+                }
+            }
+        }
+        if(numMatches == minS) {
+            return true;
+        }
+
         return false;
     }
 
@@ -247,7 +381,7 @@ public class ProperNounLinker {
                     addMention(e, doc, true);
                 }
                 if(di++%100 == 0)
-                    log.info("Accumulated "+clusters.size()+" clusters from "+di+" docs");
+                    log.info("Accumulated " + clusters.size() + " clusters from " + di + " docs");
             }
             log.info("Collected #" + clusters.size() + " singleton clusters");
         }
@@ -335,39 +469,124 @@ public class ProperNounLinker {
         return clusters;
     }
 
-    public static void main1(String[] args) {
-        System.err.println(bow("New York Times"));
-        System.err.println(nonAcronymWords("NYTimes"));
+    public static void test() {
+        Map<Pair<String,String>,Boolean> tps = new LinkedHashMap<>();
+        tps.put(new Pair<>("NYTimes", "NY Times"),true);
+        tps.put(new Pair<>("NY Times", "New York Times"), true);
+        tps.put(new Pair<>("The New York Times", "New York Times"), true);
+        tps.put(new Pair<>("US Supreme Court", "United States Supreme Court"), true);
+        tps.put(new Pair<>("New York Times", "NYT"), true);
+        tps.put(new Pair<>("Global Travel Agency", "Global Transport Agency"), false);
+        tps.put(new Pair<>("Transportation Authorities", "Transportation Authority"), true);
+        tps.put(new Pair<>("MoMA", "Museum of Modern Arts"), true);
+        //this is too much to expect
+        //tps.put(new Pair<>("MoMA", "MMA"), true);
+        tps.put(new Pair<>("Dr. Sherlock", "Sherlock"), true);
+        tps.put(new Pair<>("Apple", "Apple Inc."), true);
+        tps.put(new Pair<>("Inc.", "Apple Inc."), false);
+        tps.put(new Pair<>("Washington Post", "The Washington Post"), true);
+        tps.put(new Pair<>("The Washington Post", "WaPo"), true);
+        tps.put(new Pair<>("New Jersey", "New Journey"), false);
+        tps.put(new Pair<>("San Francisco", "SF"), true);
+        tps.put(new Pair<>("The National Aeronautics and Space Administration", "NASA"), true);
+        tps.put(new Pair<>("David Bowie", "Bowie, David"), true);
+        tps.put(new Pair<>("David Bowie", "D. Bowie"), true);
+        tps.put(new Pair<>("David Bowie", "Mr. David"), true);
+        tps.put(new Pair<>("David Bowie", "Mr. Bowie"), true);
+        tps.put(new Pair<>("David Bowie", "David"), true);
+        tps.put(new Pair<>("David Bowie", "Bowie"), true);
+        //possible
+        tps.put(new Pair<>("David Bowie", "DB"), true);
+        tps.put(new Pair<>("Bowie, David", "DB"), true);
+        tps.put(new Pair<>("Bowie, David", "BD"), false);
+        tps.put(new Pair<>("Mr.", "Mr. David"), false);
+        tps.put(new Pair<>("Mr D", "Mr. David"), true);
+        tps.put(new Pair<>("MrD", "Mr. David"), false);
+        tps.put(new Pair<>("David Bowie", "David                            \n-:?Bowie"), true);
+        tps.put(new Pair<>("Apple Inc.", "Apple Inc"), true);
+        tps.put(new Pair<>("Dr. Sherlock", "Dr."), false);
+        tps.put(new Pair<>("University of Chicago", "Chicago"), false);
+        tps.put(new Pair<>("University of Chicago", "University"), false);
+        tps.put(new Pair<>("University of Chicago", "of"), false);
+        tps.put(new Pair<>("University of Chicago", "UC"), true);
+        tps.put(new Pair<>("University of Chicago", "Chicago Univ"), true);
+        tps.put(new Pair<>("University of Chicago", "U. Chicago"), true);
+        tps.put(new Pair<>("Pt. Hariprasad", "Hariprasad"), true);
+        tps.put(new Pair<>("Mt. Everest", "Everest"), true);
+        //because such acronyms are unlikely
+        tps.put(new Pair<>("Mt. Everest", "ME"), false);
+        tps.put(new Pair<>("Mt. Everest", "Mount Everest"), true);
+        tps.put(new Pair<>("The Dept. of Chemistry", "The Chemistry"), false);
+        tps.put(new Pair<>("Mr. Spectator", "Spectator Sport"), false);
+        tps.put(new Pair<>("Robert William Creeley", "Robert Creeley"), true);
+        tps.put(new Pair<>("Mahishi Road", "Mahishi"), true);
+        tps.put(new Pair<>("Mahishi Road", "Mahishi Rd."), true);
+        tps.put(new Pair<>("Mahishi Road", "Road"), false);
+        //because roads are not generally abbreviated like this, I know its hard; would be nice to capture this
+        tps.put(new Pair<>("Mahishi Road", "MR"), false);
+        //This is not technically wrong, the both phrases still point to the same name
+        tps.put(new Pair<>("For Robert Creeley", "Robert Creeley"), true);
+        tps.put(new Pair<>("Richmond Avenue", "Richmond Ave."), true);
+        tps.put(new Pair<>("Department of Chemistry", "Chemistry Dept."), true);
+        tps.put(new Pair<>("New York City", "New York"), true);
+        tps.put(new Pair<>("New York State", "New York"), true);
+        tps.put(new Pair<>("Harvard Square", "Harvard"), true);
+        //this is probably OK
+        tps.put(new Pair<>("Harvard Square", "Square"), true);
+        tps.put(new Pair<>("Harvard School of Business", "Harvard"), true);
+        //specific enough
+        tps.put(new Pair<>("Harvard School of Business", "Business School"), true);
+        //can we handle these??
+        tps.put(new Pair<>("Thomas Burton", "Tim"), true);
+        tps.put(new Pair<>("Robert", "Bob Creeley"), true);
+        tps.put(new Pair<>("Leonardo di ser Piero da Vinci","Leonardo da Vinci"), true);
+        tps.put(new Pair<>("Leonardo da Vinci","Leonardo DaVinci"), true);
+        tps.put(new Pair<>("Leonardo da Vinci","Leonardo Da Vinci"), true);
+        tps.put(new Pair<>("Leonardo da Vinci","Leonardoda Vinci"), false);
+        tps.put(new Pair<>("Vincent van Gogh","Van Gogh"), true);
+        tps.put(new Pair<>("Vincent VanGogh", "Vincent van Gogh"), true);
+        //van is "The" for person names
+        tps.put(new Pair<>("Vincent van Gogh", "van"), false);
+        tps.put(new Pair<>("Vincent VanGogh", "Vincent"), true);
+        tps.put(new Pair<>("Vincent VanGogh", "Gogh"), true);
+        //what about these? Thank you India!!
+        tps.put(new Pair<>("Chandra Babu", "Chandrababu"), true);
+        tps.put(new Pair<>("Yograj", "Yog Raj"), true);
+        tps.put(new Pair<>("Lakshmi", "Laxmi"), true);
 
-        List<Pair<String,String>> tps = new ArrayList<>();
-        tps.add(new Pair<>("NYTimes", "NY Times"));
-        tps.add(new Pair<>("NY Times", "New York Times"));
-        tps.add(new Pair<>("US Supreme Court", "United States Supreme Court"));
-        tps.add(new Pair<>("New York Times","NYT"));
-        tps.add(new Pair<>("Global Travel Agency", "Global Transport Agency"));
-        tps.add(new Pair<>("Transportation Authorities","Transportation Authority"));
-        for(Pair<String,String> p: tps)
-            System.err.println("["+p.getFirst()+" - "+p.getSecond()+"] are "+(isValidCandidate(p.getFirst(),p.getSecond())?"":"not ")+"valid candidates");
+        int numFailed = 0;
+        long st = System.currentTimeMillis();
+        for(Map.Entry e: tps.entrySet()) {
+            boolean expected = (boolean)e.getValue();
+            String cand1 = ((Pair<String,String>)e.getKey()).first;
+            String cand2 = ((Pair<String,String>)e.getKey()).second;
+            if (isValidCandidate(cand1, cand2) != expected) {
+                System.err.println(cand1 + " - " + cand2 + ", expected: " + expected);
+                numFailed++;
+            }
+        }
+        System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+tps.size()+"]");
     }
 
     public static void main(String[] args){
-        try{
-            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            archive.assignThreadIds();
-            Hierarchy hierarchy = new EmailHierarchy();
-            Clusters clusters = getMentionClusters(archive, (List)archive.getAllDocs(), hierarchy);
-            for(Clusters.Cluster cluster: clusters.clusters) {
-                if(cluster.mentions.size()<=1 || cluster.removed)
-                    continue;
-                System.err.println("-------------");
-                System.err.println(cluster);
-            }
-            archive.close();
-//            EmailDocument ed = (EmailDocument)archive.getAllDocs().get(2);
-//            System.err.println(archive.getDoc(ed));
-        }catch(Exception e){
-            e.printStackTrace();
-        }
+//        try{
+//            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//            archive.assignThreadIds();
+//            Hierarchy hierarchy = new EmailHierarchy();
+//            Clusters clusters = getMentionClusters(archive, (List)archive.getAllDocs(), hierarchy);
+//            for(Clusters.Cluster cluster: clusters.clusters) {
+//                if(cluster.mentions.size()<=1 || cluster.removed)
+//                    continue;
+//                System.err.println("-------------");
+//                System.err.println(cluster);
+//            }
+//            archive.close();
+////            EmailDocument ed = (EmailDocument)archive.getAllDocs().get(2);
+////            System.err.println(archive.getDoc(ed));
+//        }catch(Exception e){
+//            e.printStackTrace();
+//        }
+        test();
     }
 }

@@ -31,7 +31,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
 	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at", "in", "of",
-            //based on occurrence frequency of more than 100 in English DBpedia personal names of 2014
+            //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
     private static final long serialVersionUID = 1L;
@@ -263,7 +263,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Met Mr. Robert Creeley at his place yesterday",
                 "Dear Folks, it is party time!",
                 "Few years ago, I wrote an article on \"Met The President\"",
-                "This is great! I am meeting with Barney   Stinson"
+                "This is great! I am meeting with Barney   Stinson",
+                "The Department of Geology is a hard sell!"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -294,7 +295,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Mr. Robert Creeley"},
                 new String[]{"Folks"},
                 new String[]{"Met The President"},
-                new String[]{"Barney Stinson"}
+                new String[]{"Barney Stinson"},
+                new String[]{"Department of Geology"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];

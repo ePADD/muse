@@ -351,11 +351,16 @@ public class Util {
 
     /**
      * Should also be able to handle phrases like: NY Times and UC Santa Barbara
-     */
-    public static String getAcronym(String phrase) {
+     * @param considerStopWords also considers stop words in the phrase as part of acronym
+     * */
+    public static String getAcronym(String phrase, boolean considerStopWords) {
         String[] words = phrase.split("\\s+");
         String acr = "";
         for (String word : words) {
+            if(FeatureDictionary.sws.contains(word) && considerStopWords) {
+                acr += word.charAt(0);
+                continue;
+            }
             for (int i = 0; i < word.length(); i++) {
                 char c = word.charAt(i);
                 if ((c >= 'A' && c <= 'Z') || c=='.')
@@ -365,5 +370,9 @@ public class Util {
             }
         }
         return acr;
+    }
+
+    public static String getAcronym(String phrase){
+        return getAcronym(phrase, false);
     }
 }
