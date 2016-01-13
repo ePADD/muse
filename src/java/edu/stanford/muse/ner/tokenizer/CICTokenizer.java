@@ -121,10 +121,12 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		for (String line : lines) {
 			//for very short lines, new line is used as a sentence breaker.
 			if (line.length() < 40)
-				content += line + "\n";
+				content += line + "%";
 			else
 				content += line + " ";
 		}
+//        content = content.replaceAll("(?s)!\\n","! ");
+        //System.err.println("After replacing: "+content);
 
 		Span[] sentenceSpans = NLPUtils.tokeniseSentenceAsSpan(content);
         for (Span sentenceSpan : sentenceSpans) {
@@ -164,7 +166,6 @@ public class CICTokenizer implements Tokenizer, Serializable {
                                     log.error("Did not find " + token + " extracted and cleaned from " +name);
                                     continue;
                                 }
-                                int e = s+token.length();
                                 matches.add(new Triple<>(canonicalise(token), s, s+token.length()));
                             }
                         //}
@@ -264,7 +265,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Dear Folks, it is party time!",
                 "Few years ago, I wrote an article on \"Met The President\"",
                 "This is great! I am meeting with Barney   Stinson",
-                "The Department of Geology is a hard sell!"
+                "The Department of Geology is a hard sell!",
+                "Sawadika!\n" +
+                        "\n" +
+                        "fondly,\n\n"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -296,7 +300,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Folks"},
                 new String[]{"Met The President"},
                 new String[]{"Barney Stinson"},
-                new String[]{"Department of Geology"}
+                new String[]{"Department of Geology"},
+                new String[]{"Sawadika"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];

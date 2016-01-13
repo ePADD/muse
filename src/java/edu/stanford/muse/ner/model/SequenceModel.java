@@ -127,8 +127,7 @@ public class SequenceModel implements NERModel, Serializable {
 
         String dbpediaType = dbpedia.get(phrase.toLowerCase());
         Short ct = FeatureDictionary.codeType(dbpediaType);
-        return -1;
-        //return ct;
+        return ct;
     }
 
     /**
@@ -542,6 +541,7 @@ public class SequenceModel implements NERModel, Serializable {
                     //if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-3) {
                         //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
                     offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
+                    System.err.println(p.getFirst()+", "+ maps.get(p.getFirst())+", "+p+", "+e);
                     maps.get(p.getFirst()).put(e, p.second);
                     //}
                 }
