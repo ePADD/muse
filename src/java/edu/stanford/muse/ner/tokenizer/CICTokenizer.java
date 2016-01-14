@@ -222,7 +222,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
             //if the chunk is the first word then, double check the capitalisation
             if (offset == 0 && i==0) {
                 if (DictUtils.fullDictWords.contains(t.toLowerCase())) {
-                    log.info("Rejecting the dictionary word: "+t);
+                    if(log.isDebugEnabled())
+                        log.debug("Rejecting the dictionary word: "+t);
                     continue;
                 }
             }
