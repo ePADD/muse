@@ -1056,6 +1056,8 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
 				int pctDone = ((i+offset) * 100) / totalMessages;
 				long elapsedMillis = System.currentTimeMillis() - startTimeMillis;
+                //a rough estimate of the time elapsed
+                elapsedMillis = (long)((double)elapsedMillis*(i+offset)/i);
 				long unprocessedSecs = Util.getUnprocessedMessage(i+offset, totalMessages, elapsedMillis);
 				int N_TEASERS = 50; // 50 ok here, because it takes a long time to fetch and process messages, so teaser computation is relatively not expensive
 				int nTriesForThisMessage = 0;

@@ -21,6 +21,8 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -956,7 +958,7 @@ public class Archive implements Serializable {
     }
 
     public List<Document> docsWithThreadId(long threadID) {
-        List<Document> result = new ArrayList<Document>();
+        List<Document> result = new ArrayList<>();
         for (Document ed : allDocs) {
             if (((EmailDocument) ed).threadID == threadID)
                 result.add(ed);
@@ -1457,23 +1459,16 @@ public class Archive implements Serializable {
         return originalNames;
     }
 
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, boolean originalContentOnly){
         if(originalContentOnly)
-            return filterOriginalContent(doc, getEntitiesInDoc(doc, type, filter));
+            return filterOriginalContent(doc, getEntitiesInDoc(doc, type));
         else
-            return getEntitiesInDoc(doc, type, filter);
-    }
-
-    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
-        if(originalContentOnly)
-            return filterOriginalContent(doc, getQualityEntitiesInDoc(doc, type, filter));
-        else
-            return getQualityEntitiesInDoc(doc, type, filter);
+            return getEntitiesInDoc(doc, type);
     }
 
     //type should be one of strings EPER, ELOC, EORG, as set in NER.java
     //returns filtered list of all names
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type) {
         org.apache.lucene.document.Document ldoc = null;
         try {
             ldoc = indexer.getDoc(doc);
@@ -1482,48 +1477,33 @@ public class Archive implements Serializable {
             e.printStackTrace();
             return null;
         }
-        return getEntitiesInLuceneDoc(ldoc, type, filter);
+        return getEntitiesInLuceneDoc(ldoc, type);
     }
 
-    //puts an extra layer of filtering over entities by filtering out entities also recognised as other type
-    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
-        org.apache.lucene.document.Document ldoc = null;
-        try {
-            ldoc = indexer.getDoc(doc);
-        } catch (IOException e) {
-            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
-            e.printStackTrace();
-            return null;
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, Short type, double cutoff) throws IOException {
+        List<Short> suppTypes = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
+        List<String> entities = new ArrayList<>();
+        if(!suppTypes.contains(type)){
+            log.warn("Expected one of PERSON, PLACE, ORGANISATION types; Found type: "+type);
+            return entities;
         }
-        List<String> thises = getEntitiesInLuceneDoc(ldoc, type, filter);
-        String[] types = new String[]{NER.EPER, NER.ELOC, NER.EORG};
-        List<String> otheres = new ArrayList<>();
-        for(String et: types) {
-            if (et.equals(type))
-                continue;
-            List<String> temp = getEntitiesInLuceneDoc(ldoc, et, filter);
-            if(temp!=null)
-                otheres.addAll(temp);
+        Map<Short,Map<String,Double>> es = NER.getEntities(getDoc(doc),true);
+        List<Short> mtypes = Arrays.asList(SequenceModel.mappings.get(type));
+        for(Short mt: mtypes) {
+            for (String e : es.get(mt).keySet()) {
+                double s = es.get(mt).get(e);
+                if (s < cutoff)
+                    continue;
+                entities.add(e);
+            }
         }
-        List<String> ret = new ArrayList<>();
-        for(String te: thises)
-            if(!otheres.contains(te))
-                ret.add(te);
-        return ret;
-    }
-
-    /**@return a list of names filtered to remove dictionary matches*/
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type) {
-        return getEntitiesInDoc(d, type, true);
+        return entities;
     }
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
-    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type, Boolean filter) {
+    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type) {
         String field = ldoc.get(type);
-        if(filter)
-            return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
-        else
-            return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
+        return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
     }
 
     public static void main(String[] args) {
