@@ -26,11 +26,12 @@ public class CICTokenizer implements Tokenizer, Serializable {
     public static Log log						= LogFactory.getLog(CICTokenizer.class);
 
     static Pattern	personNamePattern, entityPattern, multipleStopWordPattern, cswPatt;
-    static String[] commonStartWords = new String[]{"The","A","Hello","Dear","Hi","Met","From","Quote","From:","And"};
+    static String[] commonStartWords = new String[]{"The","A","Hello","Dear","Hi","Met","From","Quote","From:","And","My","Our","Regarding","Quoting","On Behalf of","Behalf of"};
 
     //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
-	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at", "in", "of",
+    //how useful is "on" in the stop words list
+	static String[] stopWords =  new String[]{"and", "for","a","the","to","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
@@ -150,26 +151,33 @@ public class CICTokenizer implements Tokenizer, Serializable {
 					//if the length is less than 3, accept only if it is all capitals.
 					if (name.length() < 3) {
 						String tt = FeatureGeneratorUtil.tokenFeature(name);
-						if (tt.equals("ac")) {
+                        if (tt.equals("ac")) {
+                            //this list contains many single word bad names like Jan, Feb, Mon, Tue, etc.
+                            if(DictUtils.tabooNames.contains(name.toLowerCase())) {
+                                continue;
+                            }
 							matches.add(new Triple<>(name, start, end));
                         }
 					}
 					else {
-						//further cleaning to remove "'s" pattern
-						//@TODO: Can these "'s" be put to a good use? Right now, we are just throwing them away
-//						String[] cns = tokeniseQuoteS(name);
-//                        for(String cn: cns) {
-                            String[] tokens = clean(name, m.start(1));
-                            for(String token: tokens) {
-                                int s = name.indexOf(token);
-                                if(s<0) {
-                                    log.error("Did not find " + token + " extracted and cleaned from " +name);
-                                    continue;
-                                }
-                                matches.add(new Triple<>(canonicalise(token), s, s+token.length()));
+                        //further cleaning to remove "'s" pattern
+                        //@TODO: Can these "'s" be put to a good use? Right now, we are just throwing them away
+                        String[] tokens = clean(name, m.start(1));
+                        for (String token : tokens) {
+                            int s = name.indexOf(token);
+                            if (s < 0) {
+                                log.error("Did not find " + token + " extracted and cleaned from " + name);
+                                continue;
                             }
-                        //}
-					}
+                            if(token.toLowerCase().startsWith("begin pgp") || token.toLowerCase().endsWith(" i"))
+                                continue;
+                            //this list contains many single word bad names like Jan, Feb, Mon, Tue, etc.
+                            if(DictUtils.tabooNames.contains(token.toLowerCase())) {
+                                continue;
+                            }
+                            matches.add(new Triple<>(canonicalise(token), s, s + token.length()));
+                        }
+                    }
 				}
 			}
 		}
@@ -218,15 +226,19 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 //remove common start words
                 //the replace pattern is a costly operations because it can contain many '|', double check if using the pattern is required
                 boolean hasCSW = false;
-                for(String cw: commonStartWords)
-                    if(t.startsWith(cw+" ")) {
-                        hasCSW = true;
-                        break;
+                do {
+                    for (String cw : commonStartWords)
+                        if (t.startsWith(cw + " ")) {
+                            hasCSW = true;
+                            break;
+                        }
+                    if (hasCSW) {
+                        Matcher matcher = cswPatt.matcher(t);
+                        t = matcher.replaceAll("");
                     }
-                if(hasCSW) {
-                    Matcher matcher = cswPatt.matcher(t);
-                    t = matcher.replaceAll("");
-                }
+                    else break;
+                    hasCSW = false;
+                }while (true);
             }
             nts.add(t);
         }
@@ -272,7 +284,17 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Judith C Stern MA PT\n" +
                         "AmSAT Certified Teacher of the Alexander Technique\n" +
                         "31 Purchase Street\n" +
-                        "Rye NY 10580"
+                        "Rye NY 10580",
+                "Currently I am working in a Company",
+                "Unfortunately I cannot attend the meeting",
+                "Personally I prefer this over anything else",
+                "On Behalf of Mr. Spider Man, we would like to apologise",
+                "Quoting Robert Creeley, a Black Mountain Poet",
+                "Hi Mrs. Senora, glad we have met",
+                "Our XXX Company, produces the best detergents in the world",
+                "My Thought on Thought makes an infinite loop",
+                "Regarding The Bangalore Marathon, it has been cancelled due to stray dogs",
+                "I am meeting with him in Jan, and will request for one in Feb, will say OK to everything and disappear on the very next Mon or Tue, etc."
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -294,19 +316,29 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"CEO","Sundar","Delhi"},
                 new String[]{"Jeb Bush"},
                 //Can we do a better job here? without knowing that Ted Cruz is a person.
-                new String[]{"Ted Cruz on Jan"},
+                new String[]{"Ted Cruz"},
                 new String[]{"Harvard Law School","Dr. West"},
                 new String[]{"Frank'O Connor","CCD"},
                 new String[]{},
                 new String[]{"Annapoorna Residence","House No","Alma Street","Palo Alto","California"},
                 new String[]{"Mt. Everest"},
                 new String[]{"Mr. Robert Creeley"},
-                new String[]{"Folks"},
+                new String[]{},
                 new String[]{"Met The President"},
                 new String[]{"Barney Stinson"},
                 new String[]{"Department of Geology"},
                 new String[]{"Sawadika"},
-                new String[]{"Judith C Stern MA PT","AmSAT Certified Teacher","Alexander Technique","Purchase Street","Rye NY"}
+                new String[]{"Judith C Stern MA PT","AmSAT Certified Teacher","Alexander Technique","Purchase Street","Rye NY"},
+                new String[]{"Company"},
+                new String[]{},
+                new String[]{},
+                new String[]{"Mr. Spider Man"},
+                new String[]{"Robert Creeley", "Black Mountain Poet"},
+                new String[]{"Mrs. Senora"},
+                new String[]{"XXX Company"},
+                new String[]{"Thought"},
+                new String[]{"Bangalore Marathon"},
+                new String[]{}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
