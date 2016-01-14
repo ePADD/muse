@@ -268,7 +268,11 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "The Department of Geology is a hard sell!",
                 "Sawadika!\n" +
                         "\n" +
-                        "fondly,\n\n"
+                        "fondly,\n\n",
+                "Judith C Stern MA PT\n" +
+                        "AmSAT Certified Teacher of the Alexander Technique\n" +
+                        "31 Purchase Street\n" +
+                        "Rye NY 10580"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -301,7 +305,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Met The President"},
                 new String[]{"Barney Stinson"},
                 new String[]{"Department of Geology"},
-                new String[]{"Sawadika"}
+                new String[]{"Sawadika"},
+                new String[]{"Judith C Stern MA PT","AmSAT Certified Teacher","Alexander Technique","Purchase Street","Rye NY"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];

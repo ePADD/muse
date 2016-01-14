@@ -240,7 +240,10 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 val = getLikelihoodWithOther(seg, true);
 
-            segments.put(seg, new Pair<>(t.getThird(), val));
+            //This segmentation is not acceptable and better thing to do is to fall back to the next best sequence labelling where this does not happen
+            //people names should still be fine
+            if(seg.contains(" ") || !DictUtils.fullDictWords.contains(seg.toLowerCase()))
+                segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)
                 break;
@@ -538,11 +541,11 @@ public class SequenceModel implements NERModel, Serializable {
                     //A new type is assigned to some words, which is of value -2
                     if(p.first<0)
                         continue;
-                    //if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-3) {
+                    if(p.first!=FeatureDictionary.OTHER) {
                         //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
-                    offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
-                    maps.get(p.getFirst()).put(e, p.second);
-                    //}
+                        offsets.add(new Triple<>(e, t.second + t.first.indexOf(e), t.second + t.first.indexOf(e) + e.length()));
+                        maps.get(p.getFirst()).put(e, p.second);
+                    }
                 }
             }
         }
