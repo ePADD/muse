@@ -27,7 +27,6 @@
 
 package edu.stanford.muse.util;
 
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 

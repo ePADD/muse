@@ -30,6 +30,18 @@ public class SequenceModel implements NERModel, Serializable {
     public static FileWriter fdw = null;
     public static CICTokenizer tokenizer = new CICTokenizer();
     public Map<String, String> dbpedia;
+    public static Map<Short, Short[]>mappings = new LinkedHashMap<>();
+
+    static{
+        mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
+        mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
+                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
+                FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
+        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
+                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
+                FeatureDictionary.PERIODICAL_LITERATURE
+        });
+    }
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
@@ -242,7 +254,7 @@ public class SequenceModel implements NERModel, Serializable {
 
             //This segmentation is not acceptable and better thing to do is to fall back to the next best sequence labelling where this does not happen
             //people names should still be fine
-            if(seg.contains(" ") || !DictUtils.fullDictWords.contains(seg.toLowerCase()))
+            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) && DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
                 segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)
@@ -501,17 +513,8 @@ public class SequenceModel implements NERModel, Serializable {
         Map<Short,List<String>> mTypes = new LinkedHashMap<>();
         Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
         for(Short type: types)
-            mTypes.put(type, new ArrayList<String>());
+            mTypes.put(type, new ArrayList<>());
 
-        Map<Short, Short[]>mappings = new LinkedHashMap<>();
-        mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
-        mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
-                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
-                FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
-        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
-                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
-                FeatureDictionary.PERIODICAL_LITERATURE
-        });
         for(Short gt: types){
             for(Short ft: mappings.get(gt))
                 if(entities.containsKey(ft))

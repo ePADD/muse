@@ -22,19 +22,44 @@ import java.util.regex.Pattern;
  */
 public class ProperNounLinker {
     static Log log = LogFactory.getLog(ProperNounLinker.class);
-    static Pattern some = Pattern.compile("[A-Z][^a-z][A-Z][a-z]+");
 
+    /**
+     * breaks the phrase into words, lowercases and stems each of the word
+     * will break mixed capitals into individual words,
+     * for example: VanGogh -> [van, gogh] and NYTimes -> [ny, time]*/
     static Set<String> bow(String phrase) {
         String[] tokens = phrase.split("\\s+");
         Set<String> bows = new LinkedHashSet<>();
         for (String tok : tokens) {
             //don't touch the period or other special chars suffixed
             tok = tok.replaceAll("^\\W+", "");
-            if(EnglishDictionary.sws.contains(tok))
+            if (EnglishDictionary.sws.contains(tok))
                 continue;
-          
-            String ct = EnglishDictionary.getSingular(tok.toLowerCase());
-            bows.add(ct);
+
+            List<String> subToks = new ArrayList<>();
+            String buff = "";
+            for (int ti = 0; ti < tok.length(); ti++) {
+                boolean cUc = Character.isUpperCase(tok.charAt(ti));
+                boolean nUc = false, pUc = false;
+                if (ti+1 < tok.length())
+                    nUc = Character.isUpperCase(tok.charAt(ti + 1));
+                if (ti-1 >= 0)
+                    pUc = Character.isUpperCase(tok.charAt(ti - 1));
+                //two cases for breaking a word further
+                //1. an upper case surrounded by lower cases
+                //2. an upper case character with lower case stuff to the right, like 'T' in NYTimes
+                if (cUc && ti > 0 && ti < tok.length() && ((!pUc && !nUc) || (pUc && !nUc))) {
+                    subToks.add(buff);
+                    buff = ""+tok.charAt(ti);
+                } else {
+                    buff += tok.charAt(ti);
+                }
+            }
+            subToks.add(buff);
+            for (String st : subToks) {
+                String ct = EnglishDictionary.getSingular(st.toLowerCase());
+                bows.add(ct);
+            }
         }
         return bows;
     }
@@ -568,6 +593,35 @@ public class ProperNounLinker {
         System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+tps.size()+"]");
     }
 
+    public static void BOWtest(){
+        String[] phrases = new String[]{"NYTimes","DaVinci","Vincent VanGogh"};
+        String[][] expected = new String[][]{
+                new String[]{"ny","time"},
+                new String[]{"da","vinci"},
+                new String[]{"vincent","van","gogh"}
+        };
+        for(int pi=0;pi<phrases.length;pi++) {
+            String p = phrases[pi];
+            Set<String> res = bow(p);
+            List<String> exp = Arrays.asList(expected[pi]);
+            boolean missing = false;
+            for (String cic : res)
+                if (!exp.contains(cic)) {
+                    missing = true;
+                    break;
+                }
+            if (res.size() != exp.size() || missing) {
+                String str = "------------\n" +
+                        "Test failed!\n" +
+                        "Phrase: " + p + "\n" +
+                        "Expected tokens: " + exp + "\n" +
+                        "Found: " + res + "\n";
+                System.err.println(str);
+            }
+        }
+        System.out.println("All tests done!");
+    }
+
     public static void main(String[] args){
 //        try{
 //            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
@@ -588,5 +642,6 @@ public class ProperNounLinker {
 //            e.printStackTrace();
 //        }
         test();
+        //BOWtest();
     }
 }
