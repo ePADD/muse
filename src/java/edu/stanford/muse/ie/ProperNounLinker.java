@@ -7,6 +7,7 @@ import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import org.apache.commons.logging.Log;
@@ -238,7 +239,16 @@ public class ProperNounLinker {
             }
         }
         if(numMatches == minS) {
-            return true;
+            if(minS > 1)
+                return true;
+            //make sure the deciding term is not a dictionary word
+            else {
+                String str = sbow.iterator().next().toLowerCase();
+                str = str.replaceAll("^\\W+|\\W+$","");
+                Pair<Integer,Integer> p = EnglishDictionary.getDictStats().get(str);
+                if(p==null || ((double)p.getFirst()/p.getSecond()>0.3))
+                    return true;
+            }
         }
 
         return false;
@@ -495,6 +505,7 @@ public class ProperNounLinker {
     }
 
     public static void test() {
+        BOWtest();
         Map<Pair<String,String>,Boolean> tps = new LinkedHashMap<>();
         tps.put(new Pair<>("NYTimes", "NY Times"),true);
         tps.put(new Pair<>("NY Times", "New York Times"), true);
@@ -642,6 +653,5 @@ public class ProperNounLinker {
 //            e.printStackTrace();
 //        }
         test();
-        //BOWtest();
     }
 }
