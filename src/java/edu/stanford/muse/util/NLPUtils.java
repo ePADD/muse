@@ -1,6 +1,5 @@
 package edu.stanford.muse.util;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -20,7 +19,6 @@ import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.util.Span;
-import opennlp.tools.util.StringList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -45,9 +43,10 @@ public class NLPUtils {
         try {
             //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
             //case-insesitive dictionary
-            Dictionary dictionary = new Dictionary(false);
-            dictionary.put(new StringList("Mr.","Mt."));
-            SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,dictionary,new char[] { '.', '!', '?', '\n' });
+//            Dictionary dictionary = new Dictionary(false);
+//            dictionary.put(new StringList("Mr.","Mt."));
+            //WHen teh sentence delimiter list contains '\n', some weird bug in SentenceDetector is causing an exception, dont want to get into that. Reverting the change for now.
+            SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,null,new char[] { '.', '?','!'});
             SentenceModel dummyModel = new SentenceModel(sentStream);
 
             //this way of getting maxent model from the initialised sentence model may look improper
@@ -91,7 +90,13 @@ public class NLPUtils {
 	}
 
 	public static Span[] tokeniseSentenceAsSpan(String text) {
-		return sentenceDetector.sentPosDetect(text);
+        try {
+            return sentenceDetector.sentPosDetect(text);
+        }catch(IllegalArgumentException e){
+            log.warn("Cannot tokenize: "+text);
+            e.printStackTrace();
+            return null;
+        }
 	}
 
     public static String[] tokenise(String sentence){

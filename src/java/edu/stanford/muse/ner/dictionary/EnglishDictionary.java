@@ -1,6 +1,8 @@
 package edu.stanford.muse.ner.dictionary;
 
+import com.google.common.collect.*;
 import edu.stanford.muse.util.Pair;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -13,12 +15,14 @@ public class EnglishDictionary {
     static String verbsFile = "dictionaries/en-pure-verbs.txt";
     static String prepFile = "dictionaries/en-prepositions.txt";
     static String pronounFile = "dictionaries/en-pronouns.txt";
+    static String abbFile = "dictionaries/en-abbreviations.txt";
     static String fullDictFile = "dict.words.full.safe";
     static String dictStatsFile = "stats.txt";
 
     static Log log = LogFactory.getLog(EnglishDictionary.class);
 
     static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary;
+    static Multimap<String,String> abbDict;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
     public static List<String> sws = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
@@ -184,6 +188,54 @@ public class EnglishDictionary {
         return word;
     }
 
+    public static Multimap getAbbreviations(){
+        if(abbDict!=null)
+            return abbDict;
+        abbDict = LinkedHashMultimap.create();
+        try{
+            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(abbFile)));
+            String line;
+            while((line=br.readLine())!=null){
+                if(line.startsWith("#"))
+                    continue;
+                line = line.trim();
+                String[] fields = line.split("\\s{2,}|\t");
+                String abbr = "", expT = "";
+                for(int i=0;i<fields.length;i++){
+                    String str = fields[i];
+                    //remove explanatory text, there can be multiple brackets in the same expansion, make sure not to remove span the regex between them
+                    str = str.replaceAll("(^|\\s)\\(.+?\\)\\s?","");
+                    if(i==0)
+                        abbr = str;
+                    else
+                        expT = str;
+                }
+                if(abbr.contains(", "))
+                    log.warn("Found an abbreviation entry with comma, line: "+line+"\nFile: "+abbFile);
+                String[] exps = expT.split(", ");
+                for(String exp: exps) {
+                    if(!exp.contains("("))
+                        abbDict.put(abbr.toLowerCase(), exp.toLowerCase());
+                    else{
+                        if(exp.contains(" (") || exp.indexOf(")")==-1){
+                            log.warn("The entry: "+exp+" in Line: "+line+" not properly cleaned!\nFile: "+abbFile);
+                            continue;
+                        }
+                        String alt = exp.substring(exp.indexOf('(')+1,exp.indexOf(')'));
+                        String sf = exp.substring(0,exp.indexOf('('));
+                        abbDict.put(abbr.toLowerCase(), sf.toLowerCase());
+                        abbDict.put(abbr.toLowerCase(), (sf+alt).toLowerCase());
+                        //log.info("Adding the alternate forms: "+ sf+" - "+sf+alt);
+                    }
+                }
+            }
+        }catch(IOException e){
+            log.warn("Cannot read file: "+abbFile);
+            e.printStackTrace();
+        }
+        return abbDict;
+    }
+
     public static Set<String> readFile(String fileName){
         Set<String> entries = new LinkedHashSet<>();
         try{
@@ -202,7 +254,7 @@ public class EnglishDictionary {
         return entries;
     }
 
-    public static void main(String[] args){
+    public static void testPlurals(){
         List<Pair<String,String>> plurals = new ArrayList<>();
         plurals.add(new Pair<>("selves","self"));
         plurals.add(new Pair<>("indices", "index"));
@@ -230,6 +282,10 @@ public class EnglishDictionary {
             if(!getSingular(p.first).equals(p.second))
                 System.err.println("Fails at: "+p.first);
         System.err.println("Done testing!");
-        //System.err.println(getDictStats().get("john"));
+    }
+
+    public static void main(String[] args){
+        //testPlurals();
+        getAbbreviations();
     }
 }

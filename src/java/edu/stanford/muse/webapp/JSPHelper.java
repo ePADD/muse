@@ -22,6 +22,7 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
 import edu.stanford.muse.groups.*;
+import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.model.SequenceModel;
@@ -401,26 +402,26 @@ public class JSPHelper {
 		archive.close();
 		archive.openForRead();
 
-//        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-//        String modelFile = mwl + SequenceModel.modelFileName;
-//        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-//        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
-//        log.info("Loading NER sequence model from: " + modelFile + " ...");
-//        try {
-//            nerModel = SequenceModel.loadModel(new File(modelFile));
-//        } catch (IOException e) {
-//            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
-//        }
-//        if (nerModel == null) {
-//            log.error("Could not load NER model from: "+modelFile);
-//        }
-//        else {
-//            NER ner = new NER(archive, nerModel);
-//            session.setAttribute("statusProvider", ner);
-//            ner.recongniseArchive();
-//            archive.processingMetadata.entityCounts = ner.stats.counts;
-//			log.info(ner.stats);
-//        }
+        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
+        String modelFile = mwl + SequenceModel.modelFileName;
+        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
+        log.info("Loading NER sequence model from: " + modelFile + " ...");
+        try {
+            nerModel = SequenceModel.loadModel(new File(modelFile));
+        } catch (IOException e) {
+            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
+        }
+        if (nerModel == null) {
+            log.error("Could not load NER model from: "+modelFile);
+        }
+        else {
+            NER ner = new NER(archive, nerModel);
+            session.setAttribute("statusProvider", ner);
+            ner.recongniseArchive();
+            archive.processingMetadata.entityCounts = ner.stats.counts;
+			log.info(ner.stats);
+        }
         archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
         log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
@@ -444,25 +445,27 @@ public class JSPHelper {
 //			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
 //		}
 
-//        if(!"muse".equals(Version.appName)) {
-//            //one final step of building entity feature index to build context for every entity
-//            try {
-//                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-//                session.setAttribute("statusProvider", assignauthorities);
-//                assignauthorities.initialize(archive);
-//                if (!assignauthorities.isCancelled())
-//                    request.getSession().setAttribute("authorities", assignauthorities);
-//                else
-//                    assignauthorities = null;
-//                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
-//                if (!success) {
-//                    log.warn("Could not build context features for entities");
-//                } else
-//                    log.info("Successfully built context features for entities");
-//            } catch (Exception e) {
-//                log.warn("Exception while building context features", e);
-//            }
-//        }
+        //Is there a reliable and more proper way of checking the mode it is running in?
+        String logF = System.getProperty("muse.log");
+        if(logF == null || logF.endsWith("epadd.log")) {
+            //one final step of building entity feature index to build context for every entity
+            try {
+                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+                session.setAttribute("statusProvider", assignauthorities);
+                assignauthorities.initialize(archive);
+                if (!assignauthorities.isCancelled())
+                    request.getSession().setAttribute("authorities", assignauthorities);
+                else
+                    assignauthorities = null;
+                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+                if (!success) {
+                    log.warn("Could not build context features for entities");
+                } else
+                    log.info("Successfully built context features for entities");
+            } catch (Exception e) {
+                log.warn("Exception while building context features", e);
+            }
+        }
 		// add the new stores
 	}
 

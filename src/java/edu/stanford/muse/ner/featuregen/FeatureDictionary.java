@@ -45,7 +45,8 @@ public class FeatureDictionary implements Serializable {
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2;
     public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-    public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is", "from");
+    public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is", "from",
+            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do");
     static List<String> symbols = Arrays.asList("&","-",",");
     static final boolean DEBUG = false;
     static {

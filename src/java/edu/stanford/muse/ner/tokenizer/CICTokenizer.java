@@ -31,7 +31,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
 	static String[] stopWords =  new String[]{"and", "for","on","a","the","to","at", "in", "of",
-            //based on occurrence frequency of more than 100 in English DBpedia personal names of 2014
+            //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
     private static final long serialVersionUID = 1L;
@@ -121,10 +121,12 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		for (String line : lines) {
 			//for very short lines, new line is used as a sentence breaker.
 			if (line.length() < 40)
-				content += line + "\n";
+				content += line + "%";
 			else
 				content += line + " ";
 		}
+//        content = content.replaceAll("(?s)!\\n","! ");
+        //System.err.println("After replacing: "+content);
 
 		Span[] sentenceSpans = NLPUtils.tokeniseSentenceAsSpan(content);
         for (Span sentenceSpan : sentenceSpans) {
@@ -164,7 +166,6 @@ public class CICTokenizer implements Tokenizer, Serializable {
                                     log.error("Did not find " + token + " extracted and cleaned from " +name);
                                     continue;
                                 }
-                                int e = s+token.length();
                                 matches.add(new Triple<>(canonicalise(token), s, s+token.length()));
                             }
                         //}
@@ -263,7 +264,15 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Met Mr. Robert Creeley at his place yesterday",
                 "Dear Folks, it is party time!",
                 "Few years ago, I wrote an article on \"Met The President\"",
-                "This is great! I am meeting with Barney   Stinson"
+                "This is great! I am meeting with Barney   Stinson",
+                "The Department of Geology is a hard sell!",
+                "Sawadika!\n" +
+                        "\n" +
+                        "fondly,\n\n",
+                "Judith C Stern MA PT\n" +
+                        "AmSAT Certified Teacher of the Alexander Technique\n" +
+                        "31 Purchase Street\n" +
+                        "Rye NY 10580"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -294,7 +303,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Mr. Robert Creeley"},
                 new String[]{"Folks"},
                 new String[]{"Met The President"},
-                new String[]{"Barney Stinson"}
+                new String[]{"Barney Stinson"},
+                new String[]{"Department of Geology"},
+                new String[]{"Sawadika"},
+                new String[]{"Judith C Stern MA PT","AmSAT Certified Teacher","Alexander Technique","Purchase Street","Rye NY"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
