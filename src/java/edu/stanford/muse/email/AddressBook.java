@@ -519,8 +519,21 @@ public class AddressBook implements Serializable {
 		email = EmailUtils.cleanEmailAddress(email);
 		String name = a.getPersonal();
 		name = EmailUtils.cleanPersonName(name);
-		if (!Util.nullOrEmpty(name) && name.toLowerCase().equals("'" + email.toLowerCase() + "'"))
-			name = "";
+
+		if (!Util.nullOrEmpty(name)) {
+			// watch out for bad "names" and ignore them
+			if (name.toLowerCase().equals("'" + email.toLowerCase() + "'")) // sometimes the "name" field is just the same as the email address with quotes around it
+				name = "";
+			if (name.toLowerCase().startsWith("undisclosed-recipients")) // we see a lot of these in legacy archives
+				name = "";
+			for (String taboo: EmailUtils.tabooEmailNames) {
+				if (taboo.equalsIgnoreCase(name)) {
+					name = "";
+					log.info("Dropping bad name: " + taboo);
+					break;
+				}
+			}
+		}
 
 		Contact c = unifyContact(email, name);
 	
