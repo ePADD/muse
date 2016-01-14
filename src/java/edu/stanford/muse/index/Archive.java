@@ -958,7 +958,7 @@ public class Archive implements Serializable {
     }
 
     public List<Document> docsWithThreadId(long threadID) {
-        List<Document> result = new ArrayList<>();
+        List<Document> result = new ArrayList<Document>();
         for (Document ed : allDocs) {
             if (((EmailDocument) ed).threadID == threadID)
                 result.add(ed);
@@ -1416,7 +1416,7 @@ public class Archive implements Serializable {
         } catch (Exception e) {
             log.info("Failed to deserialize names_offsets");
             e.printStackTrace();
-            result = new ArrayList<>();
+            result = new ArrayList<Triple<String, Integer, Integer>>();
         }
 
         return result;
@@ -1459,18 +1459,24 @@ public class Archive implements Serializable {
         return originalNames;
     }
 
-    public List<String> getEntitiesInOriginal(edu.stanford.muse.index.Document doc, String type){
-        return filterOriginalContent(doc, getEntitiesInDoc(doc, type));
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
+        if(originalContentOnly)
+            return filterOriginalContent(doc, getEntitiesInDoc(doc, type, filter));
+        else
+            return getEntitiesInDoc(doc, type, filter);
+    }
+
+    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
+        if(originalContentOnly)
+            return filterOriginalContent(doc, getQualityEntitiesInDoc(doc, type, filter));
+        else
+            return getQualityEntitiesInDoc(doc, type, filter);
     }
 
     //type should be one of strings EPER, ELOC, EORG, as set in NER.java
     //returns filtered list of all names
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type) {
-        return getEntitiesInDoc(doc, type, false);
-    }
-
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, boolean filter) {
-        org.apache.lucene.document.Document ldoc;
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
+        org.apache.lucene.document.Document ldoc = null;
         try {
             ldoc = indexer.getDoc(doc);
         } catch (IOException e) {
@@ -1478,36 +1484,48 @@ public class Archive implements Serializable {
             e.printStackTrace();
             return null;
         }
-        if(!filter)
-            return getEntitiesInLuceneDoc(ldoc, type);
-        else
-            return edu.stanford.muse.ie.Util.filterEntities(getEntitiesInLuceneDoc(ldoc, type), type);
+        return getEntitiesInLuceneDoc(ldoc, type, filter);
     }
 
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, Short type, double cutoff) throws IOException {
-        List<Short> suppTypes = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
-        List<String> entities = new ArrayList<>();
-        if(!suppTypes.contains(type)){
-            log.warn("Expected one of PERSON, PLACE, ORGANISATION types; Found type: "+type);
-            return entities;
+    //puts an extra layer of filtering over entities by filtering out entities also recognised as other type
+    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
+        org.apache.lucene.document.Document ldoc = null;
+        try {
+            ldoc = indexer.getDoc(doc);
+        } catch (IOException e) {
+            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
+            e.printStackTrace();
+            return null;
         }
-        Map<Short,Map<String,Double>> es = NER.getEntities(getDoc(doc),true);
-        List<Short> mtypes = Arrays.asList(SequenceModel.mappings.get(type));
-        for(Short mt: mtypes) {
-            for (String e : es.get(mt).keySet()) {
-                double s = es.get(mt).get(e);
-                if (s < cutoff)
-                    continue;
-                entities.add(e);
-            }
+        List<String> thises = getEntitiesInLuceneDoc(ldoc, type, filter);
+        String[] types = new String[]{NER.EPER, NER.ELOC, NER.EORG};
+        List<String> otheres = new ArrayList<>();
+        for(String et: types) {
+            if (et.equals(type))
+                continue;
+            List<String> temp = getEntitiesInLuceneDoc(ldoc, et, filter);
+            if(temp!=null)
+                otheres.addAll(temp);
         }
-        return entities;
+        List<String> ret = new ArrayList<>();
+        for(String te: thises)
+            if(!otheres.contains(te))
+                ret.add(te);
+        return ret;
+    }
+
+    /**@return a list of names filtered to remove dictionary matches*/
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type) {
+        return getEntitiesInDoc(d, type, true);
     }
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
-    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type) {
+    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type, Boolean filter) {
         String field = ldoc.get(type);
-        return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
+        if(filter)
+            return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
+        else
+            return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
     }
 
     public static void main(String[] args) {
