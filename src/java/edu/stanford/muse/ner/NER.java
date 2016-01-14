@@ -522,9 +522,9 @@ public class NER implements StatusProvider {
 
 		//make sure the offsets are in order, i.e. the end offsets are in increasing order
 		arrangeOffsets(offsets);
-        List<String> people = Archive.getEntitiesInLuceneDoc(doc, NER.EPER, true);
-        List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, NER.EORG, true);
-        List<String> places = Archive.getEntitiesInLuceneDoc(doc, NER.ELOC, true);
+        List<String> people = edu.stanford.muse.ie.Util.filterEntities(Archive.getEntitiesInLuceneDoc(doc, NER.EPER),NER.EPER);
+        List<String> orgs = edu.stanford.muse.ie.Util.filterEntities(Archive.getEntitiesInLuceneDoc(doc, NER.EORG),NER.EORG);
+        List<String> places = edu.stanford.muse.ie.Util.filterEntities(Archive.getEntitiesInLuceneDoc(doc, NER.ELOC),NER.ELOC);
         Set<String> allEntities = new LinkedHashSet<>();
         if (people!=null)
             allEntities.addAll(people);

@@ -1416,7 +1416,7 @@ public class Archive implements Serializable {
         } catch (Exception e) {
             log.info("Failed to deserialize names_offsets");
             e.printStackTrace();
-            result = new ArrayList<Triple<String, Integer, Integer>>();
+            result = new ArrayList<>();
         }
 
         return result;
@@ -1459,17 +1459,18 @@ public class Archive implements Serializable {
         return originalNames;
     }
 
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, boolean originalContentOnly){
-        if(originalContentOnly)
-            return filterOriginalContent(doc, getEntitiesInDoc(doc, type));
-        else
-            return getEntitiesInDoc(doc, type);
+    public List<String> getEntitiesInOriginal(edu.stanford.muse.index.Document doc, String type){
+        return filterOriginalContent(doc, getEntitiesInDoc(doc, type));
     }
 
     //type should be one of strings EPER, ELOC, EORG, as set in NER.java
     //returns filtered list of all names
     public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type) {
-        org.apache.lucene.document.Document ldoc = null;
+        return getEntitiesInDoc(doc, type, false);
+    }
+
+    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, boolean filter) {
+        org.apache.lucene.document.Document ldoc;
         try {
             ldoc = indexer.getDoc(doc);
         } catch (IOException e) {
@@ -1477,7 +1478,10 @@ public class Archive implements Serializable {
             e.printStackTrace();
             return null;
         }
-        return getEntitiesInLuceneDoc(ldoc, type);
+        if(!filter)
+            return getEntitiesInLuceneDoc(ldoc, type);
+        else
+            return edu.stanford.muse.ie.Util.filterEntities(getEntitiesInLuceneDoc(ldoc, type), type);
     }
 
     public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, Short type, double cutoff) throws IOException {

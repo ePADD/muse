@@ -296,7 +296,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Regarding The Bangalore Marathon, it has been cancelled due to stray dogs",
                 "I am meeting with him in Jan, and will request for one in Feb, will say OK to everything and disappear on the very next Mon or Tue, etc.",
                 "North Africa is the northern portion of Africa",
-                "Center of Evaluation has developed some evaluation techniques."
+                "Center of Evaluation has developed some evaluation techniques.",
+                "Hi Professor Winograd, this is your student from nowhere"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -342,7 +343,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Bangalore Marathon"},
                 new String[]{},
                 new String[]{"North Africa","Africa"},
-                new String[]{"Center of Evaluation"}
+                new String[]{"Center of Evaluation"},
+                new String[]{"Professor Winograd"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
