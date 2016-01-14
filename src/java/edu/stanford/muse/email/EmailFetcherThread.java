@@ -1001,7 +1001,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 	 * @param offset - the original offset of the first message in the messages array, important to initialize
 	 * 				   for proper assignment of unique id or doc Id*/
 	//private void fetchUncachedMessages(String sanitizedFName, Folder folder, DocCache cache, List<Integer> msgIdxs) throws MessagingException, FileNotFoundException, IOException, GeneralSecurityException {
-	private void fetchAndIndexMessages(Folder folder, Message[] messages, int offset, int totalMessages) throws MessagingException, FileNotFoundException, IOException, GeneralSecurityException {
+	private void fetchAndIndexMessages(Folder folder, Message[] messages, int offset, int totalMessages) throws MessagingException, IOException, GeneralSecurityException {
 		currentStatus = JSONUtils.getStatusJSON((emailStore instanceof MboxEmailStore) ? "Parsing " + folder.getName() + " (can take a while)..." : "Reading " + folder.getName() + "...");
 
 		// bulk fetch of all message headers
@@ -1056,7 +1056,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
 				int pctDone = ((i+offset) * 100) / totalMessages;
 				long elapsedMillis = System.currentTimeMillis() - startTimeMillis;
-				long unprocessedSecs = Util.getUnprocessedMessage(i, messages.length, elapsedMillis);
+				long unprocessedSecs = Util.getUnprocessedMessage(i+offset, totalMessages, elapsedMillis);
 				int N_TEASERS = 50; // 50 ok here, because it takes a long time to fetch and process messages, so teaser computation is relatively not expensive
 				int nTriesForThisMessage = 0;
 				currentStatus = getStatusJSONWithTeasers("Reading " + Util.commatize(totalMessages) + " messages from " + folder.getName() + "...", pctDone, elapsedMillis / 1000, unprocessedSecs, emails, N_TEASERS);
