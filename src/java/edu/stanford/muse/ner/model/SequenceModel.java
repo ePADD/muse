@@ -254,7 +254,7 @@ public class SequenceModel implements NERModel, Serializable {
 
             //This segmentation is not acceptable and better thing to do is to fall back to the next best sequence labelling where this does not happen
             //people names should still be fine
-            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) && DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
+            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
                 segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)

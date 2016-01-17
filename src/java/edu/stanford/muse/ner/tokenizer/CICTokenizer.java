@@ -216,30 +216,31 @@ public class CICTokenizer implements Tokenizer, Serializable {
             tokenL.add(phrase.substring(end, phrase.length()));
         //we have all the split tokens, will have to filter now
         List<String> nts = new ArrayList<>();
-        for(int i=0;i<tokenL.size();i++){
+        for(int i=0;i<tokenL.size();i++) {
             String t = tokenL.get(i);
-            t = t.replaceAll("^\\W+|\\W+$","");
+            t = t.replaceAll("^\\W+|\\W+$", "");
             //if the chunk is the first word then, double check the capitalisation
-            if(i==0 && offset==0) {
-                if (DictUtils.fullDictWords.contains(t.toLowerCase()))
+            if (offset == 0 && i==0) {
+                if (DictUtils.fullDictWords.contains(t.toLowerCase())) {
+                    if(log.isDebugEnabled())
+                        log.debug("Rejecting the dictionary word: "+t);
                     continue;
-                //remove common start words
-                //the replace pattern is a costly operations because it can contain many '|', double check if using the pattern is required
-                boolean hasCSW = false;
-                do {
-                    for (String cw : commonStartWords)
-                        if (t.startsWith(cw + " ")) {
-                            hasCSW = true;
-                            break;
-                        }
-                    if (hasCSW) {
-                        Matcher matcher = cswPatt.matcher(t);
-                        t = matcher.replaceAll("");
-                    }
-                    else break;
-                    hasCSW = false;
-                }while (true);
+                }
             }
+            //remove common start words
+            //the replace pattern is a costly operations because it can contain many '|', double check if using the pattern is required
+            boolean hasCSW = false;
+            do {
+                for (String cw : commonStartWords)
+                    if (t.startsWith(cw + " ")) {
+                        t = t.substring(cw.length()+1);
+                        hasCSW = true;
+                        break;
+                    }
+                if (!hasCSW) break;
+                hasCSW = false;
+            } while (true);
+
             nts.add(t);
         }
         return nts.toArray(new String[nts.size()]);
