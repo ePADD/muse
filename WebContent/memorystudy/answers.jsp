@@ -49,25 +49,10 @@ You are welcome to save or print a copy of this page for your records.
 		if (userAnswer == null)
 			userAnswer = "";
 
-		String guessedDate = "";
-		if (mq.stats.recency >= 1 && mq.stats.recency <= 12) // recency goes from 1 to 12
-		{
-			Date d1 = new Date();
-			GregorianCalendar gc = new GregorianCalendar();
-			gc.setTime(d1);
-			int month = gc.get(Calendar.MONTH);
-			int year = gc.get(Calendar.YEAR);
-			month -= (mq.stats.recency-1); // -1 because for current month recency is 1
-			if (month < 0)
-			{
-				month += 12;
-				year--;
-			}
-			gc.set(year, month, 1);
-			d1 = new java.util.Date(gc.getTimeInMillis());
-			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat("MMMM").format(d1) + " " + year + ")";
-		}
-		else if (mq.stats.recency == 0)
+		String guessedDate;
+		if (mq.stats.recency !=null)
+			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat("dd MMMM yyyy").format(mq.stats.recency) + ")";
+		else
 			guessedDate = ("(Your guess: no idea)");
 		correctAnswer = Util.canonicalizeSpaces(correctAnswer);
 		userAnswer = Util.canonicalizeSpaces(userAnswer);

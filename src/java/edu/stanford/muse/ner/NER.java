@@ -363,7 +363,7 @@ public class NER implements StatusProvider {
 
     //TODO: Consider using Atomic reader for accessing the index, if it improves performance
 	//main method trains the model, recognizes the entities and updates the doc.
-	public void recongniseArchive() throws CancelledException, IOException {
+	public void recogniseArchive() throws CancelledException, IOException {
 		time = 0;
 		archive.openForRead();
 		archive.setupForWrite();

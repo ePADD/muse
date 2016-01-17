@@ -1394,8 +1394,6 @@ public class EmailUtils {
                     break;
                 if (lines++ % 10000 == 0)
                     log.info("Processed " + lines + " lines of approx. 3.02M in " + typesFile);
-//                if (lines > 500000)
-//                    break;
 
                 if (line.contains("GivenName"))
                     continue;
@@ -1445,7 +1443,8 @@ public class EmailUtils {
                 //University_(Metrorail_Station) MetroStation|Place e.t.c.
                 //so keep them, or just skip this entry all together
                 //We are not considering single word tokens any way, so its OK to remove things inside the brackets
-                r = r.replaceAll("_\\(.*?\\)", "");
+                //removing stuff in brackets may cause trouble when blind matching entities
+                //r = r.replaceAll("_\\(.*?\\)", "");
                 String title = r.replaceAll("_"," ");
 
                 String badSuffix = "|Agent";

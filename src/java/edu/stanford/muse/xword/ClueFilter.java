@@ -40,6 +40,12 @@ public class ClueFilter {
                 log.info("Filtering "+answer+" based on dictionary");
                 return false;
             }
+            String[] badsubs = new String[]{"@","http:","www.","AM","PM"," list"};
+            for(String bs: badsubs)
+                if(answer.contains(bs)) {
+                    log.info("Rejecting "+answer+" because of bad sub-string "+bs);
+                    return false;
+                }
             return true;
         }
     }

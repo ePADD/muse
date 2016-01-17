@@ -19,7 +19,7 @@ Awesome! You got that right!
 <%}
 else{
 %>
-Looks like you got that wrong. You entered "<%out.print(useranswer);%>", but the correct answer was "<%out.println(correctanswer);%>".
+Looks like you got that wrong. You entered "<%=useranswer%>", but the correct answer was "<%=correctanswer%>".
 <%}
 %>
 <p>

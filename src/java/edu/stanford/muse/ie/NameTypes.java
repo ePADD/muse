@@ -1,16 +1,7 @@
 package edu.stanford.muse.ie;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
@@ -95,24 +86,24 @@ public class NameTypes {
         Tokenizer tokenizer = new CICTokenizer();
         for (EmailDocument ed : allDocs) {
 			if (i % 1000 == 0)
-				System.err.println("Collected names from :" + i + "/" + allDocs.size());
+				log.info("Collected names from :" + i + "/" + allDocs.size());
 			i++;
 			String id = ed.getUniqueId();
-			String content = archive.getContents(ed, false);
-			Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
-			//List<String> nernames = archive.indexer.getNamesForDocId(id, Indexer.QueryType.ORIGINAL);
-			List<String> names = new ArrayList<String>();
+			//String content = archive.getContents(ed, false);
+			//Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
+			//Note that archive.getAllNames does not fetch the corr. names, but NER names.
+            List<String> pnames = ed.getAllNames();
+            List<String> names = new ArrayList<String>();
 
 			//temp to remove duplication.
 			Set<String> unames = new HashSet<String>();
 			unames.addAll(pnames);
-			//unames.addAll(nernames);
 			names.addAll(unames);
 			//totalNames += names.size();
 
 			for (String name : names)
 			{
-				if (!name.contains(" "))
+				if (name == null || !name.contains(" "))
 					continue;
 				String cTitle = name.trim().toLowerCase(); // canonical title
 				// these are noisy "names"

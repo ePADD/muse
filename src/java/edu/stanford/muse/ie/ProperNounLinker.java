@@ -7,7 +7,6 @@ import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import org.apache.commons.logging.Log;
@@ -34,7 +33,7 @@ public class ProperNounLinker {
         for (String tok : tokens) {
             //don't touch the period or other special chars suffixed
             tok = tok.replaceAll("^\\W+", "");
-            if (EnglishDictionary.sws.contains(tok))
+            if (EnglishDictionary.stopWords.contains(tok))
                 continue;
 
             List<String> subToks = new ArrayList<>();
@@ -84,13 +83,14 @@ public class ProperNounLinker {
     }
 
     static String stripTitles(String str){
-        String[] personTitles = new String[]{"Dear", "Hi", "Hello", "Mr", "Mr.", "Mrs", "Mrs.", "Miss", "Sir", "Madam", "Dr.", "Prof", "Dr", "Prof.", "Dearest", "Governor", "Gov.", "Col.", "CEO", "Cpl.", "Gen.", "St.",
-                //also including articles
-                "The", "A", "An"
-        };
-        for(String pt: personTitles)
-            if(str.startsWith(pt+" "))
-                return str.substring(pt.length()+1);
+        EnglishDictionary.articles.toArray(new String[EnglishDictionary.articles.size()]);
+        List<String> titles = Arrays.asList("Dear", "Hi", "Hello");
+        titles.addAll(EnglishDictionary.personTitles);
+        titles.addAll(EnglishDictionary.articles);
+
+        for(String t: titles)
+            if(str.startsWith(t+" "))
+                return str.substring(t.length()+1);
         return str;
     }
 
@@ -405,7 +405,7 @@ public class ProperNounLinker {
                 for(Triple<String,Integer,Integer> tok: tokens) {
                     String t = tok.getFirst();
                     t = t.replaceAll("^\\W+|\\W+$","");
-                    if(EnglishDictionary.sws.contains(t.toLowerCase()))
+                    if(EnglishDictionary.stopWords.contains(t.toLowerCase()))
                         continue;
                     if(t.length()>50)
                         continue;

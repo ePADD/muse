@@ -589,7 +589,7 @@ public class SequenceModel implements NERModel, Serializable {
         return new Pair<>(dict1, dict2);
     }
 
-    public static void test(NERModel nerModel){
+    public static void testDBpedia(NERModel nerModel){
         //when testing remember to change
         //1. lookup method, disable the lookup
         System.err.println("DBpedia scoring check starts");
@@ -831,6 +831,13 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
+    public static void test(){
+        Pair<String,String[]>[] test = new Pair[]{
+                new Pair<>("hi terry-\n\ntried to meet carol today with no luck",new String[]{"terry","carol"}),
+                new Pair<>("We are traveling to Vietnam the next summer and will come to New York (NYC) soon",new String[]{"Vietnam","New York","NYC"}),
+        };
+    }
+
     public static void main(String[] args){
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
@@ -850,7 +857,8 @@ public class SequenceModel implements NERModel, Serializable {
             nerModel = train();
 
         if(nerModel!=null){
-            test(nerModel);
+            //testDBpedia(nerModel);
+            testDBpedia(nerModel);
         }
     }
 }

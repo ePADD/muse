@@ -7,12 +7,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.Reader;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
+import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -255,5 +253,34 @@ public class DictUtils {
 	{
 		return commonDictWords.contains(canonicalizeTerm(term));
 	}
+
+    /**
+     * returns a case and space normalized version of the input
+     * returns null if the input does not look like an entity ie. when
+     * <ul>
+     *  <li>the entity starts with i/you</li>
+     *  <li>If the phrase contains only dictionary words</li>
+     * </ul>
+     * */
+    public static String canonicalize(String s) {
+        s = s.toLowerCase();
+        List<String> tokens = Util.tokenize(s);
+        tokens.removeAll(EnglishDictionary.stopWords);
+        if (Util.nullOrEmpty(tokens))
+            return null;
+
+        boolean allDict = true;
+        for (String t: tokens) {
+            if (t.startsWith("i'") || t.startsWith("you'")) // remove i've, you're, etc.
+                return null;
+            if (!(DictUtils.fullDictWords.contains(t)))
+                allDict = false;
+        }
+        if (allDict)
+            return null;
+
+        // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
+        return Util.join(tokens, " ");
+    }
 
 }

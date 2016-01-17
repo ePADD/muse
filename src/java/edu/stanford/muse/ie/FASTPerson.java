@@ -192,7 +192,7 @@ public class FASTPerson extends FASTRecord implements java.io.Serializable {
 				sourceNames += Authority.types[Authority.LOC_NAME] + sep;
 				sourceIds += locName + sep;
 			}
-			else if (src.contains("http://sws.geonames.org/")) {
+			else if (src.contains("http://stopWords.geonames.org/")) {
 				String geoId = src.replaceAll("http://sws.geonames.org/", "").replaceAll("(<|>|\\\\)", "");
 				sourceNames += Authority.types[Authority.GEO_NAMES] + sep;
 				sourceIds += geoId + sep;

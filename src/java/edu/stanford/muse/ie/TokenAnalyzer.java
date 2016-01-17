@@ -49,7 +49,7 @@ public class TokenAnalyzer {
                         if (t.indexOf('(') >= 0)
                             break;
 
-                        if(EnglishDictionary.sws.contains(ct))
+                        if(EnglishDictionary.stopWords.contains(ct))
                             continue;
 
                         if (ai == 0)

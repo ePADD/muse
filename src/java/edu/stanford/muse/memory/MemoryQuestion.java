@@ -9,6 +9,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Set;
 
 public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Serializable {
@@ -25,9 +26,12 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 	public String userAnswerBeforeHint, userAnswer;
 	public UserAnswerStats stats;
+    public static enum RecallType{
+        Nothing,Context,TipOfTongue,UnfairQuestion;
+    }
 	
 	static public class UserAnswerStats implements java.io.Serializable {
-		
+        //comment by @vihari: Why are some fields marked public and others not? I don't see a pattern or a need for that.
 		public String uid;
 		public int num;
 		private static final long serialVersionUID = 1L;
@@ -38,9 +42,14 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		public boolean userAnswerCorrect; // was the answer judged to be correct
 		// potentially add edit distance
 
+        //Will be set only if the answer is wrong
+        public RecallType recallType;
+        //extra info. about the recall type
+        public Object recallExtra;
+
 		int certainty = -1;
 		int memoryType = -1;
-		public int recency = -1;
+		public Date recency = null;
 
 		// stats computed when answer is wrong
 		public boolean letterCountCorrect; // (only populated if the answer is wrong)
@@ -93,13 +102,31 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		String correctanswer = this.correctAnswer;
 		String blanksToReplace = "", blanksPlusSpace = "";
 		for (int i = 0; i < correctanswer.length(); i++){
-			blanksPlusSpace = blanksPlusSpace + "_ ";
-			blanksToReplace +="_";
+            //we can reveal the spaces in the answer, else it is very counter-intuitive.
+            if(correctanswer.charAt(i) != ' ')
+			    blanksPlusSpace += "_ ";
+            else
+                blanksPlusSpace += "  ";
+            blanksToReplace +="_";
 		}
-		return originalClue.replaceAll(blanksToReplace, blanksPlusSpace);
-	}
-	
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, long millis, boolean hintused, int certainty, int memoryType, int recency) {
+        if(originalClue.contains(blanksToReplace))
+		    return originalClue.replaceAll(blanksToReplace, blanksPlusSpace);
+	    //some type of questions are not fill in the blank type
+        else
+            return originalClue+"\nEmail recipient name: "+blanksPlusSpace;
+    }
+
+    /**
+     * @param userAnswer - The user answer when the submit button is clicked
+     * @param userAnswerBeforeHint - The user answer before the hint is used
+     * @param recallType - The reason why the answer cannot be recalled
+     * @param failReason - Depending on the type of failure to give answer, a further explanation or info. about the failure
+     * @param millis - Time elapsed before the question is answered
+     * @param hintused - indicating if the hint is used
+     * @param certainty - A rating on how certain the user is about the answer
+     * @param memoryType - A rating on how well the user can recall the context
+     * @param recency - The user's guess on when the particular sentence is compiled*/
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date recency) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
 		
@@ -116,7 +143,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		
 		stats.letterCountCorrect = (cAnswer.length() == correctAnswer.length());
 
-		if (!correctAnswer.toLowerCase().equals(cAnswer)) {
+		if (userAnswer==null || userAnswer.equals("") || !isUserAnswerCorrect()) {
 			// do further lookups on user answer if its wrong
 			try {
 				Archive archive = study.archive;
@@ -125,25 +152,40 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 				Collection<EmailDocument> correctAnswerDocs = archive.convertToED(archive.docsForQuery("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
-			} catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }			
+                this.stats.recallType = recallType;
+                this.stats.recallExtra = failReason;
+            } catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }
 		} 
 	}
 	
 	public String getPostHintQuestion() {
-		String correctanswer = this.correctAnswer;
-		String hint = Character.toString(correctanswer.charAt(0));
-		hint += " ";
-		String blanksToReplace = "_";
-		for (int i = 1; i < correctanswer.length(); i++){
-			hint = hint + "_ ";
-			blanksToReplace +="_";
-		}
-		return clue.getClue().replaceAll(blanksToReplace, hint);	
-	}
+        String clueText = clue.getClue();
+        String correctanswer = this.correctAnswer;
+        String hint = Character.toString(correctanswer.charAt(0));
+        hint += " ";
+        String blanksToReplace = "_ ";
+        for (int i = 1; i < correctanswer.length(); i++) {
+            if(correctanswer.charAt(i-1) == ' ')
+                hint = hint + correctanswer.charAt(i)+" ";
+            else if (correctAnswer.charAt(i)==' ')
+                hint = hint + "  ";
+            else
+                hint = hint + "_ ";
+            blanksToReplace += "_ ";
+        }
+
+        if (clueText.contains(blanksToReplace)) {
+            log.info("Original text: "+clueText+", after replace: "+clue.getClue().replaceAll(blanksToReplace, hint));
+            return clue.getClue().replaceAll(blanksToReplace, hint);
+        }
+        else {
+            return clueText+"\nEmail recipient name: "+hint;
+        }
+    }
 
 	/** case and space normalize first */
-	public String normalizeAnswer(String s) {
-		return (s == null) ? "" : s.toLowerCase().replaceAll("\\s", "");
+	public static String normalizeAnswer(String s) {
+		return (s == null) ? "" : s.toLowerCase().replaceAll("[\\s\\.]", "");
 	}
 	
 	public boolean isUserAnswerCorrect() {
@@ -172,5 +214,9 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 	}
 	
 	public String toString() { 	return Util.fieldsToString(this, false) + " " + Util.fieldsToString(stats, false); }
+
+    public static void main(String[] args){
+        System.err.println(normalizeAnswer("Dileep A. D"));
+    }
 
 }

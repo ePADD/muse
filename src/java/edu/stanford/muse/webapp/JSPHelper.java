@@ -15,7 +15,6 @@
  */
 package edu.stanford.muse.webapp;
 
-import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
@@ -418,7 +417,7 @@ public class JSPHelper {
         else {
             NER ner = new NER(archive, nerModel);
             session.setAttribute("statusProvider", ner);
-            ner.recongniseArchive();
+            ner.recogniseArchive();
             archive.processingMetadata.entityCounts = ner.stats.counts;
 			log.info(ner.stats);
         }
@@ -434,9 +433,9 @@ public class JSPHelper {
 //            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
 //            if("memorytest".equals(mode)) {
 //                log.info("Setting dump model to false for NER");
-//                ner.recongniseArchive(false);
+//                ner.recogniseArchive(false);
 //            }else
-//                ner.recongniseArchive(true);
+//                ner.recogniseArchive(true);
 
 //		}
 //		//trying to be extra defensive during indexing.

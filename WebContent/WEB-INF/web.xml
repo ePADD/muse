@@ -192,13 +192,31 @@
 	</servlet-mapping>
 
   	<servlet>
-		<servlet-name>example</servlet-name>
-		<jsp-file>/memorystudy/example.jsp</jsp-file>
+		<servlet-name>welcome</servlet-name>
+		<jsp-file>/memorystudy/welcome.html</jsp-file>
   	</servlet>
   	<servlet-mapping>
-	  	<servlet-name>example</servlet-name>
-	    <url-pattern>/memorystudy/example</url-pattern>
+	  	<servlet-name>welcome</servlet-name>
+	    <url-pattern>/memorystudy/welcome</url-pattern>
 	</servlet-mapping>
+
+    <servlet>
+        <servlet-name>privacy</servlet-name>
+        <jsp-file>/memorystudy/privacy.html</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>privacy</servlet-name>
+        <url-pattern>/memorystudy/privacy</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>example</servlet-name>
+        <jsp-file>/memorystudy/example.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>example</servlet-name>
+        <url-pattern>/memorystudy/example</url-pattern>
+    </servlet-mapping>
 
   	<servlet>
 		<servlet-name>examplehandler</servlet-name>

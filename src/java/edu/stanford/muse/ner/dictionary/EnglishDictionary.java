@@ -25,7 +25,9 @@ public class EnglishDictionary {
     static Multimap<String,String> abbDict;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
-    public static List<String> sws = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> stopWords = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> personTitles = Arrays.asList("mr.", "ms.", "mrs.", "dr.", "prof.");
+    public static List<String> articles = Arrays.asList("The","A","An");
 
     /**
      * @return dictionary entry -> #times appeared in capitalised form, total number of occurrences */
