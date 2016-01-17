@@ -18,3 +18,14 @@ unknown
 pbwiki
 archive
 archives
+customer
+support
+subscription
+info
+autoresponder
+vacation
+admin
+support
+customer
+facebook
+twitter

@@ -45,12 +45,50 @@ public class EmailUtils {
 	public static Map<String, String>	dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
-    static class DBpediaTypes {
+	// get a list of possible names, like "First Last" from "First.Last@gmail.com" etc
+	public static List<String> parsePossibleNamesFromEmailAddress(String email)
+	{
+		List<String> result = new ArrayList<String>();
+		int idx = email.indexOf("@");
+		if (idx < 0)
+			return result;
+		String strippedEmail = email.substring(0, idx);
+
+		// handle addrs like mondy_dana%umich-mts.mailnet@mit-multics.arp, in this case strip out the part after %
+		idx = strippedEmail.indexOf("%");
+		if (idx >= 0)
+			strippedEmail = strippedEmail.substring(0, idx);
+
+		// 2 sets of splitters, one containing just periods, other just underscores.
+		// most people have periods, but at least Dell has underscores
+		String[] splitters = new String[]{".", "_"};
+		for (String splitter: splitters)
+		{
+			StringTokenizer st = new StringTokenizer (strippedEmail, splitter);
+			int nTokens = st.countTokens();
+			// allow only first.last or first.middle.last
+			if (nTokens < 2 || nTokens > 3)
+				continue;
+
+			String possibleName = "";
+			while (st.hasMoreTokens())
+			{
+				String token = st.nextToken();
+				if (Util.hasOnlyDigits(token))
+					return result; // abort immediately if only numbers, we don't want things like 70451.2444@compuserve.com
+				possibleName += Util.capitalizeFirstLetter(token) + " "; // optionally we could upper case first letter of each token.
+			}
+			possibleName = possibleName.trim(); // remove trailing space
+			result.add(possibleName);
+		}
+		return result;
+	}
+
+	static class DBpediaTypes {
         //these are types identified from DBpedia that may contain some predictable tokens and omitting types with any possible tokens like TVShows and Bands
         //also omitting types that are not very different from other types like, Company and AutomobileEngine|Device
     }
 
-	public static String tabooEmailNames[] = new String[]{"paypal member", "info@evite.com", "evite.com"}; // could consider adding things ending in clients, members, etc.
 	/**
 	 * best effort to toString something about the given message.
 	 * use only for diagnostics, not for user-visible messages.
@@ -433,6 +471,7 @@ public class EmailUtils {
 	{
 		if (name == null)
 			return null;
+		name = name.trim();
 		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is
 			return name.toLowerCase();
 		if ("user".equals(name))
@@ -490,7 +529,7 @@ public class EmailUtils {
 		return result;
 	}
 
-	// removes obviously bad names from the input list
+	// removes obviously bad names from the input list. used only by grouper.
 	public static List<String> removeIncorrectNames(List<String> in)
 	{
 
@@ -500,21 +539,6 @@ public class EmailUtils {
 			s = EmailUtils.cleanPersonName(s);
             if(s == null)
                 continue;
-			if (s.startsWith("undisclosed-recipients"))
-			{
-				log.info("Dropping undisclosed recipients: " + s);
-				continue;
-			}
-
-			for (String taboo: tabooEmailNames) {
-				if (taboo.equals(s))
-					continue;
-			}
-			if (s.toLowerCase().equals("user"))
-			{
-				log.info("Dropping bad name: " + s);
-				continue;
-			}
 			result.add(s);
 		}
 		return result;

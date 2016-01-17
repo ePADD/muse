@@ -460,13 +460,13 @@ public class IndexUtils {
 				} else {
 					// single token (partial name), use lookup that returns a set, e.g., "john"
 
-					//@vihari: BUG-FIX: throws Null-pointer exception when ab.lookupByNameAsSet is null. 
-					if (ab.lookupByNameAsSet(e) == null) {
+					//@vihari: BUG-FIX: throws Null-pointer exception when ab.lookupByNameTokenAsSet is null.
+					if (ab.lookupByNameTokenAsSet(e) == null) {
 						log.info("Null pointer for: " + e);
 						continue;
 					}
 					else
-						contactSet.addAll(ab.lookupByNameAsSet(e));
+						contactSet.addAll(ab.lookupByNameTokenAsSet(e));
 				}
 				if (contactSet.isEmpty())
 					log.info("Unknown email/name " + e);

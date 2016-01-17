@@ -204,7 +204,7 @@ public class AddressBook implements Serializable {
 		c.emails.add(email);
 		emailToContact.put(email, c);
 	}
-	
+
 	private void addNameForContact(String name, Contact c)
 	{
 		if (Util.nullOrEmpty(name))
@@ -213,7 +213,11 @@ public class AddressBook implements Serializable {
 		// trim is the one operation we do on the source name. otherwise, we want to retain it in its original form, for capitalization etc.
 		name = name.trim();
 		c.names.add(name);
-		nameToContact.put(EmailUtils.normalizePersonNameForLookup(name), c);
+
+		// nameToContact is very important, so only add to it if we're fairly certain about the name.
+		if (Util.tokenize(name).size() > 1)
+			nameToContact.put(EmailUtils.normalizePersonNameForLookup(name), c);
+
 		List<String> tokens = EmailUtils.normalizePersonNameForLookupAsList(name);
 		if (tokens == null) return;
 		for (String token : tokens) {
@@ -335,7 +339,7 @@ public class AddressBook implements Serializable {
 
 	/** the CIs for name and email are unified if they are not already the same
 		returns the contact for name/email (creates a new contact if needed)
-		 name could be null, email cannot be
+		 name could be null (or empty, which is equivalent), email cannot be
 	 * @return
 	 */
 	private synchronized Contact unifyContact(String email, String name)
@@ -348,10 +352,10 @@ public class AddressBook implements Serializable {
 
 		// we often see cases (e.g. in creeley and bush archives) where the name is just the email address in single quotes To: "'creeley@acsu.buffalo.edu'" <creeley@acsu.buffalo.edu>
 		// Ignore the name if this is the case, otherwise it bothers users to see spurious names.
-		if (name != null && name.equals("'" + email + "'"))
-			name = null;
-		if (name != null && name.equals(email)) // if the name is exactly the same as the email, it has no content.
-			name = null;
+//		if (name != null && name.equals("'" + email + "'"))
+//			name = null;
+//		if (name != null && name.equals(email)) // if the name is exactly the same as the email, it has no content.
+// 			name = null;
 		// sometimes the name field incorrectly has an email address.
 		// we need to mask these out permanently; otherwise in discovery mode, we'll be revealing email addresses thinking they are names.
 		if (name != null)
@@ -368,6 +372,7 @@ public class AddressBook implements Serializable {
 			cName = lookupByName(name);
 
 		// if name and email have different CIs, unify them first
+		// however, only do all this if
 		if (cName != null && cEmail != null && cName != cEmail)
 		{
 			log.debug ("Merging contacts due to message with name=" + name + ", email=" + email + " Contacts are: " + cName + " -- and -- " + cEmail);
@@ -376,7 +381,7 @@ public class AddressBook implements Serializable {
 		
 		if (cEmail != null)
 		{
-			if(name != null)
+			if (name != null)
 				addNameForContact(name, cEmail);
 			return cEmail;
 		}
@@ -387,12 +392,14 @@ public class AddressBook implements Serializable {
 			return cName;
 		}
 
+		// neither cEmail nor cName was found. new contact.
+
 		Contact c = new Contact(); // this blank Contact will be set up on the fly later
 		contactIdMap.put(c, contactListForIds.size());
 		contactListForIds.add(c);
 		addEmailAddressForContact(email, c);
 
-		if(name != null) {
+		if (name != null) {
 			addNameForContact(name, c);
 		}
 
@@ -423,6 +430,26 @@ public class AddressBook implements Serializable {
 
 	public Contact lookupByName(String s)
 	{
+		// look among the single tokens
+		List<String> tokens = Util.tokenize(s);
+		if (tokens.size() == 1) {
+			String normalizedName = EmailUtils.normalizePersonNameForLookup(s);
+			if (normalizedName == null)
+				return null;
+
+			Collection<Contact> c = nameTokenToContacts.get(normalizedName); // note
+			if (c.size() > 0)
+				return c.iterator().next();
+			else
+				return null;
+		} else {
+			return lookupByNameMultiWord(s);
+		}
+	}
+
+	/** this is a lookup for multiword names only. it uses the nameToContact map which is only used for multiword names */
+	private Contact lookupByNameMultiWord(String s)
+	{
 		if (s == null)
 			return null;
 		String normalizedName = EmailUtils.normalizePersonNameForLookup(s);
@@ -432,7 +459,7 @@ public class AddressBook implements Serializable {
 		return nameToContact.get(normalizedName);
 	}
 	
-	public Set<Contact> lookupByNameAsSet(String s)
+	public Set<Contact> lookupByNameTokenAsSet(String s)
 	{
 		if (s == null)
 			return null;
@@ -472,46 +499,8 @@ public class AddressBook implements Serializable {
 		return lookupByName(s);
 	}
 
-	// get a list of possible names, like "First Last" from "First.Last@gmail.com" etc
-	private static List<String> parsePossibleNamesFromEmailAddress(String email)
-	{
-		List<String> result = new ArrayList<String>();
-		int idx = email.indexOf("@");
-		if (idx < 0)
-			return result;
-		String strippedEmail = email.substring(0, idx);
-
-		// handle addrs like mondy_dana%umich-mts.mailnet@mit-multics.arp, in this case strip out the part after %
-		idx = strippedEmail.indexOf("%");
-		if (idx >= 0)
-			strippedEmail = strippedEmail.substring(0, idx);
-		
-		// 2 sets of splitters, one containing just periods, other just underscores.
-		// most people have periods, but at least Dell has underscores
-		String[] splitters = new String[]{".", "_"};
-		for (String splitter: splitters)
-		{
-			StringTokenizer st = new StringTokenizer (strippedEmail, splitter);
-			int nTokens = st.countTokens();
-			// allow only first.last or first.middle.last
-			if (nTokens < 2 || nTokens > 3)
-				continue;
-
-			String possibleName = "";
-			while (st.hasMoreTokens())
-			{
-				String token = st.nextToken();
-				if (Util.hasOnlyDigits(token))
-					return result; // abort immediately if only numbers, we don't want things like 70451.2444@compuserve.com
-				possibleName += Util.capitalizeFirstLetter(token) + " "; // optionally we could upper case first letter of each token.
-			}
-			possibleName = possibleName.trim(); // remove trailing space
-			result.add(possibleName);
-		}
-		return result;
-	}
-	
-	/* this needs to be cleaned up - its not clear which methods are idempotent and which not */
+	/* Single place where a <name, email address> equivalence is registered (and used to build the address book and merge different names/email addresses together.
+		Any evidence of a name belonging to an email address should be logged by calling this method. */
 	Contact registerAddress(InternetAddress a)
 	{
 		// get email and name and normalize. email cannot be null, but name can be.
@@ -524,30 +513,31 @@ public class AddressBook implements Serializable {
 			// watch out for bad "names" and ignore them
 			if (name.toLowerCase().equals("'" + email.toLowerCase() + "'")) // sometimes the "name" field is just the same as the email address with quotes around it
 				name = "";
-			if (name.toLowerCase().startsWith("undisclosed-recipients")) // we see a lot of these in legacy archives
-				name = "";
-			for (String taboo: EmailUtils.tabooEmailNames) {
-				if (taboo.equalsIgnoreCase(name)) {
-					name = "";
-					log.info("Dropping bad name: " + taboo);
-					break;
-				}
-			}
+			if (name.contains("@"))
+				name = ""; // name can't be an email address!
 		}
+		if (email.startsWith("info@"))
+			name = ""; // usually something like info@paypal.com or info@evite.com -- we need to ignore the name part of such an email address.
 
-		Contact c = unifyContact(email, name);
-	
+		List nameTokens = Util.tokenize(name);
+
+		// Tricky here. If the name has only one token we don't call unifyContact. Without unifyContact, the nameToAddressMap does not map the name to this contact.
+		// however, this contact is retained in the contact's set of names.
+		// e.g. a common name like Scott will be assigned to this contact. But the nameToContact
+
+		Contact c;
+		if (nameTokens.size() >= 2)
+			c = unifyContact(email, name);
+		else
+			c = lookupByEmail(email);
+
 		// DEBUG point: enable this to see all the incoming names and email addrs
-		if (log.isDebugEnabled())
-			if (!c.names.contains(name))
-				log.debug("got a name and email addr: " + name + " | " + email);
-		
 		if (!c.emails.contains(email))
 		{
 			log.debug("merging email " + email + " into contact " + c);
 			c.emails.add(email);
 		}
-		
+
 		if (!Util.nullOrEmpty(name) && !c.names.contains(name))
 		{
 			if (log.isDebugEnabled() && !c.names.contains(name))
@@ -556,15 +546,17 @@ public class AddressBook implements Serializable {
 		}
 
 		// look for names from first.last@... style of email addresses
-		List<String> namesFromEmailAddress = parsePossibleNamesFromEmailAddress(email);
+		List<String> namesFromEmailAddress = EmailUtils.parsePossibleNamesFromEmailAddress(email);
 		if (log.isDebugEnabled())
 		{
 			for (String s: namesFromEmailAddress)
 				log.debug ("extracted possible name " + s + " from email " + email);
 		}
 		if (namesFromEmailAddress != null)
-			for (String possibleName: namesFromEmailAddress)
-				unifyContact(email, possibleName);
+			for (String possibleName: namesFromEmailAddress) {
+				if (nameTokens.size() >= 2)
+					unifyContact(email, possibleName);
+			}
 		return c;
 	}
 
@@ -1317,11 +1309,11 @@ public class AddressBook implements Serializable {
 
 	public static void main (String args[])
 	{
-		List<String> list = parsePossibleNamesFromEmailAddress("mickey.mouse@disney.com");
+		List<String> list = EmailUtils.parsePossibleNamesFromEmailAddress("mickey.mouse@disney.com");
 		System.out.println (Util.join(list, " "));
-		list = parsePossibleNamesFromEmailAddress("donald_duck@disney.com");
+		list = EmailUtils.parsePossibleNamesFromEmailAddress("donald_duck@disney.com");
 		System.out.println (Util.join(list, " "));
-		list = parsePossibleNamesFromEmailAddress("70451.2444@compuserve.com");
+		list = EmailUtils.parsePossibleNamesFromEmailAddress("70451.2444@compuserve.com");
 		System.out.println (Util.join(list, " "));
 	}
 
