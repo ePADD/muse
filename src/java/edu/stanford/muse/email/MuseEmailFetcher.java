@@ -62,7 +62,7 @@ public class MuseEmailFetcher {
 		fetchers = new ArrayList<MTEmailFetcher>();
 	}
 	
-	public synchronized void addEmailStore(EmailStore stores) // should we call this addAccount
+	private synchronized void addEmailStore(EmailStore stores) // should we call this addAccount
 	{
 		int initialSize = emailStores.size();
 		// we could check for duplicates here

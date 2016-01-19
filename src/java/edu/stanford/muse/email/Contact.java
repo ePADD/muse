@@ -109,6 +109,9 @@ public class Contact extends UnionFindObject {
 					+ (capitalized ? 10:0)
 					- (comma ? 1:0);
 
+			score = score * 100;
+			score += name.length(); // prefer longer names, but only if most other things are equal.
+
 			if (score > bestScore)
 			{
 				bestScore = score;

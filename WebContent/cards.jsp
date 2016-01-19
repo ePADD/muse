@@ -137,7 +137,7 @@ for (Document d: allDocs)
 <div id="diary_tab" style="display:none">
 <br/>
 	<div align="center" id="diaryarea">
-		<textarea rows="12" cols="80" class="diary" id="diary"><%=diaryContents%></textarea>
+		<textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" rows="12" cols="80" class="diary" id="diary"><%=diaryContents%></textarea>
 		<br/>
 		<br/>
 		<button onclick="javascript:saveDiary()">Save</button> &nbsp;&nbsp;&nbsp;&nbsp;
