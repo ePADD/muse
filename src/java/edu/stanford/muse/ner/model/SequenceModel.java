@@ -1,5 +1,6 @@
 package edu.stanford.muse.ner.model;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -555,21 +556,21 @@ public class SequenceModel implements NERModel, Serializable {
         return new Pair<>(maps, offsets);
     }
 
-    public void writeModel(File modelFile) throws IOException{
+    public synchronized void writeModel(File modelFile) throws IOException{
         ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(modelFile));
         oos.writeObject(this);
         oos.close();
     }
 
-    public static SequenceModel loadModel(File modelFile) throws IOException{
+    public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
         ObjectInputStream ois = null;
         try {
-            ois = new ObjectInputStream(new FileInputStream(modelFile));
+            ois = new ObjectInputStream(Config.getResourceAsStream(modelPath));
             SequenceModel model = (SequenceModel) ois.readObject();
             ois.close();
             return model;
         } catch (Exception e) {
-            Util.print_exception("Exception while trying to load model from: " + modelFile, e, log);
+            Util.print_exception("Exception while trying to load model from: " + modelPath, e, log);
             return null;
         }
     }
@@ -801,7 +802,7 @@ public class SequenceModel implements NERModel, Serializable {
             }
             System.err.println("Loading model...");
             SequenceModel nerModel = null;
-            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+            try{nerModel = SequenceModel.loadModel(modelFile);}
             catch(IOException e){e.printStackTrace();}
             if(nerModel == null)
                 nerModel = train();
@@ -844,7 +845,7 @@ public class SequenceModel implements NERModel, Serializable {
         }
         System.err.println("Loading model...");
         SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+        try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
         if(nerModel == null)
             nerModel = train();

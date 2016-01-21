@@ -497,7 +497,7 @@ public class AddressBook implements Serializable {
 		}
 
 		String accountName = EmailUtils.getAccountNameFromEmailAddress(email);
-		if (DictUtils.bannedAccountNamesInEmailAddresses.contains(accountName)) {
+		if (DictUtils.bannedAccountNamesInEmailAddresses.contains(accountName.toLowerCase())) {
 			log.info ("not going to consider name-email pair. email: " + email + " name: ");
 			name = ""; // usually something like info@paypal.com or info@evite.com or invitations-noreply@linkedin.com -- we need to ignore the name part of such an email address, so it doesn't get merged with anything else.
 		}

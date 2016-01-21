@@ -1,5 +1,6 @@
 package edu.stanford.muse.ie;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
@@ -62,8 +63,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 		try {
 			TokenNameFinderModel nmodel = new TokenNameFinderModel(new FileInputStream(modelFile));
 			NameFinderME nameFinder = new NameFinderME(nmodel);
-			InputStream tokenStream = FinegrainedEntityRecogniser.class.getClassLoader()
-					.getResourceAsStream("models/en-token.bin");
+			InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
 			TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
 			TokenizerME tokenizer = new TokenizerME(modelTokenizer);
 

@@ -1,5 +1,6 @@
 package edu.stanford.muse.ie;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
@@ -35,7 +36,7 @@ public class Temp {
 		NameFinderME bFinder = null;
 		String BOOK = "book", UNIV = "university", MUSIC_ARTIST = "musical_artist", HOTEL = "hotel", MUSEUM = "museum", COMPANY = "company", AWARD = "award", MOVIE = "movie", PEOPLE = "people";
 		SentenceDetectorME sentenceDetector;
-		InputStream SentStream = Temp.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+		InputStream SentStream = Config.getResourceAsStream("models/en-sent.bin");
 		SentenceModel model = null;
 		TokenizerME tokenizer = null;
 		CharArraySet stopWordsSet = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
@@ -109,7 +110,6 @@ public class Temp {
 			stopWordsPattern.put(type, swPattern);
 		}
 
-		//String[] modelFiles = new String[]{"models/en-ner-people.bin"};
 		NameFinderME[] finders = new NameFinderME[modelFiles.length];
 		Map<String, Set<String>> entities = new HashMap<String, Set<String>>();
 		try {
@@ -117,13 +117,12 @@ public class Temp {
 			for (String modelFile : modelFiles) {
 				//InputStream pis = NLPUtils.class.getClassLoader().getResourceAsStream(modelFiles[i]);
 				System.err.println("Loading: " + modelFiles[i]);
-				TokenNameFinderModel nmodel = new TokenNameFinderModel(Temp.class.getClassLoader().getResourceAsStream(modelFiles[i]));
+				TokenNameFinderModel nmodel = new TokenNameFinderModel(Config.getResourceAsStream(modelFiles[i]));
 				finders[i] = new NameFinderME(nmodel);
 				i++;
 			}
 			model = new SentenceModel(SentStream);
-			InputStream tokenStream = Temp.class.getClassLoader()
-					.getResourceAsStream("models/en-token.bin");
+			InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
 			TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
 			tokenizer = new TokenizerME(modelTokenizer);
 		} catch (Exception e) {

@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.StringTokenizer;
 import java.util.zip.GZIPInputStream;
 
+import edu.stanford.muse.Config;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -40,43 +41,43 @@ public class DictUtils {
 
 	static {
 		try {
-			InputStream is = DictUtils.class.getClassLoader().getResourceAsStream("join.words");
+			InputStream is = Config.getResourceAsStream("join.words");
 			if (is != null) {
 				joinWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("stop.words");
+			is = Config.getResourceAsStream("stop.words");
 			if (is != null) {
 				stopWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("dict.words");
+			is = Config.getResourceAsStream("dict.words");
 			if (is != null) {
 				commonDictWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("dict.words.full");
+			is = Config.getResourceAsStream("dict.words.full");
 			if (is != null) {
 				fullDictWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("words.5000");
+			is = Config.getResourceAsStream("words.5000");
 			if (is != null) {
 				commonDictWords5000 = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("top-names");
+			is = Config.getResourceAsStream("top-names");
 			if (is != null) {
 				topNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("taboo-names");
+			is = Config.getResourceAsStream("taboo-names");
 			if (is != null) {
 				tabooNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				tabooNames.addAll(joinWords);
@@ -85,18 +86,19 @@ public class DictUtils {
 			}
 
 			// banned words and strings in people names (for address book, to avoid noisy names merging unrelated entities)
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedWordsInPeopleNames.txt");
+			is = Config.getResourceAsStream("bannedWordsInPeopleNames.txt");
 			if (is != null) {
 				bannedWordsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedStringsInPeopleNames.txt");
+			is = Config.getResourceAsStream("bannedStringsInPeopleNames.txt");
 			if (is != null) {
 				bannedStringsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedAccountNamesInEmailAddresses.txt");
+
+			is = Config.getResourceAsStream("bannedAccountNamesInEmailAddresses.txt");
 			if (is != null) {
 				bannedAccountNamesInEmailAddresses = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();

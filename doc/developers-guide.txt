@@ -88,6 +88,12 @@ Recommend using CVS repository type "extssh" because it lets command line cvs in
 Recommend setting up ssh key in suif:~/.ssh/authorized_keys and configuring SSH2 support in Eclipse.
 Ctrl-Shift-G (Java references) does not look inside JSPs. Use Ctrl-H instead for raw text search.
 
+Resources:
+---------
+All resources should be accessed with Config.getResourceAsStream()
+This will always look up the settings directory, followed by the classpath.
+This structure allows us to override the resource on the classpath (usually embedded in the war, except for very large files) with one on the local file system.
+
 Building 
 --------
 mvn -f pom-jar.xml to build muse.jar for use in ePADD.

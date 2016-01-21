@@ -15,7 +15,6 @@
  */
 package edu.stanford.muse.webapp;
 
-import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
@@ -402,13 +401,12 @@ public class JSPHelper {
 		archive.close();
 		archive.openForRead();
 
-        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
+        String modelFile = SequenceModel.modelFileName;
         SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
+        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
         log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
+            nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
         }
@@ -418,7 +416,7 @@ public class JSPHelper {
         else {
             NER ner = new NER(archive, nerModel);
             session.setAttribute("statusProvider", ner);
-            ner.recongniseArchive();
+            ner.recognizeArchive();
             archive.processingMetadata.entityCounts = ner.stats.counts;
 			log.info(ner.stats);
         }
@@ -434,9 +432,9 @@ public class JSPHelper {
 //            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
 //            if("memorytest".equals(mode)) {
 //                log.info("Setting dump model to false for NER");
-//                ner.recongniseArchive(false);
+//                ner.recognizeArchive(false);
 //            }else
-//                ner.recongniseArchive(true);
+//                ner.recognizeArchive(true);
 
 //		}
 //		//trying to be extra defensive during indexing.

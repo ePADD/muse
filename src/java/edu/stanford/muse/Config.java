@@ -7,6 +7,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Properties;
 
@@ -66,4 +67,28 @@ public class Config {
 			OPENNLP_NER = Boolean.parseBoolean(s);
 	}
 
+	/** reads a resource with the given offset path. Path components are always separated by forward slashes, just like resource paths in Java.
+	 * First looks in settings folder, then on classpath (e.g. inside war).
+	 * typically for the */
+	public static InputStream getResourceAsStream(String path) {
+		File f = new File(SETTINGS_DIR + File.separator + path.replaceAll("/", File.separator));
+		if (f.exists()) {
+			if (f.canRead()) {
+				log.info ("Reading resource " + path + " from " + f.getAbsolutePath());
+				try {
+					InputStream is = new FileInputStream(f.getAbsoluteFile());
+					return is;
+				} catch (FileNotFoundException fnfe) {
+					Util.print_exception(fnfe, log);
+				}
+			}
+			else
+				log.warn ("Sorry, file exists but cannot read it: " + f.getAbsolutePath());
+		}
+
+		InputStream is = Config.class.getClassLoader().getResourceAsStream(path);
+		if (is == null)
+			log.warn ("UNABLE TO READ RESOURCE FILE: " + path);
+		return is;
+	}
 }

@@ -1,8 +1,10 @@
 package edu.stanford.muse.ner.dictionary;
 
 import com.google.common.collect.*;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.util.Pair;
 
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -238,19 +240,20 @@ public class EnglishDictionary {
 
     public static Set<String> readFile(String fileName){
         Set<String> entries = new LinkedHashSet<>();
-        try{
-            //new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(fileName)));
             String line;
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
                     continue;
                 entries.add(line.trim().toLowerCase());
             }
-        }catch(IOException e){
+        } catch(IOException e){
             log.warn("Cannot read file: "+fileName);
             e.printStackTrace();
         }
+        try { if (br != null) br.close(); } catch (Exception e) { Util.print_exception(e);}
         return entries;
     }
 
