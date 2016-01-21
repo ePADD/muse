@@ -34,6 +34,7 @@ public class DictUtils {
 	public static Set<String>	tabooNames		= new LinkedHashSet<String>();			// this will be ignored by NER
 
 	public static Set<String>	bannedWordsInPeopleNames	= new HashSet<String>(), bannedStringsInPeopleNames = new HashSet<String>();	// bannedWords => discrete word; bannedStrings => occurs anywhere in the name
+	public static Set<String>	bannedAccountNamesInEmailAddresses	= new HashSet<String>();
 	static Set<String>			joinWords					= new HashSet<String>();														// this will be ignored for the indexing
 	private static final String	COMMENT_STRING				= "#";
 
@@ -93,6 +94,11 @@ public class DictUtils {
 			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedStringsInPeopleNames.txt");
 			if (is != null) {
 				bannedStringsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				is.close();
+			}
+			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedAccountNamesInEmailAddresses.txt");
+			if (is != null) {
+				bannedAccountNamesInEmailAddresses = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 

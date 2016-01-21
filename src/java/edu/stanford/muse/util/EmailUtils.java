@@ -38,24 +38,31 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
 	public static Map<String, String>	dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
-	// get a list of possible names, like "First Last" from "First.Last@gmail.com" etc
+	/** Returns the part before @ in an email address, e.g. hangal@gmail.com => hangal.
+	 * Returns the full string if the input does not have @, or null if the input is null. */
+	public static String getAccountNameFromEmailAddress(String email) {
+		if (email == null)
+			return null;
+		int idx = email.indexOf("@");
+		return (idx < 0) ? email : email.substring(0, idx);
+	}
+
+	/** get a list of possible names, like "First Last" from "First.Last@gmail.com" etc */
 	public static List<String> parsePossibleNamesFromEmailAddress(String email)
 	{
 		List<String> result = new ArrayList<String>();
-		int idx = email.indexOf("@");
-		if (idx < 0)
+		if (email == null)
 			return result;
-		String strippedEmail = email.substring(0, idx);
+		String strippedEmail = getAccountNameFromEmailAddress(email);
 
 		// handle addrs like mondy_dana%umich-mts.mailnet@mit-multics.arp, in this case strip out the part after %
-		idx = strippedEmail.indexOf("%");
+		int idx = strippedEmail.indexOf("%");
 		if (idx >= 0)
 			strippedEmail = strippedEmail.substring(0, idx);
 
@@ -463,23 +470,26 @@ public class EmailUtils {
 	// hopefully people don't have any of these words in their names... note, should be lowercase
 
 	/**
-	 * normalizes the given person name.
-	 * strips whitespace at either end
-	 * returns null if not a valid name
+	 * normalizes the given person name, by stripping whitespace at either end, normalizes spaces, so exactly 1 space between tokens.
+	 * returns null if not a valid name or has a banned word/string.
+	 * retains case of the input as is.
+	 * returns same case
 	 */
 	public static String cleanPersonName(String name)
 	{
+		// be careful with case, we want name to remain in its original case
 		if (name == null)
 			return null;
 		name = name.trim();
-		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is
+
+		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is, just lowercasing it.
 			return name.toLowerCase();
-		if ("user".equals(name))
-			return null;
 
 		// a surprising number of names in email headers start and end with a single quote
 		// if so, strip it.
 		if (name.startsWith("'") && name.endsWith("'"))
+			name = name.substring(1, name.length() - 1);
+		if (name.startsWith("\"") && name.endsWith("\""))
 			name = name.substring(1, name.length() - 1);
 
 		// Strip stuff inside parens, e.g. sometimes names are like:
@@ -492,24 +502,27 @@ public class EmailUtils {
 		name = name.trim();
 
 		// normalize spaces
-		// return null if name has banned words - e.g. ben shneiderman's email has different people with the "name" (IPM Return requested)
-		String s = "";
-		StringTokenizer st = new StringTokenizer(name);
-		while (st.hasMoreTokens())
+		// return null if name has banned words - e.g. ben s's email has different people with the "name" (IPM Return requested)
+		String result = "";
+		for (String t: Util.tokenize(name))
 		{
-			String t = st.nextToken();
-			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase()))
+			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase())) {
+				log.info ("Will not consider name (because it has a banned word): " + name);
 				return null;
-			s += t + " ";
+			}
+			result += t + " ";
 		}
 
-		s = s.trim(); // very important, we've added a space after the last token above
+		result = result.trim(); // very important, we've added a space after the last token above
 
+		String lowerCaseName = name.toLowerCase();
 		for (String bannedString : DictUtils.bannedStringsInPeopleNames)
-			if (name.toLowerCase().indexOf(bannedString) >= 0)
+			if (lowerCaseName.indexOf(bannedString) >= 0) {
+				log.info ("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
 				return null;
+			}
 
-		return s;
+		return result;
 	}
 
 	// removes dups from the input list

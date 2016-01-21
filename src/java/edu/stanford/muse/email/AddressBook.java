@@ -17,6 +17,7 @@ package edu.stanford.muse.email;
 
 import edu.stanford.muse.index.DatedDocument;
 import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
@@ -333,10 +334,10 @@ public class AddressBook implements Serializable {
     public String getBestNameForSelf()
     {
         Contact c = getContactForSelf();
-        if (c == null || c.names == null)
+        if (c == null || c.names == null || Util.nullOrEmpty(c.names))
             return "";
 
-        return c.pickBestName();
+        return c.names.iterator().next(); // pick first name for self (not best name! because the best name tries to find the longest string etc. Here for the own name, we want to stay with whatever was provided when the archive/addressbook was created.)
     }
 
     /* subtracts email addresses of the address book's owner from the given list. Used for things like network graphs. */
@@ -494,8 +495,12 @@ public class AddressBook implements Serializable {
 			if (name.contains("@"))
 				name = ""; // name can't be an email address!
 		}
-		if (email.startsWith("info@"))
-			name = ""; // usually something like info@paypal.com or info@evite.com -- we need to ignore the name part of such an email address.
+
+		String accountName = EmailUtils.getAccountNameFromEmailAddress(email);
+		if (DictUtils.bannedAccountNamesInEmailAddresses.contains(accountName)) {
+			log.info ("not going to consider name-email pair. email: " + email + " name: ");
+			name = ""; // usually something like info@paypal.com or info@evite.com or invitations-noreply@linkedin.com -- we need to ignore the name part of such an email address, so it doesn't get merged with anything else.
+		}
 
 		List nameTokens = Util.tokenize(name);
 
