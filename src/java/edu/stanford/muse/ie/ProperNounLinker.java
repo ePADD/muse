@@ -3,8 +3,6 @@ package edu.stanford.muse.ie;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-import com.wcohen.ss.*;
-import com.wcohen.ss.tokens.SimpleTokenizer;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
@@ -513,33 +511,33 @@ public class ProperNounLinker {
         return clusters;
     }
 
-    static SoftTFIDF distance = null;
-    static void initTokenDistance(){
-        distance = new SoftTFIDF(new SimpleTokenizer(true, true), new JaroWinkler(),0.8);
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/10);
-        List lst = new ArrayList<>();
-        for(String entry: dbpedia.keySet())
-            lst.add(distance.prepare(entry));
-        long st = System.currentTimeMillis();
-        distance.train(new BasicStringWrapperIterator(lst.iterator()));
-        log.info("Trained the distance metric on #"+lst.size()+" entries in "+(System.currentTimeMillis()-st)+"ms");
-    }
-
-    static float distance(String s, String t){
-        if(distance == null)
-            initTokenDistance();
-        double d = distance.score(s,t);
-
-        // print it out
-        System.out.println("========================================");
-        System.out.println("String s:  '"+s+"'");
-        System.out.println("String t:  '"+t+"'");
-        System.out.println("Similarity: "+d);
-
-        // a sort of system-provided debug output
-        System.out.println("Explanation:\n" + distance.explainScore(s,t));
-        return (float)d;
-    }
+//    static SoftTFIDF distance = null;
+//    static void initTokenDistance(){
+//        distance = new SoftTFIDF(new SimpleTokenizer(true, true), new JaroWinkler(),0.8);
+//        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/10);
+//        List lst = new ArrayList<>();
+//        for(String entry: dbpedia.keySet())
+//            lst.add(distance.prepare(entry));
+//        long st = System.currentTimeMillis();
+//        distance.train(new BasicStringWrapperIterator(lst.iterator()));
+//        log.info("Trained the distance metric on #"+lst.size()+" entries in "+(System.currentTimeMillis()-st)+"ms");
+//    }
+//
+//    static float distance(String s, String t){
+//        if(distance == null)
+//            initTokenDistance();
+//        double d = distance.score(s,t);
+//
+//        // print it out
+//        System.out.println("========================================");
+//        System.out.println("String s:  '"+s+"'");
+//        System.out.println("String t:  '"+t+"'");
+//        System.out.println("Similarity: "+d);
+//
+//        // a sort of system-provided debug output
+//        System.out.println("Explanation:\n" + distance.explainScore(s,t));
+//        return (float)d;
+//    }
 
     public static void test() {
         BOWtest();
