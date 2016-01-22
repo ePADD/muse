@@ -35,14 +35,14 @@ public class NLPUtils {
 		InputStream sentStream = Config.getResourceAsStream("models/en-sent.bin");
 		SentenceModel model = null;
         InputStream posStream = Config.getResourceAsStream("models/en-pos-maxent.bin");
-        InputStream tokenStream =Config.getResourceAsStream("models/en-token.bin");
+        InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
         InputStream chunkerStream = Config.getResourceAsStream("models/en-chunker.bin");
         try {
             //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
             //case-insesitive dictionary
-//            Dictionary dictionary = new Dictionary(false);
-//            dictionary.put(new StringList("Mr.","Mt."));
-            //WHen teh sentence delimiter list contains '\n', some weird bug in SentenceDetector is causing an exception, dont want to get into that. Reverting the change for now.
+            //Dictionary dictionary = new Dictionary(false);
+            //dictionary.put(new StringList("Mr.","Mt."));
+            //When the sentence delimiter list contains '\n', some weird bug in SentenceDetector is causing an exception, dont want to get into that. Reverting the change for now.
             SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,null,new char[] { '.', '?','!'});
             SentenceModel dummyModel = new SentenceModel(sentStream);
 

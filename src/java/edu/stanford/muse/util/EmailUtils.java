@@ -1406,17 +1406,14 @@ public class EmailUtils {
 	}
 
 	public static Map<String, String> readDBpedia(double p, String typesFile) {
-        boolean resourceFile = false;
-        if(typesFile == null) {
-            typesFile = "instance_types_2014-04.en.txt.bz2";
-            resourceFile = true;
-        }
         if (dbpedia != null) {
             if(p==1)
                 return dbpedia;
             else
                 return sample(dbpedia, p);
         }
+        if(typesFile == null)
+            typesFile = "instance_types_2014-04.en.txt.bz2";
         dbpedia = new LinkedHashMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
@@ -1427,11 +1424,7 @@ public class EmailUtils {
 			}
 
             //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
-            LineNumberReader lnr;
-            if(resourceFile)
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true), "UTF-8"));
-            else
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true)));
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true), "UTF-8"));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
@@ -1532,10 +1525,4 @@ public class EmailUtils {
 	public static Map<String,String> readDBpedia(){
 		return readDBpedia(1.0);
 	}
-
-    public static void main(String[] args){
-//        Map<String,String> dbpedia = readDBpedia();
-//        System.err.println(dbpedia.get("Canada"));
-        System.err.println("hello".indexOf(':'));
-    }
 }
