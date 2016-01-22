@@ -516,7 +516,16 @@ public class MuseEmailFetcher {
 				stats.selectedFolders.add(new Pair<>(fetcherDescription, fi));
 		}
 
-        stats.importStats = aggregatingFetcher.stats;
+		if (op_cancelled)
+			throw new CancelledException();
+		if (out_of_mem)
+			throw new OutOfMemoryError();
+
+		if (aggregatingFetcher != null) {
+			stats.importStats = aggregatingFetcher.stats;
+			if (aggregatingFetcher.mayHaveRunOutOfMemory())
+				throw new OutOfMemoryError();
+		}
         aggregatingFetcher = null; // save memory
 
         long endTimeMillis = System.currentTimeMillis();
@@ -556,10 +565,7 @@ public class MuseEmailFetcher {
 			session.removeAttribute("statusProvider");
 		log.info ("Fetch+index complete: " + Util.commatize(System.currentTimeMillis() - startTime) + " ms");
 
-		if (op_cancelled)
-			throw new CancelledException();
-		if (out_of_mem)
-			throw new OutOfMemoryError();
+
 	}
 
 	public Collection<String> getDataErrors()

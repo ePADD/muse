@@ -334,7 +334,8 @@ public class JSPHelper {
 	 * A VIP method.
 	 * reads email accounts and installs addressBook and emailDocs into session
 	 * useDefaultFolders: use the default folder for that fetcher if there are
-	 * no explicit folders in that fetcher
+	 * no explicit folders in that fetcher.
+	 * throws out of memory error if it runs out of memory.
 	 * 
 	 * @throws JSONException
 	 * @throws IOException
@@ -345,7 +346,7 @@ public class JSPHelper {
 	 * @throws Exception
 	 */
 	public static void fetchAndIndexEmails(Archive archive, MuseEmailFetcher m, HttpServletRequest request, HttpSession session, boolean downloadMessageText, boolean downloadAttachments, boolean useDefaultFolders)
-			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException
+			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError
 	{
 		// first thing, set up a static status so user doesn't see a stale status message
 		session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));

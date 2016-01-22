@@ -59,7 +59,7 @@ class EmailFetcherStats implements Cloneable, Serializable {
 
 	public String toString()
 	{
-		return ""; // Util.fieldsToString(this);
+		return Util.fieldsToString(this);
 	}
 }
 
@@ -1376,6 +1376,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                             log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
                         }
                     }
+                    log.info ("Fetch stats for this fetcher thread: " + stats);
                 }
                 log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis() - st) + "ms");
             }
@@ -1415,8 +1416,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
-		} catch (Exception e) {
-			Util.print_exception(e);
+		} catch (Throwable t) {
+			if (t instanceof OutOfMemoryError)
+				this.mayHaveRunOutOfMemory = true;
+			// this is important, because there could be an out of memory etc over here.
+			Util.print_exception(t, log);
 		} finally {
 			try {
 				if (folder != null)
