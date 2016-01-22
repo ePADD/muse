@@ -629,6 +629,7 @@ public class ProperNounLinker {
         tps.put(new Pair<>("Yograj", "Yog Raj"), true);
         tps.put(new Pair<>("Lakshmi", "Laxmi"), true);
         tps.put(new Pair<>("Chicago University", "Chicago Square"), false);
+        tps.put(new Pair<>("A. J. Cheyer","Adam Cheyer"), false);
         //When we mark two phrases as a valid merge based on one common word then we check if it is a common word,
         //since we rely on american national corpus for such frequencies (stats.txt), some of the valid merges like the one below are marked wrong
         //yet to deal with this problem

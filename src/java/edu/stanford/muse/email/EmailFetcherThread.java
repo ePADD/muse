@@ -72,20 +72,8 @@ class EmailFetcherStats implements Cloneable, Serializable {
 public class EmailFetcherThread implements Runnable, Serializable {
 	private final static long	serialVersionUID		= 1L;
 
-	public static final int		IMAP_PREFETCH_BUFSIZE	= 20 * 1024 * 1024;							/*
-																										 * used
-																										 * for
-																										 * buffering
-																										 * imap
-																										 * prefetch
-																										 * data
-																										 * --
-																										 * necessary
-																										 * for
-																										 * good
-																										 * imap
-																										 * performance
-																										 */
+	public static final int		IMAP_PREFETCH_BUFSIZE	= 20 * 1024 * 1024;
+	/* used for buffering imap prefetch data -- necessary for good imap performance*/
 	public static final String	FORCED_ENCODING			= "UTF-8";
 
 	public static Log			log						= LogFactory.getLog(EmailFetcherThread.class);
