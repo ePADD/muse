@@ -4,7 +4,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="edu.stanford.muse.xword.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.ie.ie.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@ page import="edu.stanford.muse.ie.TypeHierarchy" %>
 <%@ page import="edu.stanford.muse.ie.NameInfo" %>
@@ -46,7 +45,7 @@
 	if (request.getParameter("save") != null)
 		SimpleSessions.saveArchive(session);
 	
-	ArchiveCluer cluer = new ArchiveCluer(null, archive, null, lex);
+	//ArchiveCluer cluer = new ArchiveCluer(null, archive, null, null, lex);
 
 TypeHierarchy th = new TypeHierarchy();
 

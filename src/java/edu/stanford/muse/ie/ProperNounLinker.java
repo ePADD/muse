@@ -2,13 +2,18 @@ package edu.stanford.muse.ie;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+
+import com.wcohen.ss.*;
+import com.wcohen.ss.tokens.SimpleTokenizer;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -84,13 +89,16 @@ public class ProperNounLinker {
 
     static String stripTitles(String str){
         EnglishDictionary.articles.toArray(new String[EnglishDictionary.articles.size()]);
-        List<String> titles = Arrays.asList("Dear", "Hi", "Hello");
+        List<String> titles = new ArrayList<>();
+        titles.addAll(Arrays.asList("dear", "hi", "hello"));
         titles.addAll(EnglishDictionary.personTitles);
         titles.addAll(EnglishDictionary.articles);
 
         for(String t: titles)
-            if(str.startsWith(t+" "))
+            if(str.toLowerCase().startsWith(t+" "))
                 return str.substring(t.length()+1);
+        if(titles.contains(str.toLowerCase()))
+            return "";
         return str;
     }
 
@@ -158,7 +166,7 @@ public class ProperNounLinker {
      *         Canonicalize words being compared: stemmed, lower-cased, expanded if found in the abbreviation dictionary
      *         Scan the canonicalized words in both the phrases and see if the other set contains two contiguous words in one set, if so merge the words into one
      * */
-    static boolean isValidCandidate(String c1, String c2) {
+    static boolean isValidMerge(String c1, String c2) {
         if (c1 == null && c2 == null)
             return true;
         if (c1 == null || c2 == null)
@@ -166,7 +174,7 @@ public class ProperNounLinker {
         c1 = stripTitles(c1);
         c2 = stripTitles(c2);
 
-        if(c1.length()==1 || c2.length()==1)
+        if(c1.length()<=1 || c2.length()<=1)
             return false;
 
         if (c1.equals(c2))
@@ -189,12 +197,12 @@ public class ProperNounLinker {
         c1 = flipComma(c1);
         c2 = flipComma(c2);
 
+        Set<String> bow1, bow2;
+        //They have same acronyms and share non-acronym wo
+
         //acronym check
         if (isAcronymOf(c2, c1) || isAcronymOf(c1, c2))
             return true;
-
-        Set<String> bow1, bow2;
-        //They have same acronyms and share non-acronym words
         //handles [US Supreme Court, United States Supreme Court], [NY Times, NYTimes, New York Times]
         if(Util.getAcronym(c1).equals(Util.getAcronym(c2))) {
             bow1 = nonAcronymWords(c1);
@@ -246,8 +254,9 @@ public class ProperNounLinker {
                 String str = sbow.iterator().next().toLowerCase();
                 str = str.replaceAll("^\\W+|\\W+$","");
                 Pair<Integer,Integer> p = EnglishDictionary.getDictStats().get(str);
-                if(p==null || ((double)p.getFirst()/p.getSecond()>0.3))
+                if(p==null || (((double)p.getFirst()/p.getSecond()>0.3) && (EnglishDictionary.getCommonNames().contains(str) || p.getSecond()<500))) {
                     return true;
+                }
             }
         }
 
@@ -293,7 +302,7 @@ public class ProperNounLinker {
             public boolean isValidMerge(Cluster c){
                 for(String m: mentions)
                     for(String m1: c.mentions)
-                        if(!isValidCandidate(m,m1))
+                        if(!ProperNounLinker.isValidMerge(m, m1))
                             return false;
                 return true;
             }
@@ -504,12 +513,42 @@ public class ProperNounLinker {
         return clusters;
     }
 
+    static SoftTFIDF distance = null;
+    static void initTokenDistance(){
+        distance = new SoftTFIDF(new SimpleTokenizer(true, true), new JaroWinkler(),0.8);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/10);
+        List lst = new ArrayList<>();
+        for(String entry: dbpedia.keySet())
+            lst.add(distance.prepare(entry));
+        long st = System.currentTimeMillis();
+        distance.train(new BasicStringWrapperIterator(lst.iterator()));
+        log.info("Trained the distance metric on #"+lst.size()+" entries in "+(System.currentTimeMillis()-st)+"ms");
+    }
+
+    static float distance(String s, String t){
+        if(distance == null)
+            initTokenDistance();
+        double d = distance.score(s,t);
+
+        // print it out
+        System.out.println("========================================");
+        System.out.println("String s:  '"+s+"'");
+        System.out.println("String t:  '"+t+"'");
+        System.out.println("Similarity: "+d);
+
+        // a sort of system-provided debug output
+        System.out.println("Explanation:\n" + distance.explainScore(s,t));
+        return (float)d;
+    }
+
     public static void test() {
         BOWtest();
         Map<Pair<String,String>,Boolean> tps = new LinkedHashMap<>();
         tps.put(new Pair<>("NYTimes", "NY Times"),true);
         tps.put(new Pair<>("NY Times", "New York Times"), true);
         tps.put(new Pair<>("The New York Times", "New York Times"), true);
+        tps.put(new Pair<>("Times", "New York Times"), false);
+        tps.put(new Pair<>("The Times", "New York Times"), false);
         tps.put(new Pair<>("US Supreme Court", "United States Supreme Court"), true);
         tps.put(new Pair<>("New York Times", "NYT"), true);
         tps.put(new Pair<>("Global Travel Agency", "Global Transport Agency"), false);
@@ -574,7 +613,9 @@ public class ProperNounLinker {
         tps.put(new Pair<>("Harvard School of Business", "Business School"), true);
         //can we handle these??
         tps.put(new Pair<>("Thomas Burton", "Tim"), true);
+        tps.put(new Pair<>("Thomas Burton", "Tim Burton"), true);
         tps.put(new Pair<>("Robert", "Bob Creeley"), true);
+        tps.put(new Pair<>("Robert Creeley", "Bob Creeley"), true);
         tps.put(new Pair<>("Leonardo di ser Piero da Vinci","Leonardo da Vinci"), true);
         tps.put(new Pair<>("Leonardo da Vinci","Leonardo DaVinci"), true);
         tps.put(new Pair<>("Leonardo da Vinci","Leonardo Da Vinci"), true);
@@ -589,6 +630,12 @@ public class ProperNounLinker {
         tps.put(new Pair<>("Chandra Babu", "Chandrababu"), true);
         tps.put(new Pair<>("Yograj", "Yog Raj"), true);
         tps.put(new Pair<>("Lakshmi", "Laxmi"), true);
+        tps.put(new Pair<>("Chicago University", "Chicago Square"), false);
+        //When we mark two phrases as a valid merge based on one common word then we check if it is a common word,
+        //since we rely on american national corpus for such frequencies (stats.txt), some of the valid merges like the one below are marked wrong
+        //yet to deal with this problem
+        tps.put(new Pair<>("Washington", "Washington State"), true);
+        tps.put(new Pair<>("Dharwad University","Dharwad"), false);
 
         int numFailed = 0;
         long st = System.currentTimeMillis();
@@ -596,10 +643,11 @@ public class ProperNounLinker {
             boolean expected = (boolean)e.getValue();
             String cand1 = ((Pair<String,String>)e.getKey()).first;
             String cand2 = ((Pair<String,String>)e.getKey()).second;
-            if (isValidCandidate(cand1, cand2) != expected) {
+            if (isValidMerge(cand1, cand2) != expected) {
                 System.err.println(cand1 + " - " + cand2 + ", expected: " + expected);
                 numFailed++;
             }
+            //compare(cand1,cand2);
         }
         System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+tps.size()+"]");
     }

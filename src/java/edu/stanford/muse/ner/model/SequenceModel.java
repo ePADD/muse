@@ -743,20 +743,21 @@ public class SequenceModel implements NERModel, Serializable {
         try {
             String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
             String modelFile = mwl + SequenceModel.modelFileName;
-            log.info("Performing EM...");
             nerModel.writeModel(new File(modelFile));
             //also write the test split
             String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-            OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-            int numTest = 0;
-            for(String str: test.keySet()) {
-                String orig = str;
-                str = str.replaceAll(" ","_");
-                osw.write(str + " " + test.get(orig) + "\n");
-                numTest++;
+            if(!new File(twl).exists()) {
+                OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
+                int numTest = 0;
+                for (String str : test.keySet()) {
+                    String orig = str;
+                    str = str.replaceAll(" ", "_");
+                    osw.write(str + " " + test.get(orig) + "\n");
+                    numTest++;
+                }
+                osw.close();
+                System.err.println("Wrote "+numTest+" records in test split to: "+twl);
             }
-            osw.close();
-            System.err.println("Wrote "+numTest+" records in test split to: "+twl);
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -838,7 +839,7 @@ public class SequenceModel implements NERModel, Serializable {
         };
     }
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
@@ -851,14 +852,15 @@ public class SequenceModel implements NERModel, Serializable {
         }
         System.err.println("Loading model...");
         SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(new File(modelFile));}
-        catch(IOException e){e.printStackTrace();}
-        if(nerModel == null)
+        try {
+            nerModel = SequenceModel.loadModel(new File(modelFile));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (nerModel == null)
             nerModel = train();
 
-        if(nerModel!=null){
-            //testDBpedia(nerModel);
+        if (nerModel != null)
             testDBpedia(nerModel);
-        }
     }
 }

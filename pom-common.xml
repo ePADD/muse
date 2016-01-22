@@ -201,17 +201,23 @@
 		  <version>0.9.14</version>
 		</dependency>
 
-		<!--<dependency>
-		  <groupId>edu.stanford.nlp</groupId>
-		  <artifactId>stanford-corenlp</artifactId>
-		  <version>3.5.2</version>
-		</dependency>
 		<dependency>
-		  <groupId>edu.stanford.nlp</groupId>
-		  <artifactId>stanford-corenlp</artifactId>
-		  <version>3.5.2</version>
-		  <classifier>models</classifier>
-		</dependency>-->
+		  <groupId>com.wcohen</groupId>
+		  <artifactId>com.wcohen.secondstring</artifactId>
+		  <version>0.0.1-SNAPSHOT</version>
+		  <!--<url>https://github.com/TeamCohen/secondstring</url>-->
+		</dependency>
+		<!--<dependency>
+		    <groupId>edu.stanford.nlp</groupId>
+		    <artifactId>stanford-corenlp</artifactId>
+		    <version>3.5.2</version>
+		    </dependency>
+		    <dependency>
+		      <groupId>edu.stanford.nlp</groupId>
+		      <artifactId>stanford-corenlp</artifactId>
+		      <version>3.5.2</version>
+		      <classifier>models</classifier>
+		    </dependency>-->
 	</dependencies>
 	<build>
 	  <defaultGoal>install</defaultGoal>
