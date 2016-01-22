@@ -541,6 +541,7 @@ public class FeatureDictionary implements Serializable {
                 }
                 str += "\n";
             }
+            str += "Evidence: "+numSeen+"\n";
             return str;
         }
     }
@@ -1161,7 +1162,15 @@ public class FeatureDictionary implements Serializable {
                             }
 
                             MU mu = features.get(p.getFirst());
-                            if(mu.getLikelihoodWithType(ats[0])>0.5) {
+                            Short maxT = -1;double maxV = -1;
+                            for(Short t: ats) {
+                                double d = mu.getLikelihoodWithType(t);
+                                if (d > maxV){
+                                    maxT = t;
+                                    maxV = d;
+                                }
+                            }
+                            if(maxT == type) {
                                 ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
                                 ffw.write(mu.prettyPrint());
                                 ffw.write("========================\n");
