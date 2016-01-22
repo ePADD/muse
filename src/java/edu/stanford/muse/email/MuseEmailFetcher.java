@@ -51,7 +51,7 @@ public class MuseEmailFetcher {
 
     private transient List<MTEmailFetcher> fetchers;
     private transient MTEmailFetcher aggregatingFetcher;
-    public transient List<EmailStore> emailStores = new ArrayList<EmailStore>();
+    public transient List<EmailStore> emailStores = new ArrayList<>();
 	
 	/////////////////////////// account setup stuff
 	
@@ -138,7 +138,6 @@ public class MuseEmailFetcher {
 	 * Note: emailAddress is slightly overloaded (can be a plain login name also in case server is specified)
 	 * imapServer is ignored (and can be null) for a well-known email address like Gmail/Y/H/Stanford etc.
 	 * @throws JSONException 
-	 * @throws IOException 
 	 * returns true if the a/c was actually created.
 	 */
 	public synchronized JSONObject addServerAccount(String server, String protocol, String defaultFolderName, String emailAddress, String password, boolean sentOnly) throws JSONException
@@ -277,8 +276,7 @@ public class MuseEmailFetcher {
 			}
 		} catch (Exception e)
 		{
-			String failMessage = getUserDisplayableMessageForException(emailStore, e);
-			return failMessage;
+			return getUserDisplayableMessageForException(emailStore, e);
 		}
 
 		return "";		
@@ -287,7 +285,7 @@ public class MuseEmailFetcher {
 	/** utility method for converting an exception encountered in this fetcher to something that can be shown to the user */
 	public static String getUserDisplayableMessageForException(EmailStore store, Exception e)
 	{
-		String failMessage = null;
+		String failMessage;
 
 		if (e instanceof AuthenticationFailedException)
 		{
@@ -337,12 +335,12 @@ public class MuseEmailFetcher {
 	private void setupFoldersForFetchers(List<MTEmailFetcher> fetchers, String[] selectedFolders, boolean useDefaultFolders) throws UnsupportedEncodingException, MessagingException, NoDefaultFolderException
 	{
 	    // now compute foldersForEachFetcher
-	    Map<String, Integer> accountNameToFetcherIdx = new LinkedHashMap<String, Integer>();
-	    List<List<String>> foldersForEachFetcher = new ArrayList<List<String>>();
+	    Map<String, Integer> accountNameToFetcherIdx = new LinkedHashMap<>();
+	    List<List<String>> foldersForEachFetcher = new ArrayList<>();
 	    for (int i = 0; i < fetchers.size(); i++)
 	    {
 	    	accountNameToFetcherIdx.put (emailStores.get(i).getDisplayName(), i);
-	    	foldersForEachFetcher.add(new ArrayList<String>());
+	    	foldersForEachFetcher.add(new ArrayList<>());
 	    }
 
 	    if (selectedFolders != null)
@@ -440,11 +438,9 @@ public class MuseEmailFetcher {
     /** key method to fetch actual email messages. can take a long time.
      * @param session is used only to set the status provider object. callers who do not need to track status can leave it as null
      * @param selectedFolders is in the format <account name>^-^<folder name>
-     * @session is used only to put a status object in. can be null in which case status object is not set.
-     * @return triple (e.g. setup has not been called); otherwise returns a triple containing
+     * @param session is used only to put a status object in. can be null in which case status object is not set.
      * emailDocs, addressBook and blobstore
      * @throws NoDefaultFolderException 
-     * @throws Exception 
      * */
 	public void fetchAndIndexEmails(Archive archive, String[] selectedFolders, boolean useDefaultFolders, FetchConfig fetchConfig, HttpSession session)
 				throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException
@@ -471,9 +467,10 @@ public class MuseEmailFetcher {
 	    List<FolderInfo> fetchedFolderInfos = new ArrayList<FolderInfo>();
 	    
 	    // one fetcher will aggregate everything
-		aggregatingFetcher = null;
 		FetchStats stats = new FetchStats();
+        aggregatingFetcher = null;
 
+		// a fetcher is one source, like an account or a top-level mbox dir. A fetcher could include multiple folders.
 		long startTimeMillis = System.currentTimeMillis();
 	    for (MTEmailFetcher fetcher: fetchers)
 	    {
@@ -486,8 +483,8 @@ public class MuseEmailFetcher {
 	    	fetcher.setFetchConfig(fetchConfig);
 		    log.info("Memory status before fetching emails: " + Util.getMemoryStats());
 
-		    List<FolderInfo> foldersFetchedByThisFetcher = fetcher.run();	
-		    
+		    List<FolderInfo> foldersFetchedByThisFetcher = fetcher.run(); // this is the big call, can run for a long time. Note: running in the same thread, its not fetcher.start();
+
 			// if fetcher was cancelled or out of mem, bail out of all fetchers
 			// but don't abort immediately, only at the end, after addressbook has been built for at least the processed messages
 			if (fetcher.isCancelled())
@@ -499,7 +496,7 @@ public class MuseEmailFetcher {
 			
 			if (fetcher.mayHaveRunOutOfMemory())
 			{
-				log.warn ("fetcher operation ran out of memory");
+				log.warn ("Fetcher operation ran out of memory " + fetcher);
 				out_of_mem = true;
 				break;
 			}
@@ -516,14 +513,17 @@ public class MuseEmailFetcher {
 			EmailStore store = fetcher.getStore();
 			String fetcherDescription = store.displayName + ":" + store.emailAddress;
 			for (FolderInfo fi: fetchedFolderInfos)
-				stats.selectedFolders.add(new Pair<String, FolderInfo>(fetcherDescription, fi));
+				stats.selectedFolders.add(new Pair<>(fetcherDescription, fi));
 		}
 
-		long endTimeMillis = System.currentTimeMillis();
+        stats.importStats = aggregatingFetcher.stats;
+        aggregatingFetcher = null; // save memory
+
+        long endTimeMillis = System.currentTimeMillis();
 		long elapsedMillis = endTimeMillis - startTimeMillis;
 	    log.info(elapsedMillis + " ms for fetch+index, Memory status: " + Util.getMemoryStats());
-	    
-		List<EmailDocument> allEmailDocs = (List) archive.getAllDocs();
+
+		List<EmailDocument> allEmailDocs = (List) archive.getAllDocs(); // note: this is all archive docs, not just the ones that may have been just imported
 
 		archive.addFetchedFolderInfos(fetchedFolderInfos);
 
@@ -543,11 +543,11 @@ public class MuseEmailFetcher {
 
 		// we shouldn't really have dups now because the archive ensures that only unique docs are added
 		// move sorting to archive.postprocess? 
-	    allEmailDocs = EmailUtils.removeDupsAndSort(allEmailDocs);
+	    EmailUtils.removeDupsAndSort(allEmailDocs);
 
 	    // report stats
 		stats.lastUpdate = new Date().getTime();
-		stats.nMessagesOriginal = allEmailDocs.size();
+
 		stats.userKey = "USER KEY UNUSED"; // (String) JSPHelper.getSessionAttribute(session, "userKey");
 		stats.fetchAndIndexTimeMillis = elapsedMillis;
 
@@ -564,12 +564,12 @@ public class MuseEmailFetcher {
 
 	public Collection<String> getDataErrors()
 	{
-		Collection<String> result = new LinkedHashSet<String>();
+		Collection<String> result = new LinkedHashSet<>();
 		if (fetchers == null)
 			return result;
 
 		for (MTEmailFetcher fetcher: fetchers) {
-            if(fetcher!=null && fetcher.getDataErrors()!=null && result!=null)
+            if(fetcher!=null && fetcher.getDataErrors()!=null)
                 result.addAll(fetcher.getDataErrors());
         }
 		return result;
@@ -591,14 +591,12 @@ public class MuseEmailFetcher {
 			if (received)
 				nReceived++;
 		}
-//		stats.nMessagesSent = nSent;
-//		stats.nMessagesReceived = nReceived;
 		stats.dataErrors = getDataErrors();
-		stats.nMessages = allEmailDocs.size();
+		stats.nMessagesInArchive = allEmailDocs.size();
 		/* compute stats for time range */
 		if (allEmailDocs.size() > 0)
 		{
-			Pair<Date, Date> p = EmailUtils.getFirstLast(allEmailDocs);		
+			Pair<Date, Date> p = EmailUtils.getFirstLast(allEmailDocs);
 			stats.firstMessageDate = p.getFirst().getTime();
 			stats.lastMessageDate = p.getSecond().getTime();
 		}
@@ -606,11 +604,6 @@ public class MuseEmailFetcher {
 		log.info("Fetcher stats: " + stats);
 	}
 
-	public BlobStore getAttachmentsStore()
-	{
-		return aggregatingFetcher.getAttachmentsStore();
-	}
-	
 	public String toString()
 	{
 		return "Muse email fetcher with " + fetchers.size() + " fetcher(s)";

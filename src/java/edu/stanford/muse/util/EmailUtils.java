@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
@@ -1419,20 +1420,24 @@ public class EmailUtils {
         dbpedia = new LinkedHashMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
+			InputStream is = Config.getResourceAsStream(typesFile);
+			if (is == null) {
+				log.warn ("Dbpedia file resource could not be read!!");
+				return dbpedia;
+			}
+
             //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
             LineNumberReader lnr;
             if(resourceFile)
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
+                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true), "UTF-8"));
             else
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(typesFile),true)));
+                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true)));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
                     break;
-                if (lines++ % 10000 == 0)
+                if (lines++ % 1000000 == 0)
                     log.info("Processed " + lines + " lines of approx. 3.02M in " + typesFile);
-//                if (lines > 500000)
-//                    break;
 
                 if (line.contains("GivenName"))
                     continue;
@@ -1515,7 +1520,6 @@ public class EmailUtils {
 		}
 
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
-        log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
 		return sample(dbpedia,p);
 	}
