@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.stanford.muse.Config;
 import opennlp.tools.chunker.Chunker;
 import opennlp.tools.chunker.ChunkerME;
 import opennlp.tools.chunker.ChunkerModel;
@@ -31,15 +32,11 @@ public class NLPUtils {
     public static Chunker chunker;
 
 	static {
-		InputStream sentStream = NLPUtils.class.getClassLoader()
-				.getResourceAsStream("models/en-sent.bin");
+		InputStream sentStream = Config.getResourceAsStream("models/en-sent.bin");
 		SentenceModel model = null;
-        InputStream posStream = NLPUtils.class.getClassLoader()
-                .getResourceAsStream("models/en-pos-maxent.bin");
-        InputStream tokenStream = NLPUtils.class.getClassLoader()
-                .getResourceAsStream("models/en-token.bin");
-        InputStream chunkerStream = NLPUtils.class.getClassLoader()
-                .getResourceAsStream("models/en-chunker.bin");
+        InputStream posStream = Config.getResourceAsStream("models/en-pos-maxent.bin");
+        InputStream tokenStream =Config.getResourceAsStream("models/en-token.bin");
+        InputStream chunkerStream = Config.getResourceAsStream("models/en-chunker.bin");
         try {
             //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
             //case-insesitive dictionary

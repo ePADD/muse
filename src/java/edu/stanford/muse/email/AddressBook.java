@@ -17,10 +17,10 @@ package edu.stanford.muse.email;
 
 import edu.stanford.muse.index.DatedDocument;
 import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
@@ -32,11 +32,11 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
+ * VIP class.
  * A set of contacts gleaned from email messages.
  * includes some data integration, i.e. people with same name & diff. email addr (or vice versa)
  * are all merged into one contact object.
- * an addressbook can be merged with another,
- * unifying names and email addresses in common.
+ * an addressbook can be merged with another, unifying names and email addresses in common.
  * Usage:
  * to setup: create a addressBook(self addrs),
  * call processContactsFromMessage for each message
@@ -52,20 +52,23 @@ public class AddressBook implements Serializable {
     public static Log log = LogFactory.getLog(AddressBook.class);
 	private final static long serialVersionUID = 1L;
 
-	/** important: be careful about lower/upper case for emailToInfo. has caused problems before. ideally
-	 * everything should be lower case.
-	 * nameToInfo might also run into this problem, but hasn't so far.
-	 * be careful! nameToInfo has to be only looked up with the result of
-	 * Util.normalizePersonNameForLookup(string). the lookup string is different from the name's display string!
+	/** there are 3 important maps maintained in the address book.
+	 * emailToContact from email address to corresponding contact
+	 * nameToContact from a (multi-word) normalized name to corresponding contact (normalized means case-and-space-canonicalized, order independent, etc. See Util.normalizePersonNameForLookup()
+	 * nameTokenToContacts is from a single token in a word to all names with that word.
+	 *
+	 * be careful! lower/upper case for the key to emailToContact. has caused problems before. ideally everything should be lower case.
+	 * be careful! nameToContact has to be only looked up with the result of Util.normalizePersonNameForLookup(string). the lookup string is different from the name's display string!
 	 * preferably do not use emailToContact and nameToContact directly -- use lookupEmail or lookupName
 	 */
 	private Map<String,Contact> emailToContact = new LinkedHashMap<String,Contact>(); // do not .put/get directly, use addEmailAddressForContact()
-	private Map<String,Contact> nameToContact = new LinkedHashMap<String,Contact>(); // do not access directly, use addNameForContact()
+	private Map<String,Contact> nameToContact = new LinkedHashMap<String,Contact>(); // do not access directly, use addNameForContactAndUpdateMaps()
 	private Map<String,Set<Contact>> nameTokenToContacts = new LinkedHashMap<String,Set<Contact>>(); // maps, e.g., Jim to all contacts with Jim in its name
+
 	private Contact contactForSelf;
 	private Collection<String> dataErrors = new LinkedHashSet<String>();
 	
-	/** these are for providing a layer of opaqueness to contact emails in public mode */
+	/** these are for providing a layer of opaqueness to contact emails in discovery mode */
 	transient private List<Contact> contactListForIds = new ArrayList<Contact>();
 	private Map<Contact,Integer> contactIdMap = new LinkedHashMap<Contact, Integer>();
 	transient private Map<String,String> emailMaskingMap = null;
@@ -115,7 +118,7 @@ public class AddressBook implements Serializable {
 		
 		if (selfNames != null)
 			for (String n: selfNames)
-				addNameForContact(n, c);
+				addNameForContactAndUpdateMaps(n, c);
 		contactForSelf = c;
 	}
 
@@ -173,9 +176,9 @@ public class AddressBook implements Serializable {
 						if (s.contains("@"))
 							addEmailAddressForContact(s, c);
 						else
-							addNameForContact(s, c);
+							addNameForContactAndUpdateMaps(s, c);
 					
-					if (contactForSelf == null)
+					if (contactForSelf == null) // this must be the first contact
 						contactForSelf = c;
 				}
 				linesForContact.clear();
@@ -183,9 +186,9 @@ public class AddressBook implements Serializable {
 		}
         String firstLines = text.substring(0,text.substring(3).indexOf("--"));
         if(contactForSelf == null || contactForSelf.emails == null || contactForSelf.emails.size() == 0)
-            log.info("Could not identify self in the starting lines: \n" +firstLines);
+            log.warn("Could not identify self in the starting lines: \n" +firstLines);
         else
-            log.info("Initialised self contact: "+contactForSelf);
+            log.info("Initialised self contact: " + contactForSelf);
 		reassignContactIds();
 	}
 
@@ -204,8 +207,12 @@ public class AddressBook implements Serializable {
 		c.emails.add(email);
 		emailToContact.put(email, c);
 	}
-	
-	private void addNameForContact(String name, Contact c)
+
+    /** this is an important method that should be the only way to update a name in a contact, and maintains the nameToContact and nameTokenToContact maps.
+     * it normalizes the given name and adds it to c.
+     * however, it adds it to the nameToContact map only if its a multi-word name.
+     * In any case it also adds it nameTokenToContact map for all words in the name. */
+	private void addNameForContactAndUpdateMaps(String name, Contact c)
 	{
 		if (Util.nullOrEmpty(name))
 			return;
@@ -213,7 +220,11 @@ public class AddressBook implements Serializable {
 		// trim is the one operation we do on the source name. otherwise, we want to retain it in its original form, for capitalization etc.
 		name = name.trim();
 		c.names.add(name);
-		nameToContact.put(EmailUtils.normalizePersonNameForLookup(name), c);
+
+		// nameToContact is very important, so only add to it if we're fairly certain about the name.
+		if (Util.tokenize(name).size() > 1)
+			nameToContact.put(EmailUtils.normalizePersonNameForLookup(name), c);
+
 		List<String> tokens = EmailUtils.normalizePersonNameForLookupAsList(name);
 		if (tokens == null) return;
 		for (String token : tokens) {
@@ -226,116 +237,10 @@ public class AddressBook implements Serializable {
 		}	
 	}
 
-	public int size()
-	{
-		return allContacts().size();
-	}
 
-	public Set<String> getOwnAddrs() { 
-		if (contactForSelf != null && contactForSelf.emails != null)
-			return Collections.unmodifiableSet(contactForSelf.emails);
-			
-		return new LinkedHashSet<String>();
-	}
-
-	public Set<String> getOwnNamesSet() { 
-		// just trim because some names seem to have spaces remaining at the end
-		Set<String> result = new LinkedHashSet<String>();
-		for (String s: contactForSelf.names)
-			result.add(s.trim());
-		return Collections.unmodifiableSet(result); 
-	}
-
-	public Contact getContactForSelf()
-	{
-		return contactForSelf;
-	}
-
-	/** return best name to display. empty string if no names available. 
-	 * warning: this overlaps with contact.pickbestname() */
-	public String getBestNameForSelf()
-	{		
-		Contact c = getContactForSelf();
-		if (c == null || c.names == null)
-			return "";
-		
-		return c.pickBestName();
-		/*
-		// why not just use c.pickBestName() ?
-		float bestScore = Float.MIN_VALUE;
-		String bestName = "";
-		
-		for (String name: c.names)
-		{
-			// score the names and put the best one in bestName
-			StringTokenizer st = new StringTokenizer(name);
-			float score = 0.0f;
-			int nTokens = st.countTokens();
-			if (nTokens == 2 || nTokens == 3)
-				score += nTokens;
-			while (st.hasMoreTokens())
-			{
-				String token = st.nextToken();
-				if (token.length() == 1)
-					score -= 1.0f; // penalize name components of length just 1 -> we prefer Sudheendra Hangal to S Hangal
-				if (Character.isLowerCase(token.charAt(0)))
-					score -= 0.5f; // penalize lower-case name components -> we prefer Sudheendra Hangal to sudheendra Hangal
-				if (token.toLowerCase().indexOf("user") >= 0) // sometimes we see "names" such as "pbwiki user", "authenticated web user", etc.
-					score -= 1.0f;
-				if (token.toLowerCase().indexOf("viagra") >= 0) // unfortunately, sometimes we see "names" such as "viagra official site"
-					score -= 1.0f;
-			}
-			
-			if (score > bestScore)
-			{
-				bestScore = score;
-				bestName = name;
-			}
-		}
-		
-		return bestName;
-		*/
-	}
-	
-	public List<String> removeOwnAddrs(List<String> input)
-	{
-		return Util.removeStrings (input, getOwnAddrs());
-	}
-
-	/** possible dup. between pickBestName and score above? */
-	public String getBestDisplayNameForEmail(String email)
-	{
-		Contact c = this.lookupByEmail(email);
-		if (c == null)
-		{
-			JSPHelper.log.warn("No contact for email address! " + email);
-			return "";
-		}
-		String displayName;
-		if (c.names != null && c.names.size() > 0)
-			displayName = c.pickBestName(); // just pick the first name
-		else
-			displayName = email;
-		return displayName;
-	}
-
-	/** returns true iff a's email address is one of those contained in use's self emailAddrs */
-	boolean isMyAddress(InternetAddress a)
-	{
-		if (a == null)
-			return false;
-
-		String aLower = a.getAddress().toLowerCase();
-		Contact selfContact = getContactForSelf();
-		if (selfContact == null)
-			return false;
-
-		return selfContact.emails.contains(aLower);
-	}
-
-	/** the CIs for name and email are unified if they are not already the same
+	/** the Contacts for name and email are unified if they are not already the same
 		returns the contact for name/email (creates a new contact if needed)
-		 name could be null, email cannot be
+		 name could be null (or empty, which is equivalent), email cannot be
 	 * @return
 	 */
 	private synchronized Contact unifyContact(String email, String name)
@@ -343,25 +248,19 @@ public class AddressBook implements Serializable {
 		// we'll implement a weaker pre-condition: both name and email could be null
 		Contact cEmail = null;
 		Contact cName = null;
+        if (Util.nullOrEmpty(email)) {
+            log.warn ("Confused: email is null or empty:\n" + Util.stackTrace());
+            return null;
+        }
+
 		if (name != null && name.length() == 0)
 			name = null; // map empty name to null -- we don't want to have contacts for empty names
 
-		// we often see cases (e.g. in creeley and bush archives) where the name is just the email address in single quotes To: "'creeley@acsu.buffalo.edu'" <creeley@acsu.buffalo.edu>
-		// Ignore the name if this is the case, otherwise it bothers users to see spurious names.
-		if (name != null && name.equals("'" + email + "'"))
-			name = null;
 		if (name != null && name.equals(email)) // if the name is exactly the same as the email, it has no content.
-			name = null;
-		// sometimes the name field incorrectly has an email address.
-		// we need to mask these out permanently; otherwise in discovery mode, we'll be revealing email addresses thinking they are names.
-		if (name != null)
-		{
-			int idx = name.indexOf("@");
-			if (idx >= 0)
-				name = name.substring(0, idx+1) + "...";
-		}
+ 			name = null;
+
 		email = email.trim().toLowerCase();
-		// get existing CIs for email/name
+		// get existing contacts for email/name
 		if (email != null)
 			cEmail = lookupByEmail(email);
 		if (name != null)
@@ -376,8 +275,8 @@ public class AddressBook implements Serializable {
 		
 		if (cEmail != null)
 		{
-			if(name != null)
-				addNameForContact(name, cEmail);
+			if (name != null)
+				addNameForContactAndUpdateMaps(name, cEmail);
 			return cEmail;
 		}
 
@@ -387,19 +286,100 @@ public class AddressBook implements Serializable {
 			return cName;
 		}
 
+		// neither cEmail nor cName was found. new contact.
+
 		Contact c = new Contact(); // this blank Contact will be set up on the fly later
 		contactIdMap.put(c, contactListForIds.size());
 		contactListForIds.add(c);
 		addEmailAddressForContact(email, c);
 
-		if(name != null) {
-			addNameForContact(name, c);
+		if (name != null) {
+			addNameForContactAndUpdateMaps(name, c);
 		}
 
 		return c;
 	}
 
-	/** preferably use this instead of using emailToContact directly.
+    /** returns the number of contacts in this address book */
+    public int size()
+    {
+        return allContacts().size();
+    }
+
+    /** returns an unmodifiable set of the owner's email addresses */
+    public Set<String> getOwnAddrs() {
+        if (contactForSelf != null && contactForSelf.emails != null)
+            return Collections.unmodifiableSet(contactForSelf.emails);
+
+        return new LinkedHashSet<String>();
+    }
+
+    /** returns an unmodifiable set of the owner's names */
+    public Set<String> getOwnNamesSet() {
+        // just trim because some names seem to have spaces remaining at the end
+        Set<String> result = new LinkedHashSet<String>();
+        for (String s: contactForSelf.names)
+            result.add(s.trim());
+        return Collections.unmodifiableSet(result);
+    }
+
+    /** gets the contact object for this address book's owner */
+    public Contact getContactForSelf()
+    {
+        return contactForSelf;
+    }
+
+    /** return best name to display for owner of this address book. empty string if no names available.
+     * warning: this overlaps with contact.pickbestname() */
+    public String getBestNameForSelf()
+    {
+        Contact c = getContactForSelf();
+        if (c == null || c.names == null || Util.nullOrEmpty(c.names))
+            return "";
+
+        return c.names.iterator().next(); // pick first name for self (not best name! because the best name tries to find the longest string etc. Here for the own name, we want to stay with whatever was provided when the archive/addressbook was created.)
+    }
+
+    /* subtracts email addresses of the address book's owner from the given list. Used for things like network graphs. */
+    public List<String> removeOwnAddrs(List<String> input)
+    {
+        return Util.removeStrings (input, getOwnAddrs());
+    }
+
+    /** returns the best name to display for the given email address.
+     * If we don't have any name for the owner, we'll return the email address. */
+    public String getBestDisplayNameForEmail(String email)
+    {
+        Contact c = this.lookupByEmail(email);
+        if (c == null)
+        {
+            log.warn("No contact for email address! " + email);
+            return "";
+        }
+        String displayName;
+        if (c.names != null && c.names.size() > 0)
+            displayName = c.pickBestName(); // just pick the first name
+        else
+            displayName = email;
+
+        return displayName;
+    }
+
+    /** returns true iff a's email address is one of the address book owner's */
+    boolean isMyAddress(InternetAddress a)
+    {
+        if (a == null)
+            return false;
+
+        String email = EmailUtils.cleanEmailAddress(a.getAddress());
+        Contact selfContact = getContactForSelf();
+        if (selfContact == null)
+            return false;
+
+        return selfContact.emails.contains(email);
+    }
+
+    /** preferably use this instead of using emailToContact directly.
 	 * protects against null input and canonicalizes the input etc.
 	 * be prepared for it to return null, just in case (the addr book could have been re-initialized directly by the user
 	 */
@@ -421,7 +401,33 @@ public class AddressBook implements Serializable {
 		return emailToContact.get(s1);
 	}
 
+    /** returns the contact object for the given name.
+     * If multi word name, looks up in multi word map.
+     * If single word name, looks up in the nameTokenToContacts map and returns the first one in that map (since there can be several)
+     */
 	public Contact lookupByName(String s)
+	{
+		// look among the single tokens
+		List<String> tokens = Util.tokenize(s);
+		if (tokens.size() == 1) {
+            // single word name
+			String normalizedName = EmailUtils.normalizePersonNameForLookup(s); // normalize even if single word name
+			if (normalizedName == null)
+				return null;
+
+			Collection<Contact> c = nameTokenToContacts.get(normalizedName); // note
+			if (c != null && c.size() > 0)
+				return c.iterator().next(); // ooh... more than one contact has this (single) name arbitrarily returns the first one
+			else
+				return null;
+		} else {
+			return lookupByNameMultiWord(s);
+		}
+	}
+
+	/** this is a lookup for multiword names only.
+     * it uses the nameToContact map which is only used for multiword names */
+	private Contact lookupByNameMultiWord(String s)
 	{
 		if (s == null)
 			return null;
@@ -432,7 +438,7 @@ public class AddressBook implements Serializable {
 		return nameToContact.get(normalizedName);
 	}
 	
-	public Set<Contact> lookupByNameAsSet(String s)
+	public Set<Contact> lookupByNameTokenAsSet(String s)
 	{
 		if (s == null)
 			return null;
@@ -472,46 +478,8 @@ public class AddressBook implements Serializable {
 		return lookupByName(s);
 	}
 
-	// get a list of possible names, like "First Last" from "First.Last@gmail.com" etc
-	private static List<String> parsePossibleNamesFromEmailAddress(String email)
-	{
-		List<String> result = new ArrayList<String>();
-		int idx = email.indexOf("@");
-		if (idx < 0)
-			return result;
-		String strippedEmail = email.substring(0, idx);
-
-		// handle addrs like mondy_dana%umich-mts.mailnet@mit-multics.arp, in this case strip out the part after %
-		idx = strippedEmail.indexOf("%");
-		if (idx >= 0)
-			strippedEmail = strippedEmail.substring(0, idx);
-		
-		// 2 sets of splitters, one containing just periods, other just underscores.
-		// most people have periods, but at least Dell has underscores
-		String[] splitters = new String[]{".", "_"};
-		for (String splitter: splitters)
-		{
-			StringTokenizer st = new StringTokenizer (strippedEmail, splitter);
-			int nTokens = st.countTokens();
-			// allow only first.last or first.middle.last
-			if (nTokens < 2 || nTokens > 3)
-				continue;
-
-			String possibleName = "";
-			while (st.hasMoreTokens())
-			{
-				String token = st.nextToken();
-				if (Util.hasOnlyDigits(token))
-					return result; // abort immediately if only numbers, we don't want things like 70451.2444@compuserve.com
-				possibleName += Util.capitalizeFirstLetter(token) + " "; // optionally we could upper case first letter of each token.
-			}
-			possibleName = possibleName.trim(); // remove trailing space
-			result.add(possibleName);
-		}
-		return result;
-	}
-	
-	/* this needs to be cleaned up - its not clear which methods are idempotent and which not */
+	/* Single place where a <name, email address> equivalence is registered (and used to build the address book and merge different names/email addresses together.
+		Any evidence of a name belonging to an email address should be logged by calling this method. */
 	Contact registerAddress(InternetAddress a)
 	{
 		// get email and name and normalize. email cannot be null, but name can be.
@@ -524,30 +492,28 @@ public class AddressBook implements Serializable {
 			// watch out for bad "names" and ignore them
 			if (name.toLowerCase().equals("'" + email.toLowerCase() + "'")) // sometimes the "name" field is just the same as the email address with quotes around it
 				name = "";
-			if (name.toLowerCase().startsWith("undisclosed-recipients")) // we see a lot of these in legacy archives
-				name = "";
-			for (String taboo: EmailUtils.tabooEmailNames) {
-				if (taboo.equalsIgnoreCase(name)) {
-					name = "";
-					log.info("Dropping bad name: " + taboo);
-					break;
-				}
-			}
+			if (name.contains("@"))
+				name = ""; // name can't be an email address!
 		}
 
+		String accountName = EmailUtils.getAccountNameFromEmailAddress(email);
+		if (DictUtils.bannedAccountNamesInEmailAddresses.contains(accountName.toLowerCase())) {
+			log.info ("not going to consider name-email pair. email: " + email + " name: ");
+			name = ""; // usually something like info@paypal.com or info@evite.com or invitations-noreply@linkedin.com -- we need to ignore the name part of such an email address, so it doesn't get merged with anything else.
+		}
+
+		List nameTokens = Util.tokenize(name);
+
 		Contact c = unifyContact(email, name);
-	
+
 		// DEBUG point: enable this to see all the incoming names and email addrs
-		if (log.isDebugEnabled())
-			if (!c.names.contains(name))
-				log.debug("got a name and email addr: " + name + " | " + email);
-		
 		if (!c.emails.contains(email))
 		{
-			log.debug("merging email " + email + " into contact " + c);
+            if (log.isDebugEnabled())
+                log.debug("merging email " + email + " into contact " + c);
 			c.emails.add(email);
 		}
-		
+
 		if (!Util.nullOrEmpty(name) && !c.names.contains(name))
 		{
 			if (log.isDebugEnabled() && !c.names.contains(name))
@@ -556,19 +522,21 @@ public class AddressBook implements Serializable {
 		}
 
 		// look for names from first.last@... style of email addresses
-		List<String> namesFromEmailAddress = parsePossibleNamesFromEmailAddress(email);
+		List<String> namesFromEmailAddress = EmailUtils.parsePossibleNamesFromEmailAddress(email);
 		if (log.isDebugEnabled())
 		{
 			for (String s: namesFromEmailAddress)
 				log.debug ("extracted possible name " + s + " from email " + email);
 		}
 		if (namesFromEmailAddress != null)
-			for (String possibleName: namesFromEmailAddress)
-				unifyContact(email, possibleName);
+			for (String possibleName: namesFromEmailAddress) {
+				if (nameTokens.size() >= 2)
+					unifyContact(email, possibleName);
+			}
 		return c;
 	}
 
-	private boolean processContacts(List<Address> toCCBCCAddrs, Address fromAddrs[], Date date, String[] sentToMailingLists)
+	private boolean processContacts(List<Address> toCCBCCAddrs, Address fromAddrs[], String[] sentToMailingLists)
 	{
 		// let's call registerAddress first just so that the name/email maps can be set up
 		if (toCCBCCAddrs != null)
@@ -620,6 +588,7 @@ public class AddressBook implements Serializable {
 		return true;
 	}
 
+    /** this method should be called with every email doc in the archive */
 	public synchronized void processContactsFromMessage(EmailDocument ed)
 	{
 		List<Address> toCCBCC = ed.getToCCBCC();
@@ -632,12 +601,12 @@ public class AddressBook implements Serializable {
 			markDataError ("No from address for: " + ed);
 		if (ed.date == null)
 			markDataError ("No date for: " + ed);
-		boolean b = processContacts(ed.getToCCBCC(), ed.from, ed.date, ed.sentToMailingLists);
+		boolean b = processContacts(ed.getToCCBCC(), ed.from, ed.sentToMailingLists);
 		if (!b && !noToCCBCC) // if we already reported no to address problem, no point reporting this error, it causes needless duplication of error messages.
 			markDataError ("Owner not sender, and no to addr for: " + ed);
 	}
 
-	/** checks if s occurs (case normalized) as part of ANY name for ANY contact */
+	/** checks if s occurs (case normalized) as part of ANY name for ANY contact. used for memory study */
 	public boolean isStringPartOfAnyAddressBookName(String s) {
 		Collection<Contact> contacts = this.allContacts();
 		for (Contact c: contacts)
@@ -710,7 +679,8 @@ public class AddressBook implements Serializable {
 		return count;
 	}
 
-	/* if inNOut is false, all dates are set to outdates */
+	/* returns a pair of lists of in and out dates of the given docs.
+	 if inNOut is false, all dates are set to outdates */
 	public Pair<List<Date>, List<Date>> splitInOutDates(Collection<DatedDocument> docs, boolean inNOut)
 	{
 		// compute in/out dates for each group
@@ -737,7 +707,7 @@ public class AddressBook implements Serializable {
 			}
 		}
 		
-		return new Pair<List<Date>, List<Date>>(inDates, outDates);
+		return new Pair<>(inDates, outDates);
 	}
 
 	public synchronized Collection<String> getDataErrors()
@@ -820,7 +790,7 @@ public class AddressBook implements Serializable {
 			for (String s : new ArrayList<String>(c.emails))
 				addEmailAddressForContact(s, c);
 			for (String s : new ArrayList<String>(c.names))
-				addNameForContact(s, c);
+				addNameForContactAndUpdateMaps(s, c);
 		}
 		
 		reassignContactIds();
@@ -1226,9 +1196,9 @@ public class AddressBook implements Serializable {
 			ci.verify();
 	}
 
-	// used primarily by correspondents.jsp
+	/** used primarily by correspondents.jsp
 	// dumps the contacts in docs, and sorts according to sent/recd/mentions
-	// returns an array of (json array of 5 elements:[name, in, out, mentions, url])
+	// returns an array of (json array of 5 elements:[name, in, out, mentions, url]) */
 	public JSONArray getCountsAsJson(Collection<EmailDocument> docs)
 	{
 		Contact ownContact = getContactForSelf();
@@ -1315,15 +1285,6 @@ public class AddressBook implements Serializable {
 		return resultArray;
 	}
 
-	public static void main (String args[])
-	{
-		List<String> list = parsePossibleNamesFromEmailAddress("mickey.mouse@disney.com");
-		System.out.println (Util.join(list, " "));
-		list = parsePossibleNamesFromEmailAddress("donald_duck@disney.com");
-		System.out.println (Util.join(list, " "));
-		list = parsePossibleNamesFromEmailAddress("70451.2444@compuserve.com");
-		System.out.println (Util.join(list, " "));
-	}
 
     public static class AddressBookStats implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -1342,5 +1303,50 @@ public class AddressBook implements Serializable {
             s += "contacts: " + nContacts + " non_zero_contacts: " + "\n";
             return s;
         }
+    }
+
+    public static void main (String args[])
+    {
+        List<String> list = EmailUtils.parsePossibleNamesFromEmailAddress("mickey.mouse@disney.com");
+        System.out.println (Util.join(list, " "));
+        list = EmailUtils.parsePossibleNamesFromEmailAddress("donald_duck@disney.com");
+        System.out.println (Util.join(list, " "));
+        list = EmailUtils.parsePossibleNamesFromEmailAddress("70451.2444@compuserve.com");
+        System.out.println (Util.join(list, " "));
+
+        String ownerName = "Owner Name";
+        String ownerEmail = "owner@example.com";
+        {
+            AddressBook ab = new AddressBook(new String[]{ownerEmail}, new String[]{ownerName});
+            EmailDocument ed = new EmailDocument();
+            try {
+                ed.to = new Address[]{new InternetAddress("from@email.com", "From Last")};
+                ed.cc = new Address[]{new InternetAddress("cc@email.com", "CC Last")};
+                ed.to = new Address[]{new InternetAddress("to@example.com", "To Last")};
+                ed.from = new Address[]{new InternetAddress("from@example.com", "From Last")};
+            } catch (Exception e) {
+            }
+            ab.processContactsFromMessage(ed);
+            Util.ASSERT(ab.size() == 5); // 4 addresses should be added + owner
+        }
+
+        {
+            AddressBook ab = new AddressBook(new String[]{ownerEmail}, new String[]{ownerName});
+            EmailDocument ed1 = new EmailDocument(), ed2 = new EmailDocument();
+            try {
+                ed1.to = new Address[]{new InternetAddress("Merge Name", "mergename@example.com")};
+                ed1.from = new Address[]{new InternetAddress("Merge Name2", "mergename@example.com")};
+
+                ed2.to = new Address[]{new InternetAddress("Merge X Name", "mergeemail1@example.com")};
+                ed2.from = new Address[]{new InternetAddress("Merge X Name", "mergeemail2@example.com")};
+            } catch (Exception e) {
+                ab.processContactsFromMessage(ed1);
+                ab.processContactsFromMessage(ed2);
+                Util.ASSERT(ab.size() == 3);
+            }
+
+            Util.ASSERT(ab.lookupByEmail("mergename@example.com").names.size() == 2); // 2 names for this email address
+        }
+
     }
 }

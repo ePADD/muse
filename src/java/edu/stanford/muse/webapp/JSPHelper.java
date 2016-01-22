@@ -334,7 +334,8 @@ public class JSPHelper {
 	 * A VIP method.
 	 * reads email accounts and installs addressBook and emailDocs into session
 	 * useDefaultFolders: use the default folder for that fetcher if there are
-	 * no explicit folders in that fetcher
+	 * no explicit folders in that fetcher.
+	 * throws out of memory error if it runs out of memory.
 	 * 
 	 * @throws JSONException
 	 * @throws IOException
@@ -345,7 +346,7 @@ public class JSPHelper {
 	 * @throws Exception
 	 */
 	public static void fetchAndIndexEmails(Archive archive, MuseEmailFetcher m, HttpServletRequest request, HttpSession session, boolean downloadMessageText, boolean downloadAttachments, boolean useDefaultFolders)
-			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException
+			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError
 	{
 		// first thing, set up a static status so user doesn't see a stale status message
 		session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));
@@ -401,13 +402,12 @@ public class JSPHelper {
 		archive.close();
 		archive.openForRead();
 
-        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
+        String modelFile = SequenceModel.modelFileName;
         SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
+        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
         log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
+            nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
         }
@@ -417,7 +417,7 @@ public class JSPHelper {
         else {
             NER ner = new NER(archive, nerModel);
             session.setAttribute("statusProvider", ner);
-            ner.recogniseArchive();
+            ner.recognizeArchive();
             archive.processingMetadata.entityCounts = ner.stats.counts;
 			log.info(ner.stats);
         }
@@ -433,9 +433,9 @@ public class JSPHelper {
 //            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
 //            if("memorytest".equals(mode)) {
 //                log.info("Setting dump model to false for NER");
-//                ner.recogniseArchive(false);
+//                ner.recognizeArchive(false);
 //            }else
-//                ner.recogniseArchive(true);
+//                ner.recognizeArchive(true);
 
 //		}
 //		//trying to be extra defensive during indexing.

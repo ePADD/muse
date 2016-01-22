@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
- * Created by vihari on 04/08/15.
+ * This is a (partial) archive stats object. it includes import stats, as well as the first/last message date, etc.
  */
 public class FetchStats implements Serializable {
     private final static long serialVersionUID = 1L;
@@ -15,11 +15,12 @@ public class FetchStats implements Serializable {
     public long lastUpdate;
     public long fetchAndIndexTimeMillis;
     public String userKey;
-    public int nMessagesOriginal, nMessagesAfterFiltering, nMessages;
+    EmailFetcherStats importStats;
     public List<Pair<String, FolderInfo>> selectedFolders = new ArrayList<Pair<String, FolderInfo>>(); // selected folders and their counts
     public Filter messageFilter;
     public long firstMessageDate, lastMessageDate;
     public int spanInMonths;
+    public int nMessagesInArchive;
     public Collection<String> dataErrors;
 
     public String toString() {
@@ -39,7 +40,7 @@ public class FetchStats implements Serializable {
         s += "\n";
         s += "message_filter: " + messageFilter + "\n";
 
-        s += "selected_messages: " + nMessages + " original: " + nMessagesOriginal + " post_filtering: " + nMessagesAfterFiltering + " dups: " + (nMessagesAfterFiltering - nMessages) + "\n";
+        s += "selected_messages: " + importStats.nTotalMessages +  " filtered: " + importStats.nMessagesFiltered + " imported: " + importStats.nMessagesAdded +" dups: " + importStats.nMessagesAlreadyPresent + "\n";
         //	s += "sent_messages: " + nMessagesSent + " received_messages: " + nMessagesReceived + "\n";
         s += "first_date: " + Util.formatDate(new Date(firstMessageDate)) + " last_date: " + Util.formatDate(new Date(lastMessageDate)) + " span_in_months: " + spanInMonths + "\n";
         s += "fetch_time_in_secs: " + fetchAndIndexTimeMillis / 1000 + "\n";
@@ -47,7 +48,7 @@ public class FetchStats implements Serializable {
         return s;
     }
 
-
+    /** returns an HTML version of the stats; used in ePADD */
     public String toHTML() {
         // do not use html special chars here!
         Calendar c = new GregorianCalendar();
@@ -62,7 +63,7 @@ public class FetchStats implements Serializable {
                 s += Util.escapeHTML(p.getFirst()) + " (" + Util.escapeHTML(p.getSecond().toString()) + ")" + "<br/>";
         }
 
-        s += "Imported messages: " + nMessages + " (original: " + nMessagesOriginal + " post_filtering: " + nMessagesAfterFiltering + ") duplicates: " + (nMessagesAfterFiltering - nMessages) + "<br/>\n";
+        s += "selected_messages: " + importStats.nTotalMessages +  " filtered: " + importStats.nMessagesFiltered + " imported: " + importStats.nMessagesAdded +" dups: " + importStats.nMessagesAlreadyPresent + "<br/>\n";
         s += ((messageFilter == null) ? "No message filter" : ("message_filter: " + messageFilter)) + "<br/>\n";
         //	s += "Sent messages: " + nMessagesSent + " Received messages: " + nMessagesReceived + "<br/>\n";
         s += "Messages span: " + Util.formatDate(new Date(firstMessageDate)) + " to " + Util.formatDate(new Date(lastMessageDate)) + "<br/>\n";

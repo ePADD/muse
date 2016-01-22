@@ -10,6 +10,7 @@ import java.io.Reader;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,48 +33,49 @@ public class DictUtils {
 	public static Set<String>	tabooNames		= new LinkedHashSet<String>();			// this will be ignored by NER
 
 	public static Set<String>	bannedWordsInPeopleNames	= new HashSet<String>(), bannedStringsInPeopleNames = new HashSet<String>();	// bannedWords => discrete word; bannedStrings => occurs anywhere in the name
+	public static Set<String>	bannedAccountNamesInEmailAddresses	= new HashSet<String>();
 	static Set<String>			joinWords					= new HashSet<String>();														// this will be ignored for the indexing
 	private static final String	COMMENT_STRING				= "#";
 
 	static {
 		try {
-			InputStream is = DictUtils.class.getClassLoader().getResourceAsStream("join.words");
+			InputStream is = Config.getResourceAsStream("join.words");
 			if (is != null) {
 				joinWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("stop.words");
+			is = Config.getResourceAsStream("stop.words");
 			if (is != null) {
 				stopWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("dict.words");
+			is = Config.getResourceAsStream("dict.words");
 			if (is != null) {
 				commonDictWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("dict.words.full");
+			is = Config.getResourceAsStream("dict.words.full");
 			if (is != null) {
 				fullDictWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("words.5000");
+			is = Config.getResourceAsStream("words.5000");
 			if (is != null) {
 				commonDictWords5000 = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("top-names");
+			is = Config.getResourceAsStream("top-names");
 			if (is != null) {
 				topNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("taboo-names");
+			is = Config.getResourceAsStream("taboo-names");
 			if (is != null) {
 				tabooNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				tabooNames.addAll(joinWords);
@@ -82,15 +84,21 @@ public class DictUtils {
 			}
 
 			// banned words and strings in people names (for address book, to avoid noisy names merging unrelated entities)
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedWordsInPeopleNames.txt");
+			is = Config.getResourceAsStream("bannedWordsInPeopleNames.txt");
 			if (is != null) {
 				bannedWordsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedStringsInPeopleNames.txt");
+			is = Config.getResourceAsStream("bannedStringsInPeopleNames.txt");
 			if (is != null) {
 				bannedStringsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				is.close();
+			}
+
+			is = Config.getResourceAsStream("bannedAccountNamesInEmailAddresses.txt");
+			if (is != null) {
+				bannedAccountNamesInEmailAddresses = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 

@@ -39,14 +39,6 @@ import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
-/**
- * implements an email contacts fetcher for a range of message #s within a
- * single folder.
- * In contrast, MTEmailFetcher is responsible for an entire email account,
- * including multiple folders.
- * and MuseEmailFetcher is responsible for multiple accounts.
- */
-/* email fetcher stats is associated with a single email fetcher */
 class EmailFetcherStats implements Cloneable, Serializable {
 	private final static long	serialVersionUID	= 1L;
 
@@ -67,10 +59,16 @@ class EmailFetcherStats implements Cloneable, Serializable {
 
 	public String toString()
 	{
-		return ""; // Util.fieldsToString(this);
+		return Util.fieldsToString(this);
 	}
 }
 
+/**
+ * Important class for importing email.
+ * implements an email fetcher for a range of message #s within a single folder.
+ * In contrast, MTEmailFetcher is responsible for an entire email account, including multiple folders.
+ * and MuseEmailFetcher is responsible for multiple accounts (but for a single user)
+ * email fetcher stats is associated with a single email fetcher */
 public class EmailFetcherThread implements Runnable, Serializable {
 	private final static long	serialVersionUID		= 1L;
 
@@ -265,7 +263,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		}
 	}
 
-	/** convert the javamail obj. to our own data struct. */
+	/** Key method for importing email: converts a javamail obj. to our own data structure (EmailDocument) */
 	//public EmailDocument convertToEmailDocument(MimeMessage m, int num, String url) throws MessagingException, IOException
 	private EmailDocument convertToEmailDocument(MimeMessage m, String id) throws MessagingException, IOException
 	{
@@ -349,7 +347,9 @@ public class EmailFetcherThread implements Runnable, Serializable {
 			dataErrors.add(s);
 		}
 
+		// take a deep breath. This object is going to live longer than most of us.
 		EmailDocument ed = new EmailDocument(id, folder_name(), to, cc, bcc, from, m.getSubject(), m.getMessageID(), c.getTime());
+
 		String[] headers = m.getHeader("List-Post");
 		if (headers != null && headers.length > 0)
 		{
@@ -1376,6 +1376,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                             log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
                         }
                     }
+                    log.info ("Fetch stats for this fetcher thread: " + stats);
                 }
                 log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis() - st) + "ms");
             }
@@ -1415,8 +1416,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
-		} catch (Exception e) {
-			Util.print_exception(e);
+		} catch (Throwable t) {
+			if (t instanceof OutOfMemoryError)
+				this.mayHaveRunOutOfMemory = true;
+			// this is important, because there could be an out of memory etc over here.
+			Util.print_exception(t, log);
 		} finally {
 			try {
 				if (folder != null)

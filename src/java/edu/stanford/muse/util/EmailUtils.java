@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
@@ -38,19 +39,64 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
 	public static Map<String, String>	dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
-    static class DBpediaTypes {
+	/** Returns the part before @ in an email address, e.g. hangal@gmail.com => hangal.
+	 * Returns the full string if the input does not have @, or null if the input is null. */
+	public static String getAccountNameFromEmailAddress(String email) {
+		if (email == null)
+			return null;
+		int idx = email.indexOf("@");
+		return (idx < 0) ? email : email.substring(0, idx);
+	}
+
+	/** get a list of possible names, like "First Last" from "First.Last@gmail.com" etc */
+	public static List<String> parsePossibleNamesFromEmailAddress(String email)
+	{
+		List<String> result = new ArrayList<String>();
+		if (email == null)
+			return result;
+		String strippedEmail = getAccountNameFromEmailAddress(email);
+
+		// handle addrs like mondy_dana%umich-mts.mailnet@mit-multics.arp, in this case strip out the part after %
+		int idx = strippedEmail.indexOf("%");
+		if (idx >= 0)
+			strippedEmail = strippedEmail.substring(0, idx);
+
+		// 2 sets of splitters, one containing just periods, other just underscores.
+		// most people have periods, but at least Dell has underscores
+		String[] splitters = new String[]{".", "_"};
+		for (String splitter: splitters)
+		{
+			StringTokenizer st = new StringTokenizer (strippedEmail, splitter);
+			int nTokens = st.countTokens();
+			// allow only first.last or first.middle.last
+			if (nTokens < 2 || nTokens > 3)
+				continue;
+
+			String possibleName = "";
+			while (st.hasMoreTokens())
+			{
+				String token = st.nextToken();
+				if (Util.hasOnlyDigits(token))
+					return result; // abort immediately if only numbers, we don't want things like 70451.2444@compuserve.com
+				possibleName += Util.capitalizeFirstLetter(token) + " "; // optionally we could upper case first letter of each token.
+			}
+			possibleName = possibleName.trim(); // remove trailing space
+			result.add(possibleName);
+		}
+		return result;
+	}
+
+	static class DBpediaTypes {
         //these are types identified from DBpedia that may contain some predictable tokens and omitting types with any possible tokens like TVShows and Bands
         //also omitting types that are not very different from other types like, Company and AutomobileEngine|Device
     }
 
-	public static String tabooEmailNames[] = new String[]{"paypal member", "info@evite.com", "evite.com"}; // could consider adding things ending in clients, members, etc.
 	/**
 	 * best effort to toString something about the given message.
 	 * use only for diagnostics, not for user-visible messages.
@@ -425,22 +471,26 @@ public class EmailUtils {
 	// hopefully people don't have any of these words in their names... note, should be lowercase
 
 	/**
-	 * normalizes the given person name.
-	 * strips whitespace at either end
-	 * returns null if not a valid name
+	 * normalizes the given person name, by stripping whitespace at either end, normalizes spaces, so exactly 1 space between tokens.
+	 * returns null if not a valid name or has a banned word/string.
+	 * retains case of the input as is.
+	 * returns same case
 	 */
 	public static String cleanPersonName(String name)
 	{
+		// be careful with case, we want name to remain in its original case
 		if (name == null)
 			return null;
-		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is
+		name = name.trim();
+
+		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is, just lowercasing it.
 			return name.toLowerCase();
-		if ("user".equals(name))
-			return null;
 
 		// a surprising number of names in email headers start and end with a single quote
 		// if so, strip it.
 		if (name.startsWith("'") && name.endsWith("'"))
+			name = name.substring(1, name.length() - 1);
+		if (name.startsWith("\"") && name.endsWith("\""))
 			name = name.substring(1, name.length() - 1);
 
 		// Strip stuff inside parens, e.g. sometimes names are like:
@@ -453,24 +503,27 @@ public class EmailUtils {
 		name = name.trim();
 
 		// normalize spaces
-		// return null if name has banned words - e.g. ben shneiderman's email has different people with the "name" (IPM Return requested)
-		String s = "";
-		StringTokenizer st = new StringTokenizer(name);
-		while (st.hasMoreTokens())
+		// return null if name has banned words - e.g. ben s's email has different people with the "name" (IPM Return requested)
+		String result = "";
+		for (String t: Util.tokenize(name))
 		{
-			String t = st.nextToken();
-			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase()))
+			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase())) {
+				log.info ("Will not consider name (because it has a banned word): " + name);
 				return null;
-			s += t + " ";
+			}
+			result += t + " ";
 		}
 
-		s = s.trim(); // very important, we've added a space after the last token above
+		result = result.trim(); // very important, we've added a space after the last token above
 
+		String lowerCaseName = name.toLowerCase();
 		for (String bannedString : DictUtils.bannedStringsInPeopleNames)
-			if (name.toLowerCase().indexOf(bannedString) >= 0)
+			if (lowerCaseName.indexOf(bannedString) >= 0) {
+				log.info ("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
 				return null;
+			}
 
-		return s;
+		return result;
 	}
 
 	// removes dups from the input list
@@ -490,7 +543,7 @@ public class EmailUtils {
 		return result;
 	}
 
-	// removes obviously bad names from the input list
+	// removes obviously bad names from the input list. used only by grouper.
 	public static List<String> removeIncorrectNames(List<String> in)
 	{
 
@@ -500,21 +553,6 @@ public class EmailUtils {
 			s = EmailUtils.cleanPersonName(s);
             if(s == null)
                 continue;
-			if (s.startsWith("undisclosed-recipients"))
-			{
-				log.info("Dropping undisclosed recipients: " + s);
-				continue;
-			}
-
-			for (String taboo: tabooEmailNames) {
-				if (taboo.equals(s))
-					continue;
-			}
-			if (s.toLowerCase().equals("user"))
-			{
-				log.info("Dropping bad name: " + s);
-				continue;
-			}
 			result.add(s);
 		}
 		return result;
@@ -1382,17 +1420,23 @@ public class EmailUtils {
         dbpedia = new LinkedHashMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
+			InputStream is = Config.getResourceAsStream(typesFile);
+			if (is == null) {
+				log.warn ("Dbpedia file resource could not be read!!");
+				return dbpedia;
+			}
+
             //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
             LineNumberReader lnr;
             if(resourceFile)
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
+                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true), "UTF-8"));
             else
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(typesFile),true)));
+                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true)));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
                     break;
-                if (lines++ % 10000 == 0)
+                if (lines++ % 1000000 == 0)
                     log.info("Processed " + lines + " lines of approx. 3.02M in " + typesFile);
 
                 if (line.contains("GivenName"))
@@ -1477,7 +1521,6 @@ public class EmailUtils {
 		}
 
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
-        log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
 		return sample(dbpedia,p);
 	}

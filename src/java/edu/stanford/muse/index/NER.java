@@ -172,15 +172,15 @@ public class NER {
 		log.info("Initializing NER models");
 
         try {
-            InputStream pis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-person.bin");
+            InputStream pis = Config.getResourceAsStream("models/en-ner-person.bin");
             TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
             pFinder = new NameFinderME(pmodel);
 
-            InputStream lis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-location.bin");
+            InputStream lis = Config.getResourceAsStream("models/en-ner-location.bin");
             TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
             lFinder = new NameFinderME(lmodel);
 
-            InputStream ois = NER.class.getClassLoader().getResourceAsStream("models/en-ner-organization.bin");
+            InputStream ois = Config.getResourceAsStream("models/en-ner-organization.bin");
             TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
             oFinder = new NameFinderME(omodel);
         }
@@ -189,11 +189,11 @@ public class NER {
             Util.print_exception(e, log);
         }
         try {
-            InputStream modelIn = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+            InputStream modelIn = Config.getResourceAsStream("models/en-sent.bin");
             SentenceModel model = new SentenceModel(modelIn);
             sFinder = new SentenceDetectorME(model);
 
-            InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("models/en-token.bin");
+            InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
             TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
             tokenizer = new TokenizerME(modelTokenizer);
         }catch(Exception e){
@@ -689,7 +689,7 @@ public class NER {
 
 	public static void printSentencesWithWords(String text, Set<String> wordsToSearch) throws InvalidFormatException, IOException
 	{
-		//		InputStream SentStream = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+		//		InputStream SentStream = Config.getResourceAsStream("models/en-sent.bin");
 		//		SentenceModel model = sFinder; // new SentenceModel(SentStream);
 		//		SentenceDetectorME sentenceDetector = new SentenceDetectorME(model);
 		String[] splitTexts = sFinder.sentDetect(text); // sentenceDetector.sentDetect(text);
@@ -727,13 +727,13 @@ public class NER {
 			System.out.println ("-----");
 			*/
 
-            InputStream pis = NER.class.getClassLoader().getResourceAsStream("en-ner-person.bin");
+            InputStream pis = Config.getResourceAsStream("en-ner-person.bin");
             TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
-            InputStream lis = NER.class.getClassLoader().getResourceAsStream("en-ner-location.bin");
+            InputStream lis = Config.getResourceAsStream("en-ner-location.bin");
             TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
-            InputStream ois = NER.class.getClassLoader().getResourceAsStream("en-ner-organization.bin");
+            InputStream ois = Config.getResourceAsStream("en-ner-organization.bin");
             TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
-            InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("en-token.bin");
+            InputStream tokenStream = Config.getResourceAsStream("en-token.bin");
             TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
             TokenizerME tokenizer = new TokenizerME(modelTokenizer);
             Span[] tokSpans = tokenizer.tokenizePos(s); // Util.tokenize(s).toArray(new String[0]);
