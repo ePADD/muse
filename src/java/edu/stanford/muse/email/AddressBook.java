@@ -808,7 +808,7 @@ public class AddressBook implements Serializable {
 		return result;
 	}
 
-	/** recomputes contacts merging unified ones. */
+	/** recomputes contacts merging unified ones. Warning: must be done before using the address book, otherwise, contacts will remain un-unified! */
 	public synchronized void organizeContacts()
 	{
 		Set<Contact> allContacts = new LinkedHashSet<Contact>();
