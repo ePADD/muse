@@ -493,6 +493,13 @@ public class EmailUtils {
 		if (name.startsWith("\"") && name.endsWith("\""))
 			name = name.substring(1, name.length() - 1);
 
+		// check if it has any characters at all
+		for (char c: name.toCharArray()) {
+			if (Character.isAlphabetic(c))
+				break;
+			return null; // all non-alphabet? return nothing, because its likely a junk name like "(" or "((" (yes, we see plenty of those!)
+		}
+
 		// Strip stuff inside parens, e.g. sometimes names are like:
 		// foo bar (at home) - or -
 		// foo bar [some Dept]
