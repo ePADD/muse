@@ -40,6 +40,11 @@ public class DictUtils {
 	private static final String	COMMENT_STRING				= "#";
 
 	static {
+		initialize();
+	}
+
+	/** initializes all lists in DictUtils. kept public so it can be called from JSPs for quick debugging */
+	public static void initialize() {
 		try {
 			InputStream is = Config.getResourceAsStream("join.words");
 			if (is != null) {
