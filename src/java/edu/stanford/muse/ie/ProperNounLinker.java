@@ -614,7 +614,7 @@ public class ProperNounLinker {
         //BOWtest();
         //test();
         try {
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "terry-important";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-terry-important";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             findClusters(archive);
         }catch(Exception e){
