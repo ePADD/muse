@@ -10,6 +10,9 @@ import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
+import opennlp.tools.formats.Conll03NameSampleStream;
+import opennlp.tools.namefind.NameSample;
+import opennlp.tools.util.Span;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -21,6 +24,10 @@ import java.util.*;
 /**
  * Created by vihari on 07/09/15.
  * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
+ * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K. It is sometimes desired to train over a larger training files.
+ * Consider implementing online EM based param estimation -- see http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf
+ * It is beneficial to include Address-book in training. Names can have an uncommon first or last name --
+ * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
  */
 public class SequenceModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
@@ -102,11 +109,6 @@ public class SequenceModel implements NERModel, Serializable {
                 continue;
             }
             double v = (double) pair.getFirst() / (double) pair.getSecond();
-            //System.err.println("Phrase: "+token+", "+v+", "+p+", "+other);
-//            if (other)
-//                p *= (1 - v);
-//            else
-//                p *= v;
             if (v > 0.25) {
                 if (other)
                     return 1.0 / Double.MAX_VALUE;
@@ -144,8 +146,8 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     /**
-     * Does sequence labeling of a phrase; adapts a dynamic programming approach
-     * The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length
+     * Does sequence labeling of a phrase -- a dynamic programming approach
+     * The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length (a phrase with more than 7 words is rejected)
      * O(T*W^2) where W is number of tokens in the phrase and T is number of possible types
      * Since the word features that we are using are dependent on the boundary of the phrase i.e. the left and right semantic types, features on dictionary lookup e.t.c.
      * @note This method only returns the entities from he best labeled sequence.
@@ -158,33 +160,61 @@ public class SequenceModel implements NERModel, Serializable {
         String dbpediaType = dbpedia.get(phrase.toLowerCase());
         if(dbpediaType!=null && ct>=0 && (phrase.contains(" ")||dbpediaType.endsWith("Country|PopulatedPlace|Place"))){
             segments.put(phrase, new Pair<>(ct, 1.0));
-            //System.err.println("Found: "+phrase+","+dbpediaType+","+ct);
             return segments;
         }
-//        else{
-//            System.err.println("Did not consider: "+phrase+","+dbpediaType+","+ct);
-//        }
+        if(log.isDebugEnabled() && dbpediaType!=null)
+            log.debug("Found match: Coded type: " + ct + "- Phrase:" + phrase + " - DBpedia type: " + dbpediaType);
 
         //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
         phrase = EmailUtils.uncanonicaliseName(phrase);
         //phrase = clean(phrase);
         Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
-        if(phrase==null||phrase.length()==0||!phrase.contains(" "))
+        if(phrase==null||phrase.length()==0)//||!phrase.contains(" "))
             return new LinkedHashMap<>();
         phrase = phrase.replaceAll("^\\W+|\\W+^","");
 
         String[] tokens = phrase.split("\\s+");
-        if(tokens.length>15)
+        /**
+         * In TW's sub-archive with ~65K entities scoring more than 0.001. The stats on number of tokens is as follows
+         * Freq  #tokens
+         * 36520 2
+         * 15062 3
+         * 5900  4
+         * 2645  5
+         * 2190  1
+         * 1301  6
+         * 721   7
+         * 18    8
+         * 9     9
+         * 2     10
+         * 1     11
+         * Total: 64,369 -- hence the cutfoff below
+         */
+        if(tokens.length>7) {
+            //a one last desperate attempt to savage
+            if(phrase.contains(" and ")) {
+                Map<String, Pair<Short, Double>> subsegs = new LinkedHashMap<>();
+                int idx = phrase.indexOf(" and ");
+                Map<String,Pair<Short,Double>> temp = seqLabel(phrase.substring(0, idx));
+                if(temp!=null)
+                    subsegs.putAll(temp);
+                temp = seqLabel(phrase.substring(idx+5));
+                if(temp!=null)
+                    subsegs.putAll(temp);
+                return subsegs;
+            }
             return new LinkedHashMap<>();
+        }
         //since there can be large number of types every token can take
         //we restrict the number of possible types we consider to top 5
-        //seer the complexity of the method
+        //see the complexity of the method
         Set<Short> cands = new LinkedHashSet<>();
         Map<Short, Double> candTypes = new LinkedHashMap<>();
         for (String token : tokens) {
+            token = token.replaceAll("^\\W+|\\W+$","");
             token = token.toLowerCase();
             FeatureDictionary.MU mu = dictionary.features.get(token);
-            if (mu == null || mu.numMixture == 0)
+            if (token.length()<2 || mu == null || mu.numMixture == 0)
                 continue;
             for (String f : mu.muVectorPositive.keySet()) {
                 if (f.startsWith("T:")) {
@@ -201,7 +231,7 @@ public class SequenceModel implements NERModel, Serializable {
                 if (si++ < MAX)
                     cands.add(p.getFirst());
         }
-        //This is just a standard dynamic programming algo, the only difference is
+        //This is just a standard dynamic programming algo. used in HMMs, with the difference that
         //at every word we are checking for the every possible segment
         short OTHER = -2;
         cands.add(OTHER);
@@ -228,7 +258,6 @@ public class SequenceModel implements NERModel, Serializable {
                         val *= getConditional(segment, t)*getLikelihoodWithOther(segment, false);
                     else
                         val *= getLikelihoodWithOther(segment, true);
-                    //System.err.println("Considering segment: " + segment + ", type: " + t + ", " + val);
                     if (val > max) {
                         max = val;
                         bi = tj - 1;
@@ -253,9 +282,8 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 val = getLikelihoodWithOther(seg, true);
 
-            //This segmentation is not acceptable and better thing to do is to fall back to the next best sequence labelling where this does not happen
-            //people names should still be fine
-            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
+            //emit only multiple word tokens or non-dictionary single word tokens with length greater than 4 [to avoid meaningless terms like AJ, BJ BIC, BK, BLOG, BO]
+            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase())) || seg.length()<5))
                 segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)
@@ -273,35 +301,6 @@ public class SequenceModel implements NERModel, Serializable {
         return select;
     }
 
-    //@param, neighbouring word and centered word
-    public double dotProduct(String nstr, String cstr, Boolean left) {
-        FeatureDictionary.MU nmu = dictionary.features.get(nstr);
-        FeatureDictionary.MU cmu = dictionary.features.get(cstr);
-        final int THRESH = 5;
-        if (nmu == null || cmu == null || cmu.numSeen<THRESH || nmu.numSeen<THRESH)
-            return 1.0 / FeatureDictionary.allTypes.length;
-        Map<String, Double> v1;
-        if (left)
-            v1 = getAllFeatureOfType(cmu, "L:");
-        else
-            v1 = getAllFeatureOfType(cmu, "R:");
-        Map<String, Double> v2 = getAllFeatureOfType(nmu, "T:");
-//            System.err.println(cstr + " V1: " + v1);
-//            System.err.println(nstr + " V2: " + v2);
-        double s = 0;
-        if (nmu.numMixture == 0 || cmu.numMixture == 0)
-            return 0;
-        for (String str : v1.keySet()) {
-            if (str.endsWith("NULL"))
-                continue;
-            Short type = Short.parseShort(str.substring(2));
-            if (v2.containsKey("T:" + type))
-                s += v1.get(str) * v2.get("T:" + type) / (nmu.numMixture * cmu.numMixture);
-        }
-        //System.err.println("S:" + s);
-        return s;
-    }
-
     public double getConditional(String phrase, Short type) {
         Map<String, FeatureDictionary.MU> features = dictionary.features;
         Map<String, Set<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
@@ -311,7 +310,18 @@ public class SequenceModel implements NERModel, Serializable {
 
         double sorg = 0;
         Short ct = lookup(phrase);
-        String dbpediaType = dbpedia.get(phrase.toLowerCase());
+        //if the phrase is from CIC Tokenizer, it won't start with an article
+        //enough with the confusion between [New York Times, The New York Times], [Giant Magellan Telescope, The Giant Magellan Telescope]
+        Set<String> vars = new LinkedHashSet<>();
+        vars.add(phrase);
+        vars.add("The "+phrase);
+        String dbpediaType = null;
+        for(String var: vars) {
+            dbpediaType = dbpedia.get(var.toLowerCase());
+            if(dbpediaType!=null)
+                break;
+        }
+
         if(dbpediaType!=null && ct==type){
             if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
                 return 1;
@@ -344,31 +354,6 @@ public class SequenceModel implements NERModel, Serializable {
                     freq = features.get(mid).getPrior();
                 val *= freq;
             }
-//            if (val == 0)
-//                continue;
-//            else {
-//                int ci = map.get(mid);
-//                for (String str : map.keySet()) {
-//                    if (map.get(str) < ci) {
-//                        val *= dotProduct(str, mid, true);//dictionary.getLikelihoodWithType(leftLabel, str);
-//                    } else if (map.get(str) > ci)
-//                        val *= dotProduct(str, mid, false);//dictionary.getLikelihoodWithType(rightLabel, str);
-//                }
-//                if(ci == 0) {
-//                    Double fv = mu.muVectorPositive.get("L:NULL");
-//                    int v = FeatureDictionary.MU.getNumberOfSymbols("L:NULL");
-//                    if(fv!=null)
-//                        val *= (fv+1)/(mu.numMixture+FeatureDictionary.MU.getNumberOfSymbols("L:NULL"));
-//                    else val *= 1.0/v;
-//                }
-//                if(ci == patts.length-1){
-//                    Double fv = mu.muVectorPositive.get("R:NULL");
-//                    int v = FeatureDictionary.MU.getNumberOfSymbols("R:NULL");
-//                    if(fv!=null)
-//                        val *= (fv+1)/(mu.numMixture+v);
-//                    else val *= 1.0/v;
-//                }
-//            }
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }
@@ -393,9 +378,7 @@ public class SequenceModel implements NERModel, Serializable {
         if (commonWords.contains(fw) || commonWords.contains(sw) || fw.equals(""))
             return 0.0;
 
-        //String[] patts = FeatureDictionary.getPatts(substr);
         String[] scores = new String[FeatureDictionary.allTypes.length];
-        //scores[0] = dictionary.getConditional(phrase, FeatureDictionary.OTHER, fdw);
         Short bt = FeatureDictionary.OTHER;
         double bs = -1;
         for(int ti=0;ti<FeatureDictionary.allTypes.length;ti++){
@@ -411,7 +394,7 @@ public class SequenceModel implements NERModel, Serializable {
                     else
                         d = 0.0;//(1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
                     if (Double.isNaN(d))
-                        log.warn("Cond nan " + mid + ", " + d);
+                        log.warn("Conditional NaN for mixture ID: " + mid);
                     double val = d;
                     if (val > 0) {
                         double freq = 0;
@@ -439,7 +422,7 @@ public class SequenceModel implements NERModel, Serializable {
                 for(String word: words) {
                     Pair<String,Double> p = dictionary.getLabel(word, dictionary.features);
                     FeatureDictionary.MU mu = dictionary.features.get(word);
-                    String label = "";
+                    String label;
                     if(mu == null)
                         label = p.getFirst();
                     else{
@@ -833,17 +816,157 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
-    public static void test(){
-        Pair<String,String[]>[] test = new Pair[]{
-                new Pair<>("hi terry-\n\ntried to meet carol today with no luck",new String[]{"terry","carol"}),
-                new Pair<>("We are traveling to Vietnam the next summer and will come to New York (NYC) soon",new String[]{"Vietnam","New York","NYC"}),
-        };
+    //we are missing F.C's like F.C. La Valletta
+    /**
+     * Tested on 28th Jan. 2016 on what is believed to be the testa.dat file of original CONLL.
+     * I procured this data-set from a prof's (UMass Prof., don't remember the name) home page where he provided the test files for a homework, guess who topped the assignment :)
+     * (So, don't use this data to report results at any serious venue)
+     * The results on multi-word names is as follows.
+     * Note that the test only considered PERSON, LOCATION and ORG; Also, it does not distinguish between the types because the type assigned by Sequence Labeler is almost always right. And, importantly this will avoid any scuffle over the mapping from fine-grained type to the coarse types.
+     *  -------------
+     *  Found: 8861 -- Total: 7781 -- Correct: 6675
+     *  Precision: 0.75330096
+     *  Recall: 0.8578589
+     *  F1: 0.80218726
+     *  ------------
+     * I went through 2691 sentences of which only 200 had any unrecognised entities and identified various sources of error.
+     * The sources of missing names are as follows in decreasing order of their contribution (approximately), I have put some examples with the sources. The example phrases are recognized as one chunk with a type.
+     * Obviously, this list is not exhaustive, USE IT WITH CAUTION!
+     *  1. Bad segmentation -- which is minor for ePADD and depends on training data and principles.
+     *     For example: "Overseas Development Minister <PERSON>Lynda Chalker</PERSON>",Czech <PERSON>Daniel Vacek</PERSON>, "Frenchman <PERSON>Cedric Pioline</PERSON>"
+     *     "President <PERSON>Nelson Mandela</PERSON>","<BANK>Reserve Bank of India</BANK> Governor <PERSON>Chakravarty Rangarajan</PERSON>"
+     *     "Third-seeded <PERSON>Wayne Ferreira</PERSON>",
+     *     Hong Kong Newsroom -- we got only Hong Kong, <BANK>Hong Kong Interbank</BANK> Offered Rate, Privately-owned <BANK>Bank Duta</BANK>
+     *     [SERIOUS]
+     *  2. Bad training data -- since our training data (DBpedia instances) contain phrases like "of Romania" a lot
+     *     Ex: <PERSON>Yayuk Basuki</PERSON> of Indonesia, <PERSON>Karim Alami</PERSON> of Morocco
+     *     This is also leading to errors like when National Bank of Holand is segmented as National Bank
+     *     [SERIOUS]
+     *  3. Some unknown names, mostly personal -- we see very weird names in CONLL; Hopefully, we can combat this problem in ePADD by considering the address book of the archive.
+     *     Ex: NOVYE ATAGI, Hans-Otto Sieg, NS Kampfruf, Marie-Jose Perec, Billy Mayfair--Paul Goydos--Hidemichi Tanaki
+     *     we miss many (almost all) names of the form "M. Dowman" because of uncommon or unknown last name.
+     *  4. Bad segmentation due to limitations of CIC
+     *     Ex: Hassan al-Turabi, National Democratic party, Department of Humanitarian affairs, Reserve bank of India, Saint of the Gutters, Queen of the South, Queen's Park
+     *  5. Very Long entities -- we refrain from seq. labelling if the #tokens>7
+     *     Ex: National Socialist German Workers ' Party Foreign Organisation
+     *  6. We are missing OCEANs?!
+     *     Ex: Atlantic Ocean, Indian Ocean
+     *  7. Bad segments -- why are some segments starting with weird chars like '&'
+     *     Ex: Goldman Sachs & Co Wertpapier GmbH -> {& Co Wertpapier GmbH, Goldman Sachs}
+     *  8. We are missing Times of London?! We get nothing that contains "Newroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
+     *     Why are we getting "Students of South Korea" instead of "South Korea"?
+     */
+    public static void test(SequenceModel seqModel){
+        try {
+            InputStream in = new FileInputStream(new File("/Users/vihari/epadd-ner/ner-benchmarks/umasshw/testaspacesep.txt"));
+            //7==0111 PER, LOC, ORG
+            Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
+            int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
+            //only multi-word
+            boolean onlyMW = true;
+            NameSample sample = sampleStream.read();
+            CICTokenizer tokenizer = new CICTokenizer();
+            while (sample != null) {
+                String[] words = sample.getSentence();
+                String sent = "";
+                for(String s: words)
+                    sent += s+" ";
+                sent = sent.substring(0,sent.length()-1);
+
+                Map<String,String> names = new LinkedHashMap<>();
+                Span[] nspans = sample.getNames();
+                for(Span nspan: nspans) {
+                    String n = "";
+                    for (int si = nspan.getStart(); si < nspan.getEnd(); si++) {
+                        if (si < words.length - 1 && words[si+1].equals("'s"))
+                            n += words[si];
+                        else
+                            n += words[si] + " ";
+                    }
+                    if(n.endsWith(" "))
+                        n = n.substring(0, n.length()-1);
+                    if(!onlyMW || n.contains(" "))
+                        names.put(n, nspan.getType());
+                }
+                Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> p = seqModel.find(sent);
+                Map<String,String> found = new LinkedHashMap<>();
+                Map<Short,Map<String,Double>> temp = p.getFirst();
+                if(temp!=null)
+                    for(Short ct: mappings.keySet()) {
+                        String typeText;
+                        if(ct==FeatureDictionary.PERSON)
+                            typeText = "person";
+                        else if(ct == FeatureDictionary.PLACE)
+                            typeText = "location";
+                        else
+                            typeText = "organization";
+                        Short[] sts = mappings.get(ct);
+                        for(Short st: sts)
+                            for(String str: temp.get(st).keySet())
+                                if(!onlyMW || str.contains(" "))
+                                    found.put(str,typeText);
+                    }
+
+                Set<String> foundNames = new LinkedHashSet<>();
+                for (Map.Entry<String,String> entry : found.entrySet())
+                    if (names.containsKey(entry.getKey())){
+                        if(names.get(entry.getKey()).equals(entry.getValue())) {
+                            numCorrect++;
+                            foundNames.add(entry.getKey());
+                        }else{
+                            numWrongType++;
+                        }
+                    }
+
+                log.info("CIC tokens: "+tokenizer.tokenizeWithoutOffsets(sent,false));
+                String fn = "Found names:";
+                for (String f : foundNames)
+                    fn += f + "[" + found.get(f) + "]" + "--";
+                if(fn.endsWith("--"))
+                    log.info(fn);
+
+                String extr = "Extra names: ";
+                for (String f: found.keySet())
+                    if (!names.containsKey(f))
+                        extr += f +"[" + found.get(f) + "]--";
+                if(extr.endsWith("--"))
+                    log.info(extr);
+                String miss = "Missing names: ";
+                for (String name : names.keySet())
+                    if (!foundNames.contains(name))
+                        miss += name +"[" + names.get(name) + "]--";
+                if(miss.endsWith("--"))
+                    log.info(miss);
+
+                String misAssign = "Mis-assigned Types: ";
+                for(String f: found.keySet())
+                    if(names.containsKey(f) && !names.get(f).equals(found.get(f)))
+                        misAssign += f+"["+found.get(f)+"] Expected ["+ names.get(f) +"]--";
+                if(misAssign.endsWith("--"))
+                    log.info(misAssign);
+
+                log.info(sent + "\n------------------");
+
+                numReal += names.size();
+                numFound += found.size();
+                sample = sampleStream.read();
+            }
+            float prec = (float)numCorrect/(float)numFound;
+            float recall = (float)numCorrect/(float)numReal;
+            log.info("-------------");
+            log.info("Found: "+numFound+" -- Total: "+numReal+" -- Correct: "+numCorrect+" -- Missed due to wrong type: "+(numWrongType));
+            log.info("Precision: "+prec);
+            log.info("Recall: "+recall);
+            log.info("F1: "+(2*prec*recall/(prec+recall)));
+            log.info("------------");
+        }catch(IOException e){
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
+        String modelFile = SequenceModel.modelFileName;
         if (fdw == null) {
             try {
                 fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
@@ -858,7 +981,16 @@ public class SequenceModel implements NERModel, Serializable {
         if(nerModel == null)
             nerModel = train();
 
-        if (nerModel != null)
-            testDBpedia(nerModel);
+        if (nerModel != null) {
+            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
+            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);
+            nerModel.dictionary.getConditional("Jadavpur University",FeatureDictionary.UNIVERSITY, null);
+            nerModel.dictionary.getConditional("Beijing Normal University",FeatureDictionary.UNIVERSITY, null);
+            nerModel.dictionary.getConditional("Beijing Arbitration Commission",FeatureDictionary.ORGANISATION, null);
+            nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
+            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
+            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
+            test(nerModel);
+        }
     }
 }

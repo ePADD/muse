@@ -3,10 +3,8 @@ package edu.stanford.muse.ie;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.DatedDocument;
+import edu.stanford.muse.index.*;
 import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
@@ -17,16 +15,7 @@ import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.*;
-import org.apache.lucene.index.*;
-import org.apache.lucene.search.*;
-import org.apache.lucene.store.RAMDirectory;
-import org.apache.lucene.util.Version;
 
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
 import java.io.File;
 import java.util.*;
 import java.util.List;
@@ -45,6 +34,8 @@ public class ProperNounLinker {
      * will break mixed capitals into individual words,
      * for example: VanGogh -> [van, gogh] and NYTimes -> [ny, time]*/
     static Set<String> bow(String phrase) {
+        if(phrase == null)
+            return new LinkedHashSet<>();
         String[] tokens = phrase.split("\\s+");
         Set<String> bows = new LinkedHashSet<>();
         for (String tok : tokens) {
@@ -66,11 +57,15 @@ public class ProperNounLinker {
                 //1. an upper case surrounded by lower cases, VanGogh
                 //2. an upper case character with lower case stuff to the right, like 'T' in NYTimes
                 //3. an upper case char preceded by '.' H.W.=>H. W.
-                if (cUc && ti > 0 && ti < tok.length()-1 && ((!pUc && !nUc) || (pUc && !nUc) || tok.charAt(ti-1)=='.')) {
+                //4. Also split on hyphens
+                if ((cUc && ti > 0 && ti < tok.length()-1 && ((!pUc && !nUc) || (pUc && !nUc) || tok.charAt(ti-1)=='.')) || tok.charAt(ti)=='-') {
                     //don't consider single chars or essentially single chars like 'H.' as words
                     if(buff.length()>2 || (buff.length()==2 && buff.charAt(buff.length()-1)!='.'))
                         subToks.add(buff);
-                    buff = ""+tok.charAt(ti);
+                    if(tok.charAt(ti) != '-')
+                        buff = ""+tok.charAt(ti);
+                    else
+                        buff = "";
                 } else {
                     buff += tok.charAt(ti);
                 }
@@ -91,7 +86,8 @@ public class ProperNounLinker {
     static Set<String> nonAcronymWords(String phrase){
         String[] tokens = phrase.split("\\s+");
         Set<String> naw = new LinkedHashSet<>();
-        Pattern p = Pattern.compile("[A-Z][a-z]+");
+        //the pattern below should pick up all the extra chars that CIC tokenizer allows in the name, else may end up classifying Non-consecutive and Non-profit as a valid merge
+        Pattern p = Pattern.compile("[A-Z][a-z'\\-\\.]+");
         for(String tok: tokens) {
             Matcher m = p.matcher(tok);
             while(m.find()) {
@@ -110,8 +106,9 @@ public class ProperNounLinker {
         titles.addAll(EnglishDictionary.personTitles);
         titles.addAll(EnglishDictionary.articles);
 
+        String lc = str.toLowerCase();
         for(String t: titles)
-            if(str.toLowerCase().startsWith(t+" "))
+            if(lc.startsWith(t+" "))
                 return str.substring(t.length()+1);
         if(titles.contains(str.toLowerCase()))
             return "";
@@ -213,7 +210,8 @@ public class ProperNounLinker {
         bow2 = bow(c2);
         int minS = bow1.size() < bow2.size() ? bow1.size() : bow2.size();
         if(minS == 0){
-            log.info("BOW of one of: "+c1+", "+c2+" is null! "+bow1+", "+bow2);
+            //log.info("BOW of one of: "+c1+", "+c2+" is null! "+bow1+", "+bow2);
+            return false;
         }
         Set<String> sbow, lbow;
         if(minS == bow1.size()) {
@@ -261,38 +259,233 @@ public class ProperNounLinker {
         return false;
     }
 
-    public static class Cluster implements Comparable<Cluster> {
-        Set<String> mentions = new LinkedHashSet<>();
-        public void add(String str){
-            mentions.add(str);
+    public static class Mentions{
+        final int WINDOW = 12;
+        Hierarchy hierarchy;
+        //map from tokens to corresponding index in the mentions array
+        public Map<String,Set<Integer>> tokenToMentionIdx = new LinkedHashMap<>();
+        public Map<String,Set<Integer>> acronymToMentionIdx = new LinkedHashMap<>();
+        //year*12+month=date to indexes in the mentions array
+        public Map<Integer,Set<Integer>> dateToMentionIdx = new LinkedHashMap<>();
+        List<EmailMention> mentions = new ArrayList<>();
+        public Mentions(Hierarchy hierarchy){
+            this.hierarchy = hierarchy;
         }
 
-        @Override
-        public int hashCode() {return mentions.hashCode();}
+        public void add(Set<String> mentions, Object context){
+            long st = System.currentTimeMillis();
+            for(String m: mentions)
+                add(new EmailMention(m, context));
+            log.info("Added #"+mentions.size()+" mentions to the index in "+(System.currentTimeMillis()-st)+"ms");
+        }
 
-        @Override
-        public String toString() {return "==========\n"+mentions.toString();}
+        public void add(EmailMention mention) {
+            if(mention == null || mention.phrase == null)
+                return;
 
-        @Override
-        public boolean equals(Object o) {
-            if (o == null || !(o instanceof Cluster))
-                return false;
-            Cluster c = (Cluster) o;
-            if (this.mentions.size() != c.mentions.size())
-                return false;
-            for (String str : c.mentions)
-                if (!mentions.contains(str)) {
-                    return false;
+            checkIfIndexRecent(mention);
+            GregorianCalendar cal = new GregorianCalendar();
+            cal.setTime(mention.getDate());
+            int time = cal.get(Calendar.MONTH)+cal.get(Calendar.YEAR)*12;
+
+            if(!dateToMentionIdx.containsKey(time))
+                dateToMentionIdx.put(time, new LinkedHashSet<>());
+            dateToMentionIdx.get(time).add(mentions.size());
+            Set<String> bow = bow(mention.phrase);
+            for(String word: bow){
+                if(!tokenToMentionIdx.containsKey(word))
+                    tokenToMentionIdx.put(word, new LinkedHashSet<>());
+                tokenToMentionIdx.get(word).add(mentions.size());
+            }
+            //get acronym if it is not already an acronym
+            String tc = FeatureGeneratorUtil.tokenFeature(mention.phrase);
+            if(!tc.equals("ac")) {
+                String acr = Util.getAcronym(mention.phrase);
+                if (acr != null) {
+                    if (!acronymToMentionIdx.containsKey(acr))
+                        acronymToMentionIdx.put(acr, new LinkedHashSet<>());
+                    acronymToMentionIdx.get(acr).add(mentions.size());
                 }
-            return true;
+            }
+
+            mentions.add(mention);
         }
 
-        @Override
-        public int compareTo(Cluster c){
-            if(c==null)
-                return -1;
+        public Pair<String,Integer> getNearestMatch(EmailMention mention) {
+            if(mention == null || mention.phrase==null)
+                return new Pair<>(null,-1);
 
-            return ((Integer)c.mentions.size()).compareTo(mentions.size());
+            //collect cands. first
+            Set<Integer> mIdxs = new LinkedHashSet<>();
+            String tc = FeatureGeneratorUtil.tokenFeature(mention.phrase);
+            if(tc.equals("ac")) {
+                String acr = Util.getAcronym(mention.phrase);
+                if(acronymToMentionIdx.containsKey(acr))
+                    mIdxs.addAll(acronymToMentionIdx.get(acr));
+            }
+            else {
+                Set<String> bow = bow(mention.phrase);
+                for (String tok : bow)
+                    if (tokenToMentionIdx.containsKey(tok))
+                        mIdxs.addAll(tokenToMentionIdx.get(tok));
+            }
+
+            Map<Integer, Long> levelMap = new LinkedHashMap<>();
+            String vLevels[] = new String[hierarchy.getNumLevels()];
+            for(int l=0;l<hierarchy.getNumLevels();l++)
+                vLevels[l] = hierarchy.getValue(l, mention.context);
+            long time = mention.getDate().getTime();
+            long MAX_DIFF = (WINDOW+1)*31*24*3600*1000L;
+            for (int mid : mIdxs) {
+                EmailMention mmention = mentions.get(mid);
+                for (int l = 0; l < hierarchy.getNumLevels(); l++) {
+                    String mv = hierarchy.getValue(l, mmention.context);
+                    if(mv==null)
+                        continue;
+                    if (mv.equals(vLevels[l])) {
+                        long val = Math.abs(mmention.getDate().getTime() - time);
+                        if(val>=MAX_DIFF)
+                            log.error("FATAL!!! Time diff. between mentions is more than the maximum expected!! "+val+", "+MAX_DIFF+" -- "+(val/(31*24*3600*1000L))+" months... "+dateToMentionIdx.keySet());
+                        levelMap.put(mid, (l*MAX_DIFF) + val);
+                        break;
+                    }
+                }
+            }
+            //sorts in descending value
+            List<Pair<Integer,Long>> order = edu.stanford.muse.util.Util.sortMapByValue(levelMap);
+            Collections.reverse(order);
+            for(Pair<Integer,Long> p: order) {
+                EmailMention mmention = mentions.get(p.getFirst());
+                int level = (int) (p.getSecond()/MAX_DIFF);
+                if (mention!=null && mention.phrase!=null && !mention.phrase.equals(mmention.phrase) && isValidMerge(mmention.phrase, mention.phrase))
+                    return new Pair<>(mmention.phrase, level);
+            }
+            return new Pair<>(null, -1);
+        }
+
+        void checkIfIndexRecent(EmailMention mention){
+            Date d = mention.getDate();
+            Calendar curr = new GregorianCalendar();curr.setTime(d);
+            int currTime = curr.get(Calendar.YEAR)*12+curr.get(Calendar.MONTH);
+            int oldest = 100000;
+            for(int time: dateToMentionIdx.keySet())
+                if(time<oldest)
+                    oldest = time;
+
+            if(currTime<oldest)
+                log.warn("FATAL!!! Data order not in chronological order?!");
+            while(currTime-oldest>WINDOW) {
+                if(dateToMentionIdx.containsKey(oldest))
+                    remove(oldest);
+                oldest++;
+            }
+        }
+
+        /**
+         * input: docs belonging to this time window are erased and the indices are updated*/
+        void remove(int time){
+            long st = System.currentTimeMillis();
+            Set<Integer> mentionIdxs = dateToMentionIdx.get(time);
+            if(mentionIdxs == null)
+                log.warn("SERIOUS WARNING!! Time requested fro deletion unknown --- " + time + ", known times: "+dateToMentionIdx.keySet());
+
+            //nothing to delete
+            if(mentionIdxs.size() == 0)
+                return;
+            //map from old idx to new idx
+            Map<Integer,Integer> oldTonew = new LinkedHashMap<>();
+            int numDeletions = 0;
+            for(int mi=0;mi<mentions.size();mi++) {
+                if (mentionIdxs.contains(mi)) {
+                    numDeletions++;
+                    oldTonew.put(mi, -1);
+                }else{
+                    if(mi<numDeletions)
+                        log.error("Something is wrong!! -ve value in oldTonew Index");
+                    oldTonew.put(mi,mi-numDeletions);
+                }
+            }
+            dateToMentionIdx.remove(time);
+            List<EmailMention> newMentions = new ArrayList<>();
+            for(int mi=0;mi<mentions.size();mi++)
+                if(!mentionIdxs.contains(mi)) {
+                    Date d = mentions.get(mi).getDate();
+                    Calendar cal = new GregorianCalendar();
+                    cal.setTime(d);
+                    int t = cal.get(Calendar.YEAR)*12+cal.get(Calendar.MONTH);
+                    if(t<=time) {
+                        System.err.println("Removal is not proper still see: " + (t / 12) + ", " + (t % 12) + " -- " + (time / 12) + ", " + (time % 12) + "\nMID: " + mi + " -- " + mentionIdxs);
+                        for(int x: dateToMentionIdx.keySet())
+                            if(dateToMentionIdx.get(x).contains(mi))
+                                System.err.println("In idx: " + (x / 12) + "," + (x % 12));
+                    }
+                    newMentions.add(mentions.get(mi));
+                }
+            mentions = newMentions;
+
+            for(int date: dateToMentionIdx.keySet()){
+                Set<Integer> dateIdxs = dateToMentionIdx.get(date);
+                Set<Integer> newIdxs = new LinkedHashSet<>();
+                for(int di: dateIdxs) {
+                    Integer newIdx = oldTonew.get(di);
+                    if(newIdx==null)
+                        log.error("Something is not right!! Cannot translate the old index: "+di+".\n There are #"+oldTonew.size()+" entries in old to new translation map");
+                    else if(newIdx!=-1)
+                        newIdxs.add(newIdx);
+                }
+                dateToMentionIdx.put(date, newIdxs);
+            }
+
+            for(String token: tokenToMentionIdx.keySet()){
+                //new posting list
+                Set<Integer> newPL = new LinkedHashSet<>();
+                for(Integer idx: tokenToMentionIdx.get(token)) {
+                    Integer newIdx = oldTonew.get(idx);
+                    if(newIdx==null)
+                        log.error("Something is not right!! Cannot translate the old index: "+idx+".\n There are #"+oldTonew.size()+" entries in old to new translation map");
+                    else if(newIdx!=-1)
+                        newPL.add(newIdx);
+                }
+                tokenToMentionIdx.put(token, newPL);
+            }
+
+            for(String acr: acronymToMentionIdx.keySet()){
+                //new posting list
+                Set<Integer> newPL = new LinkedHashSet<>();
+                for(Integer idx: acronymToMentionIdx.get(acr)) {
+                    Integer newIdx = oldTonew.get(idx);
+                    if(newIdx==null)
+                        log.error("Something is not right!! Cannot translate the old index: "+idx+".\n There are #"+oldTonew.size()+" entries in old to new translation map");
+                    else if(newIdx!=-1)
+                        newPL.add(newIdx);
+                }
+                acronymToMentionIdx.put(acr, newPL);
+            }
+            log.info("Removed #"+mentionIdxs.size()+" mentions belonging to month: "+time%12+", "+(time/12) +" "+ dateToMentionIdx.keySet() + " in "+(System.currentTimeMillis()-st)+"ms");
+            log.info(getStats());
+        }
+        public String getStats(){
+            return ("Stats -- Number of mentions: "+ mentions.size()+"; token index size: "+tokenToMentionIdx.size()+"; date index size: "+dateToMentionIdx.size());
+        }
+    }
+
+    public static class EmailMention{
+        public String phrase;
+        public EmailDocument context;
+        public EmailMention(String phrase, Object context){
+            this.phrase = phrase;
+            if(context instanceof EmailDocument) {
+                this.context = (EmailDocument)context;
+            }
+            else {
+                log.error("FATAL!!! Cannot handle context of type: " + (context == null ? "null" : context.getClass().getName()));
+                return;
+            }
+        }
+
+        public Date getDate(){
+            if(context == null) return null;
+            return context.getDate();
         }
     }
 
@@ -302,164 +495,59 @@ public class ProperNounLinker {
         //The sliding window is the blocking mechanism here
         if(archive == null)
             return;
-        int WINDOW = 12, QUANTUM = 1;
+        long st = System.currentTimeMillis();
         try {
             List<Document> docs = archive.getAllDocs();
             //reverse chronological order, recent last
             Collections.sort(docs);
-            int startIdx = -1;
-            EmailDocument startDoc = (EmailDocument)docs.get(0);
-            EmailDocument endDoc = (EmailDocument)docs.get(docs.size()-1);
+            EmailDocument startDoc = (EmailDocument) docs.get(0);
+            EmailDocument endDoc = (EmailDocument) docs.get(docs.size() - 1);
             Calendar startCal = new GregorianCalendar(), endCal = new GregorianCalendar();
-            startCal.setTime(startDoc.getDate());endCal.setTime(endDoc.getDate());
-            int totalMonths = endCal.get(Calendar.MONTH)-startCal.get(Calendar.MONTH) + 12*(endCal.get(Calendar.YEAR)-startCal.get(Calendar.YEAR));
-            //only include index for clusters with number of mention>1
-            Map<String, Integer> clusterIdx = new LinkedHashMap<>();
-            //list of clusters with more than one candidate in the merges, the elements in this list are not deleted when the window is slided, so keep it short
-            List<Cluster> clusters = new ArrayList<>();
+            startCal.setTime(startDoc.getDate());
+            endCal.setTime(endDoc.getDate());
             Tokenizer tokenizer = new CICTokenizer();
             archive.assignThreadIds();
             EmailHierarchy hierarchy = new EmailHierarchy();
-            RAMDirectory dir = new RAMDirectory();
-            Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
-            IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(Version.LUCENE_47, analyzer));
-            for(int endIdx = 0; endIdx<totalMonths; endIdx+=QUANTUM){
-                if(endIdx-startIdx>=WINDOW)
-                    startIdx++;
-                //remove the old docs and update the clusters with newly found links between nouns.
-                DirectoryReader reader = null;
-                if(startIdx>=1){
-                    BooleanQuery bq = new BooleanQuery();
-                    bq.add(NumericRangeQuery.newIntRange("month", startCal.get(Calendar.MONTH)+(startIdx-1)%12, startCal.get(Calendar.MONTH)+startIdx%12, true, false), BooleanClause.Occur.MUST);
-                    bq.add(NumericRangeQuery.newIntRange("year", startCal.get(Calendar.YEAR)+(startIdx-1)/12, startCal.get(Calendar.YEAR)+((startIdx-1)/12), true, false), BooleanClause.Occur.MUST);
-                    writer.deleteDocuments(bq);
-                    try {
-                        reader = DirectoryReader.open(dir);
-                    }catch(IndexNotFoundException e){
-                        e.printStackTrace();
-                    }
-                    log.warn("Number of deleted docs: " + reader.numDeletedDocs());
+            Mentions mentions = new Mentions(hierarchy);
+            int di = 0;
+
+            for (Document doc : archive.getAllDocs()) {
+                EmailDocument ed = (EmailDocument) doc;
+                String body = archive.getContents(doc, false);
+                String subject = ed.getSubject();
+                //people in the headers
+                List<String> hpeople = ed.getAllNames();
+                Set<String> cics = new LinkedHashSet<>();
+                cics.addAll(tokenizer.tokenizeWithoutOffsets(body, false));
+                cics.addAll(tokenizer.tokenizeWithoutOffsets(subject, false));
+                cics.addAll(hpeople);
+                Set<String> names = new LinkedHashSet<>();
+                Map<Short, Map<String, Double>> map = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
+                double thresh = 0.001;
+                for (Short t : map.keySet())
+                    if (t != FeatureDictionary.OTHER)
+                        for (String str : map.get(t).keySet())
+                            if (map.get(t).get(str) > thresh)
+                                names.add(str);
+
+                names.addAll(hpeople);
+                mentions.add(names, ed);
+
+                //The SequenceModel based NER model fails or does not do a very good job on
+                //1. Single word names [It just gives up on these, unless it is a country name or a non-dictionary word that appears in a longer CIC phrase in which case it may end up recognising it but should not rely on it]
+                //2. Single word names also includes acronyms
+                //3. Person names of the format: [A-Z].? [A-Z][A-Za-z']+
+                //4. It may also fail at phrases of format: [FIRST NAME] (&|and) [FIRST NAME]. Yes, it can magically handle phrases like "Adam M. Weber and Sophie Reine" into two persons
+                for(String cic: cics) {
+                    Pair<String, Integer> match = mentions.getNearestMatch(new EmailMention(cic, ed));
+                    if (match.getSecond() >= 0)
+                        log.info("Found a match " + cic + "<->" + match.getFirst()+" - Level: "+match.getSecond()+" - UID: "+ed.getUniqueId());
                 }
-                if(reader == null) {
-                    try {
-                        reader = DirectoryReader.open(dir);
-                    }catch(IndexNotFoundException e){
-                        e.printStackTrace();
-                    }
-                }
-                //add the new docs corresponding to incremented endIdx and link these new CICs to the old ones.
-                Calendar cal1 = new GregorianCalendar();cal1.set(startCal.get(Calendar.YEAR)+(endIdx/12), startCal.get(Calendar.MONTH)+endIdx%12,1);
-                Calendar cal2 = new GregorianCalendar();cal2.set(startCal.get(Calendar.YEAR)+((endIdx+1)/12), startCal.get(Calendar.MONTH)+(endIdx+1)%12,1);
-                Collection<DatedDocument> newDocs = archive.docsInDateRange(cal1.getTime(), cal2.getTime());
-                log.info("Between "+cal1.getTime()+", "+cal2.getTime()+" - #docs: "+newDocs.size()+" - "+startCal.getTime());
-                for(Document doc: newDocs){
-                    EmailDocument ed = (EmailDocument) doc;
-                    String body = archive.getContents(doc, false);
-                    String subject = ed.getSubject();
-                    //people in the headers
-                    List<String> hpeople = ed.getAllNames();
-                    Set<String> cics = new LinkedHashSet<>();
-                    cics.addAll(tokenizer.tokenizeWithoutOffsets(body, false));
-                    cics.addAll(tokenizer.tokenizeWithoutOffsets(body,true));
-                    cics.addAll(tokenizer.tokenizeWithoutOffsets(subject,false));
-                    cics.addAll(tokenizer.tokenizeWithoutOffsets(subject,true));
-                    cics.addAll(hpeople);
-
-                    //Addresses are more specific than names, in case if two people have the same name but different email address
-                    for(String cic: cics){
-                        if(cic == null)
-                            continue;
-                        org.apache.lucene.document.Document ldoc = new org.apache.lucene.document.Document();
-                        ldoc.add(new TextField("cic", cic, Field.Store.YES));
-                        for(int level = 0;level<hierarchy.getNumLevels();level++) {
-                            String val = hierarchy.getValue(level, ed);
-                            if(val!=null)
-                                ldoc.add(new StringField(hierarchy.getName(level), val, Field.Store.YES));
-                        }
-                        Calendar currCal = new GregorianCalendar();currCal.setTime(ed.date);
-                        ldoc.add(new IntField("month", currCal.get(Calendar.MONTH), Field.Store.YES));
-                        ldoc.add(new IntField("year", currCal.get(Calendar.YEAR), Field.Store.YES));
-                        ldoc.add(new LongField("date", ed.date.getTime(), Field.Store.YES));
-                        //hopefully this is more efficient than regexp match
-                        if(!"ac".equals(FeatureGeneratorUtil.tokenFeature(cic))) {
-                            String acr = Util.getAcronym(cic);
-                            if(acr!=null)
-                                ldoc.add(new StringField("acr", acr, Field.Store.YES));
-                        }
-                        //System.out.println("Adding document: " + ldoc);
-                        writer.addDocument(ldoc);
-                        //if it is a header name, there is no need to recognize the semantic type (Well! most of the times.)
-                        /*TODO mark if the CIC is a header name*/
-                    }
-
-                    if(reader!=null) {
-                        IndexSearcher searcher = new IndexSearcher(reader);
-
-                        //see if any of the cic pattern can be linked
-                        for (String cic : cics) {
-                            if(cic==null)
-                                continue;
-                            String cicField = "cic";
-                            String tc = FeatureGeneratorUtil.tokenFeature(cic);
-                            if ("ac".equals(tc))
-                                cicField = "acr";
-                            for (int level = 0; level < hierarchy.getNumLevels(); level++) {
-                                //retrieve lucene docs based on search for cic
-                                BooleanQuery bq = new BooleanQuery();
-                                String val = hierarchy.getValue(level, ed);
-                                if(val==null)
-                                    continue;
-
-                                bq.add(new TermQuery(new Term(hierarchy.getName(level), val)), BooleanClause.Occur.MUST);
-                                bq.add(new TermQuery(new Term(cicField, cic)), BooleanClause.Occur.MUST);
-                                TopDocs tds = searcher.search(bq, Integer.MAX_VALUE);
-                                String bestMatch = null;
-                                long bestDiff = -1;
-                                //if there are multiple hits, just accept the hit closest in time
-                                for (ScoreDoc sd : tds.scoreDocs) {
-                                    org.apache.lucene.document.Document hdoc = searcher.doc(sd.doc);
-                                    long time = (long) hdoc.getField("date").numericValue();
-                                    //this will always be +ve
-                                    String cand = hdoc.get("cic");
-                                    if(cic.equals(cand))
-                                        continue;
-                                    if (("ic".equals(tc) || isValidMerge(cand, cic)) && ed.date.getTime() - time > bestDiff) {
-                                        bestMatch = hdoc.get("cic");
-                                        bestDiff = ed.date.getTime() - time;
-                                    }
-                                }
-                                if (bestMatch != null) {
-                                    if (clusterIdx.containsKey(cic)) {
-                                        int idx = clusterIdx.get(cic);
-                                        clusters.get(idx).add(bestMatch);
-                                        clusterIdx.put(bestMatch, idx);
-                                    } else if (clusterIdx.containsKey(bestMatch)) {
-                                        int idx = clusterIdx.get(cic);
-                                        clusters.get(clusterIdx.get(cic)).add(cic);
-                                        clusterIdx.put(cic, idx);
-                                    } else {
-                                        int idx = clusters.size();
-                                        clusters.add(new Cluster());
-                                        clusters.get(idx).add(cic);
-                                        clusters.get(idx).add(bestMatch);
-                                        clusterIdx.put(cic, idx);
-                                        clusterIdx.put(bestMatch, idx);
-                                    }
-                                    log.info("Found: " + cic + "<->" + bestMatch + " level: " + level);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    writer.commit();
-                }
-                log.info("Found #"+clusters.size()+" clusters. Steps: "+endIdx+"/"+totalMonths);
+                if(di++%1000 == 0)
+                    log.info("Done processing: "+di+"/"+docs.size()+" -- elapsed time: "+(System.currentTimeMillis()-st)+"ms -- estimated time "+((double)((System.currentTimeMillis()-st)*(docs.size()-di))/(di*1000*60))+" minutes");
             }
 
-            Collections.sort(clusters);
-            for(Cluster clx: clusters){
-                log.info(clx);
-            }
+            log.info("Done finding merges in " + (System.currentTimeMillis() - st) + "ms");
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -563,7 +651,14 @@ public class ProperNounLinker {
         //yet to deal with this problem
         tps.put(new Pair<>("Washington", "Washington State"), true);
         tps.put(new Pair<>("Dharwad University","Dharwad"), false);
-
+        tps.put(new Pair<>("Dumontier Lab", "Lab"), false);
+        tps.put(new Pair<>("Sudheendra Hangal", "Jaya Hangal"), false);
+        tps.put(new Pair<>("DJBDX Thank", "Thank"), false);
+        tps.put(new Pair<>("Non-ProfitOrganisation", "Non-profit"), false);
+        tps.put(new Pair<>("Non-ProfitOrganisation", "Non-consecutive"), true);
+        tps.put(new Pair<>("Stanford University","Washington University in St. Louis"), false);
+        tps.put(new Pair<>("McAfee Research","MC"), false);
+        tps.put(new Pair<>("Blog","Presto Blog Digest"), false);
         int numFailed = 0;
         long st = System.currentTimeMillis();
         for(Map.Entry e: tps.entrySet()) {
@@ -579,14 +674,15 @@ public class ProperNounLinker {
     }
 
     public static void BOWtest(){
-        String[] phrases = new String[]{"NYTimes","DaVinci","Vincent VanGogh", "George H.W. Bush","George H W Bush","George W. Bush"};
+        String[] phrases = new String[]{"NYTimes","DaVinci","Vincent VanGogh", "George H.W. Bush","George H W Bush","George W. Bush","Non-consecutive"};
         String[][] expected = new String[][]{
                 new String[]{"ny","time"},
                 new String[]{"da","vinci"},
                 new String[]{"vincent","van","gogh"},
                 new String[]{"george","bush"},
                 new String[]{"george","bush"},
-                new String[]{"george","bush"}
+                new String[]{"george","bush"},
+                new String[]{"non","consecutive"}
         };
         for(int pi=0;pi<phrases.length;pi++) {
             String p = phrases[pi];
@@ -620,5 +716,24 @@ public class ProperNounLinker {
         }catch(Exception e){
             e.printStackTrace();
         }
+//        try {
+//            RAMDirectory dir = new RAMDirectory();
+//            Analyzer analyzer = new EnglishAnalyzer(Version.LUCENE_47, Indexer.MUSE_STOP_WORDS_SET);
+//            IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(Version.LUCENE_47, analyzer));
+//            org.apache.lucene.document.Document ldoc = new org.apache.lucene.document.Document();
+//            ldoc.add(new TextField("content","Some gibberish and something else, hello",Field.Store.YES));
+//            writer.addDocument(ldoc);
+//            writer.commit();
+//            DirectoryReader reader = DirectoryReader.open(dir);
+//            IndexSearcher searcher = new IndexSearcher(reader);
+//            // Parse a simple query that searches for "text":
+//            QueryParser parser = new QueryParser(Version.LUCENE_47, "content", analyzer);
+//            Query query = parser.parse("some something nothing");
+//            TopDocs tds = searcher.search(query,10);
+//            for(ScoreDoc sd: tds.scoreDocs)
+//                System.err.println("Content: "+searcher.doc(sd.doc).get("content"));
+//        }catch(Exception e){
+//            e.printStackTrace();
+//        }
     }
 }

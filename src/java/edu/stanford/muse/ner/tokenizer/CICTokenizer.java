@@ -1,10 +1,8 @@
 package edu.stanford.muse.ner.tokenizer;
 
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.NLPUtils;
-import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
@@ -26,12 +24,20 @@ public class CICTokenizer implements Tokenizer, Serializable {
     public static Log log						= LogFactory.getLog(CICTokenizer.class);
 
     static Pattern	personNamePattern, entityPattern, multipleStopWordPattern, cswPatt;
-    static String[] commonStartWords = new String[]{"The","A","Hello","Dear","Hi","Met","From","Quote","From:","And","My","Our","Regarding","Quoting","On Behalf of","Behalf of"};
+    static String[] commonStartWords = new String[]{
+            "hey","the","a","an","hello","dear","hi","met","from","quote","from:","and","my","our","regarding","quoting","on behalf of","behalf of","sorry","but",
+            //include all stop words
+            "and","for","a","the","to","at", "in", "of",
+            "on","with","ok","your","I","to:","thanks", "let","does", "sure", "thank","you","about","&","yes","if","by","why","said","even","am","respected","although","as"
+    };
+    static String[] badSubstrings = new String[]{
+            " not ", "I'm", "I'll","I am","n't","I've"," have ","I'd"
+    };
 
     //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
     //how useful is "on" in the stop words list
-	static String[] stopWords =  new String[]{"and", "for","a","the","to","at", "in", "of",
+	static String[] stopWords =  new String[]{"and","for","a","the","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
@@ -65,7 +71,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         String recur = "{1,3}";
         //the person name pattern or entity pattern can match more than one consecutive stop word or multiple appearances of [-.'] which is undesired
         //Hence we do another level of tokenisation with the pattern below
-        multipleStopWordPattern = Pattern.compile("("+stopWordsPattern+"["+allowedCharsOther+"]"+recur+"){2,}|(['-\\.]{2,})|'s(\\s|$)");
+        multipleStopWordPattern = Pattern.compile("(\\s|^)("+stopWordsPattern+"["+allowedCharsOther+"]"+recur+"){2,}|(['-\\.]{2,})|'s(\\s|$)");
 
 		//[\"'_:\\s]*
 		//number of times special chars between words can recur
@@ -104,7 +110,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	public List<Triple<String, Integer, Integer>> tokenize(String content, boolean pn) {
 		List<Triple<String, Integer, Integer>> matches = new ArrayList<Triple<String, Integer, Integer>>();
 		if (content == null)
-			return null;
+			return matches;
 
 		if (personNamePattern == null || entityPattern == null) {
 			initPattern();
@@ -163,6 +169,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
                         //further cleaning to remove "'s" pattern
                         //@TODO: Can these "'s" be put to a good use? Right now, we are just throwing them away
                         String[] tokens = clean(name, m.start(1));
+                        outer:
                         for (String token : tokens) {
                             int s = name.indexOf(token);
                             if (s < 0) {
@@ -171,6 +178,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
                             }
                             if(token.toLowerCase().startsWith("begin pgp") || token.toLowerCase().endsWith(" i"))
                                 continue;
+                            for(String bs: badSubstrings){
+                                if(token.toLowerCase().contains(bs.toLowerCase()))
+                                    continue outer;
+                            }
                             //this list contains many single word bad names like Jan, Feb, Mon, Tue, etc.
                             if(DictUtils.tabooNames.contains(token.toLowerCase())) {
                                 continue;
@@ -228,11 +239,11 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 }
             }
             //remove common start words
-            //the replace pattern is a costly operations because it can contain many '|', double check if using the pattern is required
             boolean hasCSW = false;
             do {
+                String lc = t.toLowerCase();
                 for (String cw : commonStartWords)
-                    if (t.startsWith(cw + " ")) {
+                    if (lc.startsWith(cw + " ")) {
                         t = t.substring(cw.length()+1);
                         hasCSW = true;
                         break;
@@ -299,7 +310,14 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "North Africa is the northern portion of Africa",
                 "Center of Evaluation has developed some evaluation techniques.",
                 "Hi Professor Winograd, this is your student from nowhere",
-                ">> Hi Professor Winograd, this is your student from nowhere"
+                ">> Hi Professor Winograd, this is your student from nowhere",
+                "Why Benjamin Netanyahu may look",
+                "I am good Said Netnyahu",
+                "Even Netanyahu was present at the party",
+                "The New York Times is a US based daily",
+                "Do you know about The New York Times Company that brutally charges for Digital subscription",
+                "Fischler proposed EU-wide measures after reports from Britain and France that under laboratory conditions sheep could contract Bovine Spongiform Encephalopathy ( BSE ) -- mad cow disease",
+                "Spanish Farm Minister Loyola de Palacio had earlier accused Fischler at an EU farm ministers ' meeting of causing unjustified alarm through \" dangerous generalisation ."
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -347,7 +365,14 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"North Africa","Africa"},
                 new String[]{"Center of Evaluation"},
                 new String[]{"Professor Winograd"},
-                new String[]{"Professor Winograd"}
+                new String[]{"Professor Winograd"},
+                new String[]{"Benjamin Netanyahu"},
+                new String[]{"Netanyahu"},
+                new String[]{"Netanyahu"},
+                new String[]{"New York Times","US"},
+                new String[]{"New York Times Company","Digital"},
+                new String[]{"Fischler","EU-wide","Britain and France","Bovine Spongiform Encephalopathy","BSE"},
+                new String[]{"Spanish Farm Minister Loyola de Palacio","Fischler","EU"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];

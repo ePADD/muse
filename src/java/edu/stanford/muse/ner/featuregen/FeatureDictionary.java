@@ -252,7 +252,6 @@ public class FeatureDictionary implements Serializable {
         //features also include the type of the phrase
         //returns the log of P(type,features/this-mixture)
         public double getLikelihood(Set<String> features, FeatureDictionary dictionary) {
-            //System.err.println("\n\n--------");
             double p = 1.0;
             Set<String> left = new LinkedHashSet<>();
             Set<String> right = new LinkedHashSet<>();
@@ -264,7 +263,7 @@ public class FeatureDictionary implements Serializable {
             }
             Set<String> ts = new LinkedHashSet<>();
             for (Short at : allTypes) {
-                //Note: having the condition below uncommented leads to unexpected changes to the incomplete data log likehood when training
+                //Note: having the condition below uncommented leads to unexpected changes to the incomplete data log likelihood when training
                 //if(at!=FeatureDictionary.OTHER)
                 ts.add(at + "");
             }
@@ -272,7 +271,6 @@ public class FeatureDictionary implements Serializable {
             boolean smooth = true;
             if (muVectorPositive.size()==TYPE_LABELS.length)
                 smooth = true;
-            //System.err.println("Smoothing is set to :"+smooth);
             int si=0;
             for (Set<String> strs : new Set[]{left, right}) {
                 si++;
@@ -1156,7 +1154,7 @@ public class FeatureDictionary implements Serializable {
                         }
                         List<Pair<String, Double>> ps = Util.sortMapByValue(some);
                         for (Pair<String, Double> p : ps) {
-                            if(type!=ats[0] || p.second>=0.001) {
+                            if(type==ats[0] || p.second>=0.001) {
                                 fw.write(features.get(p.getFirst()).toString());
                                 fw.write("========================\n");
                             }
@@ -1264,12 +1262,12 @@ public class FeatureDictionary implements Serializable {
                 //a likelihood that assumes nothing
                 d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
 //            try {
-//                if (fw != null)
-//                    fw.write("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+"\n");
 //            }catch(IOException e){
 //                e.printStackTrace();
 //            }
             }
+            if(log.isDebugEnabled())
+                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+" MU: "+features.get(mid));
 
             if (Double.isNaN(d))
                 log.warn("Cond nan " + mid + ", " + d);
@@ -1314,6 +1312,23 @@ public class FeatureDictionary implements Serializable {
     }
 
     public static void main(String[] args) {
-        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
+//        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
+        FeatureDictionary dictionary = new FeatureDictionary();
+        Map<String,String> gazz = new LinkedHashMap<>();
+//        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
+//        //gazz.put("Rajahmundry Airport", "Airport|Infrastructure|ArchitecturalStructure|Place");
+//        gazz.put("Rajahmundry(Rural)", "Settlement|PopulatedPlace|Place");
+//        gazz.put("Government_Arts_College,_Rajahmundry","University|EducationalInstitution|Organisation|Agent");
+//        gazz.put("Rajahmundry University","University|EducationalInstitution|Organisation|Agent");
+//        gazz.put("Andhra University Rajahmundry","University|EducationalInstitution|Organisation|Agent");
+//        gazz.put("Crandall University","University|EducationalInstitution|Organisation|Agent");
+//        gazz.put("Crandall","Town|Settlement|PopulatedPlace|Place");
+//        gazz.put("Crandall,Texas","City|Settlement|PopulatedPlace|Place");
+//        gazz.put("Stanford_University","University|EducationalInstitution|Organisation|Agent");
+//        gazz.put("Leland Stanford","Governor|Politician|Person|Agent");
+//        gazz.put("Stanford White","Architect|Person|Agent");
+//        gazz.put("Jane Stanford","Agent");
+//        gazz.put();
+//        dictionary.addGazz();
     }
 }

@@ -32,6 +32,7 @@ public class EmailHierarchy implements Hierarchy{
     static String[] levelNames = new String[]{"docId","threadId","to-from","from","to","def"};
     public String getName(int level){return levelNames[level];}
 
+    //Beware: this can return null
     public String getValue(int level, Object o) {
         if (!(o instanceof EmailDocument)) {
             log.info("Improper object passed to get value");
