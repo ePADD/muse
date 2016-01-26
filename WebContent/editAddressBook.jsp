@@ -39,7 +39,7 @@ Separate different people by a line containing only "--". The first person is co
 <% String href = (alphaSort ? "edit-correspondents" : "edit-correspondents?sort=alphabetical"); String text = (alphaSort ? "Sort by email volume" : "Sort alphabetically"); %>
 <a href="<%=href%>"><%=text%></a><br/>
 <form method="post" action="info">
-<textarea name="addressBookUpdate" id="text" cols="80" rows="40">
+<textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="addressBookUpdate" id="text" cols="80" rows="40">
 <%!
 private static String dumpForContact(Contact c) {
 	StringBuilder sb = new StringBuilder();

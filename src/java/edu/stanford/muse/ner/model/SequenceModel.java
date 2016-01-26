@@ -1,5 +1,6 @@
 package edu.stanford.muse.ner.model;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -555,21 +556,21 @@ public class SequenceModel implements NERModel, Serializable {
         return new Pair<>(maps, offsets);
     }
 
-    public void writeModel(File modelFile) throws IOException{
+    public synchronized void writeModel(File modelFile) throws IOException{
         ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(modelFile));
         oos.writeObject(this);
         oos.close();
     }
 
-    public static SequenceModel loadModel(File modelFile) throws IOException{
-        ObjectInputStream ois = null;
+    public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
+        ObjectInputStream ois;
         try {
-            ois = new ObjectInputStream(new FileInputStream(modelFile));
+            ois = new ObjectInputStream(Config.getResourceAsStream(modelPath));
             SequenceModel model = (SequenceModel) ois.readObject();
             ois.close();
             return model;
         } catch (Exception e) {
-            Util.print_exception("Exception while trying to load model from: " + modelFile, e, log);
+            Util.print_exception("Exception while trying to load model from: " + modelPath, e, log);
             return null;
         }
     }
@@ -589,7 +590,7 @@ public class SequenceModel implements NERModel, Serializable {
         return new Pair<>(dict1, dict2);
     }
 
-    public static void test(NERModel nerModel){
+    public static void testDBpedia(NERModel nerModel){
         //when testing remember to change
         //1. lookup method, disable the lookup
         System.err.println("DBpedia scoring check starts");
@@ -743,20 +744,21 @@ public class SequenceModel implements NERModel, Serializable {
         try {
             String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
             String modelFile = mwl + SequenceModel.modelFileName;
-            log.info("Performing EM...");
             nerModel.writeModel(new File(modelFile));
             //also write the test split
             String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-            OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-            int numTest = 0;
-            for(String str: test.keySet()) {
-                String orig = str;
-                str = str.replaceAll(" ","_");
-                osw.write(str + " " + test.get(orig) + "\n");
-                numTest++;
+            if(!new File(twl).exists()) {
+                OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
+                int numTest = 0;
+                for (String str : test.keySet()) {
+                    String orig = str;
+                    str = str.replaceAll(" ", "_");
+                    osw.write(str + " " + test.get(orig) + "\n");
+                    numTest++;
+                }
+                osw.close();
+                System.err.println("Wrote "+numTest+" records in test split to: "+twl);
             }
-            osw.close();
-            System.err.println("Wrote "+numTest+" records in test split to: "+twl);
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -801,7 +803,7 @@ public class SequenceModel implements NERModel, Serializable {
             }
             System.err.println("Loading model...");
             SequenceModel nerModel = null;
-            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+            try{nerModel = SequenceModel.loadModel(modelFile);}
             catch(IOException e){e.printStackTrace();}
             if(nerModel == null)
                 nerModel = train();
@@ -831,7 +833,14 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
-    public static void main(String[] args){
+    public static void test(){
+        Pair<String,String[]>[] test = new Pair[]{
+                new Pair<>("hi terry-\n\ntried to meet carol today with no luck",new String[]{"terry","carol"}),
+                new Pair<>("We are traveling to Vietnam the next summer and will come to New York (NYC) soon",new String[]{"Vietnam","New York","NYC"}),
+        };
+    }
+
+    public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
         String modelFile = mwl + SequenceModel.modelFileName;
@@ -844,13 +853,12 @@ public class SequenceModel implements NERModel, Serializable {
         }
         System.err.println("Loading model...");
         SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+        try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
         if(nerModel == null)
             nerModel = train();
 
-        if(nerModel!=null){
-            test(nerModel);
-        }
+        if (nerModel != null)
+            testDBpedia(nerModel);
     }
 }

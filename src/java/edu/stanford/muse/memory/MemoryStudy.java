@@ -9,25 +9,22 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import edu.stanford.muse.index.Indexer;
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
+import edu.stanford.muse.email.Contact;
+import edu.stanford.muse.exceptions.ReadContentsException;
+import edu.stanford.muse.index.*;
+import edu.stanford.muse.ner.dictionary.EnglishDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.model.NERModel;
+import edu.stanford.muse.util.DictUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ie.NameTypes;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.Lexicon;
 import edu.stanford.muse.util.CryptoUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
@@ -35,6 +32,9 @@ import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.xword.ArchiveCluer;
 import edu.stanford.muse.xword.Clue;
 import edu.stanford.muse.xword.Crossword;
+import org.apache.lucene.queryparser.classic.ParseException;
+
+import javax.mail.Address;
 
 public class MemoryStudy implements Serializable{
 
@@ -74,6 +74,57 @@ public class MemoryStudy implements Serializable{
 		
 		public String toString() { return Util.fieldsToString(this); }
 	}
+
+    /* small util class -- like clue but allows answers whose clue is null */
+    public static class ClueInfo implements Comparable<ClueInfo> {
+        //clues corrsponding to different choice of sentences in the context
+        public Clue[] clues;
+        public String link, displayEntity;
+        public int nMessages, nThreads;
+        public Date lastSeenDate;
+        public boolean hasCoreTokens;
+
+        public String toHTMLString() {
+            String str = "";
+            for(Clue clue: clues){
+                str += "<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td><td>" + (clue != null ? clue.clueStats.finalScore : "-") + "</td></tr>"
+                        + "<tr><td class=\"clue\" colspan=\"6\">" + (clue != null ? (clue.clue + "<br/><br/><div class=\"stats\"> stats: " + Util.fieldsToString(clue.clueStats, false)) : "No clue") + "</div><br/><br/></td></tr><br>";
+            }
+            return str;
+        }
+
+        public int compareTo(ClueInfo c2) {
+            // all answers with core tokens should be last in sort order
+            if (this.hasCoreTokens && !c2.hasCoreTokens)
+                return 1;
+            if (c2.hasCoreTokens && !this.hasCoreTokens)
+                return -1;
+
+            if(this.clues == null || c2.clues == null) {
+                if (this.clues == c2.clues) return 0;
+                else return (this.clues==null)?1:-1;
+            }
+            if(this.clues.length == 0 || c2.clues.length == 0) {
+                if (c2.clues.length == this.clues.length)
+                    return 0;
+                else return (this.clues.length > c2.clues.length)? -1 : 1;
+            }
+
+            //decide based on their first clues
+            Clue clue = this.clues[0], cclue = c2.clues[0];
+            // all answers with clues should come towards the end
+            if (clue == null && cclue != null)
+                return 1;
+            if (clue != null && cclue == null)
+                return -1;
+            if (clue == null && cclue == null)
+                return displayEntity.compareTo(c2.displayEntity); // just some order, as long as it is consistent
+
+            if (clue != null && cclue.clue != null)
+                return (clue.clueStats.finalScore > cclue.clueStats.finalScore) ? -1 : (cclue.clueStats.finalScore > clue.clueStats.finalScore ? 1 : 0);
+            return 0;
+        }
+    }
 	
 	public UserStats stats;
 	private int questionIndex;
@@ -81,7 +132,7 @@ public class MemoryStudy implements Serializable{
 	private Set<String> tabooCluesSet;
 	private ArrayList<MemoryQuestion> questions;
 	public Archive archive;
-	
+
 	public static List<String> codes;
 	static String CODES_FILE, USERS_FILE;
 	
@@ -179,92 +230,237 @@ public class MemoryStudy implements Serializable{
 		stats.starttime = new Date().getTime();
 	}
 	
-	/** Generates list of questions and stores it in the current instance of MemoryStudy 
+	/** Generates list of questions and stores it in the current instance of MemoryStudy
+     * We handle two kinds of questions namely, person names tests and non-person name tests.
+     * Non-person name test is a fill in the blank kind where the blank is to be filled with the correct non-person entity to complete the sentence
+     * person name test is to guess the person in correspondent list based on some distinctive sentences in the mail
+     * @param N - max. number of questions
+     * @param maxInt - max. number of questions from a interval
 	 * @throws IOException */
-	public void generateQuestions (Archive archive, Collection<EmailDocument> allDocs, Lexicon lex, int N) throws IOException {
+	public void generateQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int maxInt, boolean personTest) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
 		this.archive = archive;
 		if (allDocs == null)
 			allDocs = (Collection) archive.getAllDocs();
-		
-		ArchiveCluer cluer = new ArchiveCluer(null, archive, null, lex);
+        questions = new ArrayList<>();
+		ArchiveCluer cluer = new ArchiveCluer(null, archive, nerModel, null, lex);
 
-		// get the top names and name infos
-		Map<String, NameInfo> nameMap = NameTypes.computeNameMap(archive, allDocs);
-        Indexer.IndexStats stats = archive.getIndexStats();
-		stats.nUniqueNamesOriginal = nameMap.size();
-		ArrayList<NameInfo> topNameInfos = new ArrayList<NameInfo>(nameMap.values());
-		Collections.sort(topNameInfos);
-		List<String> topNames = new ArrayList<String>();
-		for (NameInfo ni: topNameInfos)
-			topNames.add(ni.title);
+        Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
+                FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE,FeatureDictionary.THEATRE,
+                FeatureDictionary.LIBRARY, FeatureDictionary.LAWFIRM, FeatureDictionary.GOVAGENCY};
+        double CUTOFF = 0.001;
+        archive.assignThreadIds();
 
-		// remember, topNames is not canonicalized
-		
-		// eliminate the taboo answers
-		// compile the taboo names, starting from the own names and the xword-taboowords file
-		Set<String> ownNames = archive.addressBook.getOwnNamesSet();
-		Set<String> tabooNames = Crossword.getTabooTokensFromOwnNames(ownNames);		
-		
-		String TABOO_FILE = "xword-taboowords.txt"; // in the web-inf/classes dir
-		Collection<String> tabooWordsFromFile = Util.getLinesFromInputStream(Crossword.class.getClassLoader().getResourceAsStream(TABOO_FILE), true);
-		log.info ("words read from taboo words file " + TABOO_FILE + ":" + tabooWordsFromFile.size());
-		
-		tabooNames.addAll(tabooWordsFromFile);
-		
-		topNames = Crossword.removeBadCandidatesAndCap(topNames, tabooNames);
-		// remember, topNames is not canonicalized even here
+        List<Document> docs = archive.getAllDocs();
+        Map<String, Date> entityToLastDate = new LinkedHashMap<>();
+        Multimap<String, EmailDocument> entityToMessages = LinkedHashMultimap.create();
+        Multimap<String, Long> entityToThreads = LinkedHashMultimap.create();
+        Multimap<String, String> ceToDisplayEntity = LinkedHashMultimap.create();
 
-		// todo: remove lol*
-		
-	    questions = new ArrayList<MemoryQuestion>();
-		
-		Set<String> tabooCluesSet = new LinkedHashSet<String>();
+        int di = 0;
 
-		for (String name: topNames) {
-			
-			try {
-				if (questions.size() >= (N*2))
-					break;
-				
-				NameInfo ni = nameMap.get(name.toLowerCase().trim().replaceAll(" ", "_"));
-	
-				if (Util.tokenize(name).size() > 2)
-					continue; // these tend to be long org. names or "Mr. XXX YYYY"
-				
-				// check if it satisfies length constraints
-				String nameWithoutSpaces = name.replaceAll("\\s",  "");
-				if (nameWithoutSpaces.length() < MIN_ANSWER_LENGTH || nameWithoutSpaces.length() > MAX_ANSWER_LENGTH)
-					continue;
-	
-				// skip anything with non-letter chars, e.g. periods (to elim. words like Mr. Smith)
-				if (Util.nLetterChars(nameWithoutSpaces) != nameWithoutSpaces.length())
-					continue;
-				
-				// compute the length descr string
-				List<Integer> lengthList = Crossword.convertToWord(name).getSecond();
-				String lengthDescr = "";
-				if (lengthList.size() > 1)
-					lengthDescr += Integer.toString(lengthList.size()) + " words: ";
-				
-				for (Integer i :lengthList) {
-					lengthDescr += i + " characters, ";
-				}
-				lengthDescr = lengthDescr.substring(0, lengthDescr.length()-2); //subtract the extra comma.
-	
-				// create the clue
-				Clue clueforname = cluer.createClue(name, tabooCluesSet);
-				if (clueforname == null)
-					continue;
-				
-				int times = (ni != null) ? ni.times : -1;
-				MemoryQuestion mq = new MemoryQuestion(this, name, clueforname, times, lengthDescr);
-				questions.add(mq);
-				
-				tabooCluesSet.add(clueforname.getFullSentence().toLowerCase());
-			} catch (Exception e) {
-				Util.print_exception("Error while trying to generate clue for name: " + name, e, JSPHelper.log);
-			}
-		}
+        // sort by date
+        Collections.sort(docs);
+
+        Set<String> ownerNames = archive.ownerNames;
+        Date earliestDate = null, latestDate = null;
+        Set<String> allEntities = new LinkedHashSet<>();
+        for (Document doc : docs) {
+            EmailDocument ed = (EmailDocument) doc;
+            if (earliestDate == null || ed.date.before(earliestDate))
+                earliestDate = ed.date;
+            if (latestDate == null || ed.date.after(latestDate))
+                latestDate = ed.date;
+
+            List<String> entities = new ArrayList<>();
+            if(!personTest) {
+                Map<Short, Map<String, Double>> es = edu.stanford.muse.ner.NER.getEntities(archive.getDoc(doc), true);
+                for (Short t : itypes) {
+                    Map<String, Double> tes = es.get(t);
+                    for (String str : tes.keySet())
+                        if (tes.get(str) > CUTOFF)
+                            entities.add(str);
+                }
+            }
+            else{
+                //do not consider mailing lists
+                if(ed.sentToMailingLists!=null && ed.sentToMailingLists.length>0)
+                    continue;
+                List<Address> addrs = new ArrayList<>();
+                if(ed.to!=null)
+                    for(Address addr: ed.to)
+                        addrs.add(addr);
+
+                List<String> names = new ArrayList<>();
+                for(Address addr: addrs) {
+                    Contact c = archive.addressBook.lookupByAddress(addr);
+                    names.add(c.pickBestName());
+                }
+                for(String name: names){
+                    if(!ownerNames.contains(name) && !DictUtils.hasDictionaryWord(name)) {
+                        entities.add(name);
+                    }
+                }
+            }
+            allEntities.addAll(entities);
+
+            // get entities
+            for (String e : entities) {
+                if (Util.nullOrEmpty(e))
+                    continue;
+                e = e.replaceAll("^\\W+|\\W+$","");
+                if (e.length() > 10 && e.toUpperCase().equals(e))
+                    continue; // all upper case, more than 10 letters, you're out.
+
+                String ce = DictUtils.canonicalize(e); // canonicalize
+                if (ce == null) {
+                    JSPHelper.log.info ("Dropping entity: "  + e);
+                    continue;
+                }
+
+                ceToDisplayEntity.put(ce, e);
+                entityToLastDate.put(ce, ed.date);
+                entityToMessages.put(ce, ed);
+                entityToThreads.put(ce, ed.threadID);
+            }
+
+            if ((++di)%1000==0)
+                log.info(di + " of " + docs.size() + " messages processed...<br/>");
+        }
+        log.info("Considered #" + allEntities.size() + " unique entities and #" + ceToDisplayEntity.size() + " good ones in #" + docs.size() + " docs<br>");
+        log.info("Owner Names: " + ownerNames);
+        JSPHelper.log.info("Considered #"+allEntities.size()+" unique entities and #"+ceToDisplayEntity.size()+" good ones in #"+docs.size()+"docs");
+
+        JSPHelper.log.info ("earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate));
+        JSPHelper.log.info ("latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+
+        Multimap<String, String> tokenToCE = LinkedHashMultimap.create();
+        for (String ce: ceToDisplayEntity.keySet()) {
+            List<String> tokens = Util.tokenize(ce);
+            for (String t: tokens)
+                tokenToCE.put(t, ce);
+        }
+
+        // Compute date intervals
+        int DAYS_PER_INTERVAL = 30;
+        List<Pair<Date, Date>> intervals = new ArrayList<Pair<Date, Date>>();
+        {
+            JSPHelper.log.info ("computing time intervals");
+            Date closingDate = latestDate;
+
+            JSPHelper.log.info ("closing = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(closingDate));
+            while (earliestDate.before(closingDate)) {
+                Calendar cal = new GregorianCalendar();
+                cal.setTime(closingDate); // this is the time of the last sighting of the term
+                // scroll to the beginning of this month
+                cal.set(Calendar.HOUR_OF_DAY, 23);
+                cal.set(Calendar.MINUTE, 59);
+                cal.set(Calendar.SECOND, 59);
+                Date endDate = cal.getTime();
+
+                cal.add(Calendar.DATE, (1-DAYS_PER_INTERVAL)); // 1- because we want from 0:00 of first date to 23:59 of last date
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                Date startDate = cal.getTime();
+
+                intervals.add(new Pair<Date, Date>(startDate, endDate));
+                // ok we got an interval
+
+                // closing date for the next interval is 1 day before endDate
+                cal.add(Calendar.DATE, -1);
+                closingDate = cal.getTime();
+            }
+            JSPHelper.log.info ("done computing intervals, #time intervals: " + intervals.size());
+            for (Pair<Date, Date> p: intervals)
+                JSPHelper.log.info ("Interval: " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()));
+        }
+
+        // initialize clueInfos to empty lists
+        List<ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
+        for (int i = 0; i < intervals.size(); i++) {
+            clueInfos[i] = new ArrayList<ClueInfo>();
+        }
+
+        Map<Integer, Integer> intervalCount = new LinkedHashMap<>();
+        //nSent is the number of sentences allowed in a clue text
+        int nvalidclues = 0, nSent = 1;
+        // generate clueInfos for each entity
+        for (String ce: entityToLastDate.keySet()) {
+            Date lastSeenDate = entityToLastDate.get(ce);
+
+            // compute displayEntity (which has red for core words) and fullAnswer, which is a simple string
+            String fullAnswer = "";
+            {
+                List<String> tokens = Util.tokenize(ceToDisplayEntity.get(ce).iterator().next());
+                for (String t: tokens) {
+                    if (EnglishDictionary.stopWords.contains(t.toLowerCase()))
+                        continue;
+                    fullAnswer += t + " ";
+                }
+                fullAnswer = fullAnswer.trim();
+            }
+            //dont want the answer to be scored low just because it has extra non-word chars in the begin or end
+            fullAnswer = fullAnswer.replaceAll("^\\W+|\\W+$","");
+
+            // which interval does this date belong to?
+            int interval = -1;
+            Date intervalStart = null, intervalEnd = null;
+            {
+                int i = 0;
+                for (Pair<Date, Date> p : intervals)
+                {
+                    intervalStart = p.getFirst();
+                    intervalEnd = p.getSecond();
+
+                    if ((intervalStart.before(lastSeenDate) && intervalEnd.after(lastSeenDate)) || intervalStart.equals(lastSeenDate) || intervalEnd.equals(lastSeenDate))
+                    {
+                        interval = i;
+                        break;
+                    }
+                    i++;
+                }
+            }
+            if (interval < 0 || interval == intervals.size())
+                JSPHelper.log.info ("What, no interval!? for " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate));
+            if(!intervalCount.containsKey(interval))
+                intervalCount.put(interval, 0);
+            if(intervalCount.get(interval)>maxInt)
+                continue;
+            intervalCount.put(interval, intervalCount.get(interval)+1);
+
+            List<Integer> lengthList = Crossword.convertToWord(fullAnswer).getSecond();
+            String lengthDescr = "";
+            if (lengthList.size() > 1)
+                lengthDescr += Integer.toString(lengthList.size()) + " words: ";
+
+            for (Integer i :lengthList) {
+                lengthDescr += i + " characters, ";
+            }
+            lengthDescr = lengthDescr.substring(0, lengthDescr.length()-2); //subtract the extra comma.
+
+            ClueInfo ci = new ClueInfo();
+            ci.link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";;
+            ci.lastSeenDate = lastSeenDate;
+            ci.nMessages = entityToMessages.get(ce).size();;
+            ci.nThreads = entityToThreads.get(ce).size();
+
+            //TODO: we are doing default initialisation of evaluators by setting it to null below, it is more appropriate to consider it as an argument for this method
+            Clue clue = cluer.createClue(fullAnswer, (short)(personTest?1:0), null, new LinkedHashSet<>(), null, intervalStart, intervalEnd, nSent, archive);
+            if(clue!=null)
+                ci.clues = new Clue[]{clue};
+
+            if(ci.clues == null || ci.clues.length == 0 || clue==null){
+                JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);
+            }
+            else{
+                //is the times value of the clue important?
+                questions.add(new MemoryQuestion(this,fullAnswer,clue, 1, lengthDescr));
+                nvalidclues++;
+            }
+            clueInfos[interval].add(ci);
+        }
+        log.info("Found valid clues for "+nvalidclues+" answers");
+        JSPHelper.log.info("Found valid clues for "+nvalidclues+" answers");
 		
 		log.info("Top candidates are:");
 		for (MemoryQuestion mq: questions)
@@ -281,20 +477,13 @@ public class MemoryStudy implements Serializable{
 		// drop ones that are prefix/suffix of another, and cap to N
 		int prev_size = questions.size();
 		
-		if (questions.size() >= N) {
-			questions = dropPrefixSuffixfromSortedList(questions, N);
-		}
+//		if (questions.size() >= N) {
+//			questions = dropPrefixSuffixfromSortedList(questions, N);
+//		}
 
 		int new_size = questions.size();
 		
 		log.info ("#questions before prefix-suffix elim: " + prev_size + " after: " + new_size);
-		
-		// assign wikipedia types to the answers
-		try {
-			assignTypes(questions, nameMap);
-		} catch (Exception e) {
-			Util.print_exception("Error reading wikipedia categories", e, log);
-		}
 		
 		int count = 0;
 		for (MemoryQuestion mq: questions) {
@@ -341,7 +530,7 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/* Drops terms that contain other terms (prefixes, suffixes, etc.) and trims the questionlist to the target size.*/
-	private ArrayList<MemoryQuestion> dropPrefixSuffixfromSortedList (ArrayList<MemoryQuestion> questionlist, int targetSize) {
+	private ArrayList<MemoryQuestion> dropPrefixSuffixfromSortedList (List<MemoryQuestion> questionlist, int targetSize) {
 		ArrayList<MemoryQuestion> resultList = new ArrayList<MemoryQuestion>();
 		Set<Integer> badIndexSet = new LinkedHashSet<Integer>();
 		int terms = questionlist.size();
@@ -384,9 +573,9 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** Takes in user response and whether a hint was used. Evaluates whether answer was correct, assigns points, and logs information about the question response. */
-	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, long millis, boolean hintused, int certainty, int memoryType, int recency) {
+	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date recency) {
 		MemoryQuestion mq = questions.get(listLocation);
-		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, millis, hintused, certainty, memoryType, recency);
+		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, recency);
 	}
 	
 	/*checks whether the test is done. if it is, it outputs the final log info and does time calculations*/

@@ -39,14 +39,6 @@ import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
-/**
- * implements an email contacts fetcher for a range of message #s within a
- * single folder.
- * In contrast, MTEmailFetcher is responsible for an entire email account,
- * including multiple folders.
- * and MuseEmailFetcher is responsible for multiple accounts.
- */
-/* email fetcher stats is associated with a single email fetcher */
 class EmailFetcherStats implements Cloneable, Serializable {
 	private final static long	serialVersionUID	= 1L;
 
@@ -67,27 +59,21 @@ class EmailFetcherStats implements Cloneable, Serializable {
 
 	public String toString()
 	{
-		return ""; // Util.fieldsToString(this);
+		return Util.fieldsToString(this);
 	}
 }
 
+/**
+ * Important class for importing email.
+ * implements an email fetcher for a range of message #s within a single folder.
+ * In contrast, MTEmailFetcher is responsible for an entire email account, including multiple folders.
+ * and MuseEmailFetcher is responsible for multiple accounts (but for a single user)
+ * email fetcher stats is associated with a single email fetcher */
 public class EmailFetcherThread implements Runnable, Serializable {
 	private final static long	serialVersionUID		= 1L;
 
-	public static final int		IMAP_PREFETCH_BUFSIZE	= 20 * 1024 * 1024;							/*
-																										 * used
-																										 * for
-																										 * buffering
-																										 * imap
-																										 * prefetch
-																										 * data
-																										 * --
-																										 * necessary
-																										 * for
-																										 * good
-																										 * imap
-																										 * performance
-																										 */
+	public static final int		IMAP_PREFETCH_BUFSIZE	= 20 * 1024 * 1024;
+	/* used for buffering imap prefetch data -- necessary for good imap performance*/
 	public static final String	FORCED_ENCODING			= "UTF-8";
 
 	public static Log			log						= LogFactory.getLog(EmailFetcherThread.class);
@@ -265,7 +251,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		}
 	}
 
-	/** convert the javamail obj. to our own data struct. */
+	/** Key method for importing email: converts a javamail obj. to our own data structure (EmailDocument) */
 	//public EmailDocument convertToEmailDocument(MimeMessage m, int num, String url) throws MessagingException, IOException
 	private EmailDocument convertToEmailDocument(MimeMessage m, String id) throws MessagingException, IOException
 	{
@@ -349,7 +335,9 @@ public class EmailFetcherThread implements Runnable, Serializable {
 			dataErrors.add(s);
 		}
 
+		// take a deep breath. This object is going to live longer than most of us.
 		EmailDocument ed = new EmailDocument(id, folder_name(), to, cc, bcc, from, m.getSubject(), m.getMessageID(), c.getTime());
+
 		String[] headers = m.getHeader("List-Post");
 		if (headers != null && headers.length > 0)
 		{
@@ -997,12 +985,19 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		return true;
 	}
 
-	/** fetch given message idx's in given folder -- @performance critical
+    //keep track of the total time elapsed in fetching messages across batches
+	static long fetchStartTime = System.currentTimeMillis();
+
+    /** fetch given message idx's in given folder -- @performance critical
 	 * @param offset - the original offset of the first message in the messages array, important to initialize
 	 * 				   for proper assignment of unique id or doc Id*/
 	//private void fetchUncachedMessages(String sanitizedFName, Folder folder, DocCache cache, List<Integer> msgIdxs) throws MessagingException, FileNotFoundException, IOException, GeneralSecurityException {
 	private void fetchAndIndexMessages(Folder folder, Message[] messages, int offset, int totalMessages) throws MessagingException, IOException, GeneralSecurityException {
-		currentStatus = JSONUtils.getStatusJSON((emailStore instanceof MboxEmailStore) ? "Parsing " + folder.getName() + " (can take a while)..." : "Reading " + folder.getName() + "...");
+		//mark the processing of new batch
+        if(offset == 0)
+            fetchStartTime = System.currentTimeMillis();
+
+        currentStatus = JSONUtils.getStatusJSON((emailStore instanceof MboxEmailStore) ? "Parsing " + folder.getName() + " (can take a while)..." : "Reading " + folder.getName() + "...");
 
 		// bulk fetch of all message headers
 		int n = messages.length;
@@ -1013,8 +1008,6 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		log.info(n - messages.length + " message(s) already in the archive");
 
 		ArrayList<EmailDocument> emails = new ArrayList<EmailDocument>();
-
-		long startTimeMillis = System.currentTimeMillis();
 
 		// for performance, we need to do bulk prefetches, instead of fetching 1 message at a time
 		// prefetchedMessages will be a temp cache of prefetched messages
@@ -1055,9 +1048,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 				}
 
 				int pctDone = ((i+offset) * 100) / totalMessages;
-				long elapsedMillis = System.currentTimeMillis() - startTimeMillis;
-                //a rough estimate of the time elapsed
-                elapsedMillis = (long)((double)elapsedMillis*(i+offset)/i);
+				long elapsedMillis = System.currentTimeMillis()-fetchStartTime;
 				long unprocessedSecs = Util.getUnprocessedMessage(i+offset, totalMessages, elapsedMillis);
 				int N_TEASERS = 50; // 50 ok here, because it takes a long time to fetch and process messages, so teaser computation is relatively not expensive
 				int nTriesForThisMessage = 0;
@@ -1376,6 +1367,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                             log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
                         }
                     }
+                    log.info ("Fetch stats for this fetcher thread: " + stats);
                 }
                 log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis() - st) + "ms");
             }
@@ -1415,8 +1407,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
-		} catch (Exception e) {
-			Util.print_exception(e);
+		} catch (Throwable t) {
+			if (t instanceof OutOfMemoryError)
+				this.mayHaveRunOutOfMemory = true;
+			// this is important, because there could be an out of memory etc over here.
+			Util.print_exception(t, log);
 		} finally {
 			try {
 				if (folder != null)

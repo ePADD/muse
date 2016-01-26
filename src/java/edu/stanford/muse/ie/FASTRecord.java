@@ -310,7 +310,7 @@ abstract public class FASTRecord {
 				sourceNames += Authority.types[Authority.LOC_NAME] + sep;
 				sourceIds += locName + sep;
 			}
-			else if (src.contains("http://sws.geonames.org/")) {
+			else if (src.contains("http://stopWords.geonames.org/")) {
 				String geoId = src.replaceAll("http://sws.geonames.org/", "").replaceAll("(<|>|\\\\)", "");
 				sourceNames += Authority.types[Authority.GEO_NAMES] + sep;
 				sourceIds += geoId + sep;
@@ -382,7 +382,7 @@ abstract public class FASTRecord {
 				String locName = src.replaceAll("http://id.loc.gov/authorities/names/", "");
 				links.add(" <a target=\"_blank\" href=\"" + src + "\">LCNAF: " + locName + "</a>");
 			}
-			else if (src.contains("http://sws.geonames.org/")) {
+			else if (src.contains("http://stopWords.geonames.org/")) {
 				String geoId = src.replaceAll("http://sws.geonames.org/", "").replaceAll("(<|>|\\\\)", "");
 				links.add("<a target=\"_blank\" href=\"" + src + "\">GeoName:" + geoId + "</a>");
 			}

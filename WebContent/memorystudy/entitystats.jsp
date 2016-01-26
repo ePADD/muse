@@ -6,7 +6,6 @@
 <%@ page import="edu.stanford.muse.email.AddressBook" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
 <%@ page import="edu.stanford.muse.ner.NER" %>
-<%@ page import="com.google.common.collect.*" %>
 
 <%@ page import="java.text.SimpleDateFormat" %>
 <%@include file="../getArchive.jspf" %>

@@ -1,3 +1,5 @@
+#A word statistics file generated from one of the American National Corpus. http://www.anc.org/ [The data is completely open and can be used in any way we want]
+#The file contains three columns: first one is the canocalised word, the second number is number of appearances of the canonicalised word in lower case and the third column is the total number of occurrences of the word. The position of the word in a sentence is not considered when generating the counts in the second column.
 wot 2 6
 s 9026 163337
 de 233 3334

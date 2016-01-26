@@ -27,6 +27,7 @@ public class ArchiveCluer extends Cluer {
 
 	private Crossword c;
 	private Archive archive;
+    private NERModel nerModel;
 	private Set<String> filteredIds;
 	private Map<String, Clue> wordToClueCache = new LinkedHashMap<String, Clue>();
 	protected static final int MIN_CLUE_LENGTH = 25; // absolute min. clue length
@@ -59,10 +60,11 @@ public class ArchiveCluer extends Cluer {
 	// https://stacks.stanford.edu/file/druid:fm335ct1355/Dissertation_Schnoebelen_final_8-29-12-augmented.pdf page ~199
 	protected static String[] smileys = new String[]{":D", ":-D", ":)", "=D", "=]", "=)", "(:", ":')", ":]", ":-)", ";)", ";D", ";-)", ";P", "=P", ":P", ":-P", "=(", ":(", ":-(", ":'(", ":O"}; // don't have "XD".. could be noisy?. ideally should make sure they are not followed by a letter
 
-	public ArchiveCluer(Crossword c, Archive archive, Set<String> filteredIds, Lexicon lex)
+	public ArchiveCluer(Crossword c, Archive archive, NERModel nerModel, Set<String> filteredIds, Lexicon lex)
 	{
 		this.archive = archive;
-		this.filteredIds = filteredIds;
+        this.nerModel = nerModel;
+        this.filteredIds = filteredIds;
 		this.c = c;
 		if (archive != null) {
 			sentimentToDocs = archive.getSentimentMap(lex, true /* original content only */); // note this does not take filtered ids into account, createClue will use the filterIds first before looking up sentiments
@@ -83,7 +85,7 @@ public class ArchiveCluer extends Cluer {
 	}
 
 	/** returns clue for word, either from cache if available, or creates a new one if possible. returns null if no adequate clue is found */
-	public Clue bestClueFor (String word, Set<String> sentencesUsedAsClues) throws CorruptIndexException, LockObtainFailedException, IOException, ParseException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
+	public Clue bestClueFor (String word, Set<String> sentencesUsedAsClues) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
 	{
 		Clue c = wordToClueCache.get(word);
 		if (c != null)
@@ -127,14 +129,14 @@ public class ArchiveCluer extends Cluer {
 		return new Pair<>(score, map);
 	}
 
-	public Clue createClue(String answer, Set<String> tabooClues) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
-	{
-		return createClue(answer, tabooClues, null);
-	}
+    public Clue createClue(String answer, Set<String> tabooClues) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+    {
+        return createClue(answer, tabooClues, nerModel, archive);
+    }
 
-	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
-		return createClue(answer, (short)0, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, null);
+		return createClue(answer, (short)0, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, archive);
 	}
 
     /**
@@ -142,7 +144,7 @@ public class ArchiveCluer extends Cluer {
      * if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
      * @throws ParseException
      */
-    public Clue createClue(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+    public Clue createClue(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
         Clue[] clues = createClues(answer, mode, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
         Clue bestClue = null;
         double bestScore = -Double.MAX_VALUE;
@@ -166,6 +168,30 @@ public class ArchiveCluer extends Cluer {
 		// first canonicalize w
 		answer = answer.toLowerCase();
         Collection<Document> docs;
+        if(archive == null||archive.addressBook==null) {
+            log.error("Archive or its address book is null! This is unexpected and !!!SERIOUS!!!\nReturning without generating clues.");
+            return new Clue[]{};
+        }
+        if(answer == null){
+            log.warn("Unexpected arguments!! Answer: "+answer+", Evaluators: "+evals);
+        }
+        if(evals == null || evals.size()==0) {
+            evals = new ArrayList<>();
+            //default tuned params
+            evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f,-20.0f,0f}));
+            evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f,7.0f,7.0f}));
+            evals.add(new ClueEvaluator.DirtEvaluator(new float[]{-20.0f}));
+            evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
+            evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f,-20.0f}));
+            evals.add(new ClueEvaluator.EmailDocumentEvaluator(new float[]{-0.5f,5.0f}));
+            float[] params = new float[]{0.0f,0.0f,10.0f,10.0f};
+            List<String[]> lists = new ArrayList<>();
+            lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
+            lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
+            lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder".split("\\s*,\\s*"));
+            lists.add("he,she,i,me,you".split("\\s*,\\s*"));
+            evals.add(new ClueEvaluator.ListEvaluator(params, lists));
+        }
         boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
         if(mode == 0)
             docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
@@ -173,7 +199,7 @@ public class ArchiveCluer extends Cluer {
             Contact c = archive.addressBook.lookupByName(answer);
             if(c == null) {
                 log.error("Contact: "+answer+" not found!! returning");
-                return null;
+                return new Clue[]{};
             }
             docs = IndexUtils.selectDocsByContact(archive.addressBook,(Collection)archive.getAllDocs(),c);
         }

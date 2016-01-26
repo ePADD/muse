@@ -131,7 +131,7 @@ public class Authority implements Serializable {
 			else if (type.equals(Authority.types[Authority.LOC_SUBJECT]))
 				dbId = "http://id.loc.gov/authorities/subjects/" + dbId;
 			else if (type.equals(Authority.types[Authority.GEO_NAMES]))
-				dbId = "http://sws.geonames.org/" + dbId;
+				dbId = "http://stopWords.geonames.org/" + dbId;
 			else {
 				System.err.println("Unknown type: " + type + " for: " + dbId);
 				return null;

@@ -1,7 +1,8 @@
 body{
 	font-family:"Trebuchet MS", sans-serif;
-	background-image: url('../images/tweed_muse.png');
-	font-size: 14pt;
+	/*background-image: url('../images/tweed_muse.png');*/
+	background-color: grey;
+    ont-size: 14pt;
 }
 p.bold{font-weight:bold;}
 .consent{
@@ -15,6 +16,15 @@ hr {
   background-color:#909090;
   height: 2px;
 }
+
+.heading{
+    position: absolute;
+    left: 20%;
+    top: 5%;
+    width: 60%;
+    height:auto;
+}
+
 .box{
 	position: absolute;
 	left:20%;
@@ -35,8 +45,8 @@ hr {
 	padding-left:10px;
 	padding-right:10px;
 	z-index:15;
-	background: #eee;
 	text-align: left;
+    background-color: lightgrey;
 }
 .hintwait{
 	display:none;

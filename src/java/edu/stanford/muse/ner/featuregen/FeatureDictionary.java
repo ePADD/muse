@@ -12,6 +12,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -129,6 +130,7 @@ public class FeatureDictionary implements Serializable {
         //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
         static final long serialVersionUID = 1L;
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
+        //word label is used to label the semantic type of neighbouring words and also  includes "NULL" when there are no neighbouring words on any side.
         static String[] WORD_LABELS = new String[allTypes.length+1];
         static String[] TYPE_LABELS = new String[allTypes.length];
         static String[] BOOLEAN_VARIABLES = new String[]{"Y","N"};
@@ -217,10 +219,12 @@ public class FeatureDictionary implements Serializable {
                     }
                 }
             }
-            System.err.println("!!!FATAL: Unknown type label: "+typeLabel+"!!!");
-            System.err.println("Expected");
-            for(String tl: TYPE_LABELS)
-                System.err.println(tl);
+            log.warn("!!!FATAL: Unknown type label: " + typeLabel + "!!!");
+            if(log.isDebugEnabled()) {
+                log.debug("Expected one of: ");
+                for (String tl : TYPE_LABELS)
+                    log.debug(tl);
+            }
             return 0;
         }
 
@@ -307,14 +311,8 @@ public class FeatureDictionary implements Serializable {
                             log.info(t + ": <" + ls.get(t).first+"-"+ls.get(t).second+">");
                     }
                     p *= Math.pow(s, 1.0 / strs.size());
-//                    if(si == 1)
-//                        System.err.println("left: "+Math.pow(s, 1.0/strs.size()));
-//                    else
-//                        System.err.println("Right: "+Math.pow(s, 1.0/strs.size()));
                 }
             }
-//            System.err.println("left and right: "+p);
-//            System.err.println(numMixture+", s: "+s);
 
             for (String f : features) {
                 int v = getNumberOfSymbols(f);
@@ -509,6 +507,41 @@ public class FeatureDictionary implements Serializable {
             }
             str += "NM:"+numMixture+", NS:"+numSeen+"\n";
             str += "NMR:"+nmR+", NML:"+nmL+"\n";
+            return str;
+        }
+
+        public String prettyPrint(){
+            String str = "";
+            String p[] = new String[]{"L:","R:","T:","SW:","DICT:","ADJ:","ADV:","PREP:","V:","PN:"};
+            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS,sws.toArray(new String[sws.size()]),DICT_LABELS,ADJ_LABELS, ADV_LABELS,PREP_LABELS,V_LABELS,PN_LABELS};
+            str += "ID: " + id + "\n";
+            for(int i=0;i<labels.length;i++) {
+                Map<String,Double> some = new LinkedHashMap<>();
+                for(int l=0;l<labels[i].length;l++) {
+                    String k = p[i] + labels[i][l];
+                    String d;
+                    if(i==0 || i==1 || i==2)
+                        d = p[i].replaceAll(":","") + "[" + (labels[i][l].equals("NULL")?"EMPTY":FeatureDictionary.desc.get(Short.parseShort(labels[i][l]))) + "]";
+                    else
+                        d = p[i].replaceAll(":","") + "[" + labels[i][l] + "]";
+                    if(muVectorPositive.get(k) != null)
+                        some.put(d, muVectorPositive.get(k) / numMixture);
+                    else
+                        some.put(d, 0.0);
+                }
+                List<Pair<String,Double>> smap;
+                smap = Util.sortMapByValue(some);
+                int numF = 0;
+                for(Pair<String,Double> pair: smap) {
+                    if(numF>=3)
+                        break;
+
+                    str += pair.getFirst() + ":" + new DecimalFormat("#.##").format(pair.getSecond()) + "-";
+                    numF++;
+                }
+                str += "\n";
+            }
+            str += "Evidence: "+numSeen+"\n";
             return str;
         }
     }
@@ -1106,8 +1139,13 @@ public class FeatureDictionary implements Serializable {
             try {
                 if(i==(MAX_ITER-1)) {
                     Short[] ats = FeatureDictionary.allTypes;
+                    //make cache dir if it does not exist
+                    String cacheDir = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache";
+                    if(!new File(cacheDir).exists())
+                        new File(cacheDir).mkdir();
                     for (Short type : ats) {
-                        FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
+                        FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
+                        FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
                         Map<String, Double> some = new LinkedHashMap<>();
                         for (String w : features.keySet()) {
                             double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
@@ -1118,14 +1156,29 @@ public class FeatureDictionary implements Serializable {
                         }
                         List<Pair<String, Double>> ps = Util.sortMapByValue(some);
                         for (Pair<String, Double> p : ps) {
-                            if(type!=ats[0])
-                                if(p.second<=0.01)
-                                    break;
-                            fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");
-                            fw.write(features.get(p.getFirst()).toString());
-                            fw.write("========================\n");
+                            if(type!=ats[0] || p.second>=0.001) {
+                                fw.write(features.get(p.getFirst()).toString());
+                                fw.write("========================\n");
+                            }
+
+                            //TODO: This is a very costly opeartion, think of other ways to do this more efficiently
+                            MU mu = features.get(p.getFirst());
+                            Short maxT = -1;double maxV = -1;
+                            for(Short t: ats) {
+                                double d = mu.getLikelihoodWithType(t);
+                                if (d > maxV){
+                                    maxT = t;
+                                    maxV = d;
+                                }
+                            }
+                            if(maxT == type) {
+                                ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
+                                ffw.write(mu.prettyPrint());
+                                ffw.write("========================\n");
+                            }
                         }
                         fw.close();
+                        ffw.close();
                     }
                 }
             } catch (IOException e) {

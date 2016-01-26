@@ -926,7 +926,7 @@ public class Crossword implements Serializable {
 		if (fixedClues != null)
 			c.cluer = new FixedCluer(c, fixedClues);
 		else
-			c.cluer = new ArchiveCluer(c, archive, filteredIds, lex);
+			c.cluer = new ArchiveCluer(c, archive, null, filteredIds, lex);
 		
 		// now we always have hints
 	//	if (fixedClues != null)

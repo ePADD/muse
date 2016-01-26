@@ -1,8 +1,10 @@
 package edu.stanford.muse.ner.dictionary;
 
 import com.google.common.collect.*;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.util.Pair;
 
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -18,14 +20,17 @@ public class EnglishDictionary {
     static String abbFile = "dictionaries/en-abbreviations.txt";
     static String fullDictFile = "dict.words.full.safe";
     static String dictStatsFile = "stats.txt";
+    static String commonNamesFile = "firstNames.txt";
 
     static Log log = LogFactory.getLog(EnglishDictionary.class);
 
-    static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary;
+    static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary, commonNames;
     static Multimap<String,String> abbDict;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
-    public static List<String> sws = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> stopWords = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> personTitles = Arrays.asList("mr.", "mr", "ms.", "ms", "mrs.", "mrs", "dr.", "dr", "prof.", "prof");
+    public static List<String> articles = Arrays.asList("the","a","an");
 
     /**
      * @return dictionary entry -> #times appeared in capitalised form, total number of occurrences */
@@ -106,6 +111,23 @@ public class EnglishDictionary {
             return prepositions;
         }
         return prepositions;
+    }
+
+    //This has nothing to do with English Dictionary though.
+    public static Set<String> getCommonNames(){
+        if(commonNames == null){
+            Set<String> entries = readFile(commonNamesFile);
+            commonNames = new LinkedHashSet<>();
+            for(String str: entries) {
+                //may contain some unicode chars
+                if(str.contains("%"))
+                    continue;
+                commonNames.add(str.toLowerCase().replaceAll("_"," "));
+            }
+            log.info("Read "+commonNames.size()+" entries from "+commonNamesFile);
+            return commonNames;
+        }
+        return commonNames;
     }
 
     /**
@@ -238,19 +260,20 @@ public class EnglishDictionary {
 
     public static Set<String> readFile(String fileName){
         Set<String> entries = new LinkedHashSet<>();
-        try{
-            //new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(fileName)));
             String line;
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
                     continue;
                 entries.add(line.trim().toLowerCase());
             }
-        }catch(IOException e){
+        } catch(IOException e){
             log.warn("Cannot read file: "+fileName);
             e.printStackTrace();
         }
+        try { if (br != null) br.close(); } catch (Exception e) { Util.print_exception(e);}
         return entries;
     }
 

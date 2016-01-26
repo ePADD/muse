@@ -64,9 +64,9 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 	List<FolderInfo> folderInfos; // these are the selected folderInfos (of messages to be fetched) as opposed to the store's folderInfos which are all folderinfo's (of messages already fetched) in the account
 	String defaultFolderName = null;
 	int N_THREADS, nTotalMessagesInAllFolders;
-	int nMessagesInDoneFolders, nSuccessMessagesInDoneFolders, nErrorsInDoneFolders; // counts in folders already processed
 	private long startTimeMillis; // start time of current execution
-	
+	public EmailFetcherStats stats;
+
 	private FetchConfig fetchConfig;
 //	private boolean downloadMessages = false, downloadAttachments = false;
 //	private Filter filter;
@@ -164,7 +164,7 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 	public synchronized List<FolderInfo> run() throws InterruptedException, MessagingException, IOException, JSONException
 	{
 		Thread.currentThread().setName("MTEmailFetcher");
-		log.info ("Starting run on object: " + this);
+		log.info ("Starting fetcher run on object: " + this);
 		log.info ("Folder descriptions: " + getFolderDescriptions());
 		isCancelled = false;
 		aggregateThread = null;
@@ -177,9 +177,6 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 		} catch (Exception e) { log.error ("Exception trying to shut down executor service: " + e); }
 
 		aggregateThread = null; // this accumulates results across folders
-
-		nMessagesInDoneFolders = 0;
-		nSuccessMessagesInDoneFolders = 0;
 
 		// compute total # of messages across all folders
 		nTotalMessagesInAllFolders = getTotalMessagesInAllFolders();
@@ -259,23 +256,11 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 			else
 				aggregateThread.merge(threads[0]);
 
-			int nErrorsThisFolder = threads[0].nErrors;
-			int nSuccessMessagesThisFolder = threads[0].getNMessagesProcessed();
+			stats = aggregateThread.stats;
 
-			log.info ("Fetch stats for folder " + fi.longName + ": " + threads[0].stats);
-			log.info ("Aggregate fetch stats so far: " + aggregateThread.stats);
+			log.info ("Fetch stats for folder " + fi.longName + ": " + stats);
 			log.info ("Aggregate size of archive so far: " + archive.getAllDocs().size() + " messages");
-
-			if (totalMessagesInFolder != nSuccessMessagesThisFolder)
-				if (nErrorsThisFolder > 0)
-					System.err.println ("WARNING: n errors == 0, but success messages != total messages");
-
-			// ok, this folder is done! set threads to null first, and then
-			// incr nErrors/Messages, so that getstatusmessage doesn't double count
 			threads = null;
-			nMessagesInDoneFolders += totalMessagesInFolder;
-			nSuccessMessagesInDoneFolders += nSuccessMessagesThisFolder;
-			nErrorsInDoneFolders += nErrorsThisFolder;
 		}
 
 		return fetchedFolderInfos;

@@ -27,6 +27,8 @@
 
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.memory.MemoryQuestion;
+import edu.stanford.muse.xword.Clue;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 
@@ -923,13 +925,6 @@ public class Util
 		ASSERT(ellipsizeKeepingExtension("permission creeley.doc", 15).equals("permiss...y.doc"));
 	}
 
-	public static void main1(String args[])
-	{
-		testEllipsizeKeepingExtension();
-		testGetExtension();
-		System.out.println("Tests passed ok");
-	}
-
 	/**
 	 * safely splits a string into two around the first occurrence of c in s.
 	 * always returns an array of 2 strings.
@@ -1771,7 +1766,7 @@ public class Util
 		});
 	}
 
-	public static void main(String args[])
+	public static void main1(String args[])
 	{
 		System.out.println(edu.stanford.muse.ie.Util.getAcronym("UC Santa Barbara"));
 		test_tail();
@@ -2049,8 +2044,7 @@ public class Util
 			{
 				boolean acc = f[i].isAccessible();
 				if (!acc)
-					f[i].setAccessible(true); // ok to do in absence of a
-												// security manager
+					f[i].setAccessible(true); // ok to do in absence of a security manager
 
 				Class t = f[i].getType();
 				String name = f[i].getName();
@@ -2103,15 +2097,8 @@ public class Util
 								for (Object x : m.keySet())
 									map.put(name + "." + x, m.get(x) + "");
 						}
-						else if (java.util.Collection.class.isAssignableFrom(valClass)) // could
-																						// also
-																						// check
-																						// t,
-																						// but
-																						// val.getClass
-																						// is
-																						// more
-																						// specific
+                        // could also check t, but val.getClass is more specific
+						else if (java.util.Collection.class.isAssignableFrom(valClass))
 						{
 							Collection c1 = (Collection) f[i].get(o);
 							if (expand)
@@ -3015,6 +3002,12 @@ public class Util
         } catch(Exception e){
             return num;
         }
+    }
+
+    public static void main(String[] args){
+//            testEllipsizeKeepingExtension();
+//            testGetExtension();
+//            System.out.println("Tests passed ok");
     }
 
 }

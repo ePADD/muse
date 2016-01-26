@@ -62,7 +62,7 @@ Submitting this report back to Stanford will help us fix it.<br/>
 	<p>
 	<!--
 	What were you trying to do when you encountered an error?<br/> 
-	<textarea style="background-color: #FAFFBD" id="context" value="" rows="4" cols="52"></textarea>
+	<textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="background-color: #FAFFBD" id="context" value="" rows="4" cols="52"></textarea>
   	-->			
 	</form>
 </div>

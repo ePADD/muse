@@ -281,7 +281,7 @@ You can do other things while you wait, but please do not close this browser win
 Dates <input size="30" id="dateRange" name="dateRange" value="<%=dateRange%>"/>
 </span> 
 <span style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>">
-#Questions <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="40"/>
+#Questions per Interval <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="4"/>
 </span> 
 </td>
 </tr>

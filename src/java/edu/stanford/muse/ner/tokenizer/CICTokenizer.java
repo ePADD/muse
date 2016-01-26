@@ -152,7 +152,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 					if (name.length() < 3) {
 						String tt = FeatureGeneratorUtil.tokenFeature(name);
                         if (tt.equals("ac")) {
-                            //this list contains many single word bad names like Jan, Feb, Mon, Tue, etc.
+                            //this list contains many single-word bad names like Jan, Feb, Mon, Tue, etc.
                             if(DictUtils.tabooNames.contains(name.toLowerCase())) {
                                 continue;
                             }
@@ -223,7 +223,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
             if (offset == 0 && i==0) {
                 if (DictUtils.fullDictWords.contains(t.toLowerCase())) {
                     if(log.isDebugEnabled())
-                        log.debug("Rejecting the dictionary word: "+t);
+                        log.debug("Rejecting the dictionary word: " + t);
                     continue;
                 }
             }
@@ -298,7 +298,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "I am meeting with him in Jan, and will request for one in Feb, will say OK to everything and disappear on the very next Mon or Tue, etc.",
                 "North Africa is the northern portion of Africa",
                 "Center of Evaluation has developed some evaluation techniques.",
-                "Hi Professor Winograd, this is your student from nowhere"
+                "Hi Professor Winograd, this is your student from nowhere",
+                ">> Hi Professor Winograd, this is your student from nowhere"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -345,6 +346,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{},
                 new String[]{"North Africa","Africa"},
                 new String[]{"Center of Evaluation"},
+                new String[]{"Professor Winograd"},
                 new String[]{"Professor Winograd"}
         };
         for(int ci=0;ci<contents.length;ci++){

@@ -63,7 +63,7 @@ public class Archive implements Serializable {
     }
 
     protected static void readPresetQueries() {
-        List<String> q = new ArrayList<String>();
+        List<String> q = new ArrayList<>();
         String PRESET_QUERIES_FILE = "presetqueries.txt";
         String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + PRESET_QUERIES_FILE;
         try {

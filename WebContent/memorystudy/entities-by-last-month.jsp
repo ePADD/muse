@@ -14,6 +14,9 @@
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="javax.mail.Address" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
+<%@ page import="edu.stanford.muse.ner.model.NERModel" %>
+<%@ page import="edu.stanford.muse.memory.MemoryStudy" %>
+<%@ page import="edu.stanford.muse.ner.dictionary.EnglishDictionary" %>
 <%@include file="../getArchive.jspf" %>
 
 <%!
@@ -22,85 +25,7 @@
          * To replicate the same way in which questions are generated, replicate the list of clue evaluators and the
          * way the entities are generated.
          * Should consider implementing ClueFilter/EntityFilter along with ClueEvaluator
-         */
-    /* small util class -- like clue but allows answers whose clue is null */
-    class ClueInfo implements Comparable<ClueInfo> {
-        //clues corrsponding to different choice of sentences in the context
-        Clue[] clues;
-        String link, displayEntity;
-        int nMessages, nThreads;
-        Date lastSeenDate;
-        boolean hasCoreTokens;
-
-        public String toHTMLString() {
-            String str = "";
-            for(Clue clue: clues){
-                str += "<tr><td><a href='" + link + "' target='_blank'>" + displayEntity + "</a></td><td>" + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate) + "</td><td>" + nMessages + "</td><td>" + nThreads + "</td><td>" + (clue != null ? clue.clueStats.finalScore : "-") + "</td></tr>"
-                        + "<tr><td class=\"clue\" colspan=\"6\">" + (clue != null ? (clue.clue + "<br/><br/><div class=\"stats\"> stats: " + Util.fieldsToString(clue.clueStats, false)) : "No clue") + "</div><br/><br/></td></tr><br>";
-            }
-            return str;
-        }
-
-        public int compareTo(ClueInfo c2) {
-            // all answers with core tokens should be last in sort order
-            if (this.hasCoreTokens && !c2.hasCoreTokens)
-                return 1;
-            if (c2.hasCoreTokens && !this.hasCoreTokens)
-                return -1;
-
-            if(this.clues == null || c2.clues == null) {
-                if (this.clues == c2.clues) return 0;
-                else return (this.clues==null)?1:-1;
-            }
-            if(this.clues.length == 0 || c2.clues.length == 0) {
-                if (c2.clues.length == this.clues.length)
-                    return 0;
-                else return (this.clues.length > c2.clues.length)? -1 : 1;
-            }
-
-            //decide based on their first clues
-            Clue clue = this.clues[0], cclue = c2.clues[0];
-            // all answers with clues should come towards the end
-            if (clue == null && cclue != null)
-                return 1;
-            if (clue != null && cclue == null)
-                return -1;
-            if (clue == null && cclue == null)
-                return displayEntity.compareTo(c2.displayEntity); // just some order, as long as it is consistent
-
-            if (clue != null && cclue.clue != null)
-                return (clue.clueStats.finalScore > cclue.clueStats.finalScore) ? -1 : (cclue.clueStats.finalScore > clue.clueStats.finalScore ? 1 : 0);
-            return 0;
-        }
-    }
-
-    public static String[] stops = new String[]{"a", "an", "the", "and", "after", "before", "to", "of", "for"};
-    public static Set<String> stopsSet = new LinkedHashSet<String>(Arrays.asList(stops));
-    public static String[] allowedTitles = new String[]{"mr.", "ms.", "mrs.", "dr.", "prof."};
-    public static Set<String> allowedTitlesSet = new LinkedHashSet<String>(Arrays.asList(allowedTitles));
-
-    public static String canonicalize(String s) {
-        s = s.toLowerCase();
-        List<String> tokens = Util.tokenize(s);
-        tokens.removeAll(stopsSet);
-        if (Util.nullOrEmpty(tokens))
-            return null;
-
-        boolean allDict = true;
-        for (String t: tokens) {
-            if (t.startsWith("i'") || t.startsWith("you'")) // remove i've, you're, etc.
-                return null;
-            if (t.endsWith(".") && !allowedTitlesSet.contains(t))
-                return null;
-            if (!(DictUtils.fullDictWords.contains(t) || (t.endsWith("s") && DictUtils.fullDictWords.contains(t.substring(0, t.length()-1)))))
-                allDict = false;
-        }
-        if (allDict)
-            return null;
-
-        // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
-        return Util.join(tokens, " ");
-    }
+         * */
 
 %>
 <html>
@@ -286,7 +211,7 @@
         }
         //for(Short )
         Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
-                FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK, FeatureDictionary.HOTEL,FeatureDictionary.THEATRE,
+                FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE,FeatureDictionary.THEATRE,
                 FeatureDictionary.LIBRARY, FeatureDictionary.LAWFIRM, FeatureDictionary.GOVAGENCY};
         double CUTOFF = 0.001;
         archive.assignThreadIds();
@@ -296,7 +221,8 @@
         out.println ("loading model...");
         out.flush();
 
-        ArchiveCluer cluer = new ArchiveCluer(null, archive, null, lex);
+        NERModel nerModel = (NERModel)session.getAttribute("ner");
+        ArchiveCluer cluer = new ArchiveCluer(null, archive, nerModel, null, lex);
 
         List<Document> docs = archive.getAllDocs();
         Map<String, Date> entityToLastDate = new LinkedHashMap<>();
@@ -358,7 +284,7 @@
                if (e.length() > 10 && e.toUpperCase().equals(e))
                    continue; // all upper case, more than 10 letters, you're out.
 
-               String ce = canonicalize(e); // canonicalize
+               String ce = DictUtils.canonicalize(e); // canonicalize
                if (ce == null) {
                    JSPHelper.log.info ("Dropping entity: "  + e);
                    continue;
@@ -434,9 +360,9 @@
         }
 
         // initialize clueInfos to empty lists
-        List<ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
+        List<MemoryStudy.ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
         for (int i = 0; i < intervals.size(); i++) {
-            clueInfos[i] = new ArrayList<ClueInfo>();
+            clueInfos[i] = new ArrayList<MemoryStudy.ClueInfo>();
         }
 
         int nvalidclues = 0;
@@ -450,7 +376,7 @@
             {
                 List<String> tokens = Util.tokenize(ceToDisplayEntity.get(ce).iterator().next());
                 for (String t: tokens) {
-                    if (stopsSet.contains(t.toLowerCase()))
+                    if (EnglishDictionary.stopWords.contains(t.toLowerCase()))
                         continue;
                     if (coreTokens.contains(t.toLowerCase())) {
                         hasCoreTokens = true;
@@ -486,7 +412,7 @@
             if (interval < 0 || interval == intervals.size())
                 JSPHelper.log.info ("What, no interval!? for " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate));
 
-            ClueInfo ci = new ClueInfo();
+            MemoryStudy.ClueInfo ci = new MemoryStudy.ClueInfo();
             ci.link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";;
             ci.displayEntity = displayEntity;
             ci.lastSeenDate = lastSeenDate;
@@ -495,10 +421,10 @@
 
             short clueType = (short) ((mode == null || !mode.equals("person")) ? 0 : 1);
             if (clueType == 0) {
-                Clue clue = cluer.createClue(fullAnswer, clueType, evals, new LinkedHashSet<String>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+                Clue clue = cluer.createClue(fullAnswer, clueType, evals, new LinkedHashSet<>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
                 ci.clues = new Clue[]{clue};
             }else
-                ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<String>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+                ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
 
             if(ci.clues == null || ci.clues.length == 0){
                 JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);
@@ -518,7 +444,7 @@
                  Collections.sort(clueInfos[i]);
                  out.println ("<h2>Interval #" + i + ": " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(intervals.get(i).getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(intervals.get(i).getSecond()) + "</h2>");
                  out.println ("<table><th><i>"+((mode==null||!mode.equals("person"))?"Non person name":"Person name")+"</i></th><th><i>Last message</i></th><th><i># Messages</i></th><th><i># Threads</i></td><td>Clue score</td></th>");
-                 for (ClueInfo ci: clueInfos[i]) {
+                 for (MemoryStudy.ClueInfo ci: clueInfos[i]) {
                      if(ci == null || ci.clues==null || ci.clues.length==0)
                          continue;
                      if (request.getParameter("hideCoreTokens") != null && ci.hasCoreTokens)

@@ -60,7 +60,7 @@ public class Main {
 	{
 		// create the Options
 		Options options = new Options();
-		options.addOption( "h", "help", false, "toString this message");
+		options.addOption( "h", "help", false, "this message");
 		options.addOption( "a", "alternate-email-addrs", true, "use <arg> as alternate-email-addrs");
 		options.addOption( "c", "cache-dir", true, "use <arg> as cache-dir");
 		options.addOption( "d", "debug", true, "turn debug messages on");
