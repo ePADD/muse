@@ -1327,14 +1327,16 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		try
 		{
 			//			long t1 = System.currentTimeMillis();
+			int nMessages = openFolderAndGetMessageCount();
+			log.info("Total number of messages: " + nMessages);
 
             if(emailStore instanceof MboxEmailStore) {
-                int nMessages = openFolderAndGetMessageCount();
+				// this is a special for mbox'es because we run out of memory if we try to openFolderAndGetMessages()
+				// so we process in batches
                 //TODO: Ideally, should cap on buffer size rather than on number of messages.
                 final int BATCH = 10000;
                 int nbatches = nMessages / BATCH;
                 nMessagesProcessedSuccess = 0;
-                log.info("Total number of messages: " + nMessages);
                 long st = System.currentTimeMillis();
                 int b;
                 for (b = 0; b < nbatches + 1; b++) {
@@ -1372,10 +1374,13 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 log.info("Read #" + nMessages + " messages in #" + b + " batches of size: " + BATCH + " in " + (System.currentTimeMillis() - st) + "ms");
             }
             else {
-                Message[] messages = openFolderAndGetMessages();
-                int nMessages = messages.length;
-                nMessagesProcessedSuccess = 0;
-                log.info("Total number of messages: " + messages.length);
+				// IMAP etc are pretty efficient with lazily populating message objects, so unlike mbox, its ok to use openFolderAndGetMessages() on the entire folder.
+				// remember to init the begin/end_msg_index before calling openFolderAndGetMessages
+				begin_msg_index = 1;
+				end_msg_index = nMessages+1;
+				nMessagesProcessedSuccess = 0;
+				Message[] messages = openFolderAndGetMessages();
+
                 long st = System.currentTimeMillis();
                 currentStatus = JSONUtils.getStatusJSON("");
                 if (isCancelled)

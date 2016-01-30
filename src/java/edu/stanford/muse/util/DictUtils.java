@@ -33,11 +33,16 @@ public class DictUtils {
 	public static Set<String>	tabooNames		= new LinkedHashSet<String>();			// this will be ignored by NER
 
 	public static Set<String>	bannedWordsInPeopleNames	= new HashSet<String>(), bannedStringsInPeopleNames = new HashSet<String>();	// bannedWords => discrete word; bannedStrings => occurs anywhere in the name
-	public static Set<String>	bannedAccountNamesInEmailAddresses	= new HashSet<String>();
+	public static Set<String>	bannedStartStringsForEmailAddresses = new HashSet<String>();
 	static Set<String>			joinWords					= new HashSet<String>();														// this will be ignored for the indexing
 	private static final String	COMMENT_STRING				= "#";
 
 	static {
+		initialize();
+	}
+
+	/** initializes all lists in DictUtils. kept public so it can be called from JSPs for quick debugging */
+	public static void initialize() {
 		try {
 			InputStream is = Config.getResourceAsStream("join.words");
 			if (is != null) {
@@ -84,21 +89,24 @@ public class DictUtils {
 			}
 
 			// banned words and strings in people names (for address book, to avoid noisy names merging unrelated entities)
+            // use getLinesFromInputStream because readStreamAndInternStrings() canonicalizes spaces between tokens and cannot handle special chars
+            // so info@ becomes "info @".
+            // instead, we want to read the line as is
 			is = Config.getResourceAsStream("bannedWordsInPeopleNames.txt");
 			if (is != null) {
-				bannedWordsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				bannedWordsInPeopleNames = new LinkedHashSet<>(Util.getLinesFromInputStream(is, true));
 				is.close();
 			}
 
 			is = Config.getResourceAsStream("bannedStringsInPeopleNames.txt");
 			if (is != null) {
-				bannedStringsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				bannedStringsInPeopleNames = new LinkedHashSet<>(Util.getLinesFromInputStream(is, true));
 				is.close();
 			}
 
-			is = Config.getResourceAsStream("bannedAccountNamesInEmailAddresses.txt");
+			is = Config.getResourceAsStream("bannedStartStringsForEmailAddresses.txt");
 			if (is != null) {
-				bannedAccountNamesInEmailAddresses = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				bannedStartStringsForEmailAddresses = new LinkedHashSet<>(Util.getLinesFromInputStream(is, true));
 				is.close();
 			}
 
@@ -107,7 +115,12 @@ public class DictUtils {
 		}
 	}
 
-	/* General util method */
+	/* General util method. Reads lines from the given reader and ignores comment lines.
+	 * the rest of the lines are space canonicalized.
+	  * beware: don't give this anything that may have non-letters because it space-canonicalizes word tokens.
+	  * e.g. "info@" on an input line will get stored as "info @" in the returned strings
+	  * this has led to bugs.
+	  * */
 	public static Set<String> readStreamAndInternStrings(Reader r)
 	{
 		Set<String> result = new LinkedHashSet<String>();

@@ -472,7 +472,7 @@ public class EmailUtils {
 
 	/**
 	 * normalizes the given person name, by stripping whitespace at either end, normalizes spaces, so exactly 1 space between tokens.
-	 * returns null if not a valid name or has a banned word/string.
+	 * returns null if not a valid name or has a banned word/string or is a single word name
 	 * retains case of the input as is.
 	 * returns same case
 	 */
@@ -492,6 +492,13 @@ public class EmailUtils {
 			name = name.substring(1, name.length() - 1);
 		if (name.startsWith("\"") && name.endsWith("\""))
 			name = name.substring(1, name.length() - 1);
+
+		// check if it has any characters at all
+		for (char c: name.toCharArray()) {
+			if (Character.isAlphabetic(c))
+				break;
+			return null; // all non-alphabet? return nothing, because its likely a junk name like "(" or "((" (yes, we see plenty of those!)
+		}
 
 		// Strip stuff inside parens, e.g. sometimes names are like:
 		// foo bar (at home) - or -
@@ -522,6 +529,10 @@ public class EmailUtils {
 				log.info ("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
 				return null;
 			}
+
+		if (Util.tokenize(name).size() < 2) {
+			return null; // single word names should not be considered for merging
+		}
 
 		return result;
 	}
