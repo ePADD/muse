@@ -71,7 +71,7 @@ public class Config {
 	 * First looks in settings folder, then on classpath (e.g. inside war).
 	 * typically for the */
 	public static InputStream getResourceAsStream(String path) {
-		File f = new File(SETTINGS_DIR + File.separator + "resources" + File.separator + path.replaceAll("/", File.separator));
+		File f = new File(SETTINGS_DIR + File.separator+ path.replaceAll("/", File.separator));
 		if (f.exists()) {
 			if (f.canRead()) {
 				log.info ("Reading resource " + path + " from " + f.getAbsolutePath());

@@ -7,6 +7,8 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
+<%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.text.DateFormat" %>
 <%
 
 	Integer numQ = (Integer) session.getAttribute("numQuestions");
@@ -69,22 +71,20 @@
         }
         MemoryQuestion.RecallType recallType = null;
         Object recallObject = null;
-        String[] names = new String[]{"fComplete","fContext","fTip","unfair"};
-        for(int ni=0;ni<names.length;ni++) {
-            String name = names[ni];
-            if("on".equals(request.getParameter(name))){
-                if(ni==0)
+        if(request.getParameter("fail")!=null){
+            Integer failType = Integer.parseInt(request.getParameter("fail"));
+            if(failType!=null){
+                if(failType==0)
                     recallType = MemoryQuestion.RecallType.Nothing;
-                else if(ni==1)
+                else if(failType==1)
                     recallType = MemoryQuestion.RecallType.Context;
-                else if(ni==2){
+                else if(failType==2){
                     recallType = MemoryQuestion.RecallType.TipOfTongue;
                     recallObject = Integer.parseInt(request.getParameter("tipScore"));
                 }else {
                     recallType = MemoryQuestion.RecallType.UnfairQuestion;
                     recallObject = request.getParameter("unfairReason");
                 }
-                break;
             }
         }
 		
@@ -143,6 +143,10 @@
                 %>
 			</div>
 
+            <datalist id="steplist">
+                <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+            </datalist>
 			<div style="margin-left: 20%">
                 <input type="hidden" name="hintUsed" id="hintUsed"
 				value="false"> <input type="hidden" name="millis"
@@ -164,19 +168,23 @@
                 </p>
 
                 <span>OR &nbsp;&nbsp; Answer why you forgot:<br></span>
-                <input id="fComplete" name="fComplete" type="checkbox"/>I forgot the email and events completely<br>
-                <input id="fContext" name="fContext" type="checkbox"/>I remember the email/surrounding events but not the email recipient<br>
+                <input id="fComplete" name="fail" value=0 type="radio"/>I forgot the email and events completely<br>
+                <input id="fContext" name="fail" value=1 type="radio"/>I remember the email/surrounding events but not the email recipient<br>
                 <span>
-                    <input id="fTip" name="fTip" type="checkbox" onclick="$('#tipRate').toggle()"/>I remember the person but their name is on the tip of my tongue
+                    <input id="fTip" name="fail" type="radio" value=2 onclick="$('#tipRate').toggle()"/>I remember the person but their name is on the tip of my tongue
                     <span id="tipRate" style="margin-left:3%;display:none">
                         <br>
-                        <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp; <input name="tipScore" id="tipScore" size="2"/></span><br>
-                        <span style="margin-left:3%">1&nbsp; - I have no idea &nbsp;&nbsp;</span><br>
-                        <span style="margin-left:3%">10 - It's close!</span>
+                        <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp;<br>
+                            <span style="margin-left:3%">1&nbsp; - I have no idea &nbsp;&nbsp;</span>&nbsp
+                            <span style="margin-left:3%">10 - It's close!</span><br>
+                            <span style="position:relative;left:30px">1</span><span style="position:relative;left:140px">5</span><span style="position:relative;left:280px">10</span><br>
+                            <input style="padding-left:10px" type="range" min=1 max=10 name="tipScore" id="tipScore" value="5" step="1" data-step="steplist"/>
+                        </span>
+                        <br>
                     </span>
                 </span>
                 <br>
-                <input id="unfair" name="unfair" type="checkbox" onclick='$("#unfairReason").toggle()'/> Unfair question?
+                <input id="unfair" name="fail" type="radio" value=3 onclick='$("#unfairReason").toggle()'/> Unfair question?
                 <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason" name="unfairReason"/>
             </div>
 
@@ -184,20 +192,25 @@
 				var correctAnswerLengthWithoutSpaces = <%=correctAnswerLengthWithoutSpaces%>;
 			</script>
 
-        <div>On a scale of 1 to 10, how confident are you about your answer? <input name="certainty" id="certainty" size="2"/>
+        <div>On a scale of 1 to 10, how confident are you about your answer?
             <br>
             10 - I am Certain<br>
             5&nbsp  - I am not sure<br>
             1&nbsp  - I have no Idea<br>
+            <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
+            <input name="certainty" id="certainty" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
+
         <br/>
 
-        <div>How vividly do you remember writing this mail? <input name="memory" id="memory" size="2"/>
+        <div>How vividly do you remember writing this mail?
             <br>
             10 - I clearly remember writing this mail<br>
-            6&nbsp - I rember the person<br>
+            6&nbsp - I remember the person<br>
             4&nbsp  - I recall the general context<br>
             1&nbsp  - I have no memory of the event<br>
+            <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
+            <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
         <br/>
 
@@ -218,8 +231,11 @@
                 <select name="timeMonth" id="timeMonth">
                     <option value="-1"></option>
                     <%
+                        Calendar cal = new GregorianCalendar();
+                        DateFormat df = new SimpleDateFormat("MMM");
                         for(int m=1;m<=12;m++){
-                    %><option value="<%=m%>"><%=m%></option><%
+                            cal.set(Calendar.MONTH, m-1);
+                    %><option value="<%=m%>"><%=df.format(cal.getTime())%></option><%
                     }
                 %>
                 </select>

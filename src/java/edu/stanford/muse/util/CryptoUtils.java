@@ -16,12 +16,7 @@
 package edu.stanford.muse.util;
 
 
-import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.LineNumberReader;
-import java.io.ObjectInputStream;
-import java.io.StringReader;
+import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
@@ -112,18 +107,27 @@ public class CryptoUtils {
 
 	public static void main (String[] args) throws Exception
 	{		 
-		//writeEncryptedBytes("String to encode".getBytes("utf-8"), "/tmp/TEST");
-		String file = (args.length == 0) ? "/tmp/TEST" : args[0];
-		
-		byte b[] = readEncryptedBytes(file);
-		// for users file only, toString the contents
-		if (file.endsWith("users")) {
-			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(b));
-			List<MemoryStudy.UserStats> users = (List<MemoryStudy.UserStats>) ois.readObject();
-			for (int i = 0; i < users.size(); i++)
-				System.out.println (i + ". " + Util.fieldsToString(users.get(i)));
-		}
-		else // otherwise, toString as a string
-			System.out.println (new String(b, "UTF-8"));
+//		//writeEncryptedBytes("String to encode".getBytes("utf-8"), "/tmp/TEST");
+//		String file = (args.length == 0) ? "/tmp/TEST" : args[0];
+//
+//		byte b[] = readEncryptedBytes(file);
+//		// for users file only, toString the contents
+//		if (file.endsWith("users")) {
+//			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(b));
+//			List<MemoryStudy.UserStats> users = (List<MemoryStudy.UserStats>) ois.readObject();
+//			for (int i = 0; i < users.size(); i++)
+//				System.out.println (i + ". " + Util.fieldsToString(users.get(i)));
+//		}
+//		else // otherwise, toString as a string
+//			System.out.println (new String(b, "UTF-8"));
+        try {
+            byte[] bytes = readEncryptedBytes(System.getProperty("user.home") + File.separator + "results" + File.separator + "testuser" + File.separator + "questions.final");
+            LineNumberReader lr = new LineNumberReader(new InputStreamReader(new ByteArrayInputStream(bytes)));
+            String line;
+            while((line=lr.readLine())!=null)
+                System.out.println(line);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
 	}
 }

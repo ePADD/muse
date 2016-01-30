@@ -28,12 +28,12 @@ import java.util.regex.Pattern;
 public class ClueEvaluator {
     public static Log log						= LogFactory.getLog(ClueEvaluator.class);
     public static List<ClueEvaluator> getDefaultEvaluators(){
-        List<ClueEvaluator> evals = new ArrayList<>();
+        List<ClueEvaluator> evals;
         evals = Arrays.asList(new LengthEvaluator(), new EmotionEvaluator(), new DirtEvaluator(), new NamesEvaluator(), new ListEvaluator(),new EmailDocumentEvaluator());
         return evals;
     }
 
-    public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
+    public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
         return score;
     }
 
@@ -60,7 +60,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
             String s = clue.getFullSentenceOriginal();
             // clue gets points the closer it is to the preferred clue length
             // lengthBoost is really a penalty (its -ve)
@@ -94,7 +94,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             //TODO: considers two exclamations and question marks as the same, is that OK?
             String s = clue.getFullSentenceOriginal().toLowerCase();
             // prefer exclamations, highly memorable
@@ -114,7 +114,7 @@ public class ClueEvaluator {
 
             clue.clueStats.nSmileys = nSmileys;
             clue.clueStats.smileyScore = smileyScore;
-            //the original code for somereason adds one to the score, just retaining that here.
+            //the original code for some reason adds one to the score, just retaining that here.
             return score + 1.0f + exclamationScore + questionScore + smileyScore;
         }
     }
@@ -143,7 +143,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             for (String badName : tabooNames) { //drop own name, as well as other terms that may be overused in the xword/memorystudy.
                 if (s.contains(badName)) {
@@ -180,7 +180,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerMode, Archive archivel) {
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerMode, Archive archivel) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             if (s.startsWith("this") || s.startsWith("that") || s.startsWith("however")) {
                 clue.clueStats.containsNonSpecificWords = true;
@@ -211,7 +211,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer,Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer,Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             String sOrig = clue.getFullSentenceOriginal();
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
@@ -223,8 +223,6 @@ public class ClueEvaluator {
             Map<Short, Map<String,Double>> map = mapAndOffsets.first;
             log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig+"["+map+"]");
             for (short x : map.keySet()) {
-                //if(map.get(x).)
-                //log.info(x + ":" + map.get(x));
                 for(String e: map.get(x).keySet())
                     if(map.get(x).get(e)>CUTOFF)
                         names.add(e);
@@ -297,19 +295,19 @@ public class ClueEvaluator {
             this.params = new float[]{10.0f, 5.0f};
         }
 
-        /**This is not a proper test, but sort of a hackaround*/
-        public static boolean isPrep(Set<String> list){
+        /**This is not a proper test, sort of a hackaround*/
+        static boolean isPrep(Set<String> list){
             if(list.contains("from") && list.contains("to"))
                 return true;
             return false;
         }
-        public static boolean isReflective(Set<String> list){
+        static boolean isReflective(Set<String> list){
             if(list.contains("absorb")&&list.contains("accept"))
                 return true;
             return false;
         }
 
-        public static String[] getNeighbours(String next, String tgtWord){
+        static String[] getNeighbours(String next, String tgtWord){
             String a = tgtWord.toLowerCase();
             String sent = next.toLowerCase();
             int idx = sent.indexOf(a);
@@ -329,7 +327,7 @@ public class ClueEvaluator {
             return new String[]{prevToken, nxtToken};
         }
 
-        public static String[] getNeighboursOfPronouns(String[] tokens){
+        static String[] getNeighboursOfPronouns(String[] tokens){
             Set<String> pronouns = EnglishDictionary.getTopPronouns();
             List<String> sts = new ArrayList<>();
             if(tokens != null && tokens.length>0) {
@@ -371,7 +369,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             float boost = 0;
             for(int i=0;i<params.length;i++) {
@@ -442,7 +440,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, short mode, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
             if(archive!=null) {
                 //String s = clue.getFullSentenceOriginal();
                 EmailDocument ed = clue.d;
@@ -451,7 +449,7 @@ public class ClueEvaluator {
                 String term = "\"" + answer + "\"";
                 log.info("Searching for: "+term);
                 Collection<Document> docs = new ArrayList<>();
-                if(mode == 0) {
+                if(questionType == ArchiveCluer.QuestionType.FILL_IN_THE_BLANK) {
                     docs = archive.docsForQuery(term, qo);
                 }else {
                     Contact c = archive.addressBook.lookupByName(answer);
@@ -488,8 +486,8 @@ public class ClueEvaluator {
                     clue.clueStats.timeDiff = (float)timeDiff;
                     score += timeScore;
                 }
-                //some rules are valid ony when we are generating questions for person names i.e. type 1 questions
-                if(mode==1) {
+                //some rules are valid ony when we are generating questions for person names ie. guess the corr. type questions
+                if(questionType== ArchiveCluer.QuestionType.GUESS_CORRESPONDENT) {
                     Collection<Document> docsInInterval = new ArrayList<>();
                     for(Document doc: docs) {
                         EmailDocument ed1 = (EmailDocument)doc;

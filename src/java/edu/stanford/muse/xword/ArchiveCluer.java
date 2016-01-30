@@ -136,7 +136,7 @@ public class ArchiveCluer extends Cluer {
 
 	public Clue createClue(String answer, Set<String> tabooClues, NERModel nerModel, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
-		return createClue(answer, (short)0, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, archive);
+		return createClue(answer, QuestionType.FILL_IN_THE_BLANK, null, tabooClues, nerModel, new Date(0L), new Date(Long.MAX_VALUE), 1, archive);
 	}
 
     /**
@@ -144,26 +144,36 @@ public class ArchiveCluer extends Cluer {
      * if filterDocIds is not null, we use only clues from docs with ids in filterDocIds.
      * @throws ParseException
      */
-    public Clue createClue(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
-        Clue[] clues = createClues(answer, mode, evals, tabooClues, nerModel, startDate, endDate, numSentences, archive);
-        Clue bestClue = null;
-        double bestScore = -Double.MAX_VALUE;
-        for(int i=0;i<clues.length;i++)
-            if(clues[i].clueStats.finalScore>bestScore)
-                bestClue = clues[i];
-        return bestClue;
+    public Clue createClue(String answer, ArchiveCluer.QuestionType questionType, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+        Clue[] clues = createClues(answer, questionType, evals, tabooClues, nerModel, startDate, endDate, numSentences, 1, archive);
+        if(clues==null || clues.length==0)
+            return null;
+        else
+            return clues[0];
     }
 
+    public enum QuestionType{
+        FILL_IN_THE_BLANK, GUESS_CORRESPONDENT;
+    };
+
     /**
-     * This method handles two clue types
      * <ol>
      *     <li>Fill in the blank type where the answer is blanked out in the best context found</li>
-     *     <li>Can also generate clues that best serve as the remainders of the subjects in a conversation (correspondents)</li>
+     *     <li>Clues that test the recall of the subjects in a conversation (ie. correspondents)</li>
      * </ol>
      * The type of clue can be selected by setting the mode value, 0 for type 1, and 1 for type 2
      * when mode is 0, i.e. first type of clue, then returns clues formed from alternate sentences from the best context (in a doc)
-     * when mode is 1, i.e. second type of clue, returns the top 5 best clues in all the docs*/
-	public Clue[] createClues(String answer, short mode, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+     * when mode is 1, i.e. second type of clue, returns the top 5 best clues in all the docs
+     * @param answer - answer to the clue
+     * @param questionType - The clue type @see QuestionType
+     * @param evals - Clue evaluators to evaluate the clue statement
+     * @param tabooClues - makes sure none of the clues have statements taht are candidates of this set
+     * @param nerModel - clue evaluators depend on the model to recognise names and for evaluation
+     * @param startDate @param endDate - Marks the beginning and end of the time interval
+     * @param numSentences - Number of sentences in the clue
+     * @param maxClues - maximum number of high scoring clues returned
+     * */
+	public Clue[] createClues(String answer, QuestionType questionType, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, int maxClues, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		// first canonicalize w
 		answer = answer.toLowerCase();
@@ -175,6 +185,18 @@ public class ArchiveCluer extends Cluer {
         if(answer == null){
             log.warn("Unexpected arguments!! Answer: "+answer+", Evaluators: "+evals);
         }
+        if(endDate == null){
+            Calendar cal = Calendar.getInstance();
+            endDate = cal.getTime();
+            log.warn("Initialized end date to "+endDate);
+        }
+        if(startDate == null){
+            Calendar cal = new GregorianCalendar();
+            cal.set(1960, 0, 1);
+            startDate = cal.getTime();
+            log.warn("Initialized start date to "+startDate);
+        }
+
         if(evals == null || evals.size()==0) {
             evals = new ArrayList<>();
             //default tuned params
@@ -193,7 +215,7 @@ public class ArchiveCluer extends Cluer {
             evals.add(new ClueEvaluator.ListEvaluator(params, lists));
         }
         boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
-        if(mode == 0)
+        if(questionType == QuestionType.FILL_IN_THE_BLANK)
             docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
         else{
             Contact c = archive.addressBook.lookupByName(answer);
@@ -203,8 +225,9 @@ public class ArchiveCluer extends Cluer {
             }
             docs = IndexUtils.selectDocsByContact(archive.addressBook,(Collection)archive.getAllDocs(),c);
         }
+        log.info("Docs with answer: "+answer+" is #"+docs.size());
 
-        // find all messages with the answer in them (original content only)
+        // find all messages in the date range
         List<Document> docsWithAnswer = new ArrayList<>();
         for (Document doc : docs) {
             DatedDocument dd = (DatedDocument) doc;
@@ -214,10 +237,10 @@ public class ArchiveCluer extends Cluer {
         }
 
 		// note: docsWithAnswer is not sorted by time
-		
 		int nDocsWithAnswer = docsWithAnswer.size();
+        log.info("Docs with answer: "+answer+" and within the window: ["+startDate+", "+endDate+"] is #"+nDocsWithAnswer);
 
-		// compute #threads with answer
+		// compute #threads in the docsWithAnswer set
 		Set<Long> set = new LinkedHashSet<Long>();
 		for (Document doc: docsWithAnswer)
 		{
@@ -226,19 +249,6 @@ public class ArchiveCluer extends Cluer {
 				set.add(ed.threadID);
 		}
 		int nThreadsWithAnswer = set.size();
-		
-		// lucenelookupDocs returns emails sorted by time
-		// permute the candidates randomly otherwise lots of clues might be from nearby docs, e.g. from the same time range in the corpus
-		/*
-	for (int i = 0; i < candidates.size()-1; i++)
-	{
-		int idx = i + random.nextInt(candidates.size() - i);
-		// interchange idx and i
-		EmailDocument tmp = candidates.get(idx);
-		candidates.set(idx, candidates.get(i));
-		candidates.set(i, tmp);
-	}
-		 */
 
 		// now find the clue with the best score
 		Clue bestClue = null; 
@@ -255,7 +265,7 @@ public class ArchiveCluer extends Cluer {
 		int N_DOCS_TO_CHECK_FOR_CLUES = 50;
 		int docCount = 0;
 		int nValidClueCandidates = 0;
-        List<ClueFilter> clueFilters = ClueFilter.getDefaultFilters(mode);
+        List<ClueFilter> clueFilters = ClueFilter.getDefaultFilters(questionType);
 		for (Document doc: docsWithAnswer)
 		{
             EmailDocument ed = (EmailDocument)doc;
@@ -323,7 +333,7 @@ public class ArchiveCluer extends Cluer {
 					String originalSentence = "";
 					for (int j = i - numSentences+1; j <= i; j++)
 						originalSentence += sentences.get(j);
-                    String oos = originalSentence;
+                    //String oos = originalSentence;
 					originalSentence = originalSentence.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
 
 					//
@@ -342,12 +352,12 @@ public class ArchiveCluer extends Cluer {
 
                     //System.err.println("Original: "+oos+" -> lcs: "+lowerCaseSentence);
                     //this test is valid only for first type of clues
-					if (mode==0 && !Util.occursOnlyAsWholeWord(lowerCaseSentence, answer)) {
+					if (questionType==QuestionType.FILL_IN_THE_BLANK && !Util.occursOnlyAsWholeWord(lowerCaseSentence, answer)) {
                         //System.err.println("Rejecting because no whole word!! "+answer);
                         continue;
                     }
 
-                    if(mode==1){
+                    if(questionType==QuestionType.GUESS_CORRESPONDENT){
                         //should not see any of the archive owner name in the clue and also the answer in the clue
                         boolean dirty = false;
                         for(String str: archive.ownerNames)
@@ -402,14 +412,14 @@ public class ArchiveCluer extends Cluer {
 
                     boolean dirty = false;
                     for(ClueFilter clueFilter: clueFilters) {
-                        if (!clueFilter.filter(clue, mode, answer, startDate, endDate, tabooNamesSet, nerModel, archive)) {
+                        if (!clueFilter.filter(clue, questionType, answer, startDate, endDate, tabooNamesSet, nerModel, archive)) {
                             dirty = true;
                             break;
                         }
                     }
                     if(dirty)
                         continue;
-                    float clueScore = scoreClue(clue, mode, answer,evals, startDate, endDate, tabooNamesSet, nerModel, archive);
+                    float clueScore = scoreClue(clue, questionType, answer,evals, startDate, endDate, tabooNamesSet, nerModel, archive);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
@@ -485,7 +495,7 @@ public class ArchiveCluer extends Cluer {
 		{
 			bestClue.clueStats.nValidClueCandidates = nValidClueCandidates; // # of clues considered seriously, i.e. given a score
 
-			int daysSinceFirstMention = 0, daysSinceLastMention = 0;
+			int daysSinceFirstMention, daysSinceLastMention;
 			if (docsWithAnswer.size() > 0)
 			{
 				bestClue.clueStats.answerPartOfAnyAddressBookName = answerPartOfAnyAddressBookName;
@@ -519,20 +529,16 @@ public class ArchiveCluer extends Cluer {
 				 bestClue.clueStats.histogramOfAnswerOccurrence = histogram;
 			}
 		}
-        if(mode == 0)
-		    return bestCtxClues.toArray(new Clue[bestCtxClues.size()]);
-	    else{
-            List<Pair<Clue, Float>> sclues = Util.sortMapByValue(scoredClues);
-            List<Clue> clues = new ArrayList<>();
-            final int MAX = 2;
-            int i=0;
-            for(Pair<Clue, Float> p: sclues) {
-                clues.add(p.getFirst());
-                if(++i>=MAX)
-                    break;
-            }
-            return clues.toArray(new Clue[clues.size()]);
+        List<Pair<Clue, Float>> sclues = Util.sortMapByValue(scoredClues);
+        log.info("Found "+sclues.size()+" for "+answer);
+        List<Clue> clues = new ArrayList<>();
+        int i=0;
+        for(Pair<Clue, Float> p: sclues) {
+            clues.add(p.getFirst());
+            if(++i>=maxClues)
+                break;
         }
+        return clues.toArray(new Clue[clues.size()]);
     }
 
 	/** this should be called when a word is commited into the grid. we will invalidate clue $ if this clue sentence has been mapped to another word */
@@ -551,7 +557,7 @@ public class ArchiveCluer extends Cluer {
 	
 	// returns a score for the given string as a clue. this does not take into account the doc s is a part of. 
 	// note s is not lower-cased
-	public static float scoreClue(Clue clue, short mode, String answer, List<ClueEvaluator> evals, Date startDate, Date endDate, Set<String> tabooNames,NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
+	public static float scoreClue(Clue clue, QuestionType questionType, String answer, List<ClueEvaluator> evals, Date startDate, Date endDate, Set<String> tabooNames,NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
 	{
 //		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
 //		String s = clue.getFullSentenceOriginal();
@@ -577,7 +583,7 @@ public class ArchiveCluer extends Cluer {
 
 		double score = 0;
         for(ClueEvaluator eval: evals)
-            score = eval.computeScore(score, mode, clue,answer, startDate, endDate, tabooNames,nerModel, archive);
+            score = eval.computeScore(score, questionType, clue,answer, startDate, endDate, tabooNames,nerModel, archive);
 
         //log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
 		log.info("Score: "+score+" "+clue.clueStats);

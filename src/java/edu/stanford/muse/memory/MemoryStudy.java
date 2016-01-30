@@ -234,7 +234,6 @@ public class MemoryStudy implements Serializable{
      * We handle two kinds of questions namely, person names tests and non-person name tests.
      * Non-person name test is a fill in the blank kind where the blank is to be filled with the correct non-person entity to complete the sentence
      * person name test is to guess the person in correspondent list based on some distinctive sentences in the mail
-     * @param N - max. number of questions
      * @param maxInt - max. number of questions from a interval
 	 * @throws IOException */
 	public void generateQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int maxInt, boolean personTest) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
@@ -248,6 +247,7 @@ public class MemoryStudy implements Serializable{
                 FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE,FeatureDictionary.THEATRE,
                 FeatureDictionary.LIBRARY, FeatureDictionary.LAWFIRM, FeatureDictionary.GOVAGENCY};
         double CUTOFF = 0.001;
+        tabooCluesSet = new LinkedHashSet<>();
         archive.assignThreadIds();
 
         List<Document> docs = archive.getAllDocs();
@@ -284,6 +284,9 @@ public class MemoryStudy implements Serializable{
             else{
                 //do not consider mailing lists
                 if(ed.sentToMailingLists!=null && ed.sentToMailingLists.length>0)
+                    continue;
+                //discard doc if it is not a sent mail
+                if((ed.sentOrReceived(archive.addressBook) & EmailDocument.SENT_MASK)==0)
                     continue;
                 List<Address> addrs = new ArrayList<>();
                 if(ed.to!=null)
@@ -383,7 +386,7 @@ public class MemoryStudy implements Serializable{
 
         Map<Integer, Integer> intervalCount = new LinkedHashMap<>();
         //nSent is the number of sentences allowed in a clue text
-        int nvalidclues = 0, nSent = 1;
+        int nvalidclues = 0, nSent = 2;
         // generate clueInfos for each entity
         for (String ce: entityToLastDate.keySet()) {
             Date lastSeenDate = entityToLastDate.get(ce);
@@ -445,7 +448,7 @@ public class MemoryStudy implements Serializable{
             ci.nThreads = entityToThreads.get(ce).size();
 
             //TODO: we are doing default initialisation of evaluators by setting it to null below, it is more appropriate to consider it as an argument for this method
-            Clue clue = cluer.createClue(fullAnswer, (short)(personTest?1:0), null, new LinkedHashSet<>(), null, intervalStart, intervalEnd, nSent, archive);
+            Clue clue = cluer.createClue(fullAnswer, (personTest ? ArchiveCluer.QuestionType.GUESS_CORRESPONDENT : ArchiveCluer.QuestionType.FILL_IN_THE_BLANK), null, tabooCluesSet, null, intervalStart, intervalEnd, nSent, archive);
             if(clue!=null)
                 ci.clues = new Clue[]{clue};
 
@@ -456,6 +459,8 @@ public class MemoryStudy implements Serializable{
                 //is the times value of the clue important?
                 questions.add(new MemoryQuestion(this,fullAnswer,clue, 1, lengthDescr));
                 nvalidclues++;
+                //makes sure that the clue with the same statement is not generated again
+                tabooCluesSet.add(clue.clue);
             }
             clueInfos[interval].add(ci);
         }
@@ -476,10 +481,6 @@ public class MemoryStudy implements Serializable{
 		// now we have up to 2*N questions, sorted by cluescore.
 		// drop ones that are prefix/suffix of another, and cap to N
 		int prev_size = questions.size();
-		
-//		if (questions.size() >= N) {
-//			questions = dropPrefixSuffixfromSortedList(questions, N);
-//		}
 
 		int new_size = questions.size();
 		

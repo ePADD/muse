@@ -16,9 +16,9 @@ import java.util.*;
  */
 public class ClueFilter {
     public static Log log						= LogFactory.getLog(ClueFilter.class);
-    public static List<ClueFilter> getDefaultFilters(short mode){
+    public static List<ClueFilter> getDefaultFilters(ArchiveCluer.QuestionType mode){
         List<ClueFilter> filters = new ArrayList<>();
-        if(mode==1) {
+        if(mode== ArchiveCluer.QuestionType.GUESS_CORRESPONDENT) {
             filters.add(new AnswerFilter());
             filters.add(new TextFilter());
         }
@@ -26,7 +26,7 @@ public class ClueFilter {
         return filters;
     }
 
-    public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
+    public boolean filter(Clue clue, ArchiveCluer.QuestionType mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
         return true;
     }
 
@@ -35,7 +35,7 @@ public class ClueFilter {
      * mode: 1 - if the name really looks like a person name*/
     public static class AnswerFilter extends ClueFilter{
         @Override
-        public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
+        public boolean filter(Clue clue, ArchiveCluer.QuestionType mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
             if(DictUtils.hasDictionaryWord(answer)) {
                 log.info("Filtering "+answer+" based on dictionary");
                 return false;
@@ -54,7 +54,7 @@ public class ClueFilter {
      * Checks if the answer is not one of the self name*/
     public static class SelfFilter extends ClueFilter{
         @Override
-        public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
+        public boolean filter(Clue clue, ArchiveCluer.QuestionType mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
             Contact sc = archive.addressBook.getContactForSelf();
             if(sc.names.contains(answer))
                 return false;
@@ -66,12 +66,12 @@ public class ClueFilter {
      * Checks if the clue text does not contains any give aways*/
     public static class TextFilter extends ClueFilter{
         @Override
-        public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
+        public boolean filter(Clue clue, ArchiveCluer.QuestionType mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
             String s = clue.fullSentenceOriginal.toLowerCase();
             Set<String> answers = new LinkedHashSet<>();
             answers.add(answer.toLowerCase());
             //for this type of question, the answer is the correspondent name
-            if(mode == 1){
+            if(mode == ArchiveCluer.QuestionType.GUESS_CORRESPONDENT){
                 Contact c = archive.addressBook.lookupByName(answer);
                 if(c!=null && c.names!=null)
                     for(String n: c.names)
@@ -94,7 +94,7 @@ public class ClueFilter {
      * Checks for self instance in the clue text*/
     public static class SelfTextFilter extends ClueFilter{
         @Override
-        public boolean filter(Clue clue, short mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
+        public boolean filter(Clue clue, ArchiveCluer.QuestionType mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive){
             String s = clue.fullSentenceOriginal.toLowerCase();
             Contact c = archive.addressBook.getContactForSelf();
             Set<String> snames = c.names;

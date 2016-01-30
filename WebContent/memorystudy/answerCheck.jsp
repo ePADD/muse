@@ -25,18 +25,14 @@ if (nWrongAnswers == 0) {
 </head>
 <body>
 <div class="box">
-Almost done! Now, we'll show you the answers that the computer marked as incorrect.
-Please provide us a little more information about these answers. 
 <p>
+    Almost done! Now, we'll show you the answers that the computer marked as incorrect.
+    Please provide us a little more information about these answers.
+    It's possible that your answers are actually correct, or reasonably close to being correct.
+    For example, you may have entered a nickname for a person's real name.
+    In such cases, select the option: "My answer is essentially correct".
+</p>
 
-It's possible that these answers are actually correct, or reasonably close to being correct; for example, 
-for a clue like "I went to _ _ _ _ _ _ _ last summer", it may be reasonable to enter the answer word "Germany" instead of "Hamburg", or to substitute
-a nickname for a person's real name. In such cases, select the option: "My answer is essentially correct".
-
-<p>
-
-On the next page, you will be able to review all the questions.
-<p>
 
 <form action = "answers.jsp?details=1" method="post">
 

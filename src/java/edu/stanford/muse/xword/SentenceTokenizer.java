@@ -240,6 +240,8 @@ public class SentenceTokenizer {
 
 	public static void main (String args[])
 	{
+        //Sometimes, sentence is being clipped
+        //Eg. What do you mean by conceptual terms.Cant "notable type" field of a Freebase node serve your purpose ield can have more than one value in decreasing order of relevance.
 		Util.ASSERT(new SentenceTokenizer("Vipin Kumar (U. Minnesota).").countSentences() == 1); // the period after U. should not be a sentence delim
 		Util.ASSERT(new SentenceTokenizer("Vipin Kumar (Univ. Minnesota).").countSentences() == 2); // ideally this would count as one sentence, but right now it will be 2
 		Util.ASSERT(new SentenceTokenizer("I've talked to Jiwon and Monica, and Jiwon will handle the demo session at \nthe workshop on Thursday.").countSentences() == 1);
