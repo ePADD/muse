@@ -292,15 +292,6 @@ public class SequenceModel implements NERModel, Serializable {
         return segments;
     }
 
-    public Map<String, Double> getAllFeatureOfType(FeatureDictionary.MU mu, String selector) {
-        Map<String, Double> select = new LinkedHashMap<>();
-        for (String str : mu.muVectorPositive.keySet()) {
-            if (str.startsWith(selector))
-                select.put(str, mu.muVectorPositive.get(str));
-        }
-        return select;
-    }
-
     public double getConditional(String phrase, Short type) {
         Map<String, FeatureDictionary.MU> features = dictionary.features;
         Map<String, Set<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
