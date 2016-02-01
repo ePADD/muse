@@ -175,7 +175,7 @@ public class SequenceModel implements NERModel, Serializable {
 
         String[] tokens = phrase.split("\\s+");
         /**
-         * In TW's sub-archive with ~65K entities scoring more than 0.001. The stats on number of tokens is as follows
+         * In TW's sub-archive with ~65K entities scoring more than 0.001. The stats on frequency of #tokens per word is as follows
          * Freq  #tokens
          * 36520 2
          * 15062 3
@@ -278,7 +278,7 @@ public class SequenceModel implements NERModel, Serializable {
             seg = seg.substring(0,seg.length()-1);
             double val;
             if(t.getThird() != OTHER)
-                val = getConditional(seg, t.getThird())*getLikelihoodWithOther(seg, false);
+                val = getConditional(seg, t.getThird()) * getLikelihoodWithOther(seg, false);
             else
                 val = getLikelihoodWithOther(seg, true);
 
@@ -330,9 +330,14 @@ public class SequenceModel implements NERModel, Serializable {
         for (String mid : tokenFeatures.keySet()) {
             Double d;
             MU mu = features.get(mid);
+            double taff = mu.getLikelihoodWithType(type);
+            //Do not even consider the contribution from this mixture if it does not have a good affinity with this type
+            if(taff<0.1)
+                continue;
+
             int THRESH = 0;
             //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous, which could have appeared many times, but does not appear to have common template
-            //TODO: this check for new token is to reduce the noise coming from lowercase words starting with the word "new"
+            //TODO: this check for "new" token is to reduce the noise coming from lowercase words starting with the word "new"
             if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>0)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
                 d = mu.getLikelihood(tokenFeatures.get(mid), dictionary);
             else
