@@ -964,8 +964,8 @@ public class FeatureDictionary implements Serializable {
 
     /**If the phrase is of OTHER type, then consider no chunks and emit features for every word*/
     public Map<String,Set<String>> generateFeatures2(String phrase, Short type){
+        Map<String,Set<String>> features = new LinkedHashMap<>();
         if(type == FeatureDictionary.OTHER){
-            Map<String,Set<String>> features = new LinkedHashMap<>();
             String[] words = getPatts(phrase);
             for(String w: words){
                 Map<String,Set<String>> map = generateFeatures(w, type);
@@ -974,7 +974,12 @@ public class FeatureDictionary implements Serializable {
             }
             return features;
         }
-        return generateFeatures(phrase, type);
+        features = generateFeatures(phrase, type);
+        Map<String,Set<String>> ffeatures = new LinkedHashMap<>();
+        for(String f: features.keySet())
+            if(f.length()>1)
+                ffeatures.put(f, features.get(f));
+        return ffeatures;
     }
 
     public void computeTypePriors(){
@@ -1049,6 +1054,7 @@ public class FeatureDictionary implements Serializable {
                 //2. If the type is road, then we clean up trailing numbers
                 //3. If the type is settlement then the title is written as "Berkeley_California" which actually mean Berkeley_(California); so cleaning these too
                 //4. We ignore certain noisy types. see ignoreTypes
+                //5. Ignores any single word names
                 //if the gazette is DBpedia, then the phrase may contain stuff in the brackets
                 String type = gazettes.get(phrase);
                 int cbi = phrase.indexOf(" (");
@@ -1065,7 +1071,7 @@ public class FeatureDictionary implements Serializable {
 
                 boolean allowed = true;
                 for(String it: FeatureDictionary.ignoreTypes)
-                    if(type.endsWith(it)) {
+                    if(type.contains(it)) {
                         allowed = false;
                         break;
                     }
@@ -1077,7 +1083,7 @@ public class FeatureDictionary implements Serializable {
                     continue;
 
                 if (wi++ % 1000 == 0)
-                    log.info("EM iter: " + i + ", " + wi + "/" + N);
+                    log.info("EM iteration: " + i + ", " + wi + "/" + N);
 
                 Short coarseType = codeType(type);
                 float z = 0;
@@ -1092,7 +1098,7 @@ public class FeatureDictionary implements Serializable {
                     }
                     MU mu = features.get(mi);
                     if(mu == null) {
-                        log.warn("!!FATAL!! mu null for: " + mi + ", " + features.size());
+                        log.warn("!!FATAL!! MU null for: " + mi + ", " + features.size());
                         continue;
                     }
                     double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
