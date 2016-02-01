@@ -1373,28 +1373,6 @@ public class EmailUtils {
 		return content;
 	}
 
-	public static String cleanRoad(String title){
-		String[] words = title.split(" ");
-		String lw = words[words.length-1];
-		String ct = "";
-		boolean hasNumber = false;
-		for(Character c: lw.toCharArray())
-			if(c>='0' && c<='9') {
-            	hasNumber = true;
-                break;
-			}
-		if(words.length == 1 || !hasNumber)
-			ct = title;
-		else{
-			for(int i=0;i<words.length-1;i++) {
-				ct += words[i];
-				if(i<words.length-2)
-					ct += " ";
-			}
-		}
-		return ct;
-	}
-
 	public static Map<String,String> sample(Map<String,String> full, double p){
 		Random rand = new Random();
 		Map<String,String> sample = new LinkedHashMap<>();
@@ -1419,7 +1397,7 @@ public class EmailUtils {
         try {
 			InputStream is = Config.getResourceAsStream(typesFile);
 			if (is == null) {
-				log.warn ("Dbpedia file resource could not be read!!");
+				log.warn ("DBpedia file resource could not be read!!");
 				return dbpedia;
 			}
 
@@ -1437,8 +1415,6 @@ public class EmailUtils {
 
                 String[] words = line.split("\\s+");
                 String r = words[0];
-//				if(!r.contains("_"))
-//					continue;
 
                 /**
                  * The types file contains lines like this:
@@ -1450,8 +1426,6 @@ public class EmailUtils {
                 if (r.contains("__")) {
                     d++;
                     continue;
-                    //					r = r.replaceAll("\\_\\_.$", "");
-                    //					r = r.replaceAll("^.+?\\_\\_", "");
                 }
                 //if it still contains this, is a bad title.
                 if (r.equals("") || r.contains("__")) {
@@ -1459,29 +1433,6 @@ public class EmailUtils {
                     continue;
                 }
                 String type = words[1];
-                //Royalty names, though tagged person are very weird, contains roman characters and suffixes like of_Poland e.t.c.
-                if(type.equals("PersonFunction") || type.equals("Royalty|Person|Agent"))
-                    continue;
-                //in places there are things like: Shaikh_Ibrahim,_Iraq
-                if (type.endsWith("Settlement|PopulatedPlace|Place"))
-                    r = r.replaceAll(",_.*","");
-                //so as not to allow single word entries
-//                if(!r.contains("_"))
-//                    continue;
-//                if(r.contains("(")) {
-//                    int ti = r.indexOf('(');
-//                    int ui = r.indexOf('_');
-//                    //if is a single word token, then continue;
-//                    if((ui==-1) || ti<ui || (ui+1==ti)) {
-//                        continue;
-//                    }
-//                }
-                //its very dangerous to remove things inside brackets as that may lead to terms like
-                //University_(Metrorail_Station) MetroStation|Place e.t.c.
-                //so keep them, or just skip this entry all together
-                //We are not considering single word tokens any way, so its OK to remove things inside the brackets
-                //removing stuff in brackets may cause trouble when blind matching entities
-                //r = r.replaceAll("_\\(.*?\\)", "");
                 String title = r.replaceAll("_"," ");
 
                 String badSuffix = "|Agent";
@@ -1491,21 +1442,6 @@ public class EmailUtils {
                     numPersons++;
                 type = type.intern(); // type strings are repeated very often, so intern
 
-                boolean allowed = true;
-                //boolean allowed = DBpediaTypes.allowedTypes.contains(type);
-                for(String it: FeatureDictionary.ignoreTypes)
-                    if(type.endsWith(it)) {
-                        allowed = false;
-                        break;
-                    }
-                if(!allowed)
-                    continue;
-
-				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
-					//System.err.print("Cleaned: "+title);
-					title = cleanRoad(title);
-					//System.err.println(" to "+title);
-				}
                 dbpedia.put(title, type);
             }
 			lnr.close();

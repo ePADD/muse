@@ -87,17 +87,29 @@ public class FeatureDictionary implements Serializable {
         startMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"the", "national", "univ", "univ.", "university", "school"});
         endMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"inc.", "inc", "school", "university", "univ", "studio", "center", "service", "service", "institution", "institute", "press", "foundation", "project", "org", "company", "club", "industry", "factory"});
 
-        /**
-         * Something funny happening here, Creeley has a lot of press related orgs and many press are annotated with non-org type,
-         * fox example periodicals, magazine etc. If these types are not ignored, then word proportion score for "*Press" is very low and is unrecognised
-         * leading to a drop of recall from 0.6 to 0.53*/
-        //these types may contain tokens from this type
-        //dont see why these ignoreTypes have to be type (i.e. person, org, loc) specific
+        //Do not expect that these ignore types will get rid of person names with any stop word in it.
+        //Consider this, the type dist. of person-like types with the stop word _of_ is
+        //10005 Person|Agent
+        //4765 BritishRoyalty|Royalty|Person|Agent
+        //2628 Noble|Person|Agent
+        //1150 Saint|Cleric|Person|Agent
+        //669 Monarch|Person|Agent
+        //668 OfficeHolder|Person|Agent
+        //627 ChristianBishop|Cleric|Person|Agent
+        //525 MilitaryPerson|Person|Agent
+        //249 SportsTeamMember|OrganisationMember|Person|Agent
+        //247 SoapCharacter|FictionalCharacter|Person|Agent
+        //158 FictionalCharacter|Person|Agent
+        //114 Pope|Cleric|Person|Agent
         ignoreTypes = Arrays.asList(
                 "RecordLabel|Company|Organisation",
                 "Band|Organisation",
+                //This type is too noisy and contain titles like
+                //Cincinatti Kids, FA_Youth_Cup_Finals, The Stongest (and other such team names)
                 "OrganisationMember|Person",
-                "PersonFunction"
+                "PersonFunction",
+                "GivenName",
+                "Royalty|Person"
         );
         desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
         desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
@@ -994,6 +1006,29 @@ public class FeatureDictionary implements Serializable {
         return ll;
     }
 
+    //just cleans up trailing numbers in the string
+    static String cleanRoad(String title){
+        String[] words = title.split(" ");
+        String lw = words[words.length-1];
+        String ct = "";
+        boolean hasNumber = false;
+        for(Character c: lw.toCharArray())
+            if(c>='0' && c<='9') {
+                hasNumber = true;
+                break;
+            }
+        if(words.length == 1 || !hasNumber)
+            ct = title;
+        else{
+            for(int i=0;i<words.length-1;i++) {
+                ct += words[i];
+                if(i<words.length-2)
+                    ct += " ";
+            }
+        }
+        return ct;
+    }
+
     public void EM(Map<String,String> gazettes){
         computeTypePriors();
         log.info("Performing EM on: #" + features.size() + " words");
@@ -1008,21 +1043,42 @@ public class FeatureDictionary implements Serializable {
             computeTypePriors();
 
             for (String phrase : gazettes.keySet()) {
+                //We put phrases through some filters in order to avoid very noisy types
+                //These are the checks
+                //1. Remove stuff in the brackets to get rid of disambiguation stuff
+                //2. If the type is road, then we clean up trailing numbers
+                //3. If the type is settlement then the title is written as "Berkeley_California" which actually mean Berkeley_(California); so cleaning these too
+                //4. We ignore certain noisy types. see ignoreTypes
                 //if the gazette is DBpedia, then the phrase may contain stuff in the brackets
+                String type = gazettes.get(phrase);
                 int cbi = phrase.indexOf(" (");
-                if(cbi>=0) {
-                    String op = phrase;
+                if(cbi>=0)
                     phrase = phrase.substring(0, cbi);
-                    if(log.isDebugEnabled())
-                        log.debug("Cleaned "+op+" to "+phrase);
-                }
+
+                if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"))
+                    phrase = cleanRoad(phrase);
+
+                //in places there are things like: Shaikh_Ibrahim,_Iraq
+                int idx;
+                if (type.endsWith("Settlement|PopulatedPlace|Place") && (idx=phrase.indexOf(", "))>=0)
+                    phrase = phrase.substring(idx);
+
+                boolean allowed = true;
+                for(String it: FeatureDictionary.ignoreTypes)
+                    if(type.endsWith(it)) {
+                        allowed = false;
+                        break;
+                    }
+                if(!allowed)
+                    continue;
+
                 //Do not consider single word names for training, the model has to be more complex than it is right now to handle these
                 if(!phrase.contains(" "))
                     continue;
 
                 if (wi++ % 1000 == 0)
                     log.info("EM iter: " + i + ", " + wi + "/" + N);
-                String type = gazettes.get(phrase);
+
                 Short coarseType = codeType(type);
                 float z = 0;
                 //responsibilities
