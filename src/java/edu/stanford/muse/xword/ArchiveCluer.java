@@ -228,14 +228,15 @@ public class ArchiveCluer extends Cluer {
         log.info("Docs with answer: "+answer+" is #"+docs.size());
 
         // find all messages in the date range
-        List<Document> docsWithAnswer = new ArrayList<>();
-        for (Document doc : docs) {
-            DatedDocument dd = (DatedDocument) doc;
-            if (dd.date.before(startDate) || dd.date.after(endDate))
-                continue;
-            docsWithAnswer.add(doc);
-        }
+//        List<Document> docsWithAnswer = new ArrayList<>();
+//        for (Document doc : docs) {
+//            DatedDocument dd = (DatedDocument) doc;
+//            if (dd.date.before(startDate) || dd.date.after(endDate))
+//                continue;
+//            docsWithAnswer.add(doc);
+//        }
 
+        List<Document> docsWithAnswer = new ArrayList<>(docs);
 		// note: docsWithAnswer is not sorted by time
 		int nDocsWithAnswer = docsWithAnswer.size();
         log.info("Docs with answer: "+answer+" and within the window: ["+startDate+", "+endDate+"] is #"+nDocsWithAnswer);
@@ -336,8 +337,6 @@ public class ArchiveCluer extends Cluer {
                     //String oos = originalSentence;
 					originalSentence = originalSentence.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
 
-					//
-
 					// 1 newline is normal, but 2 or more is bad...it tends to be a signature or list... or code.... doesn't make for a good clue.
 					float linesBoost = 1.0f;
 					for (int j = 0; j < numSentences; j++) {
@@ -350,7 +349,6 @@ public class ArchiveCluer extends Cluer {
 					originalSentence = Util.canonicalizeSpaces(originalSentence);
 					String lowerCaseSentence = originalSentence.toLowerCase();
 
-                    //System.err.println("Original: "+oos+" -> lcs: "+lowerCaseSentence);
                     //this test is valid only for first type of clues
 					if (questionType==QuestionType.FILL_IN_THE_BLANK && !Util.occursOnlyAsWholeWord(lowerCaseSentence, answer)) {
                         //System.err.println("Rejecting because no whole word!! "+answer);
