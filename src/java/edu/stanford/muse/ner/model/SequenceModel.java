@@ -241,7 +241,7 @@ public class SequenceModel implements NERModel, Serializable {
             short bt = -10;
             for (short t : cands) {
                 int tj = Math.max(ti-6,0);
-                //dont allow multi word phrases with these types
+                //don't allow multi word phrases with these types
                 if (t == OTHER || t == FeatureDictionary.OTHER)
                     tj = ti;
                 for (; tj <= ti; tj++) {

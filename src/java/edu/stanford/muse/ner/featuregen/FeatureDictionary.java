@@ -1055,6 +1055,7 @@ public class FeatureDictionary implements Serializable {
                 //3. If the type is settlement then the title is written as "Berkeley_California" which actually mean Berkeley_(California); so cleaning these too
                 //4. We ignore certain noisy types. see ignoreTypes
                 //5. Ignores any single word names
+                //6. If the type is person like but the phrase contains either "and" or "of", we filter this out.
                 //if the gazette is DBpedia, then the phrase may contain stuff in the brackets
                 String type = gazettes.get(phrase);
                 int cbi = phrase.indexOf(" (");
@@ -1080,6 +1081,9 @@ public class FeatureDictionary implements Serializable {
 
                 //Do not consider single word names for training, the model has to be more complex than it is right now to handle these
                 if(!phrase.contains(" "))
+                    continue;
+
+                if(type.endsWith("Person") && (phrase.contains(" and ")||phrase.contains(" of ")))
                     continue;
 
                 if (wi++ % 1000 == 0)
