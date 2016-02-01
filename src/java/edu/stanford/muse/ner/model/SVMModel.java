@@ -108,7 +108,7 @@ public class SVMModel implements NERModel, Serializable {
                                 if(dictionary.features.get("words")==null)
                                     r = 0;
                                 else {
-                                    Pair<Double, Double> p = new Pair<>(0.0,0.0);
+                                    Pair<Float, Float> p = new Pair<>(0.0f,0.0f);
                                     FeatureDictionary.MU mu = dictionary.features.get(w);
                                     p.first = mu.getLikelihoodWithType(type)*mu.getPrior();
                                     p.second = mu.numMixture;
@@ -136,11 +136,11 @@ public class SVMModel implements NERModel, Serializable {
                 ews.put(e, 1.0);
             map.put(type, ews);
         }
-        return new Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>>(map, names);
+        return new Pair<>(map, names);
     }
 
     public static SVMModel loadModel(File modelFile) throws IOException{
-        ObjectInputStream ois = null;
+        ObjectInputStream ois;
         try {
             ois = new ObjectInputStream(new FileInputStream(modelFile));
             SVMModel model = (SVMModel) ois.readObject();

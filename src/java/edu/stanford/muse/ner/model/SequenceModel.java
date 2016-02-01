@@ -209,8 +209,8 @@ public class SequenceModel implements NERModel, Serializable {
         //we restrict the number of possible types we consider to top 5
         //see the complexity of the method
         Set<Short> cands = new LinkedHashSet<>();
-        Map<Short, Double> candTypes = new LinkedHashMap<>();
         for (String token : tokens) {
+            Map<Short, Double> candTypes = new LinkedHashMap<>();
             token = token.replaceAll("^\\W+|\\W+$","");
             token = token.toLowerCase();
             FeatureDictionary.MU mu = dictionary.features.get(token);
@@ -230,7 +230,9 @@ public class SequenceModel implements NERModel, Serializable {
             for (Pair<Short, Double> p : scands)
                 if (si++ < MAX)
                     cands.add(p.getFirst());
+            log.info("Token: "+token+" - cands: "+scands);
         }
+        log.info("Candidate types for phrase: "+phrase+" -- "+cands);
         //This is just a standard dynamic programming algo. used in HMMs, with the difference that
         //at every word we are checking for the every possible segment
         short OTHER = -2;
@@ -330,9 +332,8 @@ public class SequenceModel implements NERModel, Serializable {
         for (String mid : tokenFeatures.keySet()) {
             Double d;
             MU mu = features.get(mid);
-            double taff = mu.getLikelihoodWithType(type);
             //Do not even consider the contribution from this mixture if it does not have a good affinity with this type
-            if(taff<0.1)
+            if(mu!=null && mu.getLikelihoodWithType(type)<0.1)
                 continue;
 
             int THRESH = 0;
@@ -343,13 +344,16 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 //a likelihood that assumes nothing
                 d = MU.getMaxEntProb();
-            double val = d;
-            if (val > 0) {
+            if (d > 0) {
                 double freq = 0;
                 if (features.get(mid) != null)
                     freq = features.get(mid).getPrior();
-                val *= freq;
+                d *= freq;
             }
+            double val = d;
+
+            if(log.isDebugEnabled())
+                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+" MU: "+features.get(mid));
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }
@@ -437,56 +441,6 @@ public class SequenceModel implements NERModel, Serializable {
             }
         }
         return bs*((bt==type)?1:-1);
-    }
-
-    public Pair<String,Double> scoreSubstrs(String phrase, Short type) {
-        if (fdw == null) {
-            try {
-                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "features.dump"));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        Pair<String,Double> ret = new Pair<>(phrase, 0.0);
-       Map<String, Double> map = new LinkedHashMap<>();
-        //recognises only orgs
-        //labels = {O, B, I, E, S} null, beginning, in, end, solo
-        //char[] labels = new char[]{'O', 'B', 'I', 'E', 'S'};
-        //List<Triple<String,Integer,Integer>> cands = tokenizer.tokenize(content, type.equals(FeatureDictionary.PERSON));
-        //for(Triple<String,Integer,Integer> cand: cands) {
-        try {
-            if (fdw != null)
-                fdw.write(phrase + "\n");
-            String[] words = phrase.split("\\s+");
-            //brute force algorithm, is O(2^n)
-            if (words.length > 10) {
-                return new Pair<>(phrase, 0.0);
-            }
-
-            //look at all the sub strings and select a few with good score
-            //if its a single word, we assign S label
-            //if its multi word we assign B(I*)E labels.
-            //We can afford to do this, because we are just looking inside a CIC pattern
-            //In general, a search algorithm to find the subset with max probability should be employed
-            Set<String> substrs = IndexUtils.computeAllSubstrings(phrase);
-            Map<String, Double> ssubstrs = new LinkedHashMap<>();
-            for (String substr : substrs) {
-                double s = score(substr, type);
-                ssubstrs.put(substr, s);
-            }
-            List<Pair<String, Double>> sssubstrs = Util.sortMapByValue(ssubstrs);
-            for (Pair<String, Double> p : sssubstrs) {
-                if (fdw != null)
-                    fdw.write(p.getFirst() + " : " + p.getSecond() + "\n");
-            }
-            if (fdw != null)
-                fdw.write("\n");
-            if (sssubstrs.size() > 0)
-                ret = new Pair<>(sssubstrs.get(0).first, sssubstrs.get(0).getSecond());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return ret;
     }
 
     public static Map<Short,List<String>> mergeTypes(Map<Short,Map<String,Double>> entities){
@@ -707,7 +661,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/50);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         //This split is essential to isolate some entries that trained model has not seen
         Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
         Map<String,String> train = p.getFirst();
@@ -838,7 +792,7 @@ public class SequenceModel implements NERModel, Serializable {
      *     Ex: <PERSON>Yayuk Basuki</PERSON> of Indonesia, <PERSON>Karim Alami</PERSON> of Morocco
      *     This is also leading to errors like when National Bank of Holand is segmented as National Bank
      *     [SERIOUS]
-     *  3. Some unknown names, mostly personal -- we see very weird names in CONLL; Hopefully, we can combat this problem in ePADD by considering the address book of the archive.
+     *  3. Some unknown names, mostly personal -- we see very weird names in CONLL; Hopefully, we can avoid this problem in ePADD by considering the address book of the archive.
      *     Ex: NOVYE ATAGI, Hans-Otto Sieg, NS Kampfruf, Marie-Jose Perec, Billy Mayfair--Paul Goydos--Hidemichi Tanaki
      *     we miss many (almost all) names of the form "M. Dowman" because of uncommon or unknown last name.
      *  4. Bad segmentation due to limitations of CIC
@@ -849,7 +803,7 @@ public class SequenceModel implements NERModel, Serializable {
      *     Ex: Atlantic Ocean, Indian Ocean
      *  7. Bad segments -- why are some segments starting with weird chars like '&'
      *     Ex: Goldman Sachs & Co Wertpapier GmbH -> {& Co Wertpapier GmbH, Goldman Sachs}
-     *  8. We are missing Times of London?! We get nothing that contains "Newroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
+     *  8. We are missing Times of London?! We get nothing that contains "Newsroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
      *     Why are we getting "Students of South Korea" instead of "South Korea"?
      */
     public static void test(SequenceModel seqModel){
@@ -858,6 +812,7 @@ public class SequenceModel implements NERModel, Serializable {
             //7==0111 PER, LOC, ORG
             Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
             int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
+            Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(), wrongType = new LinkedHashSet<>();
             //only multi-word
             boolean onlyMW = true;
             NameSample sample = sampleStream.read();
@@ -885,7 +840,7 @@ public class SequenceModel implements NERModel, Serializable {
                         names.put(n, nspan.getType());
                 }
                 Pair<Map<Short, Map<String, Double>>, List<Triple<String, Integer, Integer>>> p = seqModel.find(sent);
-                Map<String,String> found = new LinkedHashMap<>();
+                Map<String,String> foundSample = new LinkedHashMap<>();
                 Map<Short,Map<String,Double>> temp = p.getFirst();
                 if(temp!=null)
                     for(Short ct: mappings.keySet()) {
@@ -900,31 +855,34 @@ public class SequenceModel implements NERModel, Serializable {
                         for(Short st: sts)
                             for(String str: temp.get(st).keySet())
                                 if(!onlyMW || str.contains(" "))
-                                    found.put(str,typeText);
+                                    foundSample.put(str,typeText);
                     }
 
                 Set<String> foundNames = new LinkedHashSet<>();
-                for (Map.Entry<String,String> entry : found.entrySet())
+                for (Map.Entry<String,String> entry : foundSample.entrySet())
                     if (names.containsKey(entry.getKey())){
                         if(names.get(entry.getKey()).equals(entry.getValue())) {
                             numCorrect++;
                             foundNames.add(entry.getKey());
+                            correct.add(entry.getKey());
                         }else{
+                            wrongType.add(entry.getKey());
                             numWrongType++;
                         }
                     }
 
                 log.info("CIC tokens: "+tokenizer.tokenizeWithoutOffsets(sent,false));
+                log.info(temp);
                 String fn = "Found names:";
                 for (String f : foundNames)
-                    fn += f + "[" + found.get(f) + "]" + "--";
+                    fn += f + "[" + foundSample.get(f) + "]" + "--";
                 if(fn.endsWith("--"))
                     log.info(fn);
 
                 String extr = "Extra names: ";
-                for (String f: found.keySet())
+                for (String f: foundSample.keySet())
                     if (!names.containsKey(f))
-                        extr += f +"[" + found.get(f) + "]--";
+                        extr += f +"[" + foundSample.get(f) + "]--";
                 if(extr.endsWith("--"))
                     log.info(extr);
                 String miss = "Missing names: ";
@@ -935,22 +893,39 @@ public class SequenceModel implements NERModel, Serializable {
                     log.info(miss);
 
                 String misAssign = "Mis-assigned Types: ";
-                for(String f: found.keySet())
-                    if(names.containsKey(f) && !names.get(f).equals(found.get(f)))
-                        misAssign += f+"["+found.get(f)+"] Expected ["+ names.get(f) +"]--";
+                for(String f: foundSample.keySet())
+                    if(names.containsKey(f) && !names.get(f).equals(foundSample.get(f)))
+                        misAssign += f+"["+foundSample.get(f)+"] Expected ["+ names.get(f) +"]--";
                 if(misAssign.endsWith("--"))
                     log.info(misAssign);
 
                 log.info(sent + "\n------------------");
 
                 numReal += names.size();
-                numFound += found.size();
+                numFound += foundSample.size();
+                real.addAll(names.keySet());
+                found.addAll(foundSample.keySet());
                 sample = sampleStream.read();
             }
-            float prec = (float)numCorrect/(float)numFound;
-            float recall = (float)numCorrect/(float)numReal;
+            float prec = (float)correct.size()/(float)found.size();
+            float recall = (float)correct.size()/(float)real.size();
+            log.info("----Correct names----");
+            for(String str: correct)
+                log.info(str);
+            log.info("----Missed names----");
+            for(String str: real)
+                if(!correct.contains(str))
+                    log.info(str);
+            log.info("---Extra names------");
+            for(String str: found)
+                if(!correct.contains(str))
+                    log.info(str);
+            log.info("---Assigned wrong type------");
+            for(String str: wrongType)
+                log.info(str);
+
             log.info("-------------");
-            log.info("Found: "+numFound+" -- Total: "+numReal+" -- Correct: "+numCorrect+" -- Missed due to wrong type: "+(numWrongType));
+            log.info("Found: "+found.size()+" -- Total: "+real.size()+" -- Correct: "+correct.size()+" -- Missed due to wrong type: "+(wrongType.size()));
             log.info("Precision: "+prec);
             log.info("Recall: "+recall);
             log.info("F1: "+(2*prec*recall/(prec+recall)));
@@ -986,7 +961,12 @@ public class SequenceModel implements NERModel, Serializable {
             nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
             nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
             nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
-            test(nerModel);
+            System.err.println(nerModel.seqLabel("Prime Minister"));
+            System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
+            System.err.println(nerModel.seqLabel("John Oliver"));
+            System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
+            System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
+            //test(nerModel);
         }
     }
 }

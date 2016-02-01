@@ -2,7 +2,6 @@ package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
-import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
@@ -180,7 +179,7 @@ public class FeatureDictionary implements Serializable {
             }
             if(initialParams.size()==0 || n==0 || d==0 || n!=d)
                 log.error("!!!FATAL!!! mu initialisation improper" + ", " + n + ", " + d + ", " + mu.muVectorPositive + ", word: " + word);
-            //initially dont assume anything about gammas and pi's
+            //initially don't assume anything about gammas and pi's
             mu.numMixture = s2;
             mu.numSeen = s2;
             //if nmL and nmR are to be initialised, then all the left and right affinities should also be initialised.
@@ -278,20 +277,20 @@ public class FeatureDictionary implements Serializable {
                     double s = 0;
                     Map<String,Pair<Double,Double>> ls = new LinkedHashMap<>();
                     for (String t : ts) {
-                        Double v; double denom;
+                        Float v; double denom;
                         if(si==1) {
-                            v = (double)muVectorPositive.get("L:" + t);
+                            v = muVectorPositive.get("L:" + t);
                             denom = nmL;
                         }
                         else {
-                            v = (double)muVectorPositive.get("R:" + t);
+                            v = muVectorPositive.get("R:" + t);
                             denom = nmR;
                         }
 
                         if (numMixture == 0)
                             continue;
                         if(v==null)
-                            v=0.0 ;
+                            v=0.0f;
                         if(!smooth) {
                             s += dictionary.getConditionalOfTypeWithWord(l, t) * (v / denom);
                             ls.put(t,new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v / denom)));
@@ -300,7 +299,10 @@ public class FeatureDictionary implements Serializable {
                             s += dictionary.getConditionalOfTypeWithWord(l, t) * ((v + 1) / (denom + allTypes.length + 1));
                             ls.put(t,new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v + 1) / (denom + allTypes.length + 1)));
                         }
+                        //System.err.println("L: "+l+" -- T: "+t+" -- "+dictionary.getConditionalOfTypeWithWord(l,t)+" -- "+(v + 1) +"-"+ (denom + allTypes.length + 1));
                     }
+                    //System.err.println("POS: "+si+" -- "+l+" -- Val: "+s);
+
                     if(DEBUG) {
                         log.info("Scoring: " + features+"- score: "+s);
                         for (String t : ls.keySet())
@@ -348,6 +350,7 @@ public class FeatureDictionary implements Serializable {
                     val = (muVectorPositive.get(f)) / (numMixture);
                 else
                     val = 0;
+                System.err.println("Feature: "+f+" -- "+val);
 
                 if (Double.isNaN(val)) {
                     log.warn("Found a NaN here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + val);
@@ -414,8 +417,9 @@ public class FeatureDictionary implements Serializable {
                     String t = temp.get(i).first;
                     if(!muVectorPositive.containsKey("L:"+t))
                         muVectorPositive.put("L:"+t,0.0f);
-                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + (float)(resp * ltop.get(t) / left.size()));
-                    nmL += (resp * ltop.get(t) / left.size());
+                    float inc = (float)(resp * ltop.get(t) / left.size());
+                    muVectorPositive.put("L:" + t, muVectorPositive.get("L:" + t) + inc);
+                    nmL += inc;
                     //System.err.println("Adding: L:"+t+", "+resp+", "+ltop.get(t)+", "+Math.min(temp.size(),MAX));
                     if(DEBUG)
                         log.info("Adding left type: "+t+" for "+l);
@@ -434,9 +438,10 @@ public class FeatureDictionary implements Serializable {
                     String t = temp.get(i).first;
                     if(!muVectorPositive.containsKey("R:"+t))
                         muVectorPositive.put("R:"+t,0.0f);
-                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + (float)(resp * rtop.get(t) / right.size()));
+                    float inc = (float)(resp * rtop.get(t) / right.size());
+                    muVectorPositive.put("R:" + t, muVectorPositive.get("R:" + t) + inc);
                     //NMR update can be outside the loop as marginal of conditional word with type sums to 0, having it inside the loop will expose any problems in the normlisation
-                    nmR += (resp * rtop.get(t) / right.size());
+                    nmR += inc;
                     //System.err.println("Word: "+r+", Type: "+t+", "+resp+", "+rtop.get(t)+", "+temp.size());
                     if(DEBUG)
                         log.info("Adding right type: "+t+" for "+r);
@@ -485,8 +490,12 @@ public class FeatureDictionary implements Serializable {
                 Map<String,Float> some = new LinkedHashMap<>();
                 for(int l=0;l<labels[i].length;l++) {
                     String d = p[i] + labels[i][l];
-                    if(muVectorPositive.get(d) != null)
-                        some.put(d, muVectorPositive.get(d) / numMixture);
+                    if(muVectorPositive.get(d) != null) {
+                        if (p[i].equals("L:") || p[i].equals("R:"))
+                            some.put(d, muVectorPositive.get(d)/(p[i].equals("L:")?nmL:nmR));
+                        else
+                            some.put(d, muVectorPositive.get(d) / numMixture);
+                    }
                     else
                         some.put(d, 0.0f);
                 }
@@ -515,8 +524,12 @@ public class FeatureDictionary implements Serializable {
                         d = p[i].replaceAll(":","") + "[" + (labels[i][l].equals("NULL")?"EMPTY":FeatureDictionary.desc.get(Short.parseShort(labels[i][l]))) + "]";
                     else
                         d = p[i].replaceAll(":","") + "[" + labels[i][l] + "]";
-                    if(muVectorPositive.get(k) != null)
-                        some.put(d, muVectorPositive.get(k) / numMixture);
+                    if(muVectorPositive.get(k) != null) {
+                        if (p[i].equals("L:") || p[i].equals("R:"))
+                            some.put(d, muVectorPositive.get(k)/(p[i].equals("L:")?nmL:nmR));
+                        else
+                            some.put(d, muVectorPositive.get(k) / numMixture);
+                    }
                     else
                         some.put(d, 0.0f);
                 }
@@ -681,22 +694,26 @@ public class FeatureDictionary implements Serializable {
                 return 0.0;
         }
         Short t = Short.parseShort(type);
+        if(t == null)
+            log.error("FATAL!!! Type: "+type+" cannot be parsed!!!");
+
         //we assume the domain of OTHER is too large that the posterior on type is zero
         if(t == FeatureDictionary.OTHER)
             return 0.0;
 
         MU mu = features.get(word);
         if(mu == null) {
-            log.warn("Unknown word: " + word + " not found in the dictionary!!");
+            //log.warn("Unknown word: " + word + " not found in the dictionary!!");
             return 0.0;
         }
-        if(typePriors.get(type)==null || typePriors.get(type) == 0) {
-            if(DEBUG && typePriors.get(type)==null)
-                log.warn("!!!FATAL!!! Unknown type or type priors not computed: Type priors null? "+(typePriors==null)+", Type: "+type);
-            return 0;
-        }
+//        if(typePriors.get(t)==null || typePriors.get(t) == 0) {
+//            if(typePriors.get(t)==null)
+//                log.warn("!!!FATAL!!! Unknown type or type priors not computed: Type priors null? "+(typePriors==null)+", Type: "+t);
+//            return 0;
+//        }
 
-        return (getConditionalOfTypeWithWord(word,type)*mu.numMixture)/typePriors.get(type);
+        //we assume all the words and types are equally probable and hence omitting the P(type) and P(word) terms
+        return (getConditionalOfTypeWithWord(word,type));
     }
 
     //returns P(type/w)
@@ -850,7 +867,7 @@ public class FeatureDictionary implements Serializable {
     public Map<String,Set<String>> generateFeatures(String phrase, Short type){
         Map<String, Set<String>> mixtureFeatures = new LinkedHashMap<>();
         String[] patts = getPatts(phrase);
-        String[] words = phrase.split("\\s+");
+        String[] words = phrase.split("\\W+");
         String sw = "NULL";
 
         for(int wi=0;wi<words.length;wi++){
@@ -960,6 +977,7 @@ public class FeatureDictionary implements Serializable {
         return ffeatures;
     }
 
+    //initializes types priors for each type as sigma(P(type/word)*P(word))
     public void computeTypePriors(){
         typePriors = new LinkedHashMap<>();
 
@@ -974,13 +992,17 @@ public class FeatureDictionary implements Serializable {
 
         log.info("Type priors: ");
         for (short t : typePriors.keySet())
-            log.info(t + " " + typePriors.get(t) + "\n");
+            log.info(t + " " + typePriors.get(t));
     }
 
     public double getIncompleteDateLogLikelihood(Map<String,String> gazettes){
         double ll = 0;
         for(String phrase: gazettes.keySet()) {
             String type = gazettes.get(phrase);
+            phrase = filterTitle(phrase,type);
+            if(phrase == null)
+                continue;
+
             Short et = codeType(type);
             if(et == null)
                 continue;
@@ -1016,6 +1038,48 @@ public class FeatureDictionary implements Serializable {
         return ct;
     }
 
+    /**
+     * We put phrases through some filters in order to avoid very noisy types
+     * These are the checks
+     * 1. Remove stuff in the brackets to get rid of disambiguation stuff
+     * 2. If the type is road, then we clean up trailing numbers
+     * 3. If the type is settlement then the title is written as "Berkeley_California" which actually mean Berkeley_(California); so cleaning these too
+     * 4. We ignore certain noisy types. see ignoreTypes
+     * 5. Ignores any single word names
+     * 6. If the type is person like but the phrase contains either "and" or "of", we filter this out.
+     * returns either the cleaned phrase or null if the phrase cannot be cleaned.
+     */
+    String filterTitle(String phrase, String type){
+        int cbi = phrase.indexOf(" (");
+        if(cbi>=0)
+            phrase = phrase.substring(0, cbi);
+
+        if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"))
+            phrase = cleanRoad(phrase);
+
+        //in places there are things like: Shaikh_Ibrahim,_Iraq
+        int idx;
+        if (type.endsWith("Settlement|PopulatedPlace|Place") && (idx=phrase.indexOf(", "))>=0)
+            phrase = phrase.substring(0,idx);
+
+        boolean allowed = true;
+        for(String it: FeatureDictionary.ignoreTypes)
+            if(type.contains(it)) {
+                allowed = false;
+                break;
+            }
+        if(!allowed)
+            return null;
+
+        //Do not consider single word names for training, the model has to be more complex than it is right now to handle these
+        if(!phrase.contains(" "))
+            return null;
+
+        if(type.endsWith("Person") && (phrase.contains(" and ")||phrase.contains(" of ")))
+            return null;
+        return phrase;
+    }
+
     public void EM(Map<String,String> gazettes){
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood(gazettes);
@@ -1026,45 +1090,12 @@ public class FeatureDictionary implements Serializable {
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
             wi = 0;
-            computeTypePriors();
+            //computeTypePriors();
 
             for (String phrase : gazettes.keySet()) {
-                //We put phrases through some filters in order to avoid very noisy types
-                //These are the checks
-                //1. Remove stuff in the brackets to get rid of disambiguation stuff
-                //2. If the type is road, then we clean up trailing numbers
-                //3. If the type is settlement then the title is written as "Berkeley_California" which actually mean Berkeley_(California); so cleaning these too
-                //4. We ignore certain noisy types. see ignoreTypes
-                //5. Ignores any single word names
-                //6. If the type is person like but the phrase contains either "and" or "of", we filter this out.
-                //if the gazette is DBpedia, then the phrase may contain stuff in the brackets
                 String type = gazettes.get(phrase);
-                int cbi = phrase.indexOf(" (");
-                if(cbi>=0)
-                    phrase = phrase.substring(0, cbi);
-
-                if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"))
-                    phrase = cleanRoad(phrase);
-
-                //in places there are things like: Shaikh_Ibrahim,_Iraq
-                int idx;
-                if (type.endsWith("Settlement|PopulatedPlace|Place") && (idx=phrase.indexOf(", "))>=0)
-                    phrase = phrase.substring(idx);
-
-                boolean allowed = true;
-                for(String it: FeatureDictionary.ignoreTypes)
-                    if(type.contains(it)) {
-                        allowed = false;
-                        break;
-                    }
-                if(!allowed)
-                    continue;
-
-                //Do not consider single word names for training, the model has to be more complex than it is right now to handle these
-                if(!phrase.contains(" "))
-                    continue;
-
-                if(type.endsWith("Person") && (phrase.contains(" and ")||phrase.contains(" of ")))
+                phrase = filterTitle(phrase, type);
+                if(phrase == null)
                     continue;
 
                 if (wi++ % 1000 == 0)
@@ -1267,8 +1298,8 @@ public class FeatureDictionary implements Serializable {
                 //a likelihood that assumes nothing
                 d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
             }
-            if(log.isDebugEnabled())
-                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+" MU: "+features.get(mid));
+//            if(log.isDebugEnabled())
+//                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+" MU: "+features.get(mid));
 
             if (Double.isNaN(d))
                 log.warn("Cond nan " + mid + ", " + d);
