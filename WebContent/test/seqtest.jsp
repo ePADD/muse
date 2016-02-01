@@ -307,14 +307,14 @@
                         if(v==null)
                             v=0.0;
                         if(!smooth) {
-                            s += dictionary.getConditionalOfWordWithType(l, t) * (v / numMixture);
-                            ls.put(t,dictionary.getConditionalOfWordWithType(l, t) * (v / numMixture));//new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v / numMixture)));
+                            s += dictionary.getConditionalOfTypeWithWord(l, t) * (v / numMixture);
+                            ls.put(t,dictionary.getConditionalOfTypeWithWord(l, t) * (v / numMixture));//new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v / numMixture)));
                         }
                         else {
-                            s += dictionary.getConditionalOfWordWithType(l, t) * ((v + 1) / (numMixture + allTypes.length + 1));
-                            ls.put(t,dictionary.getConditionalOfWordWithType(l, t) * ((v + 1) / (numMixture + allTypes.length + 1)));//new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v + 1) / (numMixture + allTypes.length + 1)));
+                            s += dictionary.getConditionalOfTypeWithWord(l, t) * ((v + 1) / (numMixture + allTypes.length + 1));
+                            ls.put(t,dictionary.getConditionalOfTypeWithWord(l, t) * ((v + 1) / (numMixture + allTypes.length + 1)));//new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v + 1) / (numMixture + allTypes.length + 1)));
                         }
-                        //System.err.println(dictionary.getConditionalOfWordWithType(l, t)+", "+v+","+numMixture);
+                        //System.err.println(dictionary.getConditionalOfTypeWithWord(l, t)+", "+v+","+numMixture);
                     }
                     String str = "";
                     List<Pair<String,Double>> tmp = Util.sortMapByValue(ls);

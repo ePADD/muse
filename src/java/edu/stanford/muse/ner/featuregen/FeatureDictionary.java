@@ -293,14 +293,13 @@ public class FeatureDictionary implements Serializable {
                         if(v==null)
                             v=0.0 ;
                         if(!smooth) {
-                            s += dictionary.getConditionalOfWordWithType(l, t) * (v / denom);
-                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v / denom)));
+                            s += dictionary.getConditionalOfTypeWithWord(l, t) * (v / denom);
+                            ls.put(t,new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v / denom)));
                         }
                         else {
-                            s += dictionary.getConditionalOfWordWithType(l, t) * ((v + 1) / (denom + allTypes.length + 1));
-                            ls.put(t,new Pair<>(dictionary.getConditionalOfWordWithType(l, t), (v + 1) / (denom + allTypes.length + 1)));
+                            s += dictionary.getConditionalOfTypeWithWord(l, t) * ((v + 1) / (denom + allTypes.length + 1));
+                            ls.put(t,new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v + 1) / (denom + allTypes.length + 1)));
                         }
-                        //System.err.println(dictionary.getConditionalOfWordWithType(l, t)+", "+v+","+numMixture);
                     }
                     if(DEBUG) {
                         log.info("Scoring: " + features+"- score: "+s);
@@ -401,12 +400,12 @@ public class FeatureDictionary implements Serializable {
                     ts.add(at + "");
             }
             ts.add("NULL");
-            //selct top types for every left and right word, trying to populate fields for every type blows up the space requirement
+            //select top types for every left and right word, trying to populate fields for every type blows up the model size
             int MAX = 2;
             for(String l: left){
                 Map<String,Double> ltop = new LinkedHashMap<>();
                 for(String t: ts)
-                    ltop.put(t, dictionary.getConditionalOfWordWithType(l, t));
+                    ltop.put(t, dictionary.getPosteriorOfWordWithType(l, t));
 
                 List<Pair<String,Double>> temp = Util.sortMapByValue(ltop);
                 if(DEBUG)
@@ -426,7 +425,7 @@ public class FeatureDictionary implements Serializable {
             for(String r: right){
                 Map<String,Double> rtop = new LinkedHashMap<>();
                 for(String t: ts)
-                    rtop.put(t, dictionary.getConditionalOfWordWithType(r, t));
+                    rtop.put(t, dictionary.getPosteriorOfWordWithType(r, t));
 
                 List<Pair<String,Double>> temp = Util.sortMapByValue(rtop);
                 if(DEBUG)
@@ -543,7 +542,7 @@ public class FeatureDictionary implements Serializable {
     //mixtures of the BMM model
     public Map<String, MU> features = new LinkedHashMap<>();
     //priors over every type label, computed by P(t) = \sum\limits_{w} P(w)*P(t/w)
-    public Map<Short, Float> typePriors = new LinkedHashMap<>();
+    public Map<Short, Double> typePriors = new LinkedHashMap<>();
     public static Set<String> newWords = null;
     //threshold to be classified as new word
     public static int THRESHOLD_FOR_NEW = 1;
@@ -670,8 +669,38 @@ public class FeatureDictionary implements Serializable {
         return this;
     }
 
-    //returns P(w/type) = P(type/w)*P(w)/P(type)
-    public double getConditionalOfWordWithType(String word, String type){
+    //returns P(word/type) as P(type/word)*P(word)/P(type)
+    double getPosteriorOfWordWithType(String word, String type){
+        if(word.startsWith("L:")||word.startsWith("R:"))
+            word = word.substring(2);
+        //base case
+        if(word.equals("NULL") || type.equals("NULL")) {
+            if (word.equals("NULL") && type.equals("NULL"))
+                return 1.0;
+            else
+                return 0.0;
+        }
+        Short t = Short.parseShort(type);
+        //we assume the domain of OTHER is too large that the posterior on type is zero
+        if(t == FeatureDictionary.OTHER)
+            return 0.0;
+
+        MU mu = features.get(word);
+        if(mu == null) {
+            log.warn("Unknown word: " + word + " not found in the dictionary!!");
+            return 0.0;
+        }
+        if(typePriors.get(type)==null || typePriors.get(type) == 0) {
+            if(DEBUG && typePriors.get(type)==null)
+                log.warn("!!!FATAL!!! Unknown type or type priors not computed: Type priors null? "+(typePriors==null)+", Type: "+type);
+            return 0;
+        }
+
+        return (getConditionalOfTypeWithWord(word,type)*mu.numMixture)/typePriors.get(type);
+    }
+
+    //returns P(type/w)
+    public double getConditionalOfTypeWithWord(String word, String type){
         if(word.startsWith("L:")||word.startsWith("R:"))
             word = word.substring(2);
         //base case
@@ -684,17 +713,12 @@ public class FeatureDictionary implements Serializable {
 
         MU mu = features.get(word);
         Short t = Short.parseShort(type);
-        if(typePriors.get(t)==null || typePriors.get(t)==0) {
-            if(DEBUG && typePriors.get(t)==null)
-                log.warn("!!!FATAL!!! Unknown type or type priors not computed: Type priors null? "+(typePriors==null)+", Type: "+t);
-            return 0;
-        }
 
         //smoothing is very important, there are two facets to it
         //by adding some numbers to both numerator and denominator, we are encouraging ratios with higher components than just the ratio
         //when the values are smoothed, the values are virtually clamped and will be swayed only if a good evidence is found
          if(mu!=null) {
-            return mu.getLikelihoodWithType(t) / typePriors.get(t);
+            return mu.getLikelihoodWithType(t);
         }
         else {
             if(DEBUG)
@@ -766,52 +790,6 @@ public class FeatureDictionary implements Serializable {
             }
         }
         return ct;
-    }
-
-    public static void computeNewWords(){
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
-        Map<String,Integer> wordFreqs = new LinkedHashMap<>();
-        newWords = new LinkedHashSet<>();
-        for (String str : dbpedia.keySet()) {
-            //if is a single word name and in dictionary, ignore.
-            if (!str.contains(" ") && DictUtils.fullDictWords.contains(str.toLowerCase()))
-                continue;
-
-            String entityType = dbpedia.get(str);
-            if (ignoreTypes.contains(entityType)) {
-                continue;
-            }
-
-            String[] words = str.split("\\s+");
-            for(int ii=0;ii<words.length-1;ii++) {
-                String w = words[ii].toLowerCase();
-                w = endClean.matcher(w).replaceAll("");
-                if(w.equals(""))
-                    continue;
-                if(!wordFreqs.containsKey(w))
-                    wordFreqs.put(w, 0);
-                wordFreqs.put(w, wordFreqs.get(w)+1);
-            }
-        }
-        for(String word: wordFreqs.keySet()){
-            if(wordFreqs.get(word)<=THRESHOLD_FOR_NEW)
-                newWords.add(word);
-        }
-    }
-
-    public static String[] getPatts2(String phrase){
-        List<String> patts = new ArrayList<>();
-        String[] words = phrase.split("\\s+");
-        for (int i = 0; i < words.length; i++) {
-            String word = words[i];
-            //dont emit stop words
-            //canonicalize the word
-            word = word.toLowerCase();
-            if(sws.contains(word))
-                continue;
-            patts.add(word);
-        }
-        return patts.toArray(new String[patts.size()]);
     }
 
     public static String[] getPatts(String phrase){
@@ -986,13 +964,17 @@ public class FeatureDictionary implements Serializable {
         typePriors = new LinkedHashMap<>();
 
         for(Short at: allTypes)
-            typePriors.put(at, 1.0f);
+            typePriors.put(at, 0.0);
 
-        if(DEBUG) {
-            log.info("Type priors: ");
-            for (short t : typePriors.keySet())
-                log.info(t + " " + typePriors.get(t) + "\n");
+        for(String mid: features.keySet()) {
+            MU mu = this.features.get(mid);
+            for(Short at: allTypes)
+                typePriors.put(at, typePriors.get(at) + mu.getLikelihoodWithType(at)*mu.numMixture);
         }
+
+        log.info("Type priors: ");
+        for (short t : typePriors.keySet())
+            log.info(t + " " + typePriors.get(t) + "\n");
     }
 
     public double getIncompleteDateLogLikelihood(Map<String,String> gazettes){
@@ -1035,7 +1017,6 @@ public class FeatureDictionary implements Serializable {
     }
 
     public void EM(Map<String,String> gazettes){
-        computeTypePriors();
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
