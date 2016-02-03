@@ -1058,7 +1058,7 @@ public class IndexUtils {
 	public static <D extends DatedDocument> List<D> selectDocsByDateRange(Collection<D> c, int year, int month, int date)
 	{
         --date;
-		--month; // adjust month to be 0 based because thats what calendar gives us
+		--month; // adjust month to be 0 based because that's what calendar gives us
 		boolean invalid_month = month < 0 || month > 11;
         boolean invalid_date = date<0 || date>30;
 		List<D> result = new ArrayList<D>();
