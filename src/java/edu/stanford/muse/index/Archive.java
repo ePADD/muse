@@ -870,7 +870,7 @@ public class Archive implements Serializable {
         // save the states that may get modified
         List<Document> savedAllDocs = allDocs;
 
-        allDocs = new ArrayList<Document>(retainedDocs);
+        allDocs = new ArrayList<>(retainedDocs);
         if (exportInPublicMode)
             replaceDescriptionWithNames(allDocs, this);
 
@@ -897,18 +897,8 @@ public class Archive implements Serializable {
 
                     if (text != null) {
                         String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
-                        doc.add(new Field("body", redacted_text, Indexer.full_ft)); // this
-                        // uses
-                        // standard
-                        // analyzer,
-                        // not
-                        // stemming
-                        // because
-                        // redacted
-                        // bodys
-                        // only
-                        // have
-                        // names.
+                        doc.add(new Field("body", redacted_text, Indexer.full_ft));
+                        //this uses standard analyzer, not stemming because redacted bodys only have names.
                     }
                     String title = doc.get("title");
                     doc.removeFields("title");

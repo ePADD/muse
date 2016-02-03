@@ -1578,7 +1578,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			{
 				writer.addDocument(doc);
 				count++;
-			}
+            }
 		}
 
 		writer.close();
@@ -1632,7 +1632,9 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor func) throws CorruptIndexException, IOException
 	{
 		directory = copyDirectoryWithDocFilter(directory, out_dir, INDEX_NAME_EMAILS, func);
-		directory_blob = copyDirectoryWithDocFilter(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, func);
+        //the docIds of the attachment docs are not the same as email docs, hence the same filter won't work.
+        //by supplying a null filter, we are not filtering attachments at all, is this the right thing to do? Because this may retain attachment doc(s) corresponding to a removed email doc
+		directory_blob = copyDirectoryWithDocFilter(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, null);
 	}
 
 	// CAUTION: permanently change the index!
