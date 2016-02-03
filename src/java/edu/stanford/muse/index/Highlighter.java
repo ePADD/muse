@@ -634,37 +634,6 @@ public class Highlighter {
 			hyperlinkTerms.add("Hammond Guthrie");
 			String str = Highlighter.highlight(text, new String[] { "Aparna Vaidik", "\"tanmai gopal\"", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" }, false, "<B >", "</B>", true);
             System.err.println("Highlight: "+str);
-
-//			SimpleAnalyzer sn1 = new SimpleAnalyzer(Indexer.LUCENE_VERSION);
-//			SimpleNumberAnalyzer sn2 = new SimpleNumberAnalyzer(Indexer.LUCENE_VERSION);
-//			Analyzer ans[] = new Analyzer[] { sn1, sn2 };
-//			try {
-//				for (Analyzer analyzer : ans) {
-//					TokenStream stream = analyzer.tokenStream(null, new StringReader(text));
-//					CharTermAttribute cattr = stream.addAttribute(CharTermAttribute.class);
-//					stream.reset();
-//					while (stream.incrementToken()) {
-//						System.out.println(cattr.toString());
-//					}
-//					stream.end();
-//					stream.close();
-//					System.out.println("--------------------------");
-//				}
-//			} catch (Exception e) {
-//				e.printStackTrace();
-//			}
-
-			//			String docId = "/Users/viharipiratla/Library/Thunderbird/Profiles/t60o06sr.default/Mail/Local Folders/Sent messages-141";
-			//			String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-vihari";
-			//			Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-			//			Indexer li = (Indexer) archive.indexer;
-			//			String content = archive.indexer.getContents(li.docForId(docId), true);
-			//			//String str = HighlighterBetter.getHTMLAnnotatedDocumentContents(text, new Date(), "", true, highlightTerms, new HashSet<String>(), new HashMap<String, Map<String, Short>>(), hyperlinkTerms, new HashSet<String>());
-			//			String[] terms = new String[] { "\"ravi teja\"", "\"ravi kanth\"" };
-			//			content = Highlighter.highlight(content, terms, "<B>", "</B>", true);
-			//			content = Highlighter.highlight(content, new String[] { "\"ravi\"" }, "<B>", "</B>", true);
-			//			System.err.println(content);
-			//			System.err.println("----------------------");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

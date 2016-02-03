@@ -981,13 +981,9 @@ public class Archive implements Serializable {
      * @return html for the given terms, with terms highlighted by the
      * indexer.
      * if IA_links is set, points links to the Internet archive's
-     * version
-     * of the
-     * page. docId is used to initialize a new view created by
-     * clicking on
-     * a
-     * link within this message, date is used to create the link to
-     * the IA
+     * version of the page.
+     * docId is used to initialize a new view created by clicking on a link within this message,
+     * date is used to create the link to the IA
      * @args ldoc - lucene doc corresponding to the content
      * s - content of the doc
      * Date
@@ -1008,15 +1004,8 @@ public class Archive implements Serializable {
             Summarizer summarizer = new Summarizer(indexer);
 
             s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed,
-                    entitiesWithId, null, summarizer.importantTermsCanonical /*
-																			 * unstemmed
-																			 * because
-																			 * we
-																			 * are
-																			 * only
-																			 * using
-																			 * names
-																			 */, showDebugInfo);
+                    entitiesWithId, null, summarizer.importantTermsCanonical /* unstemmed because we are only using names*/,
+                    showDebugInfo);
 
             //indexer
             //	.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, searchTerms, isRegexSearch, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId);
@@ -1050,24 +1039,24 @@ public class Archive implements Serializable {
         String contents = indexer.getContents(d, false);
         org.apache.lucene.document.Document ldoc = indexer.getDoc(d);
         if (ldoc == null)
-            System.err.println("lucenedoc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
+            System.err.println("Lucene Doc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
 
         List<String> entities = new ArrayList<String>();
 
         if (cpeople == null)
-            cpeople = new ArrayList<String>();
+            cpeople = new ArrayList<>();
         if (cplaces == null)
-            cplaces = new ArrayList<String>();
+            cplaces = new ArrayList<>();
         if (corgs == null)
-            corgs = new ArrayList<String>();
+            corgs = new ArrayList<>();
         if (e == null)
-            e = new ArrayList<String>();
+            e = new ArrayList<>();
         if (orgs == null)
-            orgs = new ArrayList<String>();
+            orgs = new ArrayList<>();
         if (places == null)
-            places = new ArrayList<String>();
+            places = new ArrayList<>();
         if (acrs == null)
-            acrs = new HashSet<String>();
+            acrs = new LinkedHashSet<>();
 
         entities.addAll(cpeople);
         entities.addAll(cplaces);
@@ -1122,14 +1111,14 @@ public class Archive implements Serializable {
 
         StringBuilder sb = new StringBuilder();
         sb.append(htmlContents);
-        return new Pair<StringBuilder, Boolean>(sb, overflow);
+        return new Pair<>(sb, overflow);
     }
 
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs) {
         return clustersForDocs(docs, MultiDoc.ClusteringType.MONTHLY);
     }
     /* break up docs into clusters, based on existing docClusters
-    * Note: Clustering Type MONTHLY and YTEARLY not supported*/
+    * Note: Clustering Type MONTHLY and YEARLY not supported*/
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs, MultiDoc.ClusteringType ct) {
         //TODO: whats the right thing to do when docClusters is null?
         if (docClusters == null || (ct == MultiDoc.ClusteringType.NONE)) {
