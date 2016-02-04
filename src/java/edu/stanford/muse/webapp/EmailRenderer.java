@@ -143,7 +143,7 @@ public class EmailRenderer {
 
 		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments);
 
-		return new Pair<DataSet, String>(dataset, html.toString());
+		return new Pair<>(dataset, html.toString());
 	}
 
 	/**
@@ -170,15 +170,30 @@ public class EmailRenderer {
                 String addr = ia.getAddress();
                 String name = ia.getPersonal();
                 boolean match = false;
-                if(highlightUnstemmed!=null)
-                    if(highlightUnstemmed.contains(name))
-                        match = true;
-                if(!match && highlightNames!=null)
-                    if(highlightNames.contains(name))
-                        match = true;
-                if(!match && highlightAddresses!=null)
-                    if(highlightAddresses.contains(addr))
-                        match = true;
+                if(name!=null) {
+                    //The goal here is to explain why a doc is selected and hence we should replicate Lucene doc selection and Lucene is case insensitive most of the times
+                    String lc = name.toLowerCase();
+                    if (highlightUnstemmed != null)
+                        for (String hs : highlightUnstemmed)
+                            if (lc.contains(hs)) {
+                                match = true;
+                                break;
+                            }
+                    if (!match && highlightNames != null)
+                        for (String hn : highlightNames)
+                            if (lc.contains(hn)) {
+                                match = true;
+                                break;
+                            }
+                }
+                if(addr!=null){
+                    if (!match && highlightAddresses != null)
+                        for (String ha : highlightAddresses)
+                            if (addr.contains(ha)) {
+                                match = true;
+                                break;
+                            }
+                }
 
                 if(match)
                     thisAddrStr = ("<a href=\"" + url + "\"><span class=\"hilitedTerm rounded\">" + Util.escapeHTML(str) + "</span></a>");
@@ -192,6 +207,7 @@ public class EmailRenderer {
 				String str = a.toString();
 				thisAddrStr = str;
 				outputLineLength += str.length();
+                JSPHelper.log.warn("Address is not an instance of InternetAddress - is of instance: "+a.getClass().getName() + ", highlighting won't work.");
 			}
 
 			if (i + 1 < addrs.length)

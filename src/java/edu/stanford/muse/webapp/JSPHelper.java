@@ -1130,7 +1130,7 @@ public class JSPHelper {
 			docsForTag = Document.selectDocByTag(allDocs, tag, true);
 		}
 		if (cluster >= 0) {
-			docsForCluster = new ArrayList<Document>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
+			docsForCluster = new ArrayList<>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
 		}
 
 		if (persons != null || contact_ids != null)
@@ -1139,11 +1139,12 @@ public class JSPHelper {
 			docsForPersons = IndexUtils.selectDocsByAllPersons(addressBook, (Collection) allDocs, persons, Util.toIntArray(contact_ids));
 		}
 
-		if (end_yy >= 1970 && yy >= 1970) // date range
+        //Some docs with faulty date are assigned 1960/01/01
+		if (end_yy >= 1960 && yy >= 1960) // date range
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
 		}
-		else if (yy >= 1970) // single month or year
+		else if (yy >= 1960) // single month or year
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd);
 		}
