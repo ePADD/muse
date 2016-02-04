@@ -1189,7 +1189,8 @@ public class FeatureDictionary implements Serializable {
                         FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
                         Map<String, Double> some = new LinkedHashMap<>();
                         for (String w : features.keySet()) {
-                            double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
+                            MU mu = features.get(w);
+                            double v = mu.getLikelihoodWithType(type) * (mu.numMixture/mu.numSeen);
                             if (Double.isNaN(v))
                                 some.put(w, 0.0);
                             else
@@ -1202,7 +1203,6 @@ public class FeatureDictionary implements Serializable {
                                 fw.write("========================\n");
                             }
 
-                            //TODO: This is a very costly operation, think of other ways to do this more efficiently
                             MU mu = features.get(p.getFirst());
                             Short maxT = -1;double maxV = -1;
                             for(Short t: ats) {
