@@ -353,9 +353,8 @@ public class SequenceModel implements NERModel, Serializable {
                 val *= freq;
             }
 
-
-            if(log.isDebugEnabled())
-                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d+" - "+freq + ", type: "+type+" MU: "+features.get(mid));
+//            if(log.isDebugEnabled())
+//                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d+" - "+freq + ", type: "+type+" MU: "+features.get(mid));
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }
@@ -663,7 +662,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/50);
         //This split is essential to isolate some entries that trained model has not seen
         Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
         Map<String,String> train = p.getFirst();
@@ -967,10 +966,11 @@ public class SequenceModel implements NERModel, Serializable {
             System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
             System.err.println(nerModel.seqLabel("John Oliver"));
             System.err.println(nerModel.seqLabel("Found Page"));
+            System.err.println(nerModel.seqLabel("Emergency Grant"));
             System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
             System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
 
-            test(nerModel);
+            //test(nerModel);
         }
     }
 }

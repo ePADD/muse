@@ -271,6 +271,8 @@ public class FeatureDictionary implements Serializable {
             if (muVectorPositive.size()==TYPE_LABELS.length)
                 smooth = true;
             int si=0;
+            smooth = false;
+            //System.err.println("MID: "+id+" - features: "+features);
             for (Set<String> strs : new Set[]{left, right}) {
                 si++;
                 for (String l : strs) {
@@ -291,6 +293,9 @@ public class FeatureDictionary implements Serializable {
                             continue;
                         if(v==null)
                             v=0.0f;
+                        //smoothing here sometimes helps by helping to penalise values 'v' and denom that are too small.
+                        //But it assigns a non zero value to even when v is 0, which is a big problem in the case of FeatureDictionary.OTHER type.
+                        //For example smoothing may assign a non zero prob. for {"Emergency Grant",PERSON} 0.001 even though Emergency is never seen as any left compatible type of Grant
                         if(!smooth) {
                             s += dictionary.getConditionalOfTypeWithWord(l, t) * (v / denom);
                             ls.put(t,new Pair<>(dictionary.getConditionalOfTypeWithWord(l, t), (v / denom)));
@@ -537,10 +542,10 @@ public class FeatureDictionary implements Serializable {
                 smap = Util.sortMapByValue(some);
                 int numF = 0;
                 for(Pair<String,Float> pair: smap) {
-                    if(numF>=3)
+                    if(numF>=3 || pair.getSecond()<=0)
                         break;
 
-                    str += pair.getFirst() + ":" + new DecimalFormat("#.##").format(pair.getSecond()) + "-";
+                    str += pair.getFirst() + ":" + new DecimalFormat("#.##").format(pair.getSecond()) + ":::";
                     numF++;
                 }
                 str += "\n";
@@ -1212,7 +1217,8 @@ public class FeatureDictionary implements Serializable {
                                     maxV = d;
                                 }
                             }
-                            if(maxT == type) {
+                            //only if both the below conditions are satisfied, this template will ever be seen in action
+                            if(maxT == type && p.second>=0.001) {
                                 ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
                                 ffw.write(mu.prettyPrint());
                                 ffw.write("========================\n");
