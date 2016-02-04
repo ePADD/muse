@@ -350,7 +350,7 @@ public class FeatureDictionary implements Serializable {
                     val = (muVectorPositive.get(f)) / (numMixture);
                 else
                     val = 0;
-                System.err.println("Feature: "+f+" -- "+val);
+                //System.err.println("Feature: "+f+" -- "+val);
 
                 if (Double.isNaN(val)) {
                     log.warn("Found a NaN here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + val);
@@ -1107,30 +1107,37 @@ public class FeatureDictionary implements Serializable {
                 Map<String, Float> gamma = new LinkedHashMap<>();
                 //Word (sort of mixture identity) -> Features
                 Map<String, Set<String>> wfeatures = generateFeatures2(phrase, coarseType);
-                //System.err.println(" ---- ");
-                for (String mi : wfeatures.keySet()) {
-                    if (wfeatures.get(mi) == null) {
-                        continue;
-                    }
-                    MU mu = features.get(mi);
-                    if(mu == null) {
-                        log.warn("!!FATAL!! MU null for: " + mi + ", " + features.size());
-                        continue;
-                    }
-                    double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
-                    if(Double.isNaN(d))
-                        log.warn("score for: " + mi + " " + wfeatures.get(mi) + " is NaN");
-                    gamma.put(mi, (float)d);
-                    z += d;
-                    //System.err.println(mi + " : " + d + ", "+mu.getLikelihood(wfeatures.get(mi), this) );
-                }
-                if (z == 0) {
-                    log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
-                    continue;
-                }
 
-                for (String g : gamma.keySet()){
-                    gamma.put(g, gamma.get(g) / z);
+                if(coarseType!=FeatureDictionary.OTHER) {
+                    //System.err.println(" ---- ");
+                    for (String mi : wfeatures.keySet()) {
+                        if (wfeatures.get(mi) == null) {
+                            continue;
+                        }
+                        MU mu = features.get(mi);
+                        if (mu == null) {
+                            log.warn("!!FATAL!! MU null for: " + mi + ", " + features.size());
+                            continue;
+                        }
+                        double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
+                        if (Double.isNaN(d))
+                            log.warn("score for: " + mi + " " + wfeatures.get(mi) + " is NaN");
+                        gamma.put(mi, (float) d);
+                        z += d;
+                        //System.err.println(mi + " : " + d + ", "+mu.getLikelihood(wfeatures.get(mi), this) );
+                    }
+                    if (z == 0) {
+                        log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
+                        continue;
+                    }
+
+                    for (String g : gamma.keySet()) {
+                        gamma.put(g, gamma.get(g) / z);
+                    }
+                }
+                else{
+                    for(String mi: wfeatures.keySet())
+                        gamma.put(mi, 1.0f);
                 }
                 //System.err.println("Gammas: "+gamma);
 
@@ -1149,7 +1156,7 @@ public class FeatureDictionary implements Serializable {
                     }
 
                     if (Double.isNaN(gamma.get(g)))
-                        System.err.println("Gamma: " + gamma.get(g) + ", " + g);
+                        log.error("Gamma NaN for MID: " + g);
                     if(DEBUG)
                         if(gamma.get(g) == 0)
                             log.warn("!! Resp: " + 0 + " for "+g+" in "+phrase+", "+gazettes.get(phrase));

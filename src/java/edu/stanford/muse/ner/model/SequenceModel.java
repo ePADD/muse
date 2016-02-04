@@ -344,16 +344,18 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 //a likelihood that assumes nothing
                 d = MU.getMaxEntProb();
-            if (d > 0) {
-                double freq = 0;
-                if (features.get(mid) != null)
-                    freq = features.get(mid).getPrior();
-                d *= freq;
-            }
             double val = d;
 
+            double freq = 0;
+            if (d > 0) {
+                if (features.get(mid) != null)
+                    freq = features.get(mid).getPrior();
+                val *= freq;
+            }
+
+
             if(log.isDebugEnabled())
-                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+" MU: "+features.get(mid));
+                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d+" - "+freq + ", type: "+type+" MU: "+features.get(mid));
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }
@@ -964,9 +966,11 @@ public class SequenceModel implements NERModel, Serializable {
             System.err.println(nerModel.seqLabel("Prime Minister"));
             System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
             System.err.println(nerModel.seqLabel("John Oliver"));
+            System.err.println(nerModel.seqLabel("Found Page"));
             System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
             System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
-            //test(nerModel);
+
+            test(nerModel);
         }
     }
 }
