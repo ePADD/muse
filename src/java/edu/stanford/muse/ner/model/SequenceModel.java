@@ -132,7 +132,7 @@ public class SequenceModel implements NERModel, Serializable {
         return p;
     }
 
-    short lookup(String phrase) {
+    String lookup(String phrase) {
         if (dbpedia == null) {
             Map<String, String> orig = EmailUtils.readDBpedia();
             dbpedia = new LinkedHashMap<>();
@@ -140,9 +140,20 @@ public class SequenceModel implements NERModel, Serializable {
                 dbpedia.put(str.toLowerCase(), orig.get(str));
         }
 
-        String dbpediaType = dbpedia.get(phrase.toLowerCase());
-        Short ct = FeatureDictionary.codeType(dbpediaType);
-        return ct;
+        //if the phrase is from CIC Tokenizer, it won't start with an article
+        //enough with the confusion between [New York Times, The New York Times], [Giant Magellan Telescope, The Giant Magellan Telescope]
+        Set<String> vars = new LinkedHashSet<>();
+        vars.add(phrase);
+        vars.add("The "+phrase);
+        String dbpediaType = null;
+        for(String var: vars) {
+            dbpediaType = dbpedia.get(var.toLowerCase());
+            if(dbpediaType!=null) {
+                log.info("Found a match for: "+phrase+" -- "+dbpediaType);
+                return dbpediaType;
+            }
+        }
+        return null;
     }
 
     /**
@@ -156,8 +167,9 @@ public class SequenceModel implements NERModel, Serializable {
     */
     public Map<String, Pair<Short, Double>> seqLabel(String phrase) {
         Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
-        short ct = lookup(phrase);
-        String dbpediaType = dbpedia.get(phrase.toLowerCase());
+        String dbpediaType = lookup(phrase);
+        Short ct = FeatureDictionary.codeType(dbpediaType);
+
         if(dbpediaType!=null && ct>=0 && (phrase.contains(" ")||dbpediaType.endsWith("Country|PopulatedPlace|Place"))){
             segments.put(phrase, new Pair<>(ct, 1.0));
             return segments;
@@ -302,18 +314,8 @@ public class SequenceModel implements NERModel, Serializable {
             return 0;
 
         double sorg = 0;
-        Short ct = lookup(phrase);
-        //if the phrase is from CIC Tokenizer, it won't start with an article
-        //enough with the confusion between [New York Times, The New York Times], [Giant Magellan Telescope, The Giant Magellan Telescope]
-        Set<String> vars = new LinkedHashSet<>();
-        vars.add(phrase);
-        vars.add("The "+phrase);
-        String dbpediaType = null;
-        for(String var: vars) {
-            dbpediaType = dbpedia.get(var.toLowerCase());
-            if(dbpediaType!=null)
-                break;
-        }
+        String dbpediaType = lookup(phrase);
+        short ct = FeatureDictionary.codeType(dbpediaType);
 
         if(dbpediaType!=null && ct==type){
             if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
@@ -662,7 +664,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/50);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         //This split is essential to isolate some entries that trained model has not seen
         Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
         Map<String,String> train = p.getFirst();
@@ -813,9 +815,11 @@ public class SequenceModel implements NERModel, Serializable {
             //7==0111 PER, LOC, ORG
             Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
             int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
-            Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(), wrongType = new LinkedHashSet<>();
-            //only multi-word
+            Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(),   wrongType = new LinkedHashSet<>();
+            Map<String,String> matchMap = new LinkedHashMap<>();
+            //only multi-word are considered
             boolean onlyMW = true;
+            boolean ignoreSegmentation = true;
             NameSample sample = sampleStream.read();
             CICTokenizer tokenizer = new CICTokenizer();
             while (sample != null) {
@@ -860,17 +864,38 @@ public class SequenceModel implements NERModel, Serializable {
                     }
 
                 Set<String> foundNames = new LinkedHashSet<>();
-                for (Map.Entry<String,String> entry : foundSample.entrySet())
-                    if (names.containsKey(entry.getKey())){
-                        if(names.get(entry.getKey()).equals(entry.getValue())) {
+                for (Map.Entry<String,String> entry : foundSample.entrySet()) {
+                    boolean foundEntry = false;
+                    String foundType = null;
+                    if(!ignoreSegmentation) {
+                        foundEntry = names.containsKey(entry.getKey());
+                        foundType = names.get(entry.getKey());
+                        matchMap.put(entry.getKey(), entry.getKey());
+                    }
+                    else {
+                        for (String name : names.keySet()) {
+                            String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
+                            String ek = entry.getKey().toLowerCase();
+                            if (cname.contains(ek) || ek.contains(cname)) {
+                                foundEntry = true;
+                                foundType = names.get(name);
+                                matchMap.put(entry.getKey(), name);
+                                break;
+                            }
+                        }
+                    }
+
+                    if (foundEntry) {
+                        if (entry.getValue().equals(foundType)) {
                             numCorrect++;
                             foundNames.add(entry.getKey());
                             correct.add(entry.getKey());
-                        }else{
+                        } else {
                             wrongType.add(entry.getKey());
                             numWrongType++;
                         }
                     }
+                }
 
                 log.info("CIC tokens: "+tokenizer.tokenizeWithoutOffsets(sent,false));
                 log.info(temp);
@@ -882,21 +907,26 @@ public class SequenceModel implements NERModel, Serializable {
 
                 String extr = "Extra names: ";
                 for (String f: foundSample.keySet())
-                    if (!names.containsKey(f))
+                    if (!matchMap.containsKey(f))
                         extr += f +"[" + foundSample.get(f) + "]--";
                 if(extr.endsWith("--"))
                     log.info(extr);
                 String miss = "Missing names: ";
                 for (String name : names.keySet())
-                    if (!foundNames.contains(name))
+                    if (!matchMap.values().contains(name))
                         miss += name +"[" + names.get(name) + "]--";
                 if(miss.endsWith("--"))
                     log.info(miss);
 
                 String misAssign = "Mis-assigned Types: ";
                 for(String f: foundSample.keySet())
-                    if(names.containsKey(f) && !names.get(f).equals(foundSample.get(f)))
-                        misAssign += f+"["+foundSample.get(f)+"] Expected ["+ names.get(f) +"]--";
+                    if(matchMap.containsKey(f)) {
+                          //this can happen since matchMap is a global var. and an entity that is tagged in one place is untagged in other
+//                        if (names.get(matchMap.get(f)) == null)
+//                            log.warn("This is not expected: " + f + " in matchMap not found names -- " + names);
+                        if (names.get(matchMap.get(f)) != null && !names.get(matchMap.get(f)).equals(foundSample.get(f)))
+                            misAssign += f + "[" + foundSample.get(f) + "] Expected [" + names.get(matchMap.get(f)) + "]--";
+                    }
                 if(misAssign.endsWith("--"))
                     log.info(misAssign);
 
@@ -915,11 +945,11 @@ public class SequenceModel implements NERModel, Serializable {
                 log.info(str);
             log.info("----Missed names----");
             for(String str: real)
-                if(!correct.contains(str))
+                if(!matchMap.values().contains(str))
                     log.info(str);
             log.info("---Extra names------");
             for(String str: found)
-                if(!correct.contains(str))
+                if(!matchMap.containsKey(str))
                     log.info(str);
             log.info("---Assigned wrong type------");
             for(String str: wrongType)
@@ -970,7 +1000,7 @@ public class SequenceModel implements NERModel, Serializable {
             System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
             System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
 
-            //test(nerModel);
+            test(nerModel);
         }
     }
 }

@@ -108,7 +108,9 @@ public class FeatureDictionary implements Serializable {
                 "OrganisationMember|Person",
                 "PersonFunction",
                 "GivenName",
-                "Royalty|Person"
+                "Royalty|Person",
+                //the following type has entities like "Cox_Broadcasting_Corp._v._Cohn", that may assign wrong type to tokens like corp., co., ltd.
+                "SupremeCourtOfTheUnitedStatesCase|LegalCase|Case|UnitOfWork"
         );
         desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
         desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
@@ -198,7 +200,7 @@ public class FeatureDictionary implements Serializable {
             this.id = id;
         }
 
-        //returns P(type/this-mixture)
+        //returns smoothed P(type/this-mixture)
         public float getLikelihoodWithType(String typeLabel){
             float p1, p2;
             //System.err.println("Likelihood with: "+typeLabel);
@@ -210,12 +212,11 @@ public class FeatureDictionary implements Serializable {
                     if(muVectorPositive.containsKey(typeLabel)) {
                         p1 = muVectorPositive.get(typeLabel);
                         p2 = numMixture;
-                        return p1 / p2;
+                        return (p1+1) / (p2 + allTypes.length + 1);
                     }
                     //its possible that a mixture has never seen certain types
-                    else{
-                        return 0;
-                    }
+                    else
+                        return 1.0f/(allTypes.length+1);
                 }
             }
             log.warn("!!!FATAL: Unknown type label: " + typeLabel + "!!!");
@@ -263,20 +264,21 @@ public class FeatureDictionary implements Serializable {
             Set<String> ts = new LinkedHashSet<>();
             for (Short at : allTypes) {
                 //Note: having the condition below uncommented leads to unexpected changes to the incomplete data log likelihood when training
-                //if(at!=FeatureDictionary.OTHER)
-                ts.add(at + "");
+                if(at!=FeatureDictionary.OTHER)
+                    ts.add(at + "");
             }
             ts.add("NULL");
             boolean smooth = true;
             if (muVectorPositive.size()==TYPE_LABELS.length)
                 smooth = true;
             int si=0;
-            smooth = false;
             //System.err.println("MID: "+id+" - features: "+features);
             for (Set<String> strs : new Set[]{left, right}) {
                 si++;
                 for (String l : strs) {
                     double s = 0;
+                    //since the likelihood depends on s through product, we should use smoothing inorder to avoid singular likelihood
+                    smooth = true;
                     Map<String,Pair<Double,Double>> ls = new LinkedHashMap<>();
                     for (String t : ts) {
                         Float v; double denom;
@@ -289,8 +291,10 @@ public class FeatureDictionary implements Serializable {
                             denom = nmR;
                         }
 
-                        if (numMixture == 0)
+                        if (numMixture == 0) {
+                            log.error("!!FATAL!! found a mixture with num mixture 0, which is unexpected");
                             continue;
+                        }
                         if(v==null)
                             v=0.0f;
                         //smoothing here sometimes helps by helping to penalise values 'v' and denom that are too small.
@@ -1192,16 +1196,22 @@ public class FeatureDictionary implements Serializable {
                     for (Short type : ats) {
                         FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
                         FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
-                        Map<String, Double> some = new LinkedHashMap<>();
+                        Map<String, Double> sortScores = new LinkedHashMap<>();
+                        Map<String, Double> scores = new LinkedHashMap<>();
                         for (String w : features.keySet()) {
                             MU mu = features.get(w);
-                            double v = mu.getLikelihoodWithType(type) * (mu.numMixture/mu.numSeen);
-                            if (Double.isNaN(v))
-                                some.put(w, 0.0);
-                            else
-                                some.put(w, v);
+                            double v1 = mu.getLikelihoodWithType(type) * (mu.numMixture/mu.numSeen);
+                            double v = v1 * Math.log(mu.numSeen);
+                            if (Double.isNaN(v)) {
+                                sortScores.put(w, 0.0);
+                                scores.put(w,0.0);
+                            }
+                            else {
+                                sortScores.put(w, v);
+                                scores.put(w, v1);
+                            }
                         }
-                        List<Pair<String, Double>> ps = Util.sortMapByValue(some);
+                        List<Pair<String, Double>> ps = Util.sortMapByValue(sortScores);
                         for (Pair<String, Double> p : ps) {
                             if(type==ats[0] || p.second>=0.001) {
                                 fw.write(features.get(p.getFirst()).toString());
@@ -1218,7 +1228,7 @@ public class FeatureDictionary implements Serializable {
                                 }
                             }
                             //only if both the below conditions are satisfied, this template will ever be seen in action
-                            if(maxT == type && p.second>=0.001) {
+                            if(maxT == type && scores.get(p.getFirst())>=0.001) {
                                 ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
                                 ffw.write(mu.prettyPrint());
                                 ffw.write("========================\n");
