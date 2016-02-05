@@ -98,7 +98,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 	private Map<String, EmailDocument>				docIdToEmailDoc			= new LinkedHashMap<String, EmailDocument>();			// docId -> EmailDoc
 	private Map<String, Blob>						attachmentDocIdToBlob	= new LinkedHashMap<String, Blob>();					// attachment's docid -> Blob
-	private HashMap<String, Map<Integer, String>>	dirNameToDocIdMap		= new LinkedHashMap<String, Map<Integer, String>>();	// just stores 2 maps, one for content and one for attachment Lucene doc ID -> docId
+    private HashMap<String, Map<Integer, String>>	dirNameToDocIdMap		= new LinkedHashMap<String, Map<Integer, String>>();	// just stores 2 maps, one for content and one for attachment Lucene doc ID -> docId
 
 	//changed the below line
 	protected Directory directory;
@@ -306,13 +306,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				// failed to process blob
 				result = false;
 				log.warn("Failed to fetch content from: "+b.filename+" content type: "+b.contentType+" size: "+b.getSize());
-				continue; // but try to continue the proces0s
+				continue; // but try to continue the process
 			}
 
 			// imp: for id, should use Field.Index.NOT_ANALYZED field should be http://vuknikolic.wordpress.com/2011/01/03/lucenes-field-options-store-and-index-aka-rtfm/
 			// note: id for attachments index is just sequential numbers, 1, 2, 3. etc.
 			// it is not the full unique id (<folder>-<num>) that the emails index has.
 			doc.add(new Field("docId", id, ft));
+            //Field type ft instead of StoredFiled so as to be able to search over this field
+            doc.add(new Field("emailDocId", e.getUniqueId(), ft));
 			String documentText = content.first + DELIMITER + content.second;
 
 			// we'll store all languages detected in the doc as a field in the index
@@ -1629,12 +1631,12 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		directory_blob = copyDirectoryExcludeFields(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, fields_to_be_removed);
 	}
 
-	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor func) throws CorruptIndexException, IOException
+	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor emailFilter, FilterFunctor attachmentFilter) throws CorruptIndexException, IOException
 	{
-		directory = copyDirectoryWithDocFilter(directory, out_dir, INDEX_NAME_EMAILS, func);
+		directory = copyDirectoryWithDocFilter(directory, out_dir, INDEX_NAME_EMAILS, emailFilter);
         //the docIds of the attachment docs are not the same as email docs, hence the same filter won't work.
         //by supplying a null filter, we are not filtering attachments at all, is this the right thing to do? Because this may retain attachment doc(s) corresponding to a removed email doc
-		directory_blob = copyDirectoryWithDocFilter(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, null);
+		directory_blob = copyDirectoryWithDocFilter(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, attachmentFilter);
 	}
 
 	// CAUTION: permanently change the index!

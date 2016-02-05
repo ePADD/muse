@@ -881,7 +881,7 @@ public class Archive implements Serializable {
         for (Document d : allDocs)
             docIdSet.add(d.getUniqueId());
         final Set<String> retainedDocIds = docIdSet;
-        Indexer.FilterFunctor filter = new Indexer.FilterFunctor() {
+        Indexer.FilterFunctor emailFilter = new Indexer.FilterFunctor() {
             @Override
             public boolean filter(org.apache.lucene.document.Document doc) {
                 if (!retainedDocIds.contains(doc.get("docId")))
@@ -910,6 +910,27 @@ public class Archive implements Serializable {
                 return true;
             }
         };
+
+        Indexer.FilterFunctor attachmentFilter = new Indexer.FilterFunctor() {
+            @Override
+            public boolean filter(org.apache.lucene.document.Document doc) {
+                if(exportInPublicMode){
+                    return false;
+                }
+                String docId = doc.get("emailDocId");
+                if(docId == null){
+                    Integer di = Integer.parseInt(doc.get("docId"));
+                    //don't want to print too many messages
+                    if(di==null || di<10)
+                        log.error("Looks like this is an old archive, filtering all the attachments!!\n" +
+                                "Consider re-indexing with the latest version for a proper export.");
+                    return false;
+                }
+                if(!retainedDocIds.contains(docId))
+                    return false;
+                return true;
+            }
+        };
         if (exportInPublicMode) {
             List<Document> docs = this.getAllDocs();
             List<EmailDocument> eds = new ArrayList<EmailDocument>();
@@ -918,7 +939,7 @@ public class Archive implements Serializable {
             EmailUtils.maskEmailDomain(eds, this.addressBook);
         }
 
-        indexer.copyDirectoryWithDocFilter(out_dir, filter);
+        indexer.copyDirectoryWithDocFilter(out_dir, emailFilter, attachmentFilter);
         log.info("Completed exporting indexes");
 
         // save the blobs in a new blobstore
