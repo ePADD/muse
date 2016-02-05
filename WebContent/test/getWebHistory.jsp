@@ -31,7 +31,7 @@
      // compute redirect page
      String resultPage = inputPrefix + ".html";
      Archive driver =Archive.createArchive();
-     driver.setup (JSPHelper.getBaseDir(null, request), new String[]{"-i", inputPrefix, "-o", outputPrefix});
+     //driver.setup (JSPHelper.getBaseDir(null, request), new String[]{"-i", inputPrefix, "-o", outputPrefix});
      session.setAttribute("statusProvider", driver.getStatusProvider());
 
      // TOFIX the rest!!!

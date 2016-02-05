@@ -17,6 +17,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by vihari on 07/09/15.
@@ -24,7 +26,7 @@ import java.util.*;
  */
 public class SequenceModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
-    public static String modelFileName = "SeqModel.ser";
+    public static String modelFileName = "SeqModel.ser.gz";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
@@ -557,7 +559,9 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     public synchronized void writeModel(File modelFile) throws IOException{
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(modelFile));
+        FileOutputStream fos = new FileOutputStream(modelFile);
+        GZIPOutputStream gos = new GZIPOutputStream(fos);
+        ObjectOutputStream oos = new ObjectOutputStream(gos);
         oos.writeObject(this);
         oos.close();
     }
@@ -565,7 +569,8 @@ public class SequenceModel implements NERModel, Serializable {
     public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
         ObjectInputStream ois;
         try {
-            ois = new ObjectInputStream(Config.getResourceAsStream(modelPath));
+            //the buffer size can be much higher than default 512 for GZIPInputStream
+            ois = new ObjectInputStream(new GZIPInputStream(Config.getResourceAsStream(modelPath)));
             SequenceModel model = (SequenceModel) ois.readObject();
             ois.close();
             return model;
@@ -728,11 +733,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        //This split is essential to isolate some entries that trained model has not seen
-        Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
-        Map<String,String> train = p.getFirst();
-        Map<String, String> test = p.getSecond();
+        Map<String,String> train = EmailUtils.readDBpedia(1.0/5);
 
         //split the dictionary into train and test sets
         Set<String> fts = new LinkedHashSet<>();
@@ -745,20 +746,6 @@ public class SequenceModel implements NERModel, Serializable {
             String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
             String modelFile = mwl + SequenceModel.modelFileName;
             nerModel.writeModel(new File(modelFile));
-            //also write the test split
-            String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-            if(!new File(twl).exists()) {
-                OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-                int numTest = 0;
-                for (String str : test.keySet()) {
-                    String orig = str;
-                    str = str.replaceAll(" ", "_");
-                    osw.write(str + " " + test.get(orig) + "\n");
-                    numTest++;
-                }
-                osw.close();
-                System.err.println("Wrote "+numTest+" records in test split to: "+twl);
-            }
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -842,8 +829,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
+        String modelFile = SequenceModel.modelFileName;
         if (fdw == null) {
             try {
                 fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
@@ -858,7 +844,10 @@ public class SequenceModel implements NERModel, Serializable {
         if(nerModel == null)
             nerModel = train();
 
-        if (nerModel != null)
-            testDBpedia(nerModel);
+        if (nerModel != null) {
+            System.out.println(nerModel.find("We are traveling to Vietnam the next summer and will come to New York (NYC) soon"));
+            System.out.println(nerModel.find("Mr. HariPrasad was present."));
+            System.out.println(nerModel.find("A book named Information Retrieval by Christopher Manning"));
+        }
     }
 }

@@ -1136,54 +1136,54 @@ public class FeatureDictionary implements Serializable {
 
             revisedMixtures = new LinkedHashMap<>();
 
-            try {
-                if(i==(MAX_ITER-1)) {
-                    Short[] ats = FeatureDictionary.allTypes;
-                    //make cache dir if it does not exist
-                    String cacheDir = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache";
-                    if(!new File(cacheDir).exists())
-                        new File(cacheDir).mkdir();
-                    for (Short type : ats) {
-                        FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
-                        FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
-                        Map<String, Double> some = new LinkedHashMap<>();
-                        for (String w : features.keySet()) {
-                            double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
-                            if (Double.isNaN(v))
-                                some.put(w, 0.0);
-                            else
-                                some.put(w, v);
-                        }
-                        List<Pair<String, Double>> ps = Util.sortMapByValue(some);
-                        for (Pair<String, Double> p : ps) {
-                            if(type!=ats[0] || p.second>=0.001) {
-                                fw.write(features.get(p.getFirst()).toString());
-                                fw.write("========================\n");
-                            }
-
-                            //TODO: This is a very costly opeartion, think of other ways to do this more efficiently
-                            MU mu = features.get(p.getFirst());
-                            Short maxT = -1;double maxV = -1;
-                            for(Short t: ats) {
-                                double d = mu.getLikelihoodWithType(t);
-                                if (d > maxV){
-                                    maxT = t;
-                                    maxV = d;
-                                }
-                            }
-                            if(maxT == type) {
-                                ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
-                                ffw.write(mu.prettyPrint());
-                                ffw.write("========================\n");
-                            }
-                        }
-                        fw.close();
-                        ffw.close();
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                if(i==(MAX_ITER-1)) {
+//                    Short[] ats = FeatureDictionary.allTypes;
+//                    //make cache dir if it does not exist
+//                    String cacheDir = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache";
+//                    if(!new File(cacheDir).exists())
+//                        new File(cacheDir).mkdir();
+//                    for (Short type : ats) {
+//                        FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
+//                        FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
+//                        Map<String, Double> some = new LinkedHashMap<>();
+//                        for (String w : features.keySet()) {
+//                            double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
+//                            if (Double.isNaN(v))
+//                                some.put(w, 0.0);
+//                            else
+//                                some.put(w, v);
+//                        }
+//                        List<Pair<String, Double>> ps = Util.sortMapByValue(some);
+//                        for (Pair<String, Double> p : ps) {
+//                            if(type==ats[0] || p.second>=0.001) {
+//                                fw.write(features.get(p.getFirst()).toString());
+//                                fw.write("========================\n");
+//                            }
+//
+//                            //TODO: This is a very costly operation, think of other ways to do this more efficiently
+//                            MU mu = features.get(p.getFirst());
+//                            Short maxT = -1;double maxV = -1;
+//                            for(Short t: ats) {
+//                                double d = mu.getLikelihoodWithType(t);
+//                                if (d > maxV){
+//                                    maxT = t;
+//                                    maxV = d;
+//                                }
+//                            }
+//                            if(maxT == type) {
+//                                ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
+//                                ffw.write(mu.prettyPrint());
+//                                ffw.write("========================\n");
+//                            }
+//                        }
+//                        fw.close();
+//                        ffw.close();
+//                    }
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
         }
     }
 

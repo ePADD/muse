@@ -1,6 +1,6 @@
 <%@page language="java" contentType="application/json; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
+<%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%><%@ page import="org.json.JSONObject"%>
 <%@page language="java" %>
 <%
 

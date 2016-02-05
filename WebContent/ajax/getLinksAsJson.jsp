@@ -16,6 +16,6 @@ if (archive == null || archive.indexer == null)
 	return;
 }
 
-String json = LinkInfo.linksToJson(archive.indexer.getLinks());
+String json = LinkInfo.linksToJson(archive.getLinks());
 out.print (json);
 %>
