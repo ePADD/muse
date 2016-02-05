@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
  * This is a utility class to segment pseudo proper nouns from text and emit them
  *
  * TODO: CIC tokenizer fails when the sentence tokenizer fails, it is required to make the sentence tokenizer handle at least a few common abbreviations (such as Col. Mt. Inc. Corp. etc.) to make the application look less stupid
+ * TODO: split tokens like P.V. Krishnamoorthi -> P. V. Krishnamoorthi
  */
 public class CICTokenizer implements Tokenizer, Serializable {
     public static Log log						= LogFactory.getLog(CICTokenizer.class);
@@ -39,7 +40,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //how useful is "on" in the stop words list
 	static String[] stopWords =  new String[]{"and","for","a","the","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
-            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
+            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"/*John den Braber*/};
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
     private static final long serialVersionUID = 1L;
 
@@ -317,7 +318,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "The New York Times is a US based daily",
                 "Do you know about The New York Times Company that brutally charges for Digital subscription",
                 "Fischler proposed EU-wide measures after reports from Britain and France that under laboratory conditions sheep could contract Bovine Spongiform Encephalopathy ( BSE ) -- mad cow disease",
-                "Spanish Farm Minister Loyola de Palacio had earlier accused Fischler at an EU farm ministers ' meeting of causing unjustified alarm through \" dangerous generalisation ."
+                "Spanish Farm Minister Loyola de Palacio had earlier accused Fischler at an EU farm ministers ' meeting of causing unjustified alarm through \" dangerous generalisation .",
+                "P.V. Krishnamoorthi"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -372,7 +374,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"New York Times","US"},
                 new String[]{"New York Times Company","Digital"},
                 new String[]{"Fischler","EU-wide","Britain and France","Bovine Spongiform Encephalopathy","BSE"},
-                new String[]{"Spanish Farm Minister Loyola de Palacio","Fischler","EU"}
+                new String[]{"Spanish Farm Minister Loyola de Palacio","Fischler","EU"},
+                new String[]{"P. V. Krishnamoorthi"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];

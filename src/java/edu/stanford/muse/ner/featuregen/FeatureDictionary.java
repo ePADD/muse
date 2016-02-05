@@ -832,7 +832,7 @@ public class FeatureDictionary implements Serializable {
             //some DBpedia entries end in ',' as in Austin,_Texas
             String t = word;
             //if the token is of the form [A-Z]. don't remove the trailing period since such tokens are invaluable in recognising some names, for ex:
-            if(t.length()>2 || t.charAt(1)!='.')
+            if(t.length()!=2 || t.charAt(1)!='.')
                 t = endClean.matcher(t).replaceAll("");
             //sws.contains(words[i-1].toLowerCase()) only if the previous token is a symbol, we make an amalgamation
             //sws before a token should not be considered "Bank of Holland", should not have a feature "of Holland", instead "Holland" makes more sense
@@ -1098,7 +1098,7 @@ public class FeatureDictionary implements Serializable {
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 4;
+        int MAX_ITER = 8;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
@@ -1368,7 +1368,9 @@ public class FeatureDictionary implements Serializable {
 //        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
         FeatureDictionary dictionary = new FeatureDictionary();
         Map<String,String> gazz = new LinkedHashMap<>();
-        System.err.println(codeType("Agent"));
+        String[] strs = getPatts("Of in");
+        for(String str: strs)
+            System.err.println(str);
 //        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
 //        //gazz.put("Rajahmundry Airport", "Airport|Infrastructure|ArchitecturalStructure|Place");
 //        gazz.put("Rajahmundry(Rural)", "Settlement|PopulatedPlace|Place");

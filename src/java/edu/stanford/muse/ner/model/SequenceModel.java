@@ -164,7 +164,7 @@ public class SequenceModel implements NERModel, Serializable {
      * The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length (a phrase with more than 7 words is rejected)
      * O(T*W^2) where W is number of tokens in the phrase and T is number of possible types
      * Since the word features that we are using are dependent on the boundary of the phrase i.e. the left and right semantic types, features on dictionary lookup e.t.c.
-     * @note This method only returns the entities from he best labeled sequence.
+     * @note This method only returns the entities from the best labeled sequence.
      * @param phrase - String that is to be sequence labelled, keep this short; The string will be rejected if it contains more than 15 words
      * @return all the entities along with their types and quality score found in the phrase
     */
@@ -203,7 +203,7 @@ public class SequenceModel implements NERModel, Serializable {
          * 9     9
          * 2     10
          * 1     11
-         * Total: 64,369 -- hence the cutfoff below
+         * Total: 64,369 -- hence the cutoff below
          */
         if(tokens.length>7) {
             //a one last desperate attempt to savage
@@ -226,7 +226,8 @@ public class SequenceModel implements NERModel, Serializable {
         Set<Short> cands = new LinkedHashSet<>();
         for (String token : tokens) {
             Map<Short, Double> candTypes = new LinkedHashMap<>();
-            token = token.replaceAll("^\\W+|\\W+$","");
+            if(token.length()!=2 || token.charAt(1)!='.')
+                token = token.replaceAll("^\\W+|\\W+$","");
             token = token.toLowerCase();
             FeatureDictionary.MU mu = dictionary.features.get(token);
             if (token.length()<2 || mu == null || mu.numMixture == 0)
@@ -252,6 +253,7 @@ public class SequenceModel implements NERModel, Serializable {
         //at every word we are checking for the every possible segment
         short OTHER = -2;
         cands.add(OTHER);
+
         for (int ti = 0; ti < tokens.length; ti++) {
             double max = -1;
             int bi = -1;
@@ -812,12 +814,12 @@ public class SequenceModel implements NERModel, Serializable {
      *  8. We are missing Times of London?! We get nothing that contains "Newsroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
      *     Why are we getting "Students of South Korea" instead of "South Korea"?
      *
-     * The best results so far: trained on 1/5th of DBpedia instance file entries
-     * 05 Feb 17:54:28 SequenceModel INFO  - Found: 3915 -- Total: 4236 -- Correct: 3236 -- Missed due to wrong type: 294
-     * 05 Feb 17:54:28 SequenceModel INFO  - Precision: 0.8265645
-     * 05 Feb 17:54:28 SequenceModel INFO  - Recall: 0.76392823
-     * 05 Feb 17:54:28 SequenceModel INFO  - F1: 0.79401296
-     * 05 Feb 17:54:28 SequenceModel INFO  - ------------
+     * 06 Feb 00:18:01 SequenceModel INFO  - -------------
+     * 06 Feb 00:18:01 SequenceModel INFO  - Found: 4119 -- Total: 4236 -- Correct: 3392 -- Missed due to wrong type: 323
+     * 06 Feb 00:18:01 SequenceModel INFO  - Precision: 0.8235009
+     * 06 Feb 00:18:01 SequenceModel INFO  - Recall: 0.80075544
+     * 06 Feb 00:18:01 SequenceModel INFO  - F1: 0.81196886
+     * 06 Feb 00:18:01 SequenceModel INFO  - ------------
      * */
     public static void test(SequenceModel seqModel){
         try {
