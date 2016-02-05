@@ -309,6 +309,8 @@ public class EnglishDictionary {
 
     public static void main(String[] args){
         //testPlurals();
+        getTopAdverbs();
+        getDict();
         getAbbreviations();
     }
 }

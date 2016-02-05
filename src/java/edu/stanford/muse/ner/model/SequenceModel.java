@@ -825,8 +825,10 @@ public class SequenceModel implements NERModel, Serializable {
             //7==0111 PER, LOC, ORG
             Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
             int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
-            Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(),   wrongType = new LinkedHashSet<>();
+            Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(), wrongType = new LinkedHashSet<>();
             Multimap<String,String> matchMap = ArrayListMultimap.create();
+            Map<String, String> foundTypes = new LinkedHashMap<>(), benchmarkTypes = new LinkedHashMap<>();
+
             //only multi-word are considered
             boolean onlyMW = true;
             //use ignoreSegmentation=true only with onlyMW=true it is not tested otherwise
@@ -876,6 +878,7 @@ public class SequenceModel implements NERModel, Serializable {
 
                 Set<String> foundNames = new LinkedHashSet<>();
                 for (Map.Entry<String,String> entry : foundSample.entrySet()) {
+                    foundTypes.put(entry.getKey(), entry.getValue());
                     boolean foundEntry = false;
                     String foundType = null;
                     if(!ignoreSegmentation) {
@@ -942,6 +945,8 @@ public class SequenceModel implements NERModel, Serializable {
                     log.info(misAssign);
 
                 log.info(sent + "\n------------------");
+                for(String name: names.keySet())
+                    benchmarkTypes.put(name, names.get(name));
 
                 numReal += names.size();
                 numFound += foundSample.size();
@@ -953,18 +958,26 @@ public class SequenceModel implements NERModel, Serializable {
             float recall = (float)correct.size()/(float)real.size();
             log.info("----Correct names----");
             for(String str: correct)
-                log.info(str);
+                log.info(str + " with "+new LinkedHashSet<>(matchMap.get(str)));
             log.info("----Missed names----");
             for(String str: real)
                 if(!matchMap.values().contains(str))
                     log.info(str);
             log.info("---Extra names------");
             for(String str: found)
-                if(!correct.contains(str))
+                if(!matchMap.keySet().contains(str))
                     log.info(str);
+
             log.info("---Assigned wrong type------");
-            for(String str: wrongType)
-                log.info(str);
+            for(String str: wrongType) {
+                Set<String> bMatches = new LinkedHashSet<>(matchMap.get(str));
+                for (String bMatch : bMatches) {
+                    String ft = foundTypes.get(str);
+                    String bt = benchmarkTypes.get(bMatch);
+                    if(!ft.equals(bt))
+                        log.info(str + "[" + ft + "] expected [" + bt + "]");
+                }
+            }
 
             log.info("-------------");
             log.info("Found: "+found.size()+" -- Total: "+real.size()+" -- Correct: "+correct.size()+" -- Missed due to wrong type: "+(wrongType.size()));
