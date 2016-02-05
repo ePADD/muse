@@ -1,5 +1,8 @@
 package edu.stanford.muse.ner.model;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.LinkedListMultimap;
+import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
@@ -808,7 +811,14 @@ public class SequenceModel implements NERModel, Serializable {
      *     Ex: Goldman Sachs & Co Wertpapier GmbH -> {& Co Wertpapier GmbH, Goldman Sachs}
      *  8. We are missing Times of London?! We get nothing that contains "Newsroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
      *     Why are we getting "Students of South Korea" instead of "South Korea"?
-     */
+     *
+     * The best results so far: trained on 1/5th of DBpedia instance file entries
+     * Found: 3973 -- Total: 4236 -- Correct: 3248 -- Missed due to wrong type: 313
+     * 04 Feb 23:13:23 SequenceModel INFO  - Precision: 0.81751823
+     * 04 Feb 23:13:23 SequenceModel INFO  - Recall: 0.7667611
+     * 04 Feb 23:13:23 SequenceModel INFO  - F1: 0.79132664
+     * 04 Feb 23:13:23 SequenceModel INFO  - ------------
+     * */
     public static void test(SequenceModel seqModel){
         try {
             InputStream in = new FileInputStream(new File("/Users/vihari/epadd-ner/ner-benchmarks/umasshw/testaspacesep.txt"));
@@ -816,9 +826,10 @@ public class SequenceModel implements NERModel, Serializable {
             Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
             int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
             Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(),   wrongType = new LinkedHashSet<>();
-            Map<String,String> matchMap = new LinkedHashMap<>();
+            Multimap<String,String> matchMap = ArrayListMultimap.create();
             //only multi-word are considered
             boolean onlyMW = true;
+            //use ignoreSegmentation=true only with onlyMW=true it is not tested otherwise
             boolean ignoreSegmentation = true;
             NameSample sample = sampleStream.read();
             CICTokenizer tokenizer = new CICTokenizer();
@@ -922,8 +933,8 @@ public class SequenceModel implements NERModel, Serializable {
                 for(String f: foundSample.keySet())
                     if(matchMap.containsKey(f)) {
                           //this can happen since matchMap is a global var. and an entity that is tagged in one place is untagged in other
-//                        if (names.get(matchMap.get(f)) == null)
-//                            log.warn("This is not expected: " + f + " in matchMap not found names -- " + names);
+                          //if (names.get(matchMap.get(f)) == null)
+                          //  log.warn("This is not expected: " + f + " in matchMap not found names -- " + names);
                         if (names.get(matchMap.get(f)) != null && !names.get(matchMap.get(f)).equals(foundSample.get(f)))
                             misAssign += f + "[" + foundSample.get(f) + "] Expected [" + names.get(matchMap.get(f)) + "]--";
                     }
@@ -949,7 +960,7 @@ public class SequenceModel implements NERModel, Serializable {
                     log.info(str);
             log.info("---Extra names------");
             for(String str: found)
-                if(!matchMap.containsKey(str))
+                if(!correct.contains(str))
                     log.info(str);
             log.info("---Assigned wrong type------");
             for(String str: wrongType)

@@ -832,7 +832,9 @@ public class FeatureDictionary implements Serializable {
             //some DBpedia entries end in ',' as in Austin,_Texas
             String t = word;
             t = endClean.matcher(t).replaceAll("");
-            if(i>0 && (sws.contains(words[i-1].toLowerCase())||symbols.contains(words[i-1].toLowerCase())))
+            //sws.contains(words[i-1].toLowerCase()) only if the previous token is a symbol, we make an amalgamation
+            //sws before a token should not be considered "Bank of Holland", should not have a feature "of Holland", instead "Holland" makes more sense
+            if(i>0 && symbols.contains(words[i-1].toLowerCase()))
                 t = words[i-1].toLowerCase()+" "+t;
             if(i<(words.length-1) && (sws.contains(words[i+1].toLowerCase())||(symbols.contains(words[i+1].toLowerCase()))))
                 t += " "+words[i+1].toLowerCase();

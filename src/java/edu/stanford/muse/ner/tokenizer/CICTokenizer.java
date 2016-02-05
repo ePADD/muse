@@ -31,7 +31,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
             "on","with","ok","your","I","to:","thanks", "let","does", "sure", "thank","you","about","&","yes","if","by","why","said","even","am","respected","although","as"
     };
     static String[] badSubstrings = new String[]{
-            " not ", "I'm", "I'll","I am","n't","I've"," have ","I'd"
+            " not ", "I'm", "I'll","I am","n't","I've"," have ","I'd" // add you've, we've etc.
     };
 
     //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
