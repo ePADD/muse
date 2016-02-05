@@ -831,7 +831,9 @@ public class FeatureDictionary implements Serializable {
             }
             //some DBpedia entries end in ',' as in Austin,_Texas
             String t = word;
-            t = endClean.matcher(t).replaceAll("");
+            //if the token is of the form [A-Z]. don't remove the trailing period since such tokens are invaluable in recognising some names, for ex:
+            if(t.length()>2 || t.charAt(1)!='.')
+                t = endClean.matcher(t).replaceAll("");
             //sws.contains(words[i-1].toLowerCase()) only if the previous token is a symbol, we make an amalgamation
             //sws before a token should not be considered "Bank of Holland", should not have a feature "of Holland", instead "Holland" makes more sense
             if(i>0 && symbols.contains(words[i-1].toLowerCase()))
