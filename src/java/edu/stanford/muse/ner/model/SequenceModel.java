@@ -813,11 +813,11 @@ public class SequenceModel implements NERModel, Serializable {
      *     Why are we getting "Students of South Korea" instead of "South Korea"?
      *
      * The best results so far: trained on 1/5th of DBpedia instance file entries
-     * Found: 3973 -- Total: 4236 -- Correct: 3248 -- Missed due to wrong type: 313
-     * 04 Feb 23:13:23 SequenceModel INFO  - Precision: 0.81751823
-     * 04 Feb 23:13:23 SequenceModel INFO  - Recall: 0.7667611
-     * 04 Feb 23:13:23 SequenceModel INFO  - F1: 0.79132664
-     * 04 Feb 23:13:23 SequenceModel INFO  - ------------
+     * 05 Feb 17:54:28 SequenceModel INFO  - Found: 3915 -- Total: 4236 -- Correct: 3236 -- Missed due to wrong type: 294
+     * 05 Feb 17:54:28 SequenceModel INFO  - Precision: 0.8265645
+     * 05 Feb 17:54:28 SequenceModel INFO  - Recall: 0.76392823
+     * 05 Feb 17:54:28 SequenceModel INFO  - F1: 0.79401296
+     * 05 Feb 17:54:28 SequenceModel INFO  - ------------
      * */
     public static void test(SequenceModel seqModel){
         try {

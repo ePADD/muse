@@ -52,7 +52,7 @@ public class FeatureDictionary implements Serializable {
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
-        aTypes.put(PERSON, new String[]{"Person"});
+        aTypes.put(PERSON, new String[]{"Person","Agent"});
         aTypes.put(PLACE, new String[]{"Place","Park|Place","ProtectedArea|Place","PowerStation|Infrastructure|ArchitecturalStructure|Place","ShoppingMall|Building|ArchitecturalStructure|Place"});
         aTypes.put(COMPANY, new String[]{"Company|Organisation","Non-ProfitOrganisation|Organisation"});
         aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place","Hotel|Building|ArchitecturalStructure|Place"});
@@ -1366,6 +1366,7 @@ public class FeatureDictionary implements Serializable {
 //        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
         FeatureDictionary dictionary = new FeatureDictionary();
         Map<String,String> gazz = new LinkedHashMap<>();
+        System.err.println(codeType("Agent"));
 //        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
 //        //gazz.put("Rajahmundry Airport", "Airport|Infrastructure|ArchitecturalStructure|Place");
 //        gazz.put("Rajahmundry(Rural)", "Settlement|PopulatedPlace|Place");
