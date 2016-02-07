@@ -3,6 +3,7 @@ package edu.stanford.muse.ner.model;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
@@ -188,7 +189,13 @@ public class SequenceModel implements NERModel, Serializable {
             return new LinkedHashMap<>();
         phrase = phrase.replaceAll("^\\W+|\\W+^","");
 
-        String[] tokens = phrase.split("\\s+");
+        String[] ltcs = FeatureDictionary.getPatts(phrase);//phrase.split("\\s+");
+        if(ltcs.length==0)
+            return new LinkedHashMap<>();
+        String[] tokens = new String[ltcs.length];
+        for(int ti=0;ti<ltcs.length;ti++)
+            tokens[ti] = EmailUtils.uncanonicaliseName(ltcs[ti]);
+
         /**
          * In TW's sub-archive with ~65K entities scoring more than 0.001. The stats on frequency of #tokens per word is as follows
          * Freq  #tokens
@@ -206,18 +213,6 @@ public class SequenceModel implements NERModel, Serializable {
          * Total: 64,369 -- hence the cutoff below
          */
         if(tokens.length>7) {
-            //a one last desperate attempt to savage
-            if(phrase.contains(" and ")) {
-                Map<String, Pair<Short, Double>> subsegs = new LinkedHashMap<>();
-                int idx = phrase.indexOf(" and ");
-                Map<String,Pair<Short,Double>> temp = seqLabel(phrase.substring(0, idx));
-                if(temp!=null)
-                    subsegs.putAll(temp);
-                temp = seqLabel(phrase.substring(idx+5));
-                if(temp!=null)
-                    subsegs.putAll(temp);
-                return subsegs;
-            }
             return new LinkedHashMap<>();
         }
         //since there can be large number of types every token can take
@@ -301,14 +296,68 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 val = getLikelihoodWithOther(seg, true);
 
-            //emit only multiple word tokens or non-dictionary single word tokens with length greater than 4 [to avoid meaningless terms like AJ, BJ BIC, BK, BLOG, BO]
-            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase())) || seg.length()<5))
-                segments.put(seg, new Pair<>(t.getThird(), val));
+            segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)
                 break;
         }
         return segments;
+    }
+
+    Map<String,Pair<Short,Double>> seqLabel2(String phrase){
+        Map<String,Pair<Short,Double>> bestLabels = new LinkedHashMap<>();
+        Double bestScore = -Double.MAX_VALUE;
+        List<String> sws = EnglishDictionary.separatingStopWords;
+        Set<Integer> indices = new LinkedHashSet<>();
+        for(String sw: sws) {
+            String p = phrase;
+            int idx;
+            while ((idx=p.indexOf(" "+sw+" "))>=0) {
+                indices.add(idx);
+                p = phrase.substring(idx+sw.length()+2);
+            }
+        }
+        int theta = 4;
+        if(indices.size()>theta) {
+            log.warn("Phrase: "+phrase+" has more than "+theta+" stop words, dropping it!");
+            return new LinkedHashMap<>();
+        }
+        Set<Set<Integer>> powerSet = Sets.powerSet(indices);
+        //assuming that the phrase itself do not start with " [STOP WORD] "
+        Set<Set<String>> segs = new LinkedHashSet<>();
+        for(Set<Integer> ss: powerSet) {
+            Set<String> ssegs = new LinkedHashSet<>();
+            List<Integer> ssegsList = new ArrayList<>();
+            for(Integer i: ss)
+                ssegsList.add(i);
+            ssegsList.add(0);ssegsList.add(phrase.length());
+            Collections.sort(ssegsList);
+            for(int ii=0;ii<ssegsList.size()-1;ii++) {
+                int beginIdx;
+                if(ii==0)
+                    beginIdx=0;
+                else
+                    beginIdx = (ssegsList.get(ii)+2)+phrase.substring(ssegsList.get(ii)+1).indexOf(' ');
+                int endIdx = ssegsList.get(ii+1);
+                ssegs.add(phrase.substring(beginIdx, endIdx));
+            }
+            segs.add(ssegs);
+        }
+
+        for(Set<String> ssegs: segs){
+            System.err.println(ssegs);
+            double p = 1;
+            Map<String, Pair<Short,Double>> all = new LinkedHashMap<>();
+            for(String substr: ssegs)
+                all.putAll(seqLabel2(substr));
+            for(Map.Entry e: all.entrySet())
+                p *= ((Pair<Short,Double>)e.getValue()).getSecond();
+
+            log.info("Score: "+p+" -- "+all);
+            if(p>bestScore)
+                bestLabels = all;
+        }
+        return bestLabels;
     }
 
     public double getConditional(String phrase, Short type) {
@@ -820,6 +869,14 @@ public class SequenceModel implements NERModel, Serializable {
      * 06 Feb 00:18:01 SequenceModel INFO  - Recall: 0.80075544
      * 06 Feb 00:18:01 SequenceModel INFO  - F1: 0.81196886
      * 06 Feb 00:18:01 SequenceModel INFO  - ------------
+     *
+     * When the model is trained on one fiftieth of DBpedia, the results are
+     * 06 Feb 19:11:45 SequenceModel INFO  - -------------
+     * 06 Feb 19:11:45 SequenceModel INFO  - Found: 3750 -- Total: 4236 -- Correct: 3039 -- Missed due to wrong type: 329
+     * 06 Feb 19:11:45 SequenceModel INFO  - Precision: 0.8104
+     * 06 Feb 19:11:45 SequenceModel INFO  - Recall: 0.71742207
+     * 06 Feb 19:11:45 SequenceModel INFO  - F1: 0.7610819
+     * 06 Feb 19:11:45 SequenceModel INFO  - ------------
      * */
     public static void test(SequenceModel seqModel){
         try {
@@ -994,39 +1051,47 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        String modelFile = SequenceModel.modelFileName;
-        if (fdw == null) {
-            try {
-                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        System.err.println("Loading model...");
-        SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(modelFile);}
-        catch(IOException e){e.printStackTrace();}
-        if(nerModel == null)
-            nerModel = train();
-
-        if (nerModel != null) {
-            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);
-            nerModel.dictionary.getConditional("Jadavpur University",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Beijing Normal University",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Beijing Arbitration Commission",FeatureDictionary.ORGANISATION, null);
-            nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
-            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
-            System.err.println(nerModel.seqLabel("Prime Minister"));
-            System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
-            System.err.println(nerModel.seqLabel("John Oliver"));
-            System.err.println(nerModel.seqLabel("Found Page"));
-            System.err.println(nerModel.seqLabel("Emergency Grant"));
-            System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
-            System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
-
-            test(nerModel);
-        }
+//        String modelFile = SequenceModel.modelFileName;
+//        if (fdw == null) {
+//            try {
+//                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
+//        System.err.println("Loading model...");
+//        SequenceModel nerModel = null;
+//        try{nerModel = SequenceModel.loadModel(modelFile);}
+//        catch(IOException e){e.printStackTrace();}
+//        if(nerModel == null)
+//            nerModel = train();
+//
+//        if (nerModel != null) {
+//            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);
+//            nerModel.dictionary.getConditional("Jadavpur University",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Beijing Normal University",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Beijing Arbitration Commission",FeatureDictionary.ORGANISATION, null);
+//            nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
+//            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
+//            System.err.println(nerModel.seqLabel("Bank of France"));
+//            System.err.println(nerModel.seqLabel("Prime Minister"));
+//            System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
+//            System.err.println(nerModel.seqLabel("John Oliver"));
+//            System.err.println(nerModel.seqLabel("Found Page"));
+//            System.err.println(nerModel.seqLabel("Emergency Grant"));
+//            System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
+//            System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
+//
+//            test(nerModel);
+//        }
+        String phrase = "Bank of France";
+        String[] ltcs = FeatureDictionary.getPatts(phrase);//phrase.split("\\s+");
+        String[] tokens = new String[ltcs.length];
+        for(int ti=0;ti<ltcs.length;ti++)
+            tokens[ti] = EmailUtils.uncanonicaliseName(ltcs[ti]);
+        for(String t: ltcs)
+            System.err.println(t);
     }
 }

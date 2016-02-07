@@ -1461,4 +1461,8 @@ public class EmailUtils {
 	public static Map<String,String> readDBpedia(){
 		return readDBpedia(1.0);
 	}
+
+    public static void main(String[] args){
+        System.err.println(uncanonicaliseName("bank of"));
+    }
 }

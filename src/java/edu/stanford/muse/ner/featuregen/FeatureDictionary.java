@@ -111,6 +111,7 @@ public class FeatureDictionary implements Serializable {
                 "Royalty|Person",
                 //the following type has entities like "Cox_Broadcasting_Corp._v._Cohn", that may assign wrong type to tokens like corp., co., ltd.
                 "SupremeCourtOfTheUnitedStatesCase|LegalCase|Case|UnitOfWork"
+                //should be careful about Agent type, though it contains personal names it can also contain many non-personal entities
         );
         desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
         desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
@@ -837,7 +838,7 @@ public class FeatureDictionary implements Serializable {
             //sws.contains(words[i-1].toLowerCase()) only if the previous token is a symbol, we make an amalgamation
             //sws before a token should not be considered "Bank of Holland", should not have a feature "of Holland", instead "Holland" makes more sense
             if(i>0 && symbols.contains(words[i-1].toLowerCase()))
-                t = words[i-1].toLowerCase()+" "+t;
+
             if(i<(words.length-1) && (sws.contains(words[i+1].toLowerCase())||(symbols.contains(words[i+1].toLowerCase()))))
                 t += " "+words[i+1].toLowerCase();
 
@@ -1088,7 +1089,7 @@ public class FeatureDictionary implements Serializable {
         if(!phrase.contains(" "))
             return null;
 
-        if(type.endsWith("Person") && (phrase.contains(" and ")||phrase.contains(" of ")))
+        if((type.endsWith("Person")||type.equals("Agent")) && (phrase.contains(" and ")||phrase.contains(" of ")||phrase.contains(" on ")||phrase.contains(" in ")))
             return null;
         return phrase;
     }
@@ -1098,13 +1099,12 @@ public class FeatureDictionary implements Serializable {
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 8;
+        int MAX_ITER = 5;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
             wi = 0;
             //computeTypePriors();
-
             for (String phrase : gazettes.keySet()) {
                 String type = gazettes.get(phrase);
                 phrase = filterTitle(phrase, type);
@@ -1323,10 +1323,8 @@ public class FeatureDictionary implements Serializable {
             else {
                 //System.err.println("MID: "+mid+" not found");
                 //a likelihood that assumes nothing
-                d = (1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
+                d = 0;
             }
-//            if(log.isDebugEnabled())
-//                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + ", type: "+type+" MU: "+features.get(mid));
 
             if (Double.isNaN(d))
                 log.warn("Cond nan " + mid + ", " + d);

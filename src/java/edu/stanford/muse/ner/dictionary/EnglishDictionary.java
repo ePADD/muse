@@ -29,6 +29,7 @@ public class EnglishDictionary {
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
     public static List<String> stopWords = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> separatingStopWords = Arrays.asList("for", "and", "on", "a", "in", "an", "the", "at", "to", "of" );
     public static List<String> personTitles = Arrays.asList("mr.", "mr", "ms.", "ms", "mrs.", "mrs", "dr.", "dr", "prof.", "prof","dean", "president", "provost","pm","amb.");
     public static List<String> articles = Arrays.asList("the","a","an");
 
