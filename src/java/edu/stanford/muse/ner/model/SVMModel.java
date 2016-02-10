@@ -99,7 +99,7 @@ public class SVMModel implements NERModel, Serializable {
                     //TODO: Should comment out these writes in the final version as the dump can get too big and also brings down the performance
 				if (fdw != null) {
 					try {
-                        Map<String,List<String>> temp = FeatureGenerator.generateFeatures(name, null, null, type, dictionary.featureGens);
+                        Map<String,List<String>> temp = FeatureGenerator.generateFeatures(name, null, null, type, null);
                         if(temp!=null && temp.get("words")!=null) {
                             String max = null, min = null;
                             double maxs = -1,mins = 2;

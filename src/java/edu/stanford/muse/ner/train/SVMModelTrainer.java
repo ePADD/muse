@@ -90,7 +90,7 @@ import java.util.*;
         SVMModel model = new SVMModel();
 
         //build a feature dictionary
-        FeatureDictionary dictionary = new FeatureDictionary(externalGazz, fgs);
+        FeatureDictionary dictionary = new FeatureDictionary(externalGazz);
         model.dictionary = dictionary;
         model.tokenizer = tokenizer;
         model.fgs = fgs;

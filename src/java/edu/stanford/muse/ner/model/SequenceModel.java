@@ -658,7 +658,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/50);
         //This split is essential to isolate some entries that trained model has not seen
         Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
         Map<String,String> train = p.getFirst();
@@ -667,8 +667,7 @@ public class SequenceModel implements NERModel, Serializable {
         //split the dictionary into train and test sets
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
-        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
-        FeatureDictionary dictionary = new FeatureDictionary(train, fgs);
+        FeatureDictionary dictionary = new FeatureDictionary(train);
         nerModel.dictionary = dictionary;
         nerModel.dictionary.EM(train);
         try {

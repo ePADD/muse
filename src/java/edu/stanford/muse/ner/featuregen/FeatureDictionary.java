@@ -40,7 +40,6 @@ public class FeatureDictionary implements Serializable {
     public static Map<Short,String> desc = new LinkedHashMap<>();
     static Log log = LogFactory.getLog(FeatureDictionary.class);
     public static Map<Short, String[]> aTypes = new LinkedHashMap<>();
-    public FeatureGenerator[] featureGens = null;
     public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<>();
     public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<>();
     public static List<String> ignoreTypes = new ArrayList<String>();
@@ -411,7 +410,7 @@ public class FeatureDictionary implements Serializable {
     //this data-structure is only used for Segmentation which itself is not employed anywhere
     public Map<String, Integer> counts = new LinkedHashMap<String, Integer>();
     //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
-    public int totalcount = 0;
+    //public int totalcount = 0;
     //total number of word patterns
 //        ignoreTypes = Arrays.asList(
 //                "Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
@@ -428,16 +427,12 @@ public class FeatureDictionary implements Serializable {
         features = new LinkedHashMap<>();
         newWords = new LinkedHashSet<>();
     }
-    public FeatureDictionary(FeatureGenerator[] featureGens) {
-        this.featureGens = featureGens;
-    }
 
     /**
      * address book should be specially handled and DBpedia gazette is required.
      * and make sure the address book is cleaned see cleanAB method
      */
-    public FeatureDictionary(Map<String, String> gazettes, FeatureGenerator[] featureGens) {
-        this.featureGens = featureGens;
+    public FeatureDictionary(Map<String, String> gazettes) {
         addGazz(gazettes);
     }
 
@@ -449,24 +444,29 @@ public class FeatureDictionary implements Serializable {
         int g = 0, nume = 0;
         final int gs = gazettes.size();
         int gi = 0;
-        Map<String, Map<String,Map<Short, Pair<Float, Float>>>> lfeatures = new LinkedHashMap<>();
+        //The number of times a word appeared in a phrase of certain type
+        Map<String, Map<Short,Float>> words = new LinkedHashMap<>();
+        Map<String, Float> wordFreqs = new LinkedHashMap<>();
         for (String str : gazettes.keySet()) {
             tms = System.currentTimeMillis();
 
             String entityType = gazettes.get(str);
+            Short ct = codeType(entityType);
             if (ignoreTypes.contains(entityType)) {
                 continue;
             }
 
-            for (FeatureGenerator fg : featureGens) {
-                if (!fg.getContextDependence()) {
-                    for (Short iType : allTypes)
-                        add(lfeatures, fg.createFeatures(str, null, null, iType), entityType, iType);
-                }
-            }
-            String[] words = str.split("\\s+");
-            for(int ii=0;ii<words.length-1;ii++) {
-                totalcount++;
+            String[] patts = getPatts(str);
+            for(String patt: patts){
+                if(!words.containsKey(patt))
+                    words.put(patt, new LinkedHashMap<>());
+                if(!words.get(patt).containsKey(ct))
+                    words.get(patt).put(ct, 0f);
+                words.get(patt).put(ct, words.get(patt).get(ct)+1);
+
+                if(!wordFreqs.containsKey(patt))
+                    wordFreqs.put(patt, 0f);
+                wordFreqs.put(patt, wordFreqs.get(patt)+1);
             }
 
             timeToComputeFeatures += System.currentTimeMillis() - tms;
@@ -482,19 +482,22 @@ public class FeatureDictionary implements Serializable {
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
         log.info("Initialising MUs");
 
-        Map<String, Map<Short, Pair<Float,Float>>> words = lfeatures.get("words");
-
         int wi=0, ws = words.size();
         for(String str: words.keySet()){
             //don't touch priors that are already initialised
             if(features.containsKey(str))
                 continue;
+            float wordFreq = wordFreqs.get(str);
             Map<Short, Pair<Float,Float>> priors = new LinkedHashMap<>();
-            for(Short type: words.get(str).keySet()){
-                Pair<Float,Float> p = words.get(str).get(type);
-                priors.put(type, p);
+            for(Short type: FeatureDictionary.allTypes) {
+                if (words.get(str).containsKey(type))
+                    priors.put(type, new Pair<>(words.get(str).get(type), wordFreq));
+                else
+                    priors.put(type, new Pair<>(0f, wordFreq));
             }
-            if(DEBUG) {
+
+//            if(DEBUG) {
+            {
                 String ds = "";
                 for(Short t: priors.keySet())
                     ds+=t+"<"+priors.get(t).first+","+priors.get(t).second+"> ";
@@ -537,8 +540,8 @@ public class FeatureDictionary implements Serializable {
     }
 
     public FeatureVector getVector(String cname, Short iType) {
-        Map<String, List<String>> features = FeatureGenerator.generateFeatures(cname, null, null, iType, featureGens);
-        return new FeatureVector(this, iType, featureGens, features);
+        Map<String, List<String>> features = FeatureGenerator.generateFeatures(cname, null, null, iType, null);
+        return new FeatureVector(this, iType, null, features);
     }
 
     //should not try to build dictionary outside of this method
@@ -887,7 +890,7 @@ public class FeatureDictionary implements Serializable {
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 5;
+        int MAX_ITER = 10;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
@@ -1038,7 +1041,7 @@ public class FeatureDictionary implements Serializable {
 
     private static FeatureDictionary buildAndDumpDictionary(Map<String,String> gazz, String fn){
         try {
-            FeatureDictionary dictionary = new FeatureDictionary(gazz, new FeatureGenerator[]{new WordSurfaceFeature()});
+            FeatureDictionary dictionary = new FeatureDictionary(gazz);
             //dump this
             ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fn));
             oos.writeObject(dictionary);
