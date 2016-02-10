@@ -38,9 +38,9 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //de often appears in personal names like "Alain de Lille", "Christine de Pizan", "Ellen van Langen"
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
     //how useful is "on" in the stop words list
-	static String[] stopWords =  new String[]{"and","for","a","the","at", "in", "of",
+	public static List<String> stopWords =  Arrays.asList("and","for","a","the","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
-            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"/*John den Braber*/};
+            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"/*John den Braber*/);
 	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
     private static final long serialVersionUID = 1L;
 
@@ -63,7 +63,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		int i = 0;
 		for (String stopWord : stopWords) {
 			sp.append(stopWord);
-			if (i++ < (stopWords.length - 1))
+			if (i++ < (stopWords.size() - 1))
 				sp.append("|");
 		}
 		String stopWordsPattern = "(" + sp.toString() + ")";
@@ -197,11 +197,31 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	}
 
     /**
-     * Just cleans more than one extra space in the phrase*/
+     * <ul>
+     *     <li>cleans more than one extra space in the phrase</li>
+     *     <li>Splits the token of the form: [A-Z]. [A-Z]. into individual initials</li>
+     * </ul>
+     * */
     static String canonicalise(String phrase){
-        if(!phrase.contains("  "))
-            return phrase;
-        return phrase.replaceAll("\\s{2,}"," ");
+//        String[] tokens = phrase.split("\\s+");
+//        String ct = "";
+//        for(String token: tokens) {
+//            //if is of the form: ([A-Z]).([A-Z]), then splits into [$1., $2.]
+//            if ((token.length()==3||token.length()==4)
+//                    && Character.isUpperCase(token.charAt(0))
+//                    && Character.isUpperCase(token.charAt(2))
+//                    && token.charAt(1) == '.') {
+//                ct += token.charAt(0)+". "+token.charAt(2)+". ";
+//            }
+//            else
+//                ct += token+" ";
+//        }
+//        if(ct.endsWith(" "))
+//            ct = ct.substring(0,ct.length()-1);
+//        phrase = ct;
+        if(phrase.contains("  "))
+            phrase = phrase.replaceAll("\\s{2,}"," ");
+        return phrase;
     }
 
     /**
@@ -231,6 +251,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         for(int i=0;i<tokenL.size();i++) {
             String t = tokenL.get(i);
             t = t.replaceAll("^\\W+|\\W+$", "");
+
             //if the chunk is the first word then, double check the capitalisation
             if (offset == 0 && i==0) {
                 if (DictUtils.fullDictWords.contains(t.toLowerCase())) {
