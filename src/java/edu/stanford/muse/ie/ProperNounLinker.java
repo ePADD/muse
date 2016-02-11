@@ -659,6 +659,7 @@ public class ProperNounLinker {
         tps.put(new Pair<>("Stanford University","Washington University in St. Louis"), false);
         tps.put(new Pair<>("McAfee Research","MC"), false);
         tps.put(new Pair<>("Blog","Presto Blog Digest"), false);
+        tps.put(new Pair<>("Rubin","Should Rubin"), true);
         int numFailed = 0;
         long st = System.currentTimeMillis();
         for(Map.Entry e: tps.entrySet()) {
@@ -707,15 +708,15 @@ public class ProperNounLinker {
     }
 
     public static void main(String[] args) {
-        //BOWtest();
-        //test();
-        try {
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-terry-important";
-            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            findClusters(archive);
-        }catch(Exception e){
-            e.printStackTrace();
-        }
+        BOWtest();
+        test();
+//        try {
+//            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-terry-important";
+//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//            findClusters(archive);
+//        }catch(Exception e){
+//            e.printStackTrace();
+//        }
 //        try {
 //            RAMDirectory dir = new RAMDirectory();
 //            Analyzer analyzer = new EnglishAnalyzer(Version.LUCENE_47, Indexer.MUSE_STOP_WORDS_SET);

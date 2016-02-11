@@ -222,14 +222,11 @@ public class SequenceModel implements NERModel, Serializable {
             FeatureDictionary.MU mu = dictionary.features.get(token);
             if (token.length()<2 || mu == null || mu.numMixture == 0)
                 continue;
-            for (String f : mu.muVectorPositive.keySet()) {
-                if (f.startsWith("T:")) {
-                    short type = Short.parseShort(f.substring(2));
-                    double val = mu.muVectorPositive.get(f) / mu.numMixture;
-                    if (!candTypes.containsKey(type))
-                        candTypes.put(type, 0.0);
-                    candTypes.put(type, candTypes.get(type) + val);
-                }
+            for(Short type: FeatureDictionary.allTypes){
+                double val = mu.getLikelihoodWithType(type);
+                if (!candTypes.containsKey(type))
+                    candTypes.put(type, 0.0);
+                candTypes.put(type, candTypes.get(type) + val);
             }
             List<Pair<Short, Double>> scands = Util.sortMapByValue(candTypes);
             int si = 0, MAX = 5;
@@ -276,6 +273,7 @@ public class SequenceModel implements NERModel, Serializable {
             }
             tracks.put(ti, new Triple<>(max, bi, bt));
         }
+        System.err.println("All tracks: "+tracks);
 
         //the backtracking step
         int start = tokens.length - 1;
@@ -348,8 +346,27 @@ public class SequenceModel implements NERModel, Serializable {
                 val *= freq;
             }
 
-            if(log.isDebugEnabled())
-                log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d+" - "+freq + ", type: "+type+" MU: "+features.get(mid));
+            if(log.isDebugEnabled()) {
+                if(mu!=null) {
+                    List<String> tfs = tokenFeatures.get(mid);
+                    log.debug("Features for: " + mid + " in " + phrase + ", " + tfs + " score: " + d + " - " + mu.getPrior() + ", type: " + type);
+                    for(String ft: tfs) {
+                        String dim = ft.substring(0,ft.indexOf(':'));
+                        float alpha_k = 0, alpha_k0 = 0;
+                        if(mu.alpha.containsKey(ft))
+                            alpha_k = mu.alpha.get(ft);
+                        if(mu.alpha_0.containsKey(dim))
+                            alpha_k0 = mu.alpha_0.get(dim);
+                        double v = MU.getNumberOfSymbols(ft);
+                        double mvp = 0;
+                        if(mu.muVectorPositive.containsKey(ft))
+                            mvp = mu.muVectorPositive.get(ft);
+                        log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
+                    }
+                }
+                else
+                    log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + " - " + freq + ", type: " + type + " MU: " + features.get(mid));
+            }
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }
@@ -658,7 +675,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/50);
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         //This split is essential to isolate some entries that trained model has not seen
         Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
         Map<String,String> train = p.getFirst();
@@ -828,7 +845,7 @@ public class SequenceModel implements NERModel, Serializable {
             Map<String, String> foundTypes = new LinkedHashMap<>(), benchmarkTypes = new LinkedHashMap<>();
 
             //only multi-word are considered
-            boolean onlyMW = true;
+            boolean onlyMW = false;
             //use ignoreSegmentation=true only with onlyMW=true it is not tested otherwise
             boolean ignoreSegmentation = true;
             NameSample sample = sampleStream.read();
@@ -1005,24 +1022,27 @@ public class SequenceModel implements NERModel, Serializable {
         if(nerModel == null)
             nerModel = train();
 
+        MU mu = nerModel.dictionary.features.get("ltd");
+        System.err.println(mu.getLikelihoodWithType(FeatureDictionary.COMPANY));
+        System.err.println(mu);
         if (nerModel != null) {
-            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);
-            nerModel.dictionary.getConditional("Jadavpur University",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Beijing Normal University",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Beijing Arbitration Commission",FeatureDictionary.ORGANISATION, null);
-            nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
-            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
-            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
-            System.err.println(nerModel.seqLabel("Bank of France"));
-            System.err.println(nerModel.seqLabel("Prime Minister"));
-            System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
-            System.err.println(nerModel.seqLabel("John Oliver"));
-            System.err.println(nerModel.seqLabel("Found Page"));
-            System.err.println(nerModel.seqLabel("Emergency Grant"));
-            System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
-            System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
-
+//            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);
+//            nerModel.dictionary.getConditional("Jadavpur University",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Beijing Normal University",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Beijing Arbitration Commission",FeatureDictionary.ORGANISATION, null);
+//            nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
+//            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
+//            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
+//            System.err.println(nerModel.seqLabel("Bank of France"));
+//            System.err.println(nerModel.seqLabel("Prime Minister"));
+//            System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
+//            System.err.println(nerModel.seqLabel("John Oliver"));
+//            System.err.println(nerModel.seqLabel("Found Page"));
+//            System.err.println(nerModel.seqLabel("Emergency Grant"));
+//            System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
+//            System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
+//
             test(nerModel);
         }
 
