@@ -840,9 +840,9 @@ public class FeatureDictionary implements Serializable {
             features.add("T:" + type);
             boolean containsAdj = false, containsAdv = false, containsVerb = false, containsPrep = false, containsPronoun = false, containsDict = false;
             for(String word: words) {
+                word  = word.toLowerCase();
                 //consider all the other words, other than this word
                 if(!sws.contains(word) && !patts[pi].equals(word) && !patts[pi].contains(" "+word) && !patts[pi].contains(word+" ")) {
-                    word  = word.toLowerCase();
                     if(EnglishDictionary.getTopAdjectives().contains(word))
                         containsAdj = true;
                     if(EnglishDictionary.getTopAdverbs().contains(word))
@@ -853,8 +853,9 @@ public class FeatureDictionary implements Serializable {
                         containsVerb = true;
                     if(EnglishDictionary.getTopPronouns().contains(word))
                         containsPronoun = true;
-                    if(EnglishDictionary.getDict().contains(word))
+                    if(EnglishDictionary.getDict().contains(word)) {
                         containsDict = true;
+                    }
                 }
             }
             if(containsDict)
@@ -1274,12 +1275,14 @@ public class FeatureDictionary implements Serializable {
         SequenceModel nerModel = null;
         try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
-        System.err.println(nerModel.seqLabel("Felicia Ballanger of France"));
-        System.err.println(nerModel.seqLabel("Syria in March"));
-        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
-        System.err.println(priors.get("volkswagen"));
+        System.err.println(nerModel.dictionary.generateFeatures2("Apple", FeatureDictionary.OTHER));
+        System.err.println(nerModel.dictionary.generateFeatures2("Apple",FeatureDictionary.PLACE));
+//        System.err.println(nerModel.seqLabel("Felicia Ballanger of France"));
+//        System.err.println(nerModel.seqLabel("Syria in March"));
+//        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
+//        System.err.println(priors.get("volkswagen"));
         //get it right for these phrases
-        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information"};
+//        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information"};
 //        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
        //System.err.println(MU.getMaxEntProb());
 //        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
