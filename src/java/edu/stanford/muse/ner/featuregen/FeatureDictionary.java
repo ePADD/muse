@@ -105,6 +105,7 @@ public class FeatureDictionary implements Serializable {
         ignoreTypes = Arrays.asList(
                 "RecordLabel|Company|Organisation",
                 "Band|Organisation",
+                "Band|Group|Organisation",
                 //This type is too noisy and contain titles like
                 //Cincinatti Kids, FA_Youth_Cup_Finals, The Stongest (and other such team names)
                 "OrganisationMember|Person",
@@ -112,8 +113,9 @@ public class FeatureDictionary implements Serializable {
                 "GivenName",
                 "Royalty|Person",
                 //the following type has entities like "Cox_Broadcasting_Corp._v._Cohn", that may assign wrong type to tokens like corp., co., ltd.
-                "SupremeCourtOfTheUnitedStatesCase|LegalCase|Case|UnitOfWork"
+                "SupremeCourtOfTheUnitedStatesCase|LegalCase|Case|UnitOfWork",
                 //should be careful about Agent type, though it contains personal names it can also contain many non-personal entities
+                "ComicsCharacter|FictionalCharacter|Person"
         );
         desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
         desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
@@ -157,12 +159,13 @@ public class FeatureDictionary implements Serializable {
         public Map<String,Float> alpha;
         //accumulated sum across each feature type e.g. "T","L","R" etc.
         public Map<String,Float> alpha_0;
+        public float alpha_pi = 0;
         //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
         public float numMixture;
         //total number of times, this mixture is considered
         public float numSeen;
-        public MU(String id, Map<String,Float> alpha) {
-            initialise(id, alpha);
+        public MU(String id, Map<String,Float> alpha, float alpha_pi) {
+            initialise(id, alpha, alpha_pi);
         }
         //Smooth param alpha is chosen based on alpha*35(ie. number of types) = an evidence number you can trust.
         //with 0.2 it is 7
@@ -175,9 +178,9 @@ public class FeatureDictionary implements Serializable {
         //Since we depend on tags of the neighbouring tokens in a big way, we initialise so that the mixture likelihood with type is more precise.
         //and the likelihood with all the other types to be equally likely
         //alpha is the parameter related to dirichlet prior, though the param is called alpha it is treated like alpha-1; See paper for more details
-        public static MU initialise(String word, Map<Short, Pair<Float,Float>> initialParams, Map<String,Float> alpha){
+        public static MU initialise(String word, Map<Short, Pair<Float,Float>> initialParams, Map<String,Float> alpha, float alpha_pi){
             float s2 = 0;
-            MU mu = new MU(word, alpha);
+            MU mu = new MU(word, alpha, alpha_pi);
             for(Short type: initialParams.keySet()) {
                 mu.muVectorPositive.put("T:"+type, initialParams.get(type).first);
                 s2 = initialParams.get(type).second;
@@ -196,9 +199,10 @@ public class FeatureDictionary implements Serializable {
             return mu;
         }
 
-        private void initialise(String id, Map<String,Float> alpha) {
+        private void initialise(String id, Map<String,Float> alpha, float alpha_pi) {
             muVectorPositive = new LinkedHashMap<>();
             this.alpha = alpha;
+            this.alpha_pi = alpha_pi;
             alpha_0 = new LinkedHashMap<>();
             if (alpha != null) {
                 for(String val: alpha.keySet()) {
@@ -328,11 +332,11 @@ public class FeatureDictionary implements Serializable {
         //where N is the total number of observations, for normalization
         public float getPrior(){
             if(numSeen == 0) {
+                //two symbols here SEEN and UNSEEN, hence the smoothing; the prior here makes no sense, but code never reaches here...
                 log.warn("FATAL!!! Number of times this mixture is seen is zero, that can't be true!!!");
                 return 1.0f/2;
             }
-            //two symbols here SEEN and UNSEEN, hence the smoothing
-            return numMixture/numSeen;
+            return (numMixture+alpha_pi)/(numSeen+alpha_pi);
         }
 
         /**Maximization step in EM update,
@@ -345,7 +349,8 @@ public class FeatureDictionary implements Serializable {
             numMixture += resp;
             numSeen += 1;
             for (String f : features) {
-                if(f.equals("L:"+FeatureDictionary.OTHER) || f.equals("R:"+FeatureDictionary.OTHER))
+                if(f.equals("L:"+FeatureDictionary.OTHER) || f.equals("R:"+FeatureDictionary.OTHER)
+                        || f.equals("L:"+FeatureDictionary.UNKNOWN_TYPE) || f.equals("R:"+FeatureDictionary.UNKNOWN_TYPE))
                     continue;
                 if (!muVectorPositive.containsKey(f)) {
                     muVectorPositive.put(f, 0.0f);
@@ -412,6 +417,7 @@ public class FeatureDictionary implements Serializable {
             }
             str += "NM:"+numMixture+", NS:"+numSeen+"\n";
             str += "Alphas "+alpha + " -- "+alpha_0+"\n";
+            str += "PI ALPHA: "+alpha_pi+"\n";
             return str;
         }
 
@@ -575,7 +581,7 @@ public class FeatureDictionary implements Serializable {
         Map<String, Map<String,Integer>> pageLens = getTokenTypePriors();
         int initAlpha = 0;
         int wi=0, ws = words.size();
-        float fraction = 1.0f;//1.0f/50f;
+        float fraction = 1.0f/5f;
         for(String str: words.keySet()){
             //don't touch priors that are already initialised
             if(features.containsKey(str))
@@ -596,23 +602,29 @@ public class FeatureDictionary implements Serializable {
                 log.info("Initialising: " + str + " with " + ds);
             }
             Map<String,Float> alpha = new LinkedHashMap<>();
+            float alpha_pi = 0;
             if(str.length()>2 && pageLens.containsKey(str)) {
                 Map<String,Integer> pls = pageLens.get(str);
                 for(String page: pls.keySet()) {
                     String gt = dbpedia.get(page);
-                    if(gt!=null){
+                    //Music bands especially are noisy
+                    if(gt!=null && !(ignoreTypes.contains(gt)||gt.equals("Agent"))){
                         Short ct = codeType(gt);
+                        //all the albums, films etc.
+                        if(ct==FeatureDictionary.OTHER && gt.endsWith("|Work"))
+                            continue;
                         String[] features = new String[]{"T:"+ct,"L:NULL","R:NULL","SW:NULL"};
                         for(String f: features) {
                             if (!alpha.containsKey(f)) alpha.put(f, 0f);
                             alpha.put(f, alpha.get(f) + (fraction * pls.get(page) / 1000f));
                         }
+                        alpha_pi += fraction*pls.get(page)/1000f;
                     }
                 }
             }
             if(alpha.size()>0)
                 initAlpha++;
-            features.put(str, MU.initialise(str, priors, alpha));
+            features.put(str, MU.initialise(str, priors, alpha, alpha_pi));
             if(wi++%1000 == 0)
                 log.info("Done: "+wi+"/"+ws);
         }
@@ -1073,7 +1085,7 @@ public class FeatureDictionary implements Serializable {
                 for (String g : gamma.keySet()) {
                     MU mu = features.get(g);
                     if (!revisedMixtures.containsKey(g))
-                        revisedMixtures.put(g, new MU(g, (mu!=null)?mu.alpha:(new LinkedHashMap<>())));
+                        revisedMixtures.put(g, new MU(g, (mu!=null)?mu.alpha:(new LinkedHashMap<>()), mu.alpha_pi));
 
                     if (Double.isNaN(gamma.get(g)))
                         log.error("Gamma NaN for MID: " + g);
@@ -1275,14 +1287,18 @@ public class FeatureDictionary implements Serializable {
         SequenceModel nerModel = null;
         try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
-        System.err.println(nerModel.dictionary.generateFeatures2("Apple", FeatureDictionary.OTHER));
-        System.err.println(nerModel.dictionary.generateFeatures2("Apple",FeatureDictionary.PLACE));
-//        System.err.println(nerModel.seqLabel("Felicia Ballanger of France"));
-//        System.err.println(nerModel.seqLabel("Syria in March"));
+        FeatureDictionary dict = new FeatureDictionary();
+        System.err.println(dict.generateFeatures2("Bank of Spain", FeatureDictionary.COMPANY));
+        System.err.println(nerModel.seqLabel("Felicia Ballanger of France"));
+        System.err.println(nerModel.seqLabel("Syria in March"));
+        System.err.println(nerModel.seqLabel("General Joseph Tanny"));
 //        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
 //        System.err.println(priors.get("volkswagen"));
         //get it right for these phrases
-//        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information"};
+        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information","Statistics Canada", "First Alliance Corporation and Subsidiaries", "North Atlantic Treaty Organisation",
+            "CROFT RESTRICTS PAKISTAN TO","Turkish Foreign Minister Tansu Ciller","When Arafat","Labour Prime Minister Shimon Peres","Robert Creeley in University of Buffalo"};
+        for(String phrase: phrases)
+            System.err.println("Phrase: "+phrase+" --- "+nerModel.seqLabel(phrase));
 //        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
        //System.err.println(MU.getMaxEntProb());
 //        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
@@ -1302,3 +1318,63 @@ public class FeatureDictionary implements Serializable {
 //        dictionary.addGazz();
     }
 }
+/**
+ * 1/50th alpha
+ 13 Feb 08:44:20 SequenceModel INFO  - -------------
+ 13 Feb 08:44:20 SequenceModel INFO  - Found: 5396 -- Total: 7219 -- Correct: 4008 -- Missed due to wrong type: 911
+ 13 Feb 08:44:20 SequenceModel INFO  - Precision: 0.7427724
+ 13 Feb 08:44:20 SequenceModel INFO  - Recall: 0.55520153
+ 13 Feb 08:44:20 SequenceModel INFO  - F1: 0.63543403
+ 13 Feb 08:44:20 SequenceModel INFO  - ------------
+ ------------
+ 1/50th alpha and sequence labelling with normalization
+ 13 Feb 09:04:49 SequenceModel INFO  - -------------
+ 13 Feb 09:04:49 SequenceModel INFO  - Found: 5359 -- Total: 7219 -- Correct: 4040 -- Missed due to wrong type: 842
+ 13 Feb 09:04:49 SequenceModel INFO  - Precision: 0.753872
+ 13 Feb 09:04:49 SequenceModel INFO  - Recall: 0.5596343
+ 13 Feb 09:04:49 SequenceModel INFO  - F1: 0.64239144
+ 13 Feb 09:04:49 SequenceModel INFO  - ------------
+ ------------
+ When trained on 1/5th of DBpedia
+ 13 Feb 10:06:12 SequenceModel INFO  - -------------
+ 13 Feb 10:06:12 SequenceModel INFO  - Found: 6448 -- Total: 7219 -- Correct: 4752 -- Missed due to wrong type: 1133
+ 13 Feb 10:06:12 SequenceModel INFO  - Precision: 0.7369727
+ 13 Feb 10:06:12 SequenceModel INFO  - Recall: 0.6582629
+ 13 Feb 10:06:12 SequenceModel INFO  - F1: 0.6953977
+ 13 Feb 10:06:12 SequenceModel INFO  - ------------
+ -----------
+ With a cutoff of E-7
+ 13 Feb 10:19:50 SequenceModel INFO  - -------------
+ 13 Feb 10:19:50 SequenceModel INFO  - Found: 6418 -- Total: 7219 -- Correct: 4744 -- Missed due to wrong type: 1126
+ 13 Feb 10:19:50 SequenceModel INFO  - Precision: 0.7391711
+ 13 Feb 10:19:50 SequenceModel INFO  - Recall: 0.65715474
+ 13 Feb 10:19:50 SequenceModel INFO  - F1: 0.69575423
+ 13 Feb 10:19:50 SequenceModel INFO  - ------------
+ ----------
+ With a cutoff of E-4
+ 13 Feb 10:26:06 SequenceModel INFO  - -------------
+ 13 Feb 10:26:06 SequenceModel INFO  - Found: 5790 -- Total: 7219 -- Correct: 4441 -- Missed due to wrong type: 971
+ 13 Feb 10:26:06 SequenceModel INFO  - Precision: 0.7670121
+ 13 Feb 10:26:06 SequenceModel INFO  - Recall: 0.61518216
+ 13 Feb 10:26:06 SequenceModel INFO  - F1: 0.6827581
+ 13 Feb 10:26:06 SequenceModel INFO  - ------------
+ -------
+ * 12 Feb 22:10:08 SequenceModel INFO  - -------------
+ 12 Feb 22:10:08 SequenceModel INFO  - Found: 5549 -- Total: 7219 -- Correct: 3867 -- Missed due to wrong type: 1126
+ 12 Feb 22:10:08 SequenceModel INFO  - Precision: 0.6968823
+ 12 Feb 22:10:08 SequenceModel INFO  - Recall: 0.53566974
+ 12 Feb 22:10:08 SequenceModel INFO  - F1: 0.60573304
+ 12 Feb 22:10:08 SequenceModel INFO  - ------------
+ ----------
+ 12 Feb 22:45:02 SequenceModel INFO  - Found: 4625 -- Total: 7219 -- Correct: 3368 -- Missed due to wrong type: 875
+ 12 Feb 22:45:02 SequenceModel INFO  - Precision: 0.72821623
+ 12 Feb 22:45:02 SequenceModel INFO  - Recall: 0.46654662
+ 12 Feb 22:45:02 SequenceModel INFO  - F1: 0.56872684
+ 12 Feb 22:45:02 SequenceModel INFO  - ------------
+ ----------
+ 12 Feb 22:59:17 SequenceModel INFO  - Found: 5593 -- Total: 7219 -- Correct: 3872 -- Missed due to wrong type: 1137
+ 12 Feb 22:59:17 SequenceModel INFO  - Precision: 0.69229394
+ 12 Feb 22:59:17 SequenceModel INFO  - Recall: 0.53636235
+ 12 Feb 22:59:17 SequenceModel INFO  - F1: 0.6044333
+ 12 Feb 22:59:17 SequenceModel INFO  - ------------
+ */

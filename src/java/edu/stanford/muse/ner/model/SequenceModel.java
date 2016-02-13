@@ -153,7 +153,7 @@ public class SequenceModel implements NERModel, Serializable {
         for(String var: vars) {
             dbpediaType = dbpedia.get(var.toLowerCase());
             if(dbpediaType!=null) {
-                log.info("Found a match for: "+phrase+" -- "+dbpediaType);
+                //log.info("Found a match for: "+phrase+" -- "+dbpediaType);
                 return dbpediaType;
             }
         }
@@ -174,20 +174,19 @@ public class SequenceModel implements NERModel, Serializable {
         String dbpediaType = lookup(phrase);
         Short ct = FeatureDictionary.codeType(dbpediaType);
 
-        if(dbpediaType!=null && ct>=0 && (phrase.contains(" ")||dbpediaType.endsWith("Country|PopulatedPlace|Place"))){
+        if (dbpediaType != null && ct >= 0 && (phrase.contains(" ") || dbpediaType.endsWith("Country|PopulatedPlace|Place"))) {
             segments.put(phrase, new Pair<>(ct, 1.0));
             return segments;
         }
-        if(log.isDebugEnabled() && dbpediaType!=null)
+        if (log.isDebugEnabled() && dbpediaType != null)
             log.debug("Found match: Coded type: " + ct + "- Phrase:" + phrase + " - DBpedia type: " + dbpediaType);
 
         //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
         phrase = EmailUtils.uncanonicaliseName(phrase);
         //phrase = clean(phrase);
-        Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
-        if(phrase==null||phrase.length()==0)//||!phrase.contains(" "))
+        if (phrase == null || phrase.length() == 0)//||!phrase.contains(" "))
             return new LinkedHashMap<>();
-        phrase = phrase.replaceAll("^\\W+|\\W+^","");
+        phrase = phrase.replaceAll("^\\W+|\\W+^", "");
 
         String[] tokens = phrase.split("\\s+");
 
@@ -207,7 +206,7 @@ public class SequenceModel implements NERModel, Serializable {
          * 1     11
          * Total: 64,369 -- hence the cutoff below
          */
-        if(tokens.length>7) {
+        if (tokens.length > 7) {
             return new LinkedHashMap<>();
         }
         //since there can be large number of types every token can take
@@ -216,13 +215,13 @@ public class SequenceModel implements NERModel, Serializable {
         Set<Short> cands = new LinkedHashSet<>();
         for (String token : tokens) {
             Map<Short, Double> candTypes = new LinkedHashMap<>();
-            if(token.length()!=2 || token.charAt(1)!='.')
-                token = token.replaceAll("^\\W+|\\W+$","");
+            if (token.length() != 2 || token.charAt(1) != '.')
+                token = token.replaceAll("^\\W+|\\W+$", "");
             token = token.toLowerCase();
             FeatureDictionary.MU mu = dictionary.features.get(token);
-            if (token.length()<2 || mu == null || mu.numMixture == 0)
+            if (token.length() < 2 || mu == null || mu.numMixture == 0)
                 continue;
-            for(Short type: FeatureDictionary.allTypes){
+            for (Short type : FeatureDictionary.allTypes) {
                 double val = mu.getLikelihoodWithType(type);
                 if (!candTypes.containsKey(type))
                     candTypes.put(type, 0.0);
@@ -233,20 +232,24 @@ public class SequenceModel implements NERModel, Serializable {
             for (Pair<Short, Double> p : scands)
                 if (si++ < MAX)
                     cands.add(p.getFirst());
-            log.info("Token: "+token+" - cands: "+scands);
+//            if (log.isDebugEnabled())
+//                log.debug("Token: " + token + " - cands: " + scands);
         }
-        log.info("Candidate types for phrase: "+phrase+" -- "+cands);
+//        if (log.isDebugEnabled())
+//            log.debug("Candidate types for phrase: " + phrase + " -- " + cands);
         //This is just a standard dynamic programming algo. used in HMMs, with the difference that
         //at every word we are checking for the every possible segment
         short OTHER = -2;
         cands.add(OTHER);
+        Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
+        Map<Integer,Integer> numSegmenation = new LinkedHashMap<>();
 
         for (int ti = 0; ti < tokens.length; ti++) {
-            double max = -1;
+            double max = -1, bestValue = -1;
             int bi = -1;
             short bt = -10;
             for (short t : cands) {
-                int tj = Math.max(ti-6,0);
+                int tj = Math.max(ti - 6, 0);
                 //don't allow multi word phrases with these types
                 if (t == OTHER || t == FeatureDictionary.OTHER)
                     tj = ti;
@@ -260,20 +263,30 @@ public class SequenceModel implements NERModel, Serializable {
                         if (k != ti)
                             segment += " ";
                     }
+
                     if (t != OTHER)
-                        val *= getConditional(segment, t)*getLikelihoodWithOther(segment, false);
+                        val *= getConditional(segment, t) * getLikelihoodWithOther(segment, false);
                     else
                         val *= getLikelihoodWithOther(segment, true);
+
+                    double ov = val;
+                    int numSeg = 1;
+                    if(tj>0)
+                        numSeg += numSegmenation.get(tj-1);
+                    val = Math.pow(val, 1f/numSeg);
                     if (val > max) {
                         max = val;
+                        bestValue = ov;
                         bi = tj - 1;
                         bt = t;
                     }
                 }
             }
-            tracks.put(ti, new Triple<>(max, bi, bt));
+            numSegmenation.put(ti, ((bi>=0)?numSegmenation.get(bi):0)+1);
+            tracks.put(ti, new Triple<>(bestValue, bi, bt));
         }
-        System.err.println("All tracks: "+tracks);
+        System.err.println("Tracks: "+tracks);
+        System.err.println("numSegs: "+numSegmenation);
 
         //the backtracking step
         int start = tokens.length - 1;
@@ -349,7 +362,7 @@ public class SequenceModel implements NERModel, Serializable {
             if(log.isDebugEnabled()) {
                 if(mu!=null) {
                     List<String> tfs = tokenFeatures.get(mid);
-                    log.debug("Features for: " + mid + " in " + phrase + ", " + tfs + " score: " + d + " - " + mu.getPrior() + ", type: " + type);
+                    //log.debug("Features for: " + mid + " in " + phrase + ", " + tfs + " score: " + d + " - " + mu.getPrior() + ", type: " + type);
                     for(String ft: tfs) {
                         String dim = ft.substring(0,ft.indexOf(':'));
                         float alpha_k = 0, alpha_k0 = 0;
@@ -361,11 +374,11 @@ public class SequenceModel implements NERModel, Serializable {
                         double mvp = 0;
                         if(mu.muVectorPositive.containsKey(ft))
                             mvp = mu.muVectorPositive.get(ft);
-                        log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
+                       // log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
                     }
                 }
                 else
-                    log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + " - " + freq + ", type: " + type + " MU: " + features.get(mid));
+                    ;//log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + " - " + freq + ", type: " + type + " MU: " + features.get(mid));
             }
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
@@ -886,9 +899,11 @@ public class SequenceModel implements NERModel, Serializable {
                             typeText = "organization";
                         Short[] sts = mappings.get(ct);
                         for(Short st: sts)
-                            for(String str: temp.get(st).keySet())
-                                if(!onlyMW || str.contains(" "))
-                                    foundSample.put(str,typeText);
+                            for(String str: temp.get(st).keySet()) {
+                                double s = temp.get(st).get(str);
+                                if (s>0 && (!onlyMW || str.contains(" ")))
+                                    foundSample.put(str, typeText);
+                            }
                     }
 
                 Set<String> foundNames = new LinkedHashSet<>();
@@ -905,7 +920,7 @@ public class SequenceModel implements NERModel, Serializable {
                         for (String name : names.keySet()) {
                             String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
                             String ek = entry.getKey().toLowerCase();
-                            if (cname.startsWith(ek) || cname.endsWith(ek) || ek.startsWith(cname) || ek.endsWith(cname)) {
+                            if (cname.equals(ek) || cname.startsWith(ek+" ") || cname.endsWith(" "+ek) || ek.startsWith(cname+" ") || ek.endsWith(" "+cname)) {
                                 foundEntry = true;
                                 foundType = names.get(name);
                                 matchMap.put(entry.getKey(), name);
