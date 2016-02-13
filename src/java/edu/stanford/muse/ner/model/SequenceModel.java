@@ -688,11 +688,9 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
+        Map<String,String> train = EmailUtils.readDBpedia(1.0);
         //This split is essential to isolate some entries that trained model has not seen
-        Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
-        Map<String,String> train = p.getFirst();
-        Map<String, String> test = p.getSecond();
+        //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
 
         //split the dictionary into train and test sets
         Set<String> fts = new LinkedHashSet<>();
@@ -700,27 +698,27 @@ public class SequenceModel implements NERModel, Serializable {
         FeatureDictionary dictionary = new FeatureDictionary(train);
         nerModel.dictionary = dictionary;
         nerModel.dictionary.EM(train);
-        try {
-            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-            String modelFile = mwl + SequenceModel.modelFileName;
-            nerModel.writeModel(new File(modelFile));
-            //also write the test split
-            String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-            if(!new File(twl).exists()) {
-                OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-                int numTest = 0;
-                for (String str : test.keySet()) {
-                    String orig = str;
-                    str = str.replaceAll(" ", "_");
-                    osw.write(str + " " + test.get(orig) + "\n");
-                    numTest++;
-                }
-                osw.close();
-                System.err.println("Wrote "+numTest+" records in test split to: "+twl);
-            }
-        }catch(IOException e){
-            e.printStackTrace();
-        }
+//        try {
+//            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
+//            String modelFile = mwl + SequenceModel.modelFileName;
+//            nerModel.writeModel(new File(modelFile));
+//            //also write the test split
+//            String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
+//            if(!new File(twl).exists()) {
+//                OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
+//                int numTest = 0;
+//                for (String str : test.keySet()) {
+//                    String orig = str;
+//                    str = str.replaceAll(" ", "_");
+//                    osw.write(str + " " + test.get(orig) + "\n");
+//                    numTest++;
+//                }
+//                osw.close();
+//                System.err.println("Wrote "+numTest+" records in test split to: "+twl);
+//            }
+//        }catch(IOException e){
+//            e.printStackTrace();
+//        }
         return nerModel;
     }
 

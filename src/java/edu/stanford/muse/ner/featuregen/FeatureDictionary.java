@@ -293,7 +293,6 @@ public class FeatureDictionary implements Serializable {
                 }
             }
             //numLeft and numRight will always be greater than 0
-
             for (String f : features) {
                 String dim = f.substring(0,f.indexOf(':'));
                 float alpha_k = 0, alpha_k0 = 0;
@@ -530,6 +529,17 @@ public class FeatureDictionary implements Serializable {
         return pageLengths;
     }
 
+    void printMemoryUsage(){
+        int mb = 1024*1024;
+        Runtime runtime = Runtime.getRuntime();
+        log.info(
+                "Used memory: " + ((runtime.totalMemory() - runtime.freeMemory()) / mb) + "MB\n" +
+                        "Free memory: " + (runtime.freeMemory() / mb) + "MB\n" +
+                        "Total memory: " + (runtime.totalMemory() / mb) + "MB\n" +
+                        "-------------"
+        );
+    }
+
     public FeatureDictionary addGazz(Map<String,String> gazettes){
         long start_time = System.currentTimeMillis();
         long timeToComputeFeatures = 0, tms;
@@ -538,10 +548,13 @@ public class FeatureDictionary implements Serializable {
         int g = 0, nume = 0;
         final int gs = gazettes.size();
         int gi = 0;
+        printMemoryUsage();
         //The number of times a word appeared in a phrase of certain type
-        Map<String, Map<Short,Float>> words = new LinkedHashMap<>();
+        Map<String, Map<Short,Integer>> words = new LinkedHashMap<>();
         Map<String,String> dbpedia = EmailUtils.readDBpedia();
-        Map<String, Float> wordFreqs = new LinkedHashMap<>();
+        System.out.println("Done loading DBpedia");
+        printMemoryUsage();
+        Map<String, Integer> wordFreqs = new LinkedHashMap<>();
         for (String str : gazettes.keySet()) {
             tms = System.currentTimeMillis();
 
@@ -556,11 +569,11 @@ public class FeatureDictionary implements Serializable {
                 if(!words.containsKey(patt))
                     words.put(patt, new LinkedHashMap<>());
                 if(!words.get(patt).containsKey(ct))
-                    words.get(patt).put(ct, 0f);
+                    words.get(patt).put(ct, 0);
                 words.get(patt).put(ct, words.get(patt).get(ct)+1);
 
                 if(!wordFreqs.containsKey(patt))
-                    wordFreqs.put(patt, 0f);
+                    wordFreqs.put(patt, 0);
                 wordFreqs.put(patt, wordFreqs.get(patt)+1);
             }
 
@@ -572,7 +585,26 @@ public class FeatureDictionary implements Serializable {
             }
             nume++;
         }
+        System.out.println("Done analyzing gazettes for freqs");
+        printMemoryUsage();
 
+        /*
+        * Here is the histogram of frequencies of words from the 2014 dump of DBpedia
+        * To read -- there are 861K words taht are seen just seen once.
+        * By ignoring words that are only seen once or twice we can reduce the number of mixtures by a factor of ~ 10
+        * PAIR<1 -- 861698>
+        * PAIR<2 -- 146458>
+        * PAIR<3 -- 60264>
+        * PAIR<4 -- 32683>
+        * PAIR<5 -- 21006>
+        * PAIR<6 -- 14361>
+        * PAIR<7 -- 10512>
+        * PAIR<8 -- 7865>
+        * PAIR<9 -- 6480>
+        * PAIR<10 -- 5327>
+        *
+        * Also, single character words, words with numbers (like jos%c3%a9), numbers (like 2008, 2014), empty tokens
+        */
         log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
         log.info("Initialising MUs");
@@ -581,53 +613,72 @@ public class FeatureDictionary implements Serializable {
         Map<String, Map<String,Integer>> pageLens = getTokenTypePriors();
         int initAlpha = 0;
         int wi=0, ws = words.size();
-        float fraction = 1.0f/5f;
-        for(String str: words.keySet()){
-            //don't touch priors that are already initialised
-            if(features.containsKey(str))
-                continue;
+        float fraction = 1.0f;
+        int numIgnored = 0, numConsidered = 0;
+        for(String str: words.keySet()) {
             float wordFreq = wordFreqs.get(str);
-            Map<Short, Pair<Float,Float>> priors = new LinkedHashMap<>();
-            for(Short type: FeatureDictionary.allTypes) {
+            if (wordFreq<3 || str.length()<=1) {
+                numIgnored++;
+                continue;
+            }
+            boolean hasNumber = false;
+            for(char c: str.toCharArray())
+                if(Character.isDigit(c)) {
+                    hasNumber = true;
+                    numIgnored++;
+                    break;
+                }
+            if (hasNumber)
+                continue;
+
+            numConsidered++;
+            if (features.containsKey(str))
+                continue;
+            Map<Short, Pair<Float, Float>> priors = new LinkedHashMap<>();
+            for (Short type : FeatureDictionary.allTypes) {
                 if (words.get(str).containsKey(type))
-                    priors.put(type, new Pair<>(words.get(str).get(type), wordFreq));
+                    priors.put(type, new Pair<>((float)words.get(str).get(type), wordFreq));
                 else
                     priors.put(type, new Pair<>(0f, wordFreq));
             }
 
-            if(DEBUG) {
+            if (DEBUG) {
                 String ds = "";
-                for(Short t: priors.keySet())
-                    ds+=t+"<"+priors.get(t).first+","+priors.get(t).second+"> ";
+                for (Short t : priors.keySet())
+                    ds += t + "<" + priors.get(t).first + "," + priors.get(t).second + "> ";
                 log.info("Initialising: " + str + " with " + ds);
             }
-            Map<String,Float> alpha = new LinkedHashMap<>();
+            Map<String, Float> alpha = new LinkedHashMap<>();
             float alpha_pi = 0;
-            if(str.length()>2 && pageLens.containsKey(str)) {
-                Map<String,Integer> pls = pageLens.get(str);
-                for(String page: pls.keySet()) {
+            if (str.length() > 2 && pageLens.containsKey(str)) {
+                Map<String, Integer> pls = pageLens.get(str);
+                for (String page : pls.keySet()) {
                     String gt = dbpedia.get(page);
                     //Music bands especially are noisy
-                    if(gt!=null && !(ignoreTypes.contains(gt)||gt.equals("Agent"))){
+                    if (gt != null && !(ignoreTypes.contains(gt) || gt.equals("Agent"))) {
                         Short ct = codeType(gt);
                         //all the albums, films etc.
-                        if(ct==FeatureDictionary.OTHER && gt.endsWith("|Work"))
+                        if (ct == FeatureDictionary.OTHER && gt.endsWith("|Work"))
                             continue;
-                        String[] features = new String[]{"T:"+ct,"L:NULL","R:NULL","SW:NULL"};
-                        for(String f: features) {
+                        String[] features = new String[]{"T:" + ct, "L:NULL", "R:NULL", "SW:NULL"};
+                        for (String f : features) {
                             if (!alpha.containsKey(f)) alpha.put(f, 0f);
                             alpha.put(f, alpha.get(f) + (fraction * pls.get(page) / 1000f));
                         }
-                        alpha_pi += fraction*pls.get(page)/1000f;
+                        alpha_pi += fraction * pls.get(page) / 1000f;
                     }
                 }
             }
-            if(alpha.size()>0)
+            if (alpha.size() > 0)
                 initAlpha++;
             features.put(str, MU.initialise(str, priors, alpha, alpha_pi));
-            if(wi++%1000 == 0)
-                log.info("Done: "+wi+"/"+ws);
+            if (wi++ % 1000 == 0) {
+                log.info("Done: " + wi + "/" + ws);
+                if(wi%10000==0)
+                    printMemoryUsage();
+            }
         }
+        log.info("Considered: "+numConsidered+" mixtures and ignored "+numIgnored);
         log.info("Initialised alpha for " + initAlpha + "/" + ws + " entries.");
         return this;
     }

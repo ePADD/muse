@@ -1392,8 +1392,11 @@ public class EmailUtils {
         }
         if(typesFile == null)
             typesFile = "instance_types_2014-04.en.txt.bz2";
-        dbpedia = new LinkedHashMap<>();
-        int d = 0, numPersons = 0, lines = 0;
+        //dbpedia = new LinkedHashMap<>();
+		//we want to be able to access elements in the map in a case-sensitive manner, this is a way to do that.
+		//CAUTION!! TreeMap is not O(1) access time but guarantees O(ln n) access time.
+        dbpedia = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		int d = 0, numPersons = 0, lines = 0;
         try {
 			InputStream is = Config.getResourceAsStream(typesFile);
 			if (is == null) {
@@ -1463,6 +1466,15 @@ public class EmailUtils {
 	}
 
     public static void main(String[] args){
-        System.err.println(uncanonicaliseName("bank of"));
-    }
+        EmailUtils.readDBpedia();
+		System.err.println(dbpedia.get("robert creeley"));
+		int mb = 1024*1024;
+		Runtime runtime = Runtime.getRuntime();
+		log.info(
+				"Used memory: " + ((runtime.totalMemory() - runtime.freeMemory()) / mb) + "MB\n" +
+						"Free memory: " + (runtime.freeMemory() / mb) + "MB\n" +
+						"Total memory: " + (runtime.totalMemory() / mb) + "MB\n" +
+						"-------------"
+		);
+	}
 }
