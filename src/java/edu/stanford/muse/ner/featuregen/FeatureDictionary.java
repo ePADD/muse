@@ -988,8 +988,9 @@ public class FeatureDictionary implements Serializable {
             double p = this.getConditional(phrase, et, null);
             if(p!=0)
                 ll += Math.log(p);
-            else
-                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
+            //Since we ignore tokens that are very sparse, it is natural that some of the phrases are assigned a zero score.
+//            else
+//                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
         }
         return ll;
     }
@@ -1070,8 +1071,9 @@ public class FeatureDictionary implements Serializable {
         for(int i=0;i<MAX_ITER;i++) {
             wi = 0;
             //computeTypePriors();
-            for (String phrase : gazettes.keySet()) {
-                String type = gazettes.get(phrase);
+            for (Map.Entry e: gazettes.entrySet()) {
+                String phrase = (String)e.getKey();
+                String type = (String)e.getValue();
                 phrase = filterTitle(phrase, type);
                 if(phrase == null)
                     continue;
@@ -1094,7 +1096,7 @@ public class FeatureDictionary implements Serializable {
                         }
                         MU mu = features.get(mi);
                         if (mu == null) {
-                            log.warn("!!FATAL!! MU null for: " + mi + ", " + features.size());
+                            //log.warn("!!FATAL!! MU null for: " + mi + ", " + features.size());
                             continue;
                         }
                         double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
@@ -1105,7 +1107,7 @@ public class FeatureDictionary implements Serializable {
                         //System.err.println(mi + " : " + d + ", "+mu.getLikelihood(wfeatures.get(mi), this) );
                     }
                     if (z == 0) {
-                        log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
+                        //log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
                         continue;
                     }
 
@@ -1118,12 +1120,6 @@ public class FeatureDictionary implements Serializable {
                         gamma.put(mi, 1.0f/wfeatures.size());
                 }
 
-//                for(String g: gamma.keySet())
-//                    if(gamma.get(g)<1.0E-5) {
-//                        MU mu = features.get(g);
-//                        log.info("Resp of " + g + " in " + phrase + " very low -- " + gamma.get(g) + " -- " + mu.getLikelihood(wfeatures.get(g), this) +" -- "+ mu.getPrior() + " -- "+mu.numMixture);
-//                    }
-
                 if(DEBUG){
                     for(String mi: wfeatures.keySet()) {
                         log.info("MI:" + mi + ", " + gamma.get(mi) + ", " + wfeatures.get(mi));
@@ -1135,6 +1131,9 @@ public class FeatureDictionary implements Serializable {
 
                 for (String g : gamma.keySet()) {
                     MU mu = features.get(g);
+                    //ignore this mixture if the effective number of times it is seen is less than 1
+                    if(mu==null || (mu.numMixture+mu.alpha_pi)<1)
+                        continue;
                     if (!revisedMixtures.containsKey(g))
                         revisedMixtures.put(g, new MU(g, (mu!=null)?mu.alpha:(new LinkedHashMap<>()), mu.alpha_pi));
 
@@ -1142,7 +1141,7 @@ public class FeatureDictionary implements Serializable {
                         log.error("Gamma NaN for MID: " + g);
                     if(DEBUG)
                         if(gamma.get(g) == 0)
-                            log.warn("!! Resp: " + 0 + " for "+g+" in "+phrase+", "+gazettes.get(phrase));
+                            log.warn("!! Resp: " + 0 + " for "+g+" in "+phrase+", "+type);
                     revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), this);
                 }
             }
@@ -1154,8 +1153,8 @@ public class FeatureDictionary implements Serializable {
             //incomplete data log likehood is better mesure than just the change in parameters
             //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
             features = revisedMixtures;
-            ll = getIncompleteDateLogLikelihood(gazettes);
-            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
+//            ll = getIncompleteDateLogLikelihood(gazettes);
+//            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
 
 
             revisedMixtures = new LinkedHashMap<>();

@@ -188,6 +188,13 @@
 		  <artifactId>commons-math3</artifactId>
 		  <version>3.2</version>
 		</dependency>
+
+		<!--This dependency is just for CaseInsenstiveMap used in EmailUtils. Replace it if you think it is over-kill-->
+		<dependency>
+		  <groupId>org.apache.commons</groupId>
+		  <artifactId>commons-collections4</artifactId>
+		  <version>4.0</version>
+		</dependency>
 		
 		<dependency>
 		  <groupId>com.google.guava</groupId>

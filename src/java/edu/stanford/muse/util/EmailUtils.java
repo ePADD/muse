@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.util;
 
+import com.sun.org.apache.xerces.internal.impl.xpath.regex.CaseInsensitiveMap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
@@ -1395,8 +1396,9 @@ public class EmailUtils {
         //dbpedia = new LinkedHashMap<>();
 		//we want to be able to access elements in the map in a case-sensitive manner, this is a way to do that.
 		//CAUTION!! TreeMap is not O(1) access time but guarantees O(ln n) access time.
-        dbpedia = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		int d = 0, numPersons = 0, lines = 0;
+        //dbpedia = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		dbpedia = new org.apache.commons.collections4.map.CaseInsensitiveMap<>();
+        int d = 0, numPersons = 0, lines = 0;
         try {
 			InputStream is = Config.getResourceAsStream(typesFile);
 			if (is == null) {
@@ -1471,10 +1473,10 @@ public class EmailUtils {
 		int mb = 1024*1024;
 		Runtime runtime = Runtime.getRuntime();
 		log.info(
-				"Used memory: " + ((runtime.totalMemory() - runtime.freeMemory()) / mb) + "MB\n" +
-						"Free memory: " + (runtime.freeMemory() / mb) + "MB\n" +
-						"Total memory: " + (runtime.totalMemory() / mb) + "MB\n" +
-						"-------------"
-		);
+                "Used memory: " + ((runtime.totalMemory() - runtime.freeMemory()) / mb) + "MB\n" +
+                        "Free memory: " + (runtime.freeMemory() / mb) + "MB\n" +
+                        "Total memory: " + (runtime.totalMemory() / mb) + "MB\n" +
+                        "-------------"
+        );
 	}
 }

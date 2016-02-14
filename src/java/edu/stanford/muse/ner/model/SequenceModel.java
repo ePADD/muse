@@ -698,27 +698,27 @@ public class SequenceModel implements NERModel, Serializable {
         FeatureDictionary dictionary = new FeatureDictionary(train);
         nerModel.dictionary = dictionary;
         nerModel.dictionary.EM(train);
-//        try {
-//            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-//            String modelFile = mwl + SequenceModel.modelFileName;
-//            nerModel.writeModel(new File(modelFile));
-//            //also write the test split
-//            String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-//            if(!new File(twl).exists()) {
-//                OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-//                int numTest = 0;
-//                for (String str : test.keySet()) {
-//                    String orig = str;
-//                    str = str.replaceAll(" ", "_");
-//                    osw.write(str + " " + test.get(orig) + "\n");
-//                    numTest++;
-//                }
-//                osw.close();
-//                System.err.println("Wrote "+numTest+" records in test split to: "+twl);
-//            }
-//        }catch(IOException e){
-//            e.printStackTrace();
-//        }
+        try {
+            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
+            String modelFile = mwl + SequenceModel.modelFileName;
+            nerModel.writeModel(new File(modelFile));
+            ////also write the test split
+            //String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
+            //if(!new File(twl).exists()) {
+            //OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
+            //int numTest = 0;
+            //for (String str : test.keySet()) {
+            //String orig = str;
+            //str = str.replaceAll(" ", "_");
+            //osw.write(str + " " + test.get(orig) + "\n");
+            //numTest++;
+            //}
+            //osw.close();
+            //System.err.println("Wrote "+numTest+" records in test split to: "+twl);
+            //}
+        }catch(IOException e){
+            e.printStackTrace();
+        }
         return nerModel;
     }
 
@@ -837,13 +837,21 @@ public class SequenceModel implements NERModel, Serializable {
      * 06 Feb 00:18:01 SequenceModel INFO  - F1: 0.81196886
      * 06 Feb 00:18:01 SequenceModel INFO  - ------------
      *
-     * When the model is trained on one fiftieth of DBpedia, the results are
-     * 06 Feb 19:11:45 SequenceModel INFO  - -------------
-     * 06 Feb 19:11:45 SequenceModel INFO  - Found: 3750 -- Total: 4236 -- Correct: 3039 -- Missed due to wrong type: 329
-     * 06 Feb 19:11:45 SequenceModel INFO  - Precision: 0.8104
-     * 06 Feb 19:11:45 SequenceModel INFO  - Recall: 0.71742207
-     * 06 Feb 19:11:45 SequenceModel INFO  - F1: 0.7610819
-     * 06 Feb 19:11:45 SequenceModel INFO  - ------------
+     * 1/50th on only MWs
+     * 13 Feb 13:24:54 SequenceModel INFO  - -------------
+     * 13 Feb 13:24:54 SequenceModel INFO  - Found: 4238 -- Total: 4236 -- Correct: 3242 -- Missed due to wrong type: 358
+     * 13 Feb 13:24:54 SequenceModel INFO  - Precision: 0.7649835
+     * 13 Feb 13:24:54 SequenceModel INFO  - Recall: 0.7653447
+     * 13 Feb 13:24:54 SequenceModel INFO  - F1: 0.765164
+     * 13 Feb 13:24:54 SequenceModel INFO  - ------------
+     *
+     * Best performance on CONLL testa full, model trained on entire DBpedia.
+     * 4 Feb 00:41:34 SequenceModel INFO  - -------------
+     * 14 Feb 00:41:34 SequenceModel INFO  - Found: 6707 -- Total: 7219 -- Correct: 4988 -- Missed due to wrong type: 1150
+     * 14 Feb 00:41:34 SequenceModel INFO  - Precision: 0.7437006
+     * 14 Feb 00:41:34 SequenceModel INFO  - Recall: 0.69095445
+     * 14 Feb 00:41:34 SequenceModel INFO  - F1: 0.71635795
+     * 14 Feb 00:41:34 SequenceModel INFO  - ------------
      * */
     public static void test(SequenceModel seqModel){
         try {
