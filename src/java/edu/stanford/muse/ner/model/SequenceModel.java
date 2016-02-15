@@ -1025,7 +1025,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     static void testParams(){
-        float alphas[] = new float[]{1.0f/50, 1.0f/5, 1.0f, 5f, 50f};
+        float alphas[] = new float[]{1.0f/50, 1.0f/5, 1.0f/2, 1.0f, 5f};
         int emIters[] = new int[]{0,2,5,7,9};
         int numIter = 10;
         String expFolder = "experiment";
@@ -1034,22 +1034,25 @@ public class SequenceModel implements NERModel, Serializable {
         try{new FileOutputStream(resultsFile);}catch(IOException e){}
 
         for(float alpha: alphas) {
-            String modelFile = expFolder+File.separator+"ALPHA_"+alpha+"-Iter:"+emIters[emIters.length-1]+ SequenceModel.modelFileName;
-            if (!new File(modelFile).exists()){
-                train(alpha,numIter);
-            }
+            String modelFile = expFolder + File.separator + "ALPHA_" + alpha + "-Iter:" + emIters[emIters.length - 1] + SequenceModel.modelFileName;
             try {
+                if (!new File(modelFile).exists()) {
+                    PrintStream def = System.out;
+                    System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
+                    train(alpha, numIter);
+                    System.setOut(def);
+                }
                 for (int emIter : emIters) {
                     modelFile = expFolder + File.separator + "ALPHA_" + alpha + "-Iter:" + emIter + "-" + SequenceModel.modelFileName;
                     SequenceModel seqModel = loadModel(modelFile);
                     PrintStream def = System.out;
                     System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
                     System.out.println("------------------\n" +
-                            "Alpha fraction: "+alpha+" -- Iteration: "+(emIter+1));
+                            "Alpha fraction: " + alpha + " -- Iteration: " + (emIter + 1));
                     test(seqModel, false);
                     System.setOut(def);
                 }
-            }catch(IOException e){
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
