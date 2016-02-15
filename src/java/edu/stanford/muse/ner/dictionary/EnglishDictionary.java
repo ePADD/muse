@@ -18,6 +18,7 @@ public class EnglishDictionary {
     static String prepFile = "dictionaries/en-prepositions.txt";
     static String pronounFile = "dictionaries/en-pronouns.txt";
     static String abbFile = "dictionaries/en-abbreviations.txt";
+    static String tagDictFile = "dictionaries/ANC-written-count.txt";
     static String fullDictFile = "dict.words.full.safe";
     static String dictStatsFile = "stats.txt";
     static String commonNamesFile = "firstNames.txt";
@@ -26,6 +27,7 @@ public class EnglishDictionary {
 
     static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary, commonNames;
     static Multimap<String,String> abbDict;
+    static Multimap<String,Pair<String,Integer>> tagDict;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
     public static List<String> stopWords = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
@@ -62,7 +64,7 @@ public class EnglishDictionary {
 
     public static Set<String> getDict(){
         if(dictionary==null){
-            dictionary = readFile(fullDictFile);
+            dictionary = getCanonicalizedEntriesInFile(fullDictFile);
             log.info("Read: "+dictionary.size()+" entries from "+fullDictFile);
             return dictionary;
         }
@@ -71,7 +73,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopPronouns(){
         if(pronouns==null) {
-            pronouns = readFile(pronounFile);
+            pronouns = getCanonicalizedEntriesInFile(pronounFile);
             log.info("Read "+pronouns.size()+" entries from "+pronounFile);
             return pronouns;
         }
@@ -80,7 +82,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopAdverbs(){
         if(adverbs==null) {
-            adverbs = readFile(adverbsFile);
+            adverbs = getCanonicalizedEntriesInFile(adverbsFile);
             log.info("Read "+adverbs.size()+" entries from "+adverbsFile);
             return adverbs;
         }
@@ -89,7 +91,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopAdjectives(){
         if(adjectives == null){
-            adjectives = readFile(adjFile);
+            adjectives = getCanonicalizedEntriesInFile(adjFile);
             log.info("Read "+adjectives.size()+" entries from "+adjFile);
             return adjectives;
         }
@@ -98,7 +100,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopVerbs(){
         if(verbs == null){
-            verbs = readFile(verbsFile);
+            verbs = getCanonicalizedEntriesInFile(verbsFile);
             log.info("Read "+verbs.size()+" entries from "+verbsFile);
             return verbs;
         }
@@ -107,7 +109,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopPrepositions(){
         if(prepositions == null){
-            prepositions = readFile(prepFile);
+            prepositions = getCanonicalizedEntriesInFile(prepFile);
             log.info("Read "+prepositions.size()+" entries from "+prepFile);
             return prepositions;
         }
@@ -117,7 +119,7 @@ public class EnglishDictionary {
     //This has nothing to do with English Dictionary though.
     public static Set<String> getCommonNames(){
         if(commonNames == null){
-            Set<String> entries = readFile(commonNamesFile);
+            Set<String> entries = getCanonicalizedEntriesInFile(commonNamesFile);
             commonNames = new LinkedHashSet<>();
             for(String str: entries) {
                 //may contain some unicode chars
@@ -268,7 +270,7 @@ public class EnglishDictionary {
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
                     continue;
-                entries.add(line.trim().toLowerCase());
+                entries.add(line.trim());
             }
         } catch(IOException e){
             log.warn("Cannot read file: "+fileName);
@@ -276,6 +278,33 @@ public class EnglishDictionary {
         }
         try { if (br != null) br.close(); } catch (Exception e) { Util.print_exception(e);}
         return entries;
+    }
+
+    public static Set<String> getCanonicalizedEntriesInFile(String fileName){
+        Set<String> lines = readFile(fileName);
+        Set<String> ces = new LinkedHashSet<>();
+        for(String line: lines)
+            ces.add(line.toLowerCase());
+        return ces;
+    }
+
+    //@returns a map from token (not the stemmed one) to tag count, a token can be affiliated with many POS tags hence MultiMap
+    //acted   act     VBN     102 -> <acted,Pair<VBN, 102>>
+    public static Multimap<String, Pair<String,Integer>> getTagDictionary(){
+        if(tagDict!=null)
+            return tagDict;
+        tagDict = LinkedHashMultimap.create();
+        Set<String> lines = readFile(tagDictFile);
+        for(String line: lines) {
+            String[] fields = line.split("\\t");
+            if(fields.length!=4){
+                log.warn("Line: "+line+" not parsed correct!!");
+                continue;
+            }
+            try {tagDict.put(fields[0], new Pair<>(fields[2], Integer.parseInt(fields[3])));}
+            catch(NumberFormatException nfe){ log.warn("Cannot parse number from line: "+line);}
+        }
+        return tagDict;
     }
 
     public static void testPlurals(){

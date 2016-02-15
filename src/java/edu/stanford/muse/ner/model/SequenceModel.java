@@ -374,7 +374,7 @@ public class SequenceModel implements NERModel, Serializable {
                         double mvp = 0;
                         if(mu.muVectorPositive.containsKey(ft))
                             mvp = mu.muVectorPositive.get(ft);
-                       // log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
+                        //log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
                     }
                 }
                 else
@@ -688,7 +688,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> train = EmailUtils.readDBpedia(1.0);
+        Map<String,String> train = EmailUtils.readDBpedia(1.0/50);
         //This split is essential to isolate some entries that trained model has not seen
         //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
 
@@ -917,21 +917,14 @@ public class SequenceModel implements NERModel, Serializable {
                     foundTypes.put(entry.getKey(), entry.getValue());
                     boolean foundEntry = false;
                     String foundType = null;
-                    if(!ignoreSegmentation) {
-                        foundEntry = names.containsKey(entry.getKey());
-                        foundType = names.get(entry.getKey());
-                        matchMap.put(entry.getKey(), entry.getKey());
-                    }
-                    else {
-                        for (String name : names.keySet()) {
-                            String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
-                            String ek = entry.getKey().toLowerCase();
-                            if (cname.equals(ek) || cname.startsWith(ek+" ") || cname.endsWith(" "+ek) || ek.startsWith(cname+" ") || ek.endsWith(" "+cname)) {
-                                foundEntry = true;
-                                foundType = names.get(name);
-                                matchMap.put(entry.getKey(), name);
-                                break;
-                            }
+                    for (String name : names.keySet()) {
+                        String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
+                        String ek = entry.getKey().toLowerCase();
+                        if (cname.equals(ek) || (ignoreSegmentation && (cname.startsWith(ek + " ") || cname.endsWith(" " + ek) || ek.startsWith(cname + " ") || ek.endsWith(" " + cname)))) {
+                            foundEntry = true;
+                            foundType = names.get(name);
+                            matchMap.put(entry.getKey(), name);
+                            break;
                         }
                     }
 
@@ -1044,8 +1037,10 @@ public class SequenceModel implements NERModel, Serializable {
             nerModel = train();
 
         MU mu = nerModel.dictionary.features.get("ltd");
-        System.err.println(mu.getLikelihoodWithType(FeatureDictionary.COMPANY));
-        System.err.println(mu);
+        if(mu!=null) {
+            System.err.println(mu.getLikelihoodWithType(FeatureDictionary.COMPANY));
+            System.err.println(mu);
+        }
         if (nerModel != null) {
 //            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
 //            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);

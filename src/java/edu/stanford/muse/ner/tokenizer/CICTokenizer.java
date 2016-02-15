@@ -1,11 +1,15 @@
 package edu.stanford.muse.ner.tokenizer;
 
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.NLPUtils;
+import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
+
+import com.google.common.collect.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -231,6 +235,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
      *  <li>ensures that the token does not end in space or period or hyphen</li>
      *  <li>If the chunk starts the sentence, then removes articles or other common words that start the sentence</li>
      *  <li>If the chunk starts the sentence, then drops the chunk if it is member of dictionary</li>
+     *  <li>Tokenize further on tokens that never had the history of being a noun.</li>
      * </ul>
      * @param phrase is the string that is to be cleaned
      * @param offset of the phrase being considered in the original sentence, character/word offset
@@ -274,7 +279,49 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 hasCSW = false;
             } while (true);
 
-            nts.add(t);
+            String[] words = t.split("\\s+");
+            String segment = "";
+            int currOff = 0;
+            for(String word: words) {
+                String temp = t.substring(currOff);
+                String pad = t.substring(currOff, currOff + temp.indexOf(word));
+                currOff += (pad + word).length();
+
+                String lc = word.toLowerCase();
+                if (!stopWords.contains(lc)) {
+                    Multimap<String, Pair<String, Integer>> tdict = EnglishDictionary.getTagDictionary();
+
+                    int freq = 0, nounCount = 0;
+                    if(tdict!=null)
+                        for (Pair<String, Integer> p : tdict.get(lc)) {
+                            freq += p.getSecond();
+                            String tag = p.getFirst();
+                            if ("NN".equals(tag) || "NNS".equals(tag) || "NNP".equals(tag) || "NNPS".equals(tag))
+                                nounCount += p.getSecond();
+                        }
+
+                    //We miss on probable tokens (ADJ) like Iraqi, Turkish because they was mostly JJ.
+                    // which I think is OK, else no complaints over CONLL testa
+                    if (tdict!=null && (((float) nounCount / freq) < 0.05)) {
+                        if (segment.length() > 0)
+                            nts.add(segment);
+                        segment = "";
+                        if (log.isDebugEnabled())
+                            log.debug("Tokenizing on non-noun word - " + word);
+                    } else {
+                        //don't add padding when the segment is empty
+                        if (segment.length() > 0)
+                            segment += pad;
+                        segment += word;
+                    }
+                } else {
+                    if(segment.length()>0)
+                        segment += pad;
+                    segment += word;
+                }
+            }
+            if(segment.length()>0)
+                nts.add(segment);
         }
         return nts.toArray(new String[nts.size()]);
     }
@@ -334,13 +381,16 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Hi Professor Winograd, this is your student from nowhere",
                 ">> Hi Professor Winograd, this is your student from nowhere",
                 "Why Benjamin Netanyahu may look",
-                "I am good Said Netnyahu",
+                "I am good Said Netanyahu",
                 "Even Netanyahu was present at the party",
                 "The New York Times is a US based daily",
                 "Do you know about The New York Times Company that brutally charges for Digital subscription",
                 "Fischler proposed EU-wide measures after reports from Britain and France that under laboratory conditions sheep could contract Bovine Spongiform Encephalopathy ( BSE ) -- mad cow disease",
                 "Spanish Farm Minister Loyola de Palacio had earlier accused Fischler at an EU farm ministers ' meeting of causing unjustified alarm through \" dangerous generalisation .",
-                "P.V. Krishnamoorthi"
+                "P.V. Krishnamoorthi",
+                "Should Rubin be told about this?",
+                "You are talking to Robert Who?",
+                "I will never say a thing SAID REBECCA HALL"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -370,7 +420,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Mt. Everest"},
                 new String[]{"Mr. Robert Creeley"},
                 new String[]{},
-                new String[]{"Met The President"},
+                new String[]{"President"},
                 new String[]{"Barney Stinson"},
                 new String[]{"Department of Geology"},
                 new String[]{"Sawadika"},
@@ -396,7 +446,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"New York Times Company","Digital"},
                 new String[]{"Fischler","EU-wide","Britain and France","Bovine Spongiform Encephalopathy","BSE"},
                 new String[]{"Spanish Farm Minister Loyola de Palacio","Fischler","EU"},
-                new String[]{"P. V. Krishnamoorthi"}
+                new String[]{"P. V. Krishnamoorthi"},
+                new String[]{"Rubin"},
+                new String[]{"Robert"},
+                new String[]{"REBECCA HALL"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
