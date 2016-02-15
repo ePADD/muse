@@ -1048,7 +1048,7 @@ public class SequenceModel implements NERModel, Serializable {
                     System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
                     System.out.println("------------------\n" +
                             "Alpha fraction: " + alpha + " -- Iteration: " + (emIter + 1));
-                    test(seqModel, true);
+                    test(seqModel, false);
                     System.setOut(def);
                 }
             } catch (IOException e) {
