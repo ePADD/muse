@@ -178,8 +178,8 @@ public class SequenceModel implements NERModel, Serializable {
             segments.put(phrase, new Pair<>(ct, 1.0));
             return segments;
         }
-        if (log.isDebugEnabled() && dbpediaType != null)
-            log.debug("Found match: Coded type: " + ct + "- Phrase:" + phrase + " - DBpedia type: " + dbpediaType);
+//        if (log.isDebugEnabled() && dbpediaType != null)
+//            log.debug("Found match: Coded type: " + ct + "- Phrase:" + phrase + " - DBpedia type: " + dbpediaType);
 
         //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
         phrase = EmailUtils.uncanonicaliseName(phrase);
@@ -285,8 +285,8 @@ public class SequenceModel implements NERModel, Serializable {
             numSegmenation.put(ti, ((bi>=0)?numSegmenation.get(bi):0)+1);
             tracks.put(ti, new Triple<>(bestValue, bi, bt));
         }
-        System.err.println("Tracks: "+tracks);
-        System.err.println("numSegs: "+numSegmenation);
+//        System.err.println("Tracks: "+tracks);
+//        System.err.println("numSegs: "+numSegmenation);
 
         //the backtracking step
         int start = tokens.length - 1;
@@ -686,39 +686,39 @@ public class SequenceModel implements NERModel, Serializable {
         System.err.println("Precision: "+precision+"\nRecall: "+recall);
     }
 
-    public static SequenceModel train(){
+    //alpha for initializing Dir.priors and iter is number of EM iterations
+    public static SequenceModel train(float alpha, int iter){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> train = EmailUtils.readDBpedia(1.0/50);
+        Map<String,String> train = EmailUtils.readDBpedia(1.0);
         //This split is essential to isolate some entries that trained model has not seen
         //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
 
         //split the dictionary into train and test sets
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
-        FeatureDictionary dictionary = new FeatureDictionary(train);
+        FeatureDictionary dictionary = new FeatureDictionary(train, alpha, iter);
         nerModel.dictionary = dictionary;
-        nerModel.dictionary.EM(train);
-        try {
-            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-            String modelFile = mwl + SequenceModel.modelFileName;
-            nerModel.writeModel(new File(modelFile));
-            ////also write the test split
-            //String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-            //if(!new File(twl).exists()) {
-            //OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-            //int numTest = 0;
-            //for (String str : test.keySet()) {
-            //String orig = str;
-            //str = str.replaceAll(" ", "_");
-            //osw.write(str + " " + test.get(orig) + "\n");
-            //numTest++;
-            //}
-            //osw.close();
-            //System.err.println("Wrote "+numTest+" records in test split to: "+twl);
-            //}
-        }catch(IOException e){
-            e.printStackTrace();
-        }
+//        try {
+//            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
+//            String modelFile = mwl + SequenceModel.modelFileName;
+//            nerModel.writeModel(new File(modelFile));
+//            ////also write the test split
+//            //String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
+//            //if(!new File(twl).exists()) {
+//            //OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
+//            //int numTest = 0;
+//            //for (String str : test.keySet()) {
+//            //String orig = str;
+//            //str = str.replaceAll(" ", "_");
+//            //osw.write(str + " " + test.get(orig) + "\n");
+//            //numTest++;
+//            //}
+//            //osw.close();
+//            //System.err.println("Wrote "+numTest+" records in test split to: "+twl);
+//            //}
+//        }catch(IOException e){
+//            e.printStackTrace();
+//        }
         return nerModel;
     }
 
@@ -762,8 +762,6 @@ public class SequenceModel implements NERModel, Serializable {
             SequenceModel nerModel = null;
             try{nerModel = SequenceModel.loadModel(modelFile);}
             catch(IOException e){e.printStackTrace();}
-            if(nerModel == null)
-                nerModel = train();
 //            int di =0;
 //            for(Document doc: docs) {
 //                String content = archive.getContents(doc, true);
@@ -853,7 +851,7 @@ public class SequenceModel implements NERModel, Serializable {
      * 14 Feb 00:41:34 SequenceModel INFO  - F1: 0.71635795
      * 14 Feb 00:41:34 SequenceModel INFO  - ------------
      * */
-    public static void test(SequenceModel seqModel){
+    public static void test(SequenceModel seqModel, boolean verbose){
         try {
             InputStream in = new FileInputStream(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"umasshw"+File.separator+"testaspacesep.txt"));
             //7==0111 PER, LOC, ORG
@@ -921,6 +919,9 @@ public class SequenceModel implements NERModel, Serializable {
                         String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
                         String ek = entry.getKey().toLowerCase();
                         if (cname.equals(ek) || (ignoreSegmentation && (cname.startsWith(ek + " ") || cname.endsWith(" " + ek) || ek.startsWith(cname + " ") || ek.endsWith(" " + cname)))) {
+                            //to avoid spurious matches such as "Compay Ltd" with say "Ltd"
+                            if(cname.contains(" ") && !ek.contains(" "))
+                                continue;
                             foundEntry = true;
                             foundType = names.get(name);
                             matchMap.put(entry.getKey(), name);
@@ -940,40 +941,42 @@ public class SequenceModel implements NERModel, Serializable {
                     }
                 }
 
-                log.info("CIC tokens: "+tokenizer.tokenizeWithoutOffsets(sent,false));
-                log.info(temp);
-                String fn = "Found names:";
-                for (String f : foundNames)
-                    fn += f + "[" + foundSample.get(f) + "]" + "--";
-                if(fn.endsWith("--"))
-                    log.info(fn);
+                if(verbose) {
+                    log.info("CIC tokens: " + tokenizer.tokenizeWithoutOffsets(sent, false));
+                    log.info(temp);
+                    String fn = "Found names:";
+                    for (String f : foundNames)
+                        fn += f + "[" + foundSample.get(f) + "]" + "--";
+                    if (fn.endsWith("--"))
+                        log.info(fn);
 
-                String extr = "Extra names: ";
-                for (String f: foundSample.keySet())
-                    if (!matchMap.containsKey(f))
-                        extr += f +"[" + foundSample.get(f) + "]--";
-                if(extr.endsWith("--"))
-                    log.info(extr);
-                String miss = "Missing names: ";
-                for (String name : names.keySet())
-                    if (!matchMap.values().contains(name))
-                        miss += name +"[" + names.get(name) + "]--";
-                if(miss.endsWith("--"))
-                    log.info(miss);
+                    String extr = "Extra names: ";
+                    for (String f : foundSample.keySet())
+                        if (!matchMap.containsKey(f))
+                            extr += f + "[" + foundSample.get(f) + "]--";
+                    if (extr.endsWith("--"))
+                        log.info(extr);
+                    String miss = "Missing names: ";
+                    for (String name : names.keySet())
+                        if (!matchMap.values().contains(name))
+                            miss += name + "[" + names.get(name) + "]--";
+                    if (miss.endsWith("--"))
+                        log.info(miss);
 
-                String misAssign = "Mis-assigned Types: ";
-                for(String f: foundSample.keySet())
-                    if(matchMap.containsKey(f)) {
-                          //this can happen since matchMap is a global var. and an entity that is tagged in one place is untagged in other
-                          //if (names.get(matchMap.get(f)) == null)
-                          //  log.warn("This is not expected: " + f + " in matchMap not found names -- " + names);
-                        if (names.get(matchMap.get(f)) != null && !names.get(matchMap.get(f)).equals(foundSample.get(f)))
-                            misAssign += f + "[" + foundSample.get(f) + "] Expected [" + names.get(matchMap.get(f)) + "]--";
-                    }
-                if(misAssign.endsWith("--"))
-                    log.info(misAssign);
+                    String misAssign = "Mis-assigned Types: ";
+                    for (String f : foundSample.keySet())
+                        if (matchMap.containsKey(f)) {
+                            //this can happen since matchMap is a global var. and an entity that is tagged in one place is untagged in other
+                            //if (names.get(matchMap.get(f)) == null)
+                            //  log.warn("This is not expected: " + f + " in matchMap not found names -- " + names);
+                            if (names.get(matchMap.get(f)) != null && !names.get(matchMap.get(f)).equals(foundSample.get(f)))
+                                misAssign += f + "[" + foundSample.get(f) + "] Expected [" + names.get(matchMap.get(f)) + "]--";
+                        }
+                    if (misAssign.endsWith("--"))
+                        log.info(misAssign);
 
-                log.info(sent + "\n------------------");
+                    log.info(sent + "\n------------------");
+                }
                 for(String name: names.keySet())
                     benchmarkTypes.put(name, names.get(name));
 
@@ -985,82 +988,74 @@ public class SequenceModel implements NERModel, Serializable {
             }
             float prec = (float)correct.size()/(float)found.size();
             float recall = (float)correct.size()/(float)real.size();
-            log.info("----Correct names----");
-            for(String str: correct)
-                log.info(str + " with "+new LinkedHashSet<>(matchMap.get(str)));
-            log.info("----Missed names----");
-            for(String str: real)
-                if(!matchMap.values().contains(str))
-                    log.info(str);
-            log.info("---Extra names------");
-            for(String str: found)
-                if(!matchMap.keySet().contains(str))
-                    log.info(str);
+            if(verbose) {
+                log.info("----Correct names----");
+                for (String str : correct)
+                    log.info(str + " with " + new LinkedHashSet<>(matchMap.get(str)));
+                log.info("----Missed names----");
+                for (String str : real)
+                    if (!matchMap.values().contains(str))
+                        log.info(str);
+                log.info("---Extra names------");
+                for (String str : found)
+                    if (!matchMap.keySet().contains(str))
+                        log.info(str);
 
-            log.info("---Assigned wrong type------");
-            for(String str: wrongType) {
-                Set<String> bMatches = new LinkedHashSet<>(matchMap.get(str));
-                for (String bMatch : bMatches) {
-                    String ft = foundTypes.get(str);
-                    String bt = benchmarkTypes.get(bMatch);
-                    if(!ft.equals(bt))
-                        log.info(str + "[" + ft + "] expected [" + bt + "]");
+                log.info("---Assigned wrong type------");
+                for (String str : wrongType) {
+                    Set<String> bMatches = new LinkedHashSet<>(matchMap.get(str));
+                    for (String bMatch : bMatches) {
+                        String ft = foundTypes.get(str);
+                        String bt = benchmarkTypes.get(bMatch);
+                        if (!ft.equals(bt))
+                            log.info(str + "[" + ft + "] expected [" + bt + "]");
+                    }
                 }
             }
 
-            log.info("-------------");
-            log.info("Found: "+found.size()+" -- Total: "+real.size()+" -- Correct: "+correct.size()+" -- Missed due to wrong type: "+(wrongType.size()));
-            log.info("Precision: "+prec);
-            log.info("Recall: "+recall);
-            log.info("F1: "+(2*prec*recall/(prec+recall)));
-            log.info("------------");
+            System.out.println("-------------");
+            System.out.println("Found: "+found.size()+" -- Total: "+real.size()+" -- Correct: "+correct.size()+" -- Missed due to wrong type: "+(wrongType.size()));
+            System.out.println("Precision: "+prec);
+            System.out.println("Recall: "+recall);
+            System.out.println("F1: "+(2*prec*recall/(prec+recall)));
+            System.out.println("------------");
         }catch(IOException e){
             e.printStackTrace();
         }
     }
 
-    public static void main(String[] args) {
-        //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        String modelFile = SequenceModel.modelFileName;
-        if (fdw == null) {
+    static void testParams(){
+        float alphas[] = new float[]{1.0f/50, 1.0f/5, 1.0f, 5f, 50f};
+        int emIters[] = new int[]{0,2,5,7,9};
+        int numIter = 10;
+        String expFolder = "experiment";
+        String resultsFile = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"paramResults.txt";
+        //flush the previous resiults
+        try{new FileOutputStream(resultsFile);}catch(IOException e){}
+
+        for(float alpha: alphas) {
+            String modelFile = expFolder+File.separator+"ALPHA_"+alpha+"-Iter:"+emIters[emIters.length-1]+ SequenceModel.modelFileName;
+            if (!new File(modelFile).exists()){
+                train(alpha,numIter);
+            }
             try {
-                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
-            } catch (Exception e) {
+                for (int emIter : emIters) {
+                    modelFile = expFolder + File.separator + "ALPHA_" + alpha + "-Iter:" + emIter + "-" + SequenceModel.modelFileName;
+                    SequenceModel seqModel = loadModel(modelFile);
+                    PrintStream def = System.out;
+                    System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
+                    System.out.println("------------------\n" +
+                            "Alpha fraction: "+alpha+" -- Iteration: "+(emIter+1));
+                    test(seqModel, false);
+                    System.setOut(def);
+                }
+            }catch(IOException e){
                 e.printStackTrace();
             }
         }
-        System.err.println("Loading model...");
-        SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(modelFile);}
-        catch(IOException e){e.printStackTrace();}
-        if(nerModel == null)
-            nerModel = train();
+    }
 
-        MU mu = nerModel.dictionary.features.get("ltd");
-        if(mu!=null) {
-            System.err.println(mu.getLikelihoodWithType(FeatureDictionary.COMPANY));
-            System.err.println(mu);
-        }
-        if (nerModel != null) {
-//            nerModel.dictionary.getConditional("Washington University",FeatureDictionary.UNIVERSITY, null);
-//            nerModel.dictionary.getConditional("Chartered Bank of India, Australia and China",FeatureDictionary.COMPANY, null);
-//            nerModel.dictionary.getConditional("Jadavpur University",FeatureDictionary.UNIVERSITY, null);
-//            nerModel.dictionary.getConditional("Beijing Normal University",FeatureDictionary.UNIVERSITY, null);
-//            nerModel.dictionary.getConditional("Beijing Arbitration Commission",FeatureDictionary.ORGANISATION, null);
-//            nerModel.dictionary.getConditional("Beijing DeTao Masters Academy",FeatureDictionary.UNIVERSITY, null);
-//            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.COMPANY, null);
-//            nerModel.dictionary.getConditional("Southern New England Telecommunciations Corp", FeatureDictionary.PLACE, null);
-//            System.err.println(nerModel.seqLabel("Bank of France"));
-//            System.err.println(nerModel.seqLabel("Prime Minister"));
-//            System.err.println(nerModel.seqLabel("Prime Minister John Oliver"));
-//            System.err.println(nerModel.seqLabel("John Oliver"));
-//            System.err.println(nerModel.seqLabel("Found Page"));
-//            System.err.println(nerModel.seqLabel("Emergency Grant"));
-//            System.err.println(nerModel.getConditional("prime",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("prime",false));
-//            System.err.println(nerModel.getConditional("minister",FeatureDictionary.OTHER)+", "+getLikelihoodWithOther("minister",false));
-//
-            test(nerModel);
-        }
-
+    public static void main(String[] args) {
+        testParams();
     }
 }

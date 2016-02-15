@@ -488,8 +488,9 @@ public class FeatureDictionary implements Serializable {
      * address book should be specially handled and DBpedia gazette is required.
      * and make sure the address book is cleaned see cleanAB method
      */
-    public FeatureDictionary(Map<String, String> gazettes) {
-        addGazz(gazettes);
+    public FeatureDictionary(Map<String, String> gazettes, float alpha, int iter) {
+        addGazz(gazettes, alpha);
+        EM(gazettes, alpha, iter);
     }
 
     //TODO: Add to the project the code that produces this file
@@ -533,7 +534,7 @@ public class FeatureDictionary implements Serializable {
         );
     }
 
-    public FeatureDictionary addGazz(Map<String,String> gazettes){
+    public FeatureDictionary addGazz(Map<String,String> gazettes, float alphaFraction){
         long start_time = System.currentTimeMillis();
         long timeToComputeFeatures = 0, tms;
         log.info("Analysing gazettes");
@@ -606,7 +607,7 @@ public class FeatureDictionary implements Serializable {
         Map<String, Map<String,Integer>> pageLens = getTokenTypePriors();
         int initAlpha = 0;
         int wi=0, ws = words.size();
-        float fraction = 1.0f/50;
+        //float fraction = 1.0f/5;
         int numIgnored = 0, numConsidered = 0;
         for(String str: words.keySet()) {
             float wordFreq = wordFreqs.get(str);
@@ -656,9 +657,9 @@ public class FeatureDictionary implements Serializable {
                         String[] features = new String[]{"T:" + ct, "L:NULL", "R:NULL", "SW:NULL"};
                         for (String f : features) {
                             if (!alpha.containsKey(f)) alpha.put(f, 0f);
-                            alpha.put(f, alpha.get(f) + (fraction * pls.get(page) / 1000f));
+                            alpha.put(f, alpha.get(f) + (alphaFraction * pls.get(page) / 1000f));
                         }
-                        alpha_pi += fraction * pls.get(page) / 1000f;
+                        alpha_pi += alphaFraction * pls.get(page) / 1000f;
                     }
                 }
             }
@@ -1023,12 +1024,13 @@ public class FeatureDictionary implements Serializable {
         return phrase;
     }
 
-    public void EM(Map<String,String> gazettes){
+    //the argument alpha fraction is required only for naming of the dumped model size
+    public void EM(Map<String,String> gazettes, float alphaFraction, int iter){
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
-        int MAX_ITER = 6;
+        int MAX_ITER = iter;
         int N = gazettes.size();
         int wi;
         for(int i=0;i<MAX_ITER;i++) {
@@ -1149,7 +1151,7 @@ public class FeatureDictionary implements Serializable {
                         }
                         List<Pair<String, Double>> ps = Util.sortMapByValue(sortScores);
                         for (Pair<String, Double> p : ps) {
-                            if(type==ats[0] || p.second>=0.001) {
+                            if(type==ats[0]){// || p.second>=0.001) {
                                 fw.write(features.get(p.getFirst()).toString());
                                 fw.write("========================\n");
                             }
@@ -1174,50 +1176,15 @@ public class FeatureDictionary implements Serializable {
                         ffw.close();
                     }
                 }
-                if(i%2 == 0){
+                if(i==0 || i==2 || i==5 || i==7 || i==9){
                     SequenceModel nerModel = new SequenceModel();
                     nerModel.dictionary = this;
-                    String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-                    String modelFile = mwl + "EM-"+i+"-"+SequenceModel.modelFileName;
+                    String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"experiment"+File.separator;
+                    String modelFile = mwl + "ALPHA_"+alphaFraction+"-Iter:"+i+"-"+SequenceModel.modelFileName;
                     nerModel.writeModel(new File(modelFile));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-            }
-        }
-    }
-
-    private static FeatureDictionary buildAndDumpDictionary(Map<String,String> gazz, String fn){
-        try {
-            FeatureDictionary dictionary = new FeatureDictionary(gazz);
-            //dump this
-            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fn));
-            oos.writeObject(dictionary);
-            oos.close();
-            return dictionary;
-        }catch(Exception e){
-            log.info("Could not build/write feature dictionary");
-            Util.print_exception(e, log);
-            return null;
-        }
-    }
-
-    public static FeatureDictionary loadDefaultDictionary() {
-        String fn = Config.SETTINGS_DIR + File.separator + "dictionary.ser";
-        ObjectInputStream ois = null;
-        try {
-            ois = new ObjectInputStream(new FileInputStream(fn));
-            FeatureDictionary model = (FeatureDictionary) ois.readObject();
-            return model;
-        } catch (Exception e) {
-            Util.print_exception(e, log);
-            if (e instanceof FileNotFoundException || e instanceof IOException) {
-                log.info("Failed to load default dictionary file, building one");
-                Map<String, String> dbpedia = EmailUtils.readDBpedia();
-                return buildAndDumpDictionary(dbpedia, fn);
-            } else {
-                log.error("Failed to load default dictionary file, building one");
-                return null;
             }
         }
     }
@@ -1278,27 +1245,6 @@ public class FeatureDictionary implements Serializable {
             cond += val;
         }
         return cond;
-    }
-
-    //TODO: get a better location for this method
-    public static svm_parameter getDefaultSVMParam() {
-        svm_parameter param = new svm_parameter();
-        // default values
-        param.svm_type = svm_parameter.C_SVC;
-        param.kernel_type = svm_parameter.RBF;
-        param.degree = 3;
-        param.gamma = 0; // 1/num_features
-        param.coef0 = 0;
-        param.nu = 0.5;
-        param.cache_size = 100;
-        param.C = 1;
-        param.eps = 1e-3;
-        param.p = 0.1;
-        param.shrinking = 1;
-        param.nr_weight = 0;
-        param.weight_label = new int[0];
-        param.weight = new double[0];
-        return param;
     }
 
     public static void main(String[] args) {

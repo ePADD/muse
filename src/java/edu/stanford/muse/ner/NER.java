@@ -13,7 +13,6 @@ import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.ner.train.NERTrainer;
-import edu.stanford.muse.ner.train.SVMModelTrainer;
 import edu.stanford.muse.ner.util.ArchiveContent;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -251,60 +250,6 @@ public class NER implements StatusProvider {
         String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
         SVMModel model = SVMModel.loadModel(new File(MODEL_DIR + File.separator + SVMModel.modelFileName));
         return model;
-    }
-
-    public static NERModel trainArchiveIndependentModel(Object params){
-        SVMModelTrainer.TrainingParam tparams = (SVMModelTrainer.TrainingParam)params;
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
-        Tokenizer tokenizer = new CICTokenizer();
-        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
-        SVMModelTrainer trainer = new SVMModelTrainer();
-        List<Short> types = Arrays.asList(
-                //FeatureDictionary.PERSON,
-                //FeatureDictionary.PLACE,
-                FeatureDictionary.ORGANISATION);
-        List<String[]> aTypes = Arrays.asList(
-                FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
-                FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
-                FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION)
-        );
-        NERModel model = trainer.trainArchiveIndependent(dbpedia, types, fgs, tokenizer, params);
-        return model;
-    }
-
-    public NERModel trainModel(boolean dumpModel) {
-        NERTrainer trainer = new SVMModelTrainer();
-        status = "Loading DBpedia and address book";
-        Map<String,String> addressbook =  EmailUtils.getNames(archive.addressBook.allContacts());
-        pctComplete = 2;
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
-        pctComplete = 10;
-        Tokenizer tokenizer = new CICTokenizer();
-        FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature()};
-        List<Short> types = Arrays.asList(FeatureDictionary.PERSON, FeatureDictionary.PLACE, FeatureDictionary.ORGANISATION);
-        List<String[]> aTypes = Arrays.asList(
-                FeatureDictionary.aTypes.get(FeatureDictionary.PERSON),
-                FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
-                FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION)
-        );
-        String CACHE_DIR = archive.baseDir + File.separator + Config.CACHE_FOLDER;
-        String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
-        SVMModelTrainer.TrainingParam tparams = SVMModelTrainer.TrainingParam.initialize(CACHE_DIR, MODEL_DIR, dumpModel);
-        ArchiveContent archiveContent = new ArchiveContent() {
-            @Override
-            public int getSize() {
-                return archive.getAllDocs().size();
-            }
-
-            @Override
-            public String getContent(int i) {
-                Document doc = archive.getAllDocs().get(i);
-                return archive.getContents(doc, true);
-            }
-        };
-        statusProvider = (SVMModelTrainer)trainer;
-        NERModel nerModel = trainer.train(archiveContent, dbpedia, addressbook,types, aTypes, fgs, tokenizer, tparams);
-        return nerModel;
     }
 
     /**
@@ -613,7 +558,6 @@ public class NER implements StatusProvider {
 //            String modelFile = archive.baseDir + File.separator + "models" + File.separator + SVMModel.modelFileName;
             String cacheDir = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache";
             String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
-            SVMModelTrainer.TrainingParam tparam = SVMModelTrainer.TrainingParam.initialize(cacheDir, mwl, true);
             String modelFile = mwl + SVMModel.modelFileName;
             NERModel nerModel = SVMModel.loadModel(new File(modelFile));
             //NERModel nerModel = trainArchiveIndependentModel(tparam);
