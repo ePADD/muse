@@ -270,7 +270,7 @@ public class FeatureDictionary implements Serializable {
         }
 
         //features also include the type of the phrase
-        //returns the log of P(type,features/this-mixture)
+        //returns P(features/this-mixture)
         public double getLikelihood(List<String> features, FeatureDictionary dictionary) {
             double p = 1.0;
 
@@ -305,7 +305,6 @@ public class FeatureDictionary implements Serializable {
                 }
                 int v = getNumberOfSymbols(f);
                 double val;
-                //This marks the first iteration of EM and none of the features are seen and to be assigned a uniform prob.
                 Float freq = muVectorPositive.get(f);
                 val = ((freq==null?0:freq) + SMOOTH_PARAM + alpha_k) / (numMixture + v*SMOOTH_PARAM + alpha_k0);
 
@@ -355,15 +354,16 @@ public class FeatureDictionary implements Serializable {
         }
 
         public double difference(MU mu){
-            if(this.muVectorPositive == null || mu.muVectorPositive == null)
+            if(this.muVectorPositive == null)
                 return 0.0;
             double d = 0;
             for(String str: muVectorPositive.keySet()){
-                if(mu.muVectorPositive.get(str)==null){
-                    //that is strange, should not happen through the way this method is being used
-                    continue;
-                }
-                d += Math.pow((muVectorPositive.get(str)/numMixture)-(mu.muVectorPositive.get(str)/mu.numMixture),2);
+                double v1 = 0, v2 = 0;
+                if(numMixture>0)
+                    v1 = muVectorPositive.get(str)/numMixture;
+                if(mu.muVectorPositive.containsKey(str) && mu.numMixture>0)
+                    v2 = mu.muVectorPositive.get(str)/mu.numMixture;
+                d += Math.pow(v1-v2,2);
             }
             double res = Math.sqrt(d);
             if(Double.isNaN(res)) {
@@ -940,6 +940,7 @@ public class FeatureDictionary implements Serializable {
 
     public double getIncompleteDateLogLikelihood(Map<String,String> gazettes){
         double ll = 0;
+        int n = 0;
         for(String phrase: gazettes.keySet()) {
             String type = gazettes.get(phrase);
             phrase = filterTitle(phrase,type);
@@ -950,13 +951,15 @@ public class FeatureDictionary implements Serializable {
             if(et == null)
                 continue;
             double p = this.getConditional(phrase, et, null);
-            if(p!=0)
+            if(p!=0) {
                 ll += Math.log(p);
+                n++;
+            }
             //Since we ignore tokens that are very sparse, it is natural that some of the phrases are assigned a zero score.
 //            else
 //                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
         }
-        return ll;
+        return ll/n;
     }
 
     //just cleans up trailing numbers in the string
@@ -1029,6 +1032,7 @@ public class FeatureDictionary implements Serializable {
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood(gazettes);
         log.info("Start Data Log Likelihood: "+ll);
+        System.out.println("Start Data Log Likelihood: " + ll);
         Map<String, MU> revisedMixtures = new LinkedHashMap<>();
         int MAX_ITER = iter;
         int N = gazettes.size();
@@ -1097,30 +1101,35 @@ public class FeatureDictionary implements Serializable {
                 for (String g : gamma.keySet()) {
                     MU mu = features.get(g);
                     //ignore this mixture if the effective number of times it is seen is less than 1 even with good evidence
-                    if(mu==null || (mu.numSeen>10 && (mu.numMixture+mu.alpha_pi)<1))
+                    if (mu == null || (mu.numSeen > 0 && (mu.numMixture + mu.alpha_pi) < 1))
                         continue;
                     if (!revisedMixtures.containsKey(g))
-                        revisedMixtures.put(g, new MU(g, (mu!=null)?mu.alpha:(new LinkedHashMap<>()), mu.alpha_pi));
+                        revisedMixtures.put(g, new MU(g, (mu != null) ? mu.alpha : (new LinkedHashMap<>()), mu.alpha_pi));
 
                     if (Double.isNaN(gamma.get(g)))
                         log.error("Gamma NaN for MID: " + g);
-                    if(DEBUG)
-                        if(gamma.get(g) == 0)
-                            log.warn("!! Resp: " + 0 + " for "+g+" in "+phrase+", "+type);
-                    revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), this);
+                    if (DEBUG)
+                        if (gamma.get(g) == 0)
+                            log.warn("!! Resp: " + 0 + " for " + g + " in " + phrase + ", " + type);
+                    //don't even update if the value is so low, that just adds meek affiliation with unrelated features
+                    if (gamma.get(g) > 1E-7)
+                        revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), this);
+
                 }
             }
             double change = 0;
             for (String mi : features.keySet())
                 if (revisedMixtures.containsKey(mi))
                     change += revisedMixtures.get(mi).difference(features.get(mi));
+            change /= revisedMixtures.size();
             log.info("Iter: " + i + ", change: " + change);
+            System.out.println("EM Iteration: " + i + ", change: " + change);
             //incomplete data log likehood is better mesure than just the change in parameters
             //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
             features = revisedMixtures;
-//            ll = getIncompleteDateLogLikelihood(gazettes);
-//            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
-
+            ll = getIncompleteDateLogLikelihood(gazettes);
+            log.info("Iter: "+i+", Data Log Likelihood: "+ll);
+            System.out.println("EM Iteration: "+i+", Data Log Likelihood: "+ll);
 
             revisedMixtures = new LinkedHashMap<>();
 
@@ -1180,7 +1189,7 @@ public class FeatureDictionary implements Serializable {
                     SequenceModel nerModel = new SequenceModel();
                     nerModel.dictionary = this;
                     String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"experiment"+File.separator;
-                    String modelFile = mwl + "ALPHA_"+alphaFraction+"-Iter:"+i+"-"+SequenceModel.modelFileName;
+                    String modelFile = mwl + "ALPHA_"+alphaFraction+"-Iter_"+i+"-"+SequenceModel.modelFileName;
                     nerModel.writeModel(new File(modelFile));
                 }
             } catch (IOException e) {

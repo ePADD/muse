@@ -19,7 +19,7 @@ public class EnglishDictionary {
     static String pronounFile = "dictionaries/en-pronouns.txt";
     static String abbFile = "dictionaries/en-abbreviations.txt";
     static String tagDictFile = "dictionaries/ANC-written-count.txt";
-    static String fullDictFile = "dict.words.full.safe";
+    static String fullDictFile = "dict.words.full";
     static String dictStatsFile = "stats.txt";
     static String commonNamesFile = "firstNames.txt";
 
