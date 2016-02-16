@@ -1022,7 +1022,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     static void testParams(){
-        float alphas[] = new float[]{1.0f/50, 1.0f/5, 1.0f/2, 1.0f, 5f};
+        float alphas[] = new float[]{0, 1.0f/50, 1.0f/5, 1.0f/2, 1.0f, 5f};
         int emIters[] = new int[]{0,2,5,7,9};
         int numIter = 10;
         String expFolder = "experiment";

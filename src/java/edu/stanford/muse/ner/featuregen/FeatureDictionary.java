@@ -342,10 +342,16 @@ public class FeatureDictionary implements Serializable {
                 log.warn("Responsibility is NaN for: " + features);
             numMixture += resp;
             numSeen += 1;
+
+            String type="NULL";
+            for (String f: features)
+                if(f.startsWith("T:")) {
+                    type = f.substring(f.indexOf(":") + 1);
+                    break;
+                }
             for (String f : features) {
-                if(f.equals("L:"+FeatureDictionary.OTHER) || f.equals("R:"+FeatureDictionary.OTHER)
-                        || f.equals("L:"+FeatureDictionary.UNKNOWN_TYPE) || f.equals("R:"+FeatureDictionary.UNKNOWN_TYPE))
-                    continue;
+                if(f.equals("L:"+FeatureDictionary.UNKNOWN_TYPE)) f = "L:"+type;
+                if(f.equals("R:"+FeatureDictionary.UNKNOWN_TYPE)) f = "R:"+type;
                 if (!muVectorPositive.containsKey(f)) {
                     muVectorPositive.put(f, 0.0f);
                 }
@@ -825,6 +831,11 @@ public class FeatureDictionary implements Serializable {
         return new Pair<>(bl, 1.0);
     }
 
+    static Random rand = new Random();
+    static{
+        rand.setSeed(5);
+    }
+
     //Input is a token and returns the bet type assignment for token
     Short getType(String token){
         MU mu = features.get(token);
@@ -832,7 +843,7 @@ public class FeatureDictionary implements Serializable {
             //log.warn("Token: "+token+" not initialised!!");
             return UNKNOWN_TYPE;
         }
-        Short bestType = UNKNOWN_TYPE;double bv = -1;
+        Short bestType = allTypes[rand.nextInt(allTypes.length)];double bv = 0;
 
         //We don't consider OTHER as even a type
         for(Short type: FeatureDictionary.allTypes) {
@@ -940,26 +951,57 @@ public class FeatureDictionary implements Serializable {
 
     public double getIncompleteDateLogLikelihood(Map<String,String> gazettes){
         double ll = 0;
-        int n = 0;
-        for(String phrase: gazettes.keySet()) {
-            String type = gazettes.get(phrase);
-            phrase = filterTitle(phrase,type);
-            if(phrase == null)
-                continue;
+        //iterating through all the entries and finding conditional likelihood will work but is a costly operation
+//        for(String phrase: gazettes.keySet()) {
+//            String type = gazettes.get(phrase);
+//            phrase = filterTitle(phrase,type);
+//            if(phrase == null)
+//                continue;
+//
+//            Short et = codeType(type);
 
-            Short et = codeType(type);
-            if(et == null)
-                continue;
-            double p = this.getConditional(phrase, et, null);
-            if(p!=0) {
-                ll += Math.log(p);
-                n++;
+//            if(et == null)
+//                continue;
+//            double p = this.getConditional(phrase, et, null);
+//            if(p!=0) {
+//                ll += Math.log(p);
+//                n++;
+//            }
+//            //Since we ignore tokens that are very sparse, it is natural that some of the phrases are assigned a zero score.
+////            else
+////                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
+//        }
+//        return ll/n;
+        List<String> nsws = new ArrayList<>();
+        nsws.addAll(sws);nsws.add("NULL");
+        String p[] = new String[]{"L:","R:","T:","SW:","DICT:"};
+        String[][] labels = new String[][]{MU.WORD_LABELS,MU.WORD_LABELS,MU.TYPE_LABELS,nsws.toArray(new String[nsws.size()]),MU.DICT_LABELS};
+        for(String mid: features.keySet()){
+            MU mu = features.get(mid);
+            for(int pi=0;pi<p.length;pi++) {
+                for (String l : labels[pi]) {
+                    String f = p[pi]+l;
+                    String dim = f.substring(0, f.indexOf(':'));
+                    float alpha_k = 0, alpha_k0 = 0;
+                    if (mu.alpha.containsKey(f))
+                        alpha_k = mu.alpha.get(f);
+                    if (mu.alpha_0.containsKey(dim))
+                        alpha_k0 = mu.alpha_0.get(dim);
+
+                    int v = mu.getNumberOfSymbols(f);
+                    double val;
+                    Float freq = mu.muVectorPositive.get(f);
+                    val = ((freq == null ? 0 : freq) + MU.SMOOTH_PARAM + alpha_k) / (mu.numMixture + v*MU.SMOOTH_PARAM + alpha_k0);
+                    ll += Math.log(val) * ((freq == null ? 0 : freq) + alpha_k);
+//                    else
+//                        System.err.println("SERIOUS!! NUM mixture 0 for "+mu.id+" - "+mu.numMixture+" - "+mu.muVectorPositive+" - "+alpha_k0);
+                }
             }
-            //Since we ignore tokens that are very sparse, it is natural that some of the phrases are assigned a zero score.
-//            else
-//                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
+            ll += (mu.numMixture+mu.alpha_pi)*Math.log(mu.getPrior());
         }
-        return ll/n;
+        ll /= features.size();
+        System.out.println("ll: "+ll+" -- "+features.size());
+        return ll;
     }
 
     //just cleans up trailing numbers in the string
@@ -1101,7 +1143,7 @@ public class FeatureDictionary implements Serializable {
                 for (String g : gamma.keySet()) {
                     MU mu = features.get(g);
                     //ignore this mixture if the effective number of times it is seen is less than 1 even with good evidence
-                    if (mu == null || (mu.numSeen > 0 && (mu.numMixture + mu.alpha_pi) < 1))
+                    if (mu == null)//|| (mu.numSeen > 0 && (mu.numMixture + mu.alpha_pi) < 1))
                         continue;
                     if (!revisedMixtures.containsKey(g))
                         revisedMixtures.put(g, new MU(g, (mu != null) ? mu.alpha : (new LinkedHashMap<>()), mu.alpha_pi));
