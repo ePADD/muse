@@ -349,13 +349,27 @@ public class FeatureDictionary implements Serializable {
                     type = f.substring(f.indexOf(":") + 1);
                     break;
                 }
+            int numLeft = 0, numRight = 0;
+            for (String f: features) {
+                if(f.startsWith("L:")) {
+                    numLeft++;
+                    continue;
+                }
+                if(f.startsWith("R:")) {
+                    numRight++;
+                    continue;
+                }
+            }
             for (String f : features) {
                 if(f.equals("L:"+FeatureDictionary.UNKNOWN_TYPE)) f = "L:"+type;
                 if(f.equals("R:"+FeatureDictionary.UNKNOWN_TYPE)) f = "R:"+type;
+                float fraction = 1;
+                if(f.startsWith("L:")) fraction = 1.0f/numLeft;
+                if(f.startsWith("R:")) fraction = 1.0f/numRight;
                 if (!muVectorPositive.containsKey(f)) {
                     muVectorPositive.put(f, 0.0f);
                 }
-                muVectorPositive.put(f, muVectorPositive.get(f) + resp);
+                muVectorPositive.put(f, muVectorPositive.get(f) + fraction*resp);
             }
         }
 
@@ -1299,16 +1313,15 @@ public class FeatureDictionary implements Serializable {
     }
 
     public static void main(String[] args) {
-        String modelFile = SequenceModel.modelFileName;
+        String modelFile = "experiment/ALPHA_5.0-Iter_9-SeqModel.ser";
         System.err.println("Loading model...");
         SequenceModel nerModel = null;
         try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
-        FeatureDictionary dict = new FeatureDictionary();
-        System.err.println(dict.generateFeatures2("Bank of Spain", FeatureDictionary.COMPANY));
-        System.err.println(nerModel.seqLabel("Felicia Ballanger of France"));
-        System.err.println(nerModel.seqLabel("Syria in March"));
-        System.err.println(nerModel.seqLabel("General Joseph Tanny"));
+        MU mu = nerModel.dictionary.features.get("deficiency");
+        System.err.println(mu.muVectorPositive);
+        System.err.println(mu.numMixture+" --- "+mu.numSeen);
+        System.err.println(mu.alpha + " -- " + mu.alpha_0+" -- "+mu.alpha_pi+"\n\n");
 //        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
 //        System.err.println(priors.get("volkswagen"));
         //get it right for these phrases

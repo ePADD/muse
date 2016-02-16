@@ -689,7 +689,7 @@ public class SequenceModel implements NERModel, Serializable {
     //alpha for initializing Dir.priors and iter is number of EM iterations
     public static SequenceModel train(float alpha, int iter){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> train = EmailUtils.readDBpedia(1.0);
+        Map<String,String> train = EmailUtils.readDBpedia(1.0/50);
         //This split is essential to isolate some entries that trained model has not seen
         //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
 
@@ -1022,7 +1022,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     static void testParams(){
-        float alphas[] = new float[]{0, 1.0f/50, 1.0f/5, 1.0f/2, 1.0f, 5f};
+        float alphas[] = new float[]{0, 1.0f/50};//, 1.0f/5, 1.0f/2, 1.0f, 5f};
         int emIters[] = new int[]{0,2,5,7,9};
         int numIter = 10;
         String expFolder = "experiment";
