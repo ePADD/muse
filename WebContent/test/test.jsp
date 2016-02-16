@@ -15,7 +15,7 @@
     String contents = archive.getContents(doc , true);
     POSTokenizer tokenizer = new POSTokenizer();
     //some random type for getting tokens
-    List<Triple<String,Integer,Integer>> tokens = tokenizer.tokenize(contents, FeatureDictionary.PLACE);
+    List<Triple<String,Integer,Integer>> tokens = tokenizer.tokenize(contents);
     Span[] sents = NLPUtils.sentenceDetector.sentPosDetect(contents);
     for(Span sent: sents) {
         out.println(sent+"<br>"+contents.substring(sent.getStart(),sent.getEnd())+"<br>---------<br>");
