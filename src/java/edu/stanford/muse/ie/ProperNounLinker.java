@@ -652,7 +652,6 @@ public class ProperNounLinker {
         tps.put(new Pair<>("Washington", "Washington State"), true);
         tps.put(new Pair<>("Dharwad University","Dharwad"), false);
         tps.put(new Pair<>("Dumontier Lab", "Lab"), false);
-        tps.put(new Pair<>("Sudheendra Hangal", "Jaya Hangal"), false);
         tps.put(new Pair<>("DJBDX Thank", "Thank"), false);
         tps.put(new Pair<>("Non-ProfitOrganisation", "Non-profit"), false);
         tps.put(new Pair<>("Non-ProfitOrganisation", "Non-consecutive"), true);
