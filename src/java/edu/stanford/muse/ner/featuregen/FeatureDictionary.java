@@ -106,6 +106,12 @@ public class FeatureDictionary implements Serializable {
                 "RecordLabel|Company|Organisation",
                 "Band|Organisation",
                 "Band|Group|Organisation",
+                //Tokyo appears in 94 Album|MusicalWork|Work, 58 Film|Work, 57 City|Settlement|PopulatedPlace|Place
+                //London appears in 192 Album|MusicalWork|Work, 123 Settlement|PopulatedPlace|Place
+                //Pair in 130 Film|Work, 109 Album|MusicalWork|Work
+                //Can you believe this?!
+                "Album|MusicalWork|Work",
+                "Film|Work",
                 //This type is too noisy and contain titles like
                 //Cincinatti Kids, FA_Youth_Cup_Finals, The Stongest (and other such team names)
                 "OrganisationMember|Person",
@@ -1313,23 +1319,28 @@ public class FeatureDictionary implements Serializable {
     }
 
     public static void main(String[] args) {
-        String modelFile = "experiment/ALPHA_5.0-Iter_9-SeqModel.ser";
-        System.err.println("Loading model...");
-        SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(modelFile);}
-        catch(IOException e){e.printStackTrace();}
-        MU mu = nerModel.dictionary.features.get("deficiency");
-        System.err.println(mu.muVectorPositive);
-        System.err.println(mu.numMixture+" --- "+mu.numSeen);
-        System.err.println(mu.alpha + " -- " + mu.alpha_0+" -- "+mu.alpha_pi+"\n\n");
-//        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
-//        System.err.println(priors.get("volkswagen"));
-        //get it right for these phrases
-        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information","Statistics Canada", "First Alliance Corporation and Subsidiaries", "North Atlantic Treaty Organisation",
-            "CROFT RESTRICTS PAKISTAN TO","Turkish Foreign Minister Tansu Ciller","When Arafat","Labour Prime Minister Shimon Peres","Robert Creeley in University of Buffalo"};
-        phrases = new String[]{"lias Moosa of Roberston Stephens & Co"};
-        for(String phrase: phrases)
-            System.err.println("Phrase: "+phrase+" --- "+nerModel.seqLabel(phrase));
+//        String modelFile = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
+//        System.err.println("Loading model...");
+//        SequenceModel nerModel = null;
+//        try{nerModel = SequenceModel.loadModel(modelFile);}
+//        catch(IOException e){e.printStackTrace();}
+//        MU mu = nerModel.dictionary.features.get("tokyo");
+//        System.err.println("Liklihood: " + mu.getLikelihood(nerModel.dictionary.generateFeatures2("Tokyo", FeatureDictionary.PLACE).get("tokyo"),nerModel.dictionary));
+//        System.err.println(mu.muVectorPositive);
+//        System.err.println(mu.numMixture+" --- "+mu.numSeen);
+//        System.err.println(mu.alpha + " -- " + mu.alpha_0+" -- "+mu.alpha_pi+"\n\n");
+////        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
+////        System.err.println(priors.get("volkswagen"));
+//        //get it right for these phrases
+//        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information","Statistics Canada", "First Alliance Corporation and Subsidiaries", "North Atlantic Treaty Organisation",
+//            "CROFT RESTRICTS PAKISTAN TO","Turkish Foreign Minister Tansu Ciller","When Arafat","Labour Prime Minister Shimon Peres","Robert Creeley in University of Buffalo"};
+//        phrases = new String[]{"Tokyo"};
+//        for(String phrase: phrases)
+//            System.err.println("Phrase: "+phrase+" --- "+nerModel.seqLabel(phrase));
+        String[] test = new String[]{"Settlement|PopulatedPlace|Place","Town|Settlement|PopulatedPlace|Place","Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
+        "Village|Settlement|PopulatedPlace|Place","Building|ArchitecturalStructure|Place"};
+        for(String t: test)
+            System.out.println(t + " - " + codeType(t));
 //        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
        //System.err.println(MU.getMaxEntProb());
 //        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
@@ -1349,63 +1360,3 @@ public class FeatureDictionary implements Serializable {
 //        dictionary.addGazz();
     }
 }
-/**
- * 1/50th alpha
- 13 Feb 08:44:20 SequenceModel INFO  - -------------
- 13 Feb 08:44:20 SequenceModel INFO  - Found: 5396 -- Total: 7219 -- Correct: 4008 -- Missed due to wrong type: 911
- 13 Feb 08:44:20 SequenceModel INFO  - Precision: 0.7427724
- 13 Feb 08:44:20 SequenceModel INFO  - Recall: 0.55520153
- 13 Feb 08:44:20 SequenceModel INFO  - F1: 0.63543403
- 13 Feb 08:44:20 SequenceModel INFO  - ------------
- ------------
- 1/50th alpha and sequence labelling with normalization
- 13 Feb 09:04:49 SequenceModel INFO  - -------------
- 13 Feb 09:04:49 SequenceModel INFO  - Found: 5359 -- Total: 7219 -- Correct: 4040 -- Missed due to wrong type: 842
- 13 Feb 09:04:49 SequenceModel INFO  - Precision: 0.753872
- 13 Feb 09:04:49 SequenceModel INFO  - Recall: 0.5596343
- 13 Feb 09:04:49 SequenceModel INFO  - F1: 0.64239144
- 13 Feb 09:04:49 SequenceModel INFO  - ------------
- ------------
- When trained on 1/5th of DBpedia
- 13 Feb 10:06:12 SequenceModel INFO  - -------------
- 13 Feb 10:06:12 SequenceModel INFO  - Found: 6448 -- Total: 7219 -- Correct: 4752 -- Missed due to wrong type: 1133
- 13 Feb 10:06:12 SequenceModel INFO  - Precision: 0.7369727
- 13 Feb 10:06:12 SequenceModel INFO  - Recall: 0.6582629
- 13 Feb 10:06:12 SequenceModel INFO  - F1: 0.6953977
- 13 Feb 10:06:12 SequenceModel INFO  - ------------
- -----------
- With a cutoff of E-7
- 13 Feb 10:19:50 SequenceModel INFO  - -------------
- 13 Feb 10:19:50 SequenceModel INFO  - Found: 6418 -- Total: 7219 -- Correct: 4744 -- Missed due to wrong type: 1126
- 13 Feb 10:19:50 SequenceModel INFO  - Precision: 0.7391711
- 13 Feb 10:19:50 SequenceModel INFO  - Recall: 0.65715474
- 13 Feb 10:19:50 SequenceModel INFO  - F1: 0.69575423
- 13 Feb 10:19:50 SequenceModel INFO  - ------------
- ----------
- With a cutoff of E-4
- 13 Feb 10:26:06 SequenceModel INFO  - -------------
- 13 Feb 10:26:06 SequenceModel INFO  - Found: 5790 -- Total: 7219 -- Correct: 4441 -- Missed due to wrong type: 971
- 13 Feb 10:26:06 SequenceModel INFO  - Precision: 0.7670121
- 13 Feb 10:26:06 SequenceModel INFO  - Recall: 0.61518216
- 13 Feb 10:26:06 SequenceModel INFO  - F1: 0.6827581
- 13 Feb 10:26:06 SequenceModel INFO  - ------------
- -------
- * 12 Feb 22:10:08 SequenceModel INFO  - -------------
- 12 Feb 22:10:08 SequenceModel INFO  - Found: 5549 -- Total: 7219 -- Correct: 3867 -- Missed due to wrong type: 1126
- 12 Feb 22:10:08 SequenceModel INFO  - Precision: 0.6968823
- 12 Feb 22:10:08 SequenceModel INFO  - Recall: 0.53566974
- 12 Feb 22:10:08 SequenceModel INFO  - F1: 0.60573304
- 12 Feb 22:10:08 SequenceModel INFO  - ------------
- ----------
- 12 Feb 22:45:02 SequenceModel INFO  - Found: 4625 -- Total: 7219 -- Correct: 3368 -- Missed due to wrong type: 875
- 12 Feb 22:45:02 SequenceModel INFO  - Precision: 0.72821623
- 12 Feb 22:45:02 SequenceModel INFO  - Recall: 0.46654662
- 12 Feb 22:45:02 SequenceModel INFO  - F1: 0.56872684
- 12 Feb 22:45:02 SequenceModel INFO  - ------------
- ----------
- 12 Feb 22:59:17 SequenceModel INFO  - Found: 5593 -- Total: 7219 -- Correct: 3872 -- Missed due to wrong type: 1137
- 12 Feb 22:59:17 SequenceModel INFO  - Precision: 0.69229394
- 12 Feb 22:59:17 SequenceModel INFO  - Recall: 0.53636235
- 12 Feb 22:59:17 SequenceModel INFO  - F1: 0.6044333
- 12 Feb 22:59:17 SequenceModel INFO  - ------------
- */
