@@ -390,7 +390,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "P.V. Krishnamoorthi",
                 "Should Rubin be told about this?",
                 "You are talking to Robert Who?",
-                "I will never say a thing SAID REBECCA HALL"
+                "I will never say a thing SAID REBECCA HALL",
+                "\" Airport officials declared an emergency situation at the highest level and the fire brigade put out the flames while the plane was landing , he said .",
+                "Brussels received 5.6 cm ( 2.24 inches ) of water in the past 24 hours -- compared to an average 7.4 cm ( 2.96 inches ) per month -- but in several communes in the south of the country up to 8 cm ( 3.2 inches ) fell , the Royal Meteorological Institute ( RMT ) said",
+                "Danish cleaning group ISS on Wednesday said it had signed a letter of intent to sell its troubled U.S unit ISS Inc to Canadian firm Aaxis Limited"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -449,7 +452,10 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"P. V. Krishnamoorthi"},
                 new String[]{"Rubin"},
                 new String[]{"Robert"},
-                new String[]{"REBECCA HALL"}
+                new String[]{"REBECCA HALL"},
+                new String[]{},
+                new String[]{"Royal Meteorological Institute","RMT","Brussels"},
+                new String[]{"Danish","ISS","ISS Inc","Canadian","Aaxis Limited"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];

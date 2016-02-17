@@ -27,10 +27,10 @@ import java.util.*;
 
 /**
  * Created by vihari on 07/09/15.
- * This is a Bernoulli Mixture model, every word or pattern is considered a mixture. Does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
+ * This class implements NER task with a Bernoulli Mixture model, every word or pattern is considered a mixture. It does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
  * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K. It is sometimes desired to train over a larger training files.
  * Consider implementing online EM based param estimation -- see http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf
- * It is beneficial to include Address-book in training. Names can have an uncommon first or last name --
+ * It is beneficial to include Address-book in training. Names can have an uncommon first and last name --
  * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
  */
 public class SequenceModel implements NERModel, Serializable {
@@ -642,7 +642,6 @@ public class SequenceModel implements NERModel, Serializable {
             if(type!=FeatureDictionary.OTHER)
                 neShouldShown++;
 
-
             if(ne++%100 == 0)
                 System.err.println("Done testing on "+ne+" of "+dbpedia.size());
             if(!confMat.containsKey(type))
@@ -911,17 +910,19 @@ public class SequenceModel implements NERModel, Serializable {
                     }
 
                 Set<String> foundNames = new LinkedHashSet<>();
+                Map<String,String> localMatchMap = new LinkedHashMap<>();
                 for (Map.Entry<String,String> entry : foundSample.entrySet()) {
                     foundTypes.put(entry.getKey(), entry.getValue());
                     boolean foundEntry = false;
                     String foundType = null;
                     for (String name : names.keySet()) {
                         String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
-                        String ek = entry.getKey().toLowerCase();
+                        String ek = EmailUtils.uncanonicaliseName(entry.getKey()).toLowerCase();
                         if (cname.equals(ek) || (ignoreSegmentation && (cname.startsWith(ek + " ") || cname.endsWith(" " + ek) || ek.startsWith(cname + " ") || ek.endsWith(" " + cname)))) {
                             foundEntry = true;
                             foundType = names.get(name);
                             matchMap.put(entry.getKey(), name);
+                            localMatchMap.put(entry.getKey(), name);
                             break;
                         }
                     }
@@ -943,7 +944,7 @@ public class SequenceModel implements NERModel, Serializable {
                     log.info(temp);
                     String fn = "Found names:";
                     for (String f : foundNames)
-                        fn += f + "[" + foundSample.get(f) + "]" + "--";
+                        fn += f + "[" + foundSample.get(f) + "] with " + localMatchMap.get(f) + "--";
                     if (fn.endsWith("--"))
                         log.info(fn);
 
@@ -1005,7 +1006,7 @@ public class SequenceModel implements NERModel, Serializable {
                         String ft = foundTypes.get(str);
                         String bt = benchmarkTypes.get(bMatch);
                         if (!ft.equals(bt))
-                            log.info(str + "[" + ft + "] expected [" + bt + "]");
+                            log.info(str + "[" + ft + "] expected " + bMatch + "[" + bt + "]");
                     }
                 }
             }
@@ -1058,6 +1059,13 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     public static void main(String[] args) {
-       testParams();
+//        testParams();
+        String modelFilePath = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
+        try {
+            SequenceModel model = SequenceModel.loadModel(modelFilePath);
+            test(model,true);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
     }
 }
