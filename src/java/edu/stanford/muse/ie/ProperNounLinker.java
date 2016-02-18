@@ -87,7 +87,7 @@ public class ProperNounLinker {
         String[] tokens = phrase.split("\\s+");
         Set<String> naw = new LinkedHashSet<>();
         //the pattern below should pick up all the extra chars that CIC tokenizer allows in the name, else may end up classifying Non-consecutive and Non-profit as a valid merge
-        Pattern p = Pattern.compile("[A-Z][a-z'\\-\\.]+");
+        Pattern p = Pattern.compile("[A-Z][a-z'\\-]+");
         for(String tok: tokens) {
             Matcher m = p.matcher(tok);
             while(m.find()) {
@@ -247,9 +247,31 @@ public class ProperNounLinker {
                 return true;
             //make sure the deciding term is not a dictionary word
             else {
-                String str = sbow.iterator().next().toLowerCase();
+                String word = sbow.iterator().next();
+                int idx;
+                String[] cands = new String[]{c1.toLowerCase(), c2.toLowerCase()};
+                boolean dirty = false;
+                for(String cand: cands) {
+                    String prevWord = null;
+                    if ((idx = cand.indexOf(" " + word)) > 0) {
+                        int prevSpace = cand.substring(0, idx).lastIndexOf(" ");
+                        if (prevSpace < 0)
+                            prevSpace = 0;
+                        prevWord = cand.substring(prevSpace+1, idx);
+                    }
+                    if (prevWord!=null && EnglishDictionary.stopWords.contains(prevWord.toLowerCase())) {
+                        dirty = true;
+                        log.info("Considering cands "+c1+" and "+c2+" matching on "+prevWord+" as dirty.");
+                        break;
+                    }
+                }
+                if(dirty)
+                    return false;
+
+                String str = word.toLowerCase();
                 str = str.replaceAll("^\\W+|\\W+$","");
                 Pair<Integer,Integer> p = EnglishDictionary.getDictStats().get(str);
+
                 if(p==null || (((double)p.getFirst()/p.getSecond()>0.3) && (EnglishDictionary.getCommonNames().contains(str) || p.getSecond()<500))) {
                     return true;
                 }
@@ -598,6 +620,7 @@ public class ProperNounLinker {
         tps.put(new Pair<>("University of Chicago", "UC"), true);
         tps.put(new Pair<>("University of Chicago", "Chicago Univ"), true);
         tps.put(new Pair<>("University of Chicago", "U. Chicago"), true);
+        tps.put(new Pair<>("University of Chicago", "Chicago Univ."), true);
         tps.put(new Pair<>("Pt. Hariprasad", "Hariprasad"), true);
         tps.put(new Pair<>("Mt. Everest", "Everest"), true);
         //because such acronyms are unlikely
