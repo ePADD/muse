@@ -168,9 +168,8 @@ public class EmailRenderer {
 				String url = p.getSecond();
 				String str = ia.toString();
                 String addr = ia.getAddress();
-                String name = ia.getPersonal();
                 boolean match = false;
-                if(name!=null) {
+                if(str!=null) {
                     //The goal here is to explain why a doc is selected and hence we should replicate Lucene doc selection and Lucene is case insensitive most of the times
                     String lc = str.toLowerCase();
                     if (highlightUnstemmed != null)
