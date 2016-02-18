@@ -172,16 +172,16 @@ public class EmailRenderer {
                 boolean match = false;
                 if(name!=null) {
                     //The goal here is to explain why a doc is selected and hence we should replicate Lucene doc selection and Lucene is case insensitive most of the times
-                    String lc = name.toLowerCase();
+                    String lc = str.toLowerCase();
                     if (highlightUnstemmed != null)
                         for (String hs : highlightUnstemmed)
-                            if (lc.contains(hs)) {
+                            if (lc.contains(hs.toLowerCase())) {
                                 match = true;
                                 break;
                             }
                     if (!match && highlightNames != null)
                         for (String hn : highlightNames)
-                            if (lc.contains(hn)) {
+                            if (lc.contains(hn.toLowerCase())) {
                                 match = true;
                                 break;
                             }
@@ -405,6 +405,7 @@ public class EmailRenderer {
                 contactNames.addAll(c.names);
                 contactAddresses.addAll(c.emails);
             }
+        contactNames.addAll(highlightTermsStemmed);
 
 		StringBuilder result = new StringBuilder();
 		// header table

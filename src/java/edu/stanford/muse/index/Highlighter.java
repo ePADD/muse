@@ -541,16 +541,18 @@ public class Highlighter {
 				if (entity != null) {
 					//enable for only few types
 					if (cssclass.contains("custom-people") || cssclass.contains("acronym") || cssclass.contains("custom-org") || cssclass.contains("custom-loc")) {
-						//TODO: remove regexs
-						entity = entity.replaceAll("(^\\s+|\\s+$)", "");
-						String rnd =  rand.nextInt()+"";
-						title += "<div class=\"resolutions\" id=\"expand_" + rnd + "\"><img src=\"images/spinner.gif\" style=\"height:15px\"/></div><script>expand(\"" + entity + "\",\"" + StringEscapeUtils.escapeJava(docId) + "\",\"" + rnd + "\");</script>";
-					}
+                        //TODO: remove regexs
+                        entity = entity.replaceAll("(^\\s+|\\s+$)", "");
+                        if (!entity.contains(" ")) {
+                            String rnd = rand.nextInt() + "";
+                            title += "<div class=\"resolutions\" id=\"expand_" + rnd + "\"><img src=\"images/spinner.gif\" style=\"height:15px\"/></div><script>expand(\"" + entity + "\",\"" + StringEscapeUtils.escapeJava(docId) + "\",\"" + rnd + "\");</script>";
+                        }
+                    }
 				}
 
 				for (int k = prev_j; k <= span_j; k++) {
 					elt = elts.get(k);
-                    //dont annotate nested tags
+                    //don't annotate nested tags
                     if(elt.parent().tag().getName().toLowerCase().equals("span")) {
                         continue;
                     }
