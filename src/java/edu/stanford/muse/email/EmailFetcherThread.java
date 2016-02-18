@@ -289,7 +289,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 			Calendar c = new GregorianCalendar();
 			c.setTime(d);
 			int yy = c.get(Calendar.YEAR);
-			if (yy <= 1970 || yy > 2020)
+			if (yy < 1960 || yy > 2020)
 			{
 				dataErrors.add("Probably bad date: " + Util.formatDate(c) + " message: " + EmailUtils.formatMessageHeader(m));
 				hackyDate = true;
@@ -304,7 +304,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 		}
 
 		Calendar c = new GregorianCalendar();
-		c.setTime(d != null ? d : new Date());
+        c.setTime(d != null ? d : new Date());
 
 		prevDate = d;
 

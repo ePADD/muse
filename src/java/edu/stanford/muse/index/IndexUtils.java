@@ -29,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -1057,10 +1058,10 @@ public class IndexUtils {
 	// if month is < 0, it is ignored
 	public static <D extends DatedDocument> List<D> selectDocsByDateRange(Collection<D> c, int year, int month, int date)
 	{
-        --date;
+        //Calendar date is not 0 indexed: https://docs.oracle.com/javase/7/docs/api/java/util/Calendar.html#DATE
 		--month; // adjust month to be 0 based because that's what calendar gives us
 		boolean invalid_month = month < 0 || month > 11;
-        boolean invalid_date = date<0 || date>30;
+        boolean invalid_date = date<1 || date>31;
 		List<D> result = new ArrayList<D>();
 		for (D d : c)
 		{
@@ -1081,15 +1082,18 @@ public class IndexUtils {
 	 * see calendarUtil.getDateRange specs for handling of the y/m/d fields.
 	 * if month is < 0, it is ignored, i.e. effectively 1 for the start year and
 	 * 12 for the end year
+	 * returns docs with [startDate, endDate] both inclusive
 	 */
 	public static List<Document> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
 	{
 		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, startD, endY, endM - 1, endD);
 		Date startDate = p.getFirst(), endDate = p.getSecond();
 
-		List<Document> result = new ArrayList<Document>();
+		List<Document> result = new ArrayList<>();
 		for (DatedDocument d : c)
 		{
+            //we want docs with the same date (year, month, date) or after start date
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 			if (!startDate.after(d.date) && !endDate.before(d.date))
 				result.add(d);
 		}

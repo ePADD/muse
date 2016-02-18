@@ -1140,13 +1140,15 @@ public class JSPHelper {
 		}
 
         //Some docs with faulty date are assigned 1960/01/01
-		if (end_yy >= 1960 && yy >= 1960) // date range
+		if (end_yy >= 0 && yy >= 0) // date range
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
-		}
-		else if (yy >= 1960) // single month or year
+            log.info("Found " + docsForDateRange.size() + " docs in range: [" + yy+"/"+mm+"/"+dd+" - [" + end_yy + "/" + end_mm + "/" + end_dd + "]");
+        }
+		else if (yy >= 0) // single month or year
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd);
+            log.info("Found " + docsForDateRange.size() + " docs beyond " + yy+"/"+mm+"/"+dd);
 		}
 
 		if (groupIdx != Integer.MAX_VALUE)
@@ -1172,7 +1174,7 @@ public class JSPHelper {
 
 		if (!Util.nullOrEmpty(docIds))
 		{
-			docsForDocIds = new ArrayList<Document>();
+			docsForDocIds = new ArrayList<>();
 			for (String id : docIds)
 			{
 				Document d = archive.docForId(id);
