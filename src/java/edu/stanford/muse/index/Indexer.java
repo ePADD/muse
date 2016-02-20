@@ -93,9 +93,6 @@ public class Indexer implements StatusProvider, java.io.Serializable {
     //I dont see why the presetQueries cannot be static. As we read these from a file, there cannot be two set of preset queries for two (or more) archives in session
 	protected static String[]		presetQueries				= null;
 
-	//Write feature related debug info to cache dir in user dir
-	static FileWriter fw							= null;
-
 	private Map<String, EmailDocument>				docIdToEmailDoc			= new LinkedHashMap<String, EmailDocument>();			// docId -> EmailDoc
 	private Map<String, Blob>						attachmentDocIdToBlob	= new LinkedHashMap<String, Blob>();					// attachment's docid -> Blob
     private HashMap<String, Map<Integer, String>>	dirNameToDocIdMap		= new LinkedHashMap<String, Map<Integer, String>>();	// just stores 2 maps, one for content and one for attachment Lucene doc ID -> docId
