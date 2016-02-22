@@ -9,6 +9,7 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -36,6 +37,7 @@ public class ProperNounLinker {
     static Set<String> bow(String phrase) {
         if(phrase == null)
             return new LinkedHashSet<>();
+        phrase = stripTitles(phrase);
         String[] tokens = phrase.split("\\s+");
         Set<String> bows = new LinkedHashSet<>();
         for (String tok : tokens) {
@@ -54,8 +56,8 @@ public class ProperNounLinker {
                 if (ti-1 >= 0)
                     pUc = Character.isUpperCase(tok.charAt(ti - 1));
                 //three cases for breaking a word further
-                //1. an upper case surrounded by lower cases, VanGogh
-                //2. an upper case character with lower case stuff to the right, like 'T' in NYTimes
+                //1. an upper case surrounded by lower cases, VanGogh = Van Gogh
+                //2. an upper case character with lower case stuff to the right, like 'T' in NYTimes = NY Times
                 //3. an upper case char preceded by '.' H.W.=>H. W.
                 //4. Also split on hyphens
                 if ((cUc && ti > 0 && ti < tok.length()-1 && ((!pUc && !nUc) || (pUc && !nUc) || tok.charAt(ti-1)=='.')) || tok.charAt(ti)=='-') {
@@ -73,7 +75,7 @@ public class ProperNounLinker {
             if(buff.length()>2 || (buff.length()==2 && buff.charAt(buff.length()-1)!='.'))
                 subToks.add(buff);
             for (String st : subToks) {
-                String ct = EnglishDictionary.getSingular(st.toLowerCase());
+                String ct = EnglishDictionary.getSingular(st);
                 bows.add(ct);
             }
         }
@@ -87,7 +89,7 @@ public class ProperNounLinker {
         String[] tokens = phrase.split("\\s+");
         Set<String> naw = new LinkedHashSet<>();
         //the pattern below should pick up all the extra chars that CIC tokenizer allows in the name, else may end up classifying Non-consecutive and Non-profit as a valid merge
-        Pattern p = Pattern.compile("[A-Z][a-z'\\-]+");
+        Pattern p = Pattern.compile("[A-Z][a-z']+");
         for(String tok: tokens) {
             Matcher m = p.matcher(tok);
             while(m.find()) {
@@ -235,7 +237,7 @@ public class ProperNounLinker {
                     lbw2 = bw1.toLowerCase();
                 }
                 if (bw1.equals(bw2)
-                        || (lbw1.length()>1 && lbw1.charAt(lbw1.length()-1)=='.' && lbw2.startsWith(lbw1.substring(0,lbw1.length()-1)))
+                        || (bw1.length()>1 && bw1.charAt(bw1.length()-1)=='.' && bw2.startsWith(bw1.substring(0,bw1.length()-1)))
                         || abb.containsEntry(lbw1, lbw2) || abb.containsEntry(lbw1+".", lbw2)) {
                     numMatches++;
                     break;
@@ -248,6 +250,9 @@ public class ProperNounLinker {
             //make sure the deciding term is not a dictionary word
             else {
                 String word = sbow.iterator().next();
+                if (word.length()<3)
+                    return false;
+
                 int idx;
                 String[] cands = new String[]{c1.toLowerCase(), c2.toLowerCase()};
                 boolean dirty = false;
@@ -261,7 +266,7 @@ public class ProperNounLinker {
                     }
                     if (prevWord!=null && EnglishDictionary.stopWords.contains(prevWord.toLowerCase())) {
                         dirty = true;
-                        log.info("Considering cands "+c1+" and "+c2+" matching on "+prevWord+" as dirty.");
+                        //log.info("Considering cands "+c1+" and "+c2+" matching on "+prevWord+" as dirty.");
                         break;
                     }
                 }
@@ -281,6 +286,87 @@ public class ProperNounLinker {
         return false;
     }
 
+    static String getLastWord(String phrase) {
+        String word = "";
+        boolean start = false;
+        for (int x = phrase.length() - 1; x >= 0; x--) {
+            if (!Character.isLetterOrDigit(phrase.charAt(x))) {
+                if (start)
+                    break;
+            } else {
+                word = phrase.charAt(x)+word;
+                if (!start) start = true;
+            }
+        }
+        return word;
+    }
+
+    static String getFirstWord(String phrase) {
+        String word = "";
+        boolean start = false;
+        for (int x = 0; x < phrase.length(); x++) {
+            if (!Character.isLetterOrDigit(phrase.charAt(x))) {
+                if (start)
+                    break;
+            } else {
+                word += phrase.charAt(x);
+                if (!start) start = true;
+            }
+        }
+        return word;
+    }
+
+    /**
+     * This is a much simpler merge evaluator
+     * assumes that one of c1,c2 is a single word*/
+    static boolean isValidMergeSimple(String c1, String c2) {
+        if(c1.contains(" ") && c2.contains(" ")) {
+            log.warn("Cannot handle [" + c1 + ", " + c2 + "] since they both contain space");
+            return false;
+        }
+        c1 = stripTitles(c1);
+        c2 = stripTitles(c2);
+        if (c1.length() == 0 || c2.length()==0)
+            return false;
+
+        if(c1.length()>c2.length()) {
+            String temp = c1;
+            c1 = c2; c2 = temp;
+        }
+        if(DictUtils.fullDictWords.contains(c1.toLowerCase()))
+            return false;
+        c2 = flipComma(c2);
+
+        String c1type = FeatureGeneratorUtil.tokenFeature(c1);
+        if ("ac".equals(c1type)) {
+            if (Util.getAcronym(c2).equals(c1))
+                return true;
+            else return false;
+        }
+        int idx;
+        if ((idx = c2.indexOf(c1))<0)
+            return false;
+        if (idx>0 && Character.isLetterOrDigit(c2.charAt(idx-1)))
+            return false;
+        int endIdx = idx+c1.length();
+        if (endIdx<c2.length() && Character.isLetterOrDigit(c2.charAt(endIdx)))
+            return false;
+        //make sure the previous or the next word is not a stop word
+        String prevChunk = c2.substring(0,idx);
+        String nxtChunk = c2.substring(idx+c1.length());
+        if(prevChunk.length()>0 && prevChunk.charAt(prevChunk.length()-1)==' '){
+            String prevWord = getLastWord(prevChunk);
+            if (EnglishDictionary.stopWords.contains(prevWord.toLowerCase()))
+                return false;
+        }
+        if(nxtChunk.length()>0 && nxtChunk.charAt(0)==' '){
+            String nxtWord = getFirstWord(nxtChunk);
+            if (EnglishDictionary.stopWords.contains(nxtWord.toLowerCase()))
+                return false;
+        }
+        return true;
+    }
+
     public static class Mentions{
         final int WINDOW = 12;
         Hierarchy hierarchy;
@@ -298,7 +384,7 @@ public class ProperNounLinker {
             long st = System.currentTimeMillis();
             for(String m: mentions)
                 add(new EmailMention(m, context));
-            log.info("Added #"+mentions.size()+" mentions to the index in "+(System.currentTimeMillis()-st)+"ms");
+//            log.info("Added #"+mentions.size()+" mentions to the index in "+(System.currentTimeMillis()-st)+"ms");
         }
 
         public void add(EmailMention mention) {
@@ -315,6 +401,7 @@ public class ProperNounLinker {
             dateToMentionIdx.get(time).add(mentions.size());
             Set<String> bow = bow(mention.phrase);
             for(String word: bow){
+                word = word.toLowerCase();
                 if(!tokenToMentionIdx.containsKey(word))
                     tokenToMentionIdx.put(word, new LinkedHashSet<>());
                 tokenToMentionIdx.get(word).add(mentions.size());
@@ -341,15 +428,30 @@ public class ProperNounLinker {
             Set<Integer> mIdxs = new LinkedHashSet<>();
             String tc = FeatureGeneratorUtil.tokenFeature(mention.phrase);
             if(tc.equals("ac")) {
-                String acr = Util.getAcronym(mention.phrase);
-                if(acronymToMentionIdx.containsKey(acr))
-                    mIdxs.addAll(acronymToMentionIdx.get(acr));
+                //if the acronym is of size less than 3, the expansion is wrong most of the time
+                //CY<->Companys Yosem - Level: 5 - UID: /home/dev/data/Terry/terry-split/Important-7454
+                //Found a match HC<->Hong Cao, CC<->Christy Chin
+                if (mention.phrase.length() > 2) {
+                    if (acronymToMentionIdx.containsKey(mention.phrase))
+                        mIdxs.addAll(acronymToMentionIdx.get(mention.phrase));
+                }
+                else {
+                    return new Pair<>(null,-1);
+                }
             }
             else {
                 Set<String> bow = bow(mention.phrase);
-                for (String tok : bow)
-                    if (tokenToMentionIdx.containsKey(tok))
-                        mIdxs.addAll(tokenToMentionIdx.get(tok));
+                int ti = 0;
+                for (String tok : bow) {
+                    tok = tok.toLowerCase();
+                    if (tokenToMentionIdx.containsKey(tok)) {
+                        if(ti == 0)
+                            mIdxs.addAll(tokenToMentionIdx.get(tok));
+                        else
+                            mIdxs = new LinkedHashSet<>(Sets.intersection(mIdxs, tokenToMentionIdx.get(tok)));
+                    }
+                    ti++;
+                }
             }
 
             Map<Integer, Long> levelMap = new LinkedHashMap<>();
@@ -358,6 +460,10 @@ public class ProperNounLinker {
                 vLevels[l] = hierarchy.getValue(l, mention.context);
             long time = mention.getDate().getTime();
             long MAX_DIFF = (WINDOW+1)*31*24*3600*1000L;
+            if(log.isDebugEnabled())
+                if (mIdxs.size()>100)
+                    log.debug("Found #"+mIdxs.size()+" mentions for "+mention.phrase);
+
             for (int mid : mIdxs) {
                 EmailMention mmention = mentions.get(mid);
                 for (int l = 0; l < hierarchy.getNumLevels(); l++) {
@@ -376,11 +482,15 @@ public class ProperNounLinker {
             //sorts in descending value
             List<Pair<Integer,Long>> order = edu.stanford.muse.util.Util.sortMapByValue(levelMap);
             Collections.reverse(order);
+            int nValidCheck = 0;
             for(Pair<Integer,Long> p: order) {
                 EmailMention mmention = mentions.get(p.getFirst());
                 int level = (int) (p.getSecond()/MAX_DIFF);
-                if (mention!=null && mention.phrase!=null && !mention.phrase.equals(mmention.phrase) && isValidMerge(mmention.phrase, mention.phrase))
-                    return new Pair<>(mmention.phrase, level);
+                if (mention!=null && mention.phrase!=null && !mention.phrase.equals(mmention.phrase)) {
+                    nValidCheck++;
+                    if (isValidMergeSimple(mmention.phrase, mention.phrase))
+                        return new Pair<>(mmention.phrase, level);
+                }
             }
             return new Pair<>(null, -1);
         }
@@ -533,18 +643,20 @@ public class ProperNounLinker {
             Mentions mentions = new Mentions(hierarchy);
             int di = 0;
 
-            for (Document doc : archive.getAllDocs()) {
+            long addTime = 0, searchTime = 0;
+            for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
                 String body = archive.getContents(doc, false);
                 String subject = ed.getSubject();
                 //people in the headers
                 List<String> hpeople = ed.getAllNames();
                 Set<String> cics = new LinkedHashSet<>();
-                cics.addAll(tokenizer.tokenizeWithoutOffsets(body, false));
-                cics.addAll(tokenizer.tokenizeWithoutOffsets(subject, false));
+                cics.addAll(tokenizer.tokenizeWithoutOffsets(body));
+                cics.addAll(tokenizer.tokenizeWithoutOffsets(subject));
                 cics.addAll(hpeople);
                 Set<String> names = new LinkedHashSet<>();
                 Map<Short, Map<String, Double>> map = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
+
                 double thresh = 0.001;
                 for (Short t : map.keySet())
                     if (t != FeatureDictionary.OTHER)
@@ -553,20 +665,41 @@ public class ProperNounLinker {
                                 names.add(str);
 
                 names.addAll(hpeople);
+                long st1 = System.currentTimeMillis();
                 mentions.add(names, ed);
+                addTime += System.currentTimeMillis() - st1;
 
                 //The SequenceModel based NER model fails or does not do a very good job on
                 //1. Single word names [It just gives up on these, unless it is a country name or a non-dictionary word that appears in a longer CIC phrase in which case it may end up recognising it but should not rely on it]
                 //2. Single word names also includes acronyms
                 //3. Person names of the format: [A-Z].? [A-Z][A-Za-z']+
                 //4. It may also fail at phrases of format: [FIRST NAME] (&|and) [FIRST NAME]. Yes, it can magically handle phrases like "Adam M. Weber and Sophie Reine" into two persons
-                for(String cic: cics) {
-                    Pair<String, Integer> match = mentions.getNearestMatch(new EmailMention(cic, ed));
-                    if (match.getSecond() >= 0)
-                        log.info("Found a match " + cic + "<->" + match.getFirst()+" - Level: "+match.getSecond()+" - UID: "+ed.getUniqueId());
+                for (String cic : cics) {
+                    if (cic == null)
+                        continue;
+                    String tokens[] = new String[]{cic};
+                    int idx;
+                    if ((idx = cic.indexOf(" and ")) > -1) {
+                        if (!cic.substring(0, idx).contains(" ") && !cic.substring(idx + 5).contains(" "))
+                            tokens = new String[]{cic.substring(0, idx), cic.substring(idx + 5)};
+                    }
+                    for (String token : tokens) {
+                        cic = token;
+                        String coreCIC = stripTitles(cic);
+                        String type = FeatureGeneratorUtil.tokenFeature(cic);
+                        if (!coreCIC.contains(" ") || type.equals("ac")) {
+                            st1 = System.currentTimeMillis();
+                            Pair<String, Integer> match = mentions.getNearestMatch(new EmailMention(coreCIC, ed));
+                            searchTime += System.currentTimeMillis() - st1;
+                            if (match.getSecond() >= 0)
+                                log.info("Found a match " + cic + "<->" + match.getFirst() + " - Level: " + match.getSecond() + " - UID: " + ed.getUniqueId());
+                        }
+                    }
                 }
-                if(di++%1000 == 0)
-                    log.info("Done processing: "+di+"/"+docs.size()+" -- elapsed time: "+(System.currentTimeMillis()-st)+"ms -- estimated time "+((double)((System.currentTimeMillis()-st)*(docs.size()-di))/(di*1000*60))+" minutes");
+                if (di++ % 1000 == 0) {
+                    log.info("Search time: "+searchTime+" -- Add time: "+addTime);
+                    log.info("Done processing: " + di + "/" + docs.size() + " -- elapsed time: " + (System.currentTimeMillis() - st) + "ms -- estimated time " + ((float) (System.currentTimeMillis() - st) / (di * 1000 * 60)) * (docs.size() - di) + " minutes");
+                }
             }
 
             log.info("Done finding merges in " + (System.currentTimeMillis() - st) + "ms");
@@ -683,18 +816,21 @@ public class ProperNounLinker {
         tps.put(new Pair<>("McAfee Research","MC"), false);
         tps.put(new Pair<>("Blog","Presto Blog Digest"), false);
         tps.put(new Pair<>("Rubin","Should Rubin"), true);
-        int numFailed = 0;
+        int numFailed = 0, numTest = 0;
         long st = System.currentTimeMillis();
         for(Map.Entry e: tps.entrySet()) {
             boolean expected = (boolean)e.getValue();
             String cand1 = ((Pair<String,String>)e.getKey()).first;
             String cand2 = ((Pair<String,String>)e.getKey()).second;
-            if (isValidMerge(cand1, cand2) != expected) {
-                System.err.println(cand1 + " - " + cand2 + ", expected: " + expected);
-                numFailed++;
+            if(!cand1.contains(" ") || !cand2.contains(" ")) {
+                if (isValidMergeSimple(cand1, cand2) != expected) {
+                    System.err.println(cand1 + " - " + cand2 + ", expected: " + expected);
+                    numFailed++;
+                }
+                numTest++;
             }
         }
-        System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+tps.size()+"]");
+        System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+numTest+"]");
     }
 
     public static void BOWtest(){
@@ -731,15 +867,15 @@ public class ProperNounLinker {
     }
 
     public static void main(String[] args) {
-        BOWtest();
-        test();
-//        try {
-//            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-terry-important";
-//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-//            findClusters(archive);
-//        }catch(Exception e){
-//            e.printStackTrace();
-//        }
+//        BOWtest();
+//        test();
+        try {
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-terry-important";
+            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+            findClusters(archive);
+        }catch(Exception e){
+            e.printStackTrace();
+        }
 //        try {
 //            RAMDirectory dir = new RAMDirectory();
 //            Analyzer analyzer = new EnglishAnalyzer(Version.LUCENE_47, Indexer.MUSE_STOP_WORDS_SET);
