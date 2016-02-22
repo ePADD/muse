@@ -41,7 +41,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
     };
     //Checks and strips if a phrase contains {" "+[common end word]}
     static String[] commonEndWords = new String[]{
-            "I"
+            "I", "and","for","a","the","to","at", "in", "of"
     };
     //Emitted tokens containing these sub-strings will be dropped
     //checked for {contains " "+[bad substring]+" "} or starts with {[bad substring]+" "} or ends with {" "+[bad substring]}
@@ -167,7 +167,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
                             String lc = token.toLowerCase();
                             for(String bs: badSubstrings){
                                 String lbs = bs.toLowerCase();
-                                if(lc.contains(" "+lbs+" ") || lc.startsWith(lbs+" ") || lc.endsWith(" "+lbs))
+                                if(lc.equals(lbs) || lc.contains(" "+lbs+" ") || lc.startsWith(lbs+" ") || lc.endsWith(" "+lbs))
                                     continue outer;
                             }
                             //this list contains many single word bad names like Jan, Feb, Mon, Tue, etc.
@@ -369,7 +369,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "Danish cleaning group ISS on Wednesday said it had signed a letter of intent to sell its troubled U.S unit ISS Inc to Canadian firm Aaxis Limited",
                 "That was one hell of a Series!",
                 "I am from India said No one.",
-                "Rachel and I went for a date in the imaginary land of geeks."
+                "Rachel and I went for a date in the imaginary land of geeks.",
+                "I'm the one invited."
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -434,7 +435,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Danish","ISS","ISS Inc","Canadian","Aaxis Limited"},
                 new String[]{},
                 new String[]{"India"},
-                new String[]{"Rachel"}
+                new String[]{"Rachel"},
+                new String[]{}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
