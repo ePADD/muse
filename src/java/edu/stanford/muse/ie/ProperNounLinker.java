@@ -122,27 +122,21 @@ public class ProperNounLinker {
      * can handle MoMA, Museum of Modern Arts
      * does not handle WaPo, Washington Post are acronyms like these common enough to bother?
      */
-    static boolean isAcronymOf(String c1, String c2){
-        if(c2.equals("WaPo") && (c1.equals("The Washington Post")||c1.equals("Washington Post")))
+    static boolean isAcronymOf(String c1, String c2) {
+        if (c2.equals("WaPo") && (c1.equals("The Washington Post") || c1.equals("Washington Post")))
             return true;
         int uc = 0, lc = 0;
         //a single word cannot have an acronym and acronym cannot span multiple words
-        if(!c1.contains(" ") || c2.contains(" "))
+        if (!c1.contains(" ") || c2.contains(" "))
             return false;
-        for(int ci=0;ci<c2.length();ci++) {
+        for (int ci = 0; ci < c2.length(); ci++) {
             if (Character.isUpperCase(c2.charAt(ci)))
                 uc++;
             else
                 lc++;
         }
         //there can be equal number of upper-case and lower-case, as in WaPo
-        if(uc<lc)
-            return false;
-
-
-        if(Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2))
-            return true;
-        return false;
+        return uc >= lc && (Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2));
     }
 
     static String flipComma(String str) {
@@ -339,9 +333,7 @@ public class ProperNounLinker {
 
         String c1type = FeatureGeneratorUtil.tokenFeature(c1);
         if ("ac".equals(c1type)) {
-            if (Util.getAcronym(c2).equals(c1))
-                return true;
-            else return false;
+            return Util.getAcronym(c2).equals(c1);
         }
         int idx;
         if ((idx = c2.indexOf(c1))<0)
@@ -381,7 +373,6 @@ public class ProperNounLinker {
         }
 
         public void add(Set<String> mentions, Object context){
-            long st = System.currentTimeMillis();
             for(String m: mentions)
                 add(new EmailMention(m, context));
 //            log.info("Added #"+mentions.size()+" mentions to the index in "+(System.currentTimeMillis()-st)+"ms");
@@ -482,12 +473,10 @@ public class ProperNounLinker {
             //sorts in descending value
             List<Pair<Integer,Long>> order = edu.stanford.muse.util.Util.sortMapByValue(levelMap);
             Collections.reverse(order);
-            int nValidCheck = 0;
             for(Pair<Integer,Long> p: order) {
                 EmailMention mmention = mentions.get(p.getFirst());
                 int level = (int) (p.getSecond()/MAX_DIFF);
-                if (mention!=null && mention.phrase!=null && !mention.phrase.equals(mmention.phrase)) {
-                    nValidCheck++;
+                if (mention.phrase!=null && !mention.phrase.equals(mmention.phrase)) {
                     if (isValidMergeSimple(mmention.phrase, mention.phrase))
                         return new Pair<>(mmention.phrase, level);
                 }
@@ -515,11 +504,13 @@ public class ProperNounLinker {
 
         /**
          * input: docs belonging to this time window are erased and the indices are updated*/
-        void remove(int time){
+        void remove(int time) {
             long st = System.currentTimeMillis();
             Set<Integer> mentionIdxs = dateToMentionIdx.get(time);
-            if(mentionIdxs == null)
-                log.warn("SERIOUS WARNING!! Time requested fro deletion unknown --- " + time + ", known times: "+dateToMentionIdx.keySet());
+            if (mentionIdxs == null){
+                log.warn("SERIOUS WARNING!! Time requested for deletion unknown --- " + time + ", known times: " + dateToMentionIdx.keySet());
+                return;
+            }
 
             //nothing to delete
             if(mentionIdxs.size() == 0)
@@ -611,7 +602,6 @@ public class ProperNounLinker {
             }
             else {
                 log.error("FATAL!!! Cannot handle context of type: " + (context == null ? "null" : context.getClass().getName()));
-                return;
             }
         }
 

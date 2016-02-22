@@ -1,7 +1,6 @@
 package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.model.SVMModel;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;

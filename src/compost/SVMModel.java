@@ -55,7 +55,7 @@ public class SVMModel implements NERModel, Serializable {
         for (Short type : models.keySet()) {
             List<String> entities = new ArrayList<String>();
 
-            List<Triple<String, Integer, Integer>> candNames = tokenizer.tokenize(content, type.equals(FeatureDictionary.PERSON));
+            List<Triple<String, Integer, Integer>> candNames = tokenizer.tokenize(content);
             for (Triple<String, Integer, Integer> cand : candNames) {
                 String name = cand.first;
                 String tc = FeatureGeneratorUtil.tokenFeature(name);
@@ -157,4 +157,24 @@ public class SVMModel implements NERModel, Serializable {
         oos.writeObject(this);
         oos.close();
     }
+
+//    public static Map<String, String> cleanAB(Map<String, String> abNames, FeatureDictionary dictionary) {
+//        if (abNames == null)
+//            return abNames;
+//
+//        Short iType = FeatureDictionary.PERSON;
+//        Map<String, String> cleanAB = new LinkedHashMap<>();
+//        for (String name : abNames.keySet()) {
+//            double val = dictionary.getFeatureValue(name, "words", iType);
+//            if(val > 0.5)
+//                cleanAB.put(name, abNames.get(name));
+//        }
+//
+//        return cleanAB;
+//    }
+//
+//    public FeatureVector getVector(String cname, Short iType) {
+//        Map<String, List<String>> features = FeatureGenerator.generateFeatures(cname, null, null, iType, null);
+//        return new FeatureVector(this, iType, null, features);
+//    }
 }

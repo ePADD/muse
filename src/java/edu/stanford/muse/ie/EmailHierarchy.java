@@ -5,7 +5,6 @@ package edu.stanford.muse.ie;
  */
 
 import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.util.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -26,7 +25,7 @@ public class EmailHierarchy implements Hierarchy{
     static Log log = LogFactory.getLog(EmailHierarchy.class);
 
     public int getNumLevels(){
-        return 6;
+        return 5;
     }
 
     static String[] levelNames = new String[]{"docId","threadId","to-from","from","to","def"};
@@ -58,7 +57,10 @@ public class EmailHierarchy implements Hierarchy{
         }
         else if(level == 3){
             Address[] from = ed.from;
-            return ((InternetAddress)from[0]).getAddress();
+            if(ed.from != null)
+                return ((InternetAddress)from[0]).getAddress();
+            else
+                return null;
         }else if(level == 4){
             Address[] to = ed.to;
             String str = "";

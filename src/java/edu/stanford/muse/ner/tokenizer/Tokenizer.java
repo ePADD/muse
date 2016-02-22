@@ -4,20 +4,30 @@ import edu.stanford.muse.util.Triple;
 
 import java.util.Set;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * A mention detector interface
+ * A named entity extractor, this class is typically used as an initial step in Named Entity Recognizer pipeline.
  * Chunker is probably a more intuitive name for this.
  * */
 public interface Tokenizer {
     /**
      * @param content to tokenize
-     * @param pn - if set will make the CICTokenizer return person name like CIC tokens, does nothing is the instance is POSTokenizer
-     * CICTokenizer uses different patterns to identify person and non-persons mentions.
-     * @return list of triples that contain the token, begin offset and end offset of the token in the content*/
-    List<Triple<String, Integer, Integer>> tokenize(String content, boolean pn);
+     * Given a free-text (content) as input, extracts and outputs the entity mentions along with their start and end offsets in the content
+     * @return triples of entity mentions
+     * triples are such that content.substring(triple.getSecond(), triple.getThird()) is triple.getFirst()
+     * */
+    List<Triple<String, Integer, Integer>> tokenize(String content);
 
     /**
-     * Same as tokenize, but omits offset in the return value and returns the list of tokens*/
-    Set<String> tokenizeWithoutOffsets(String content, boolean pn);
+     * A convenience method to get just tokens without offsets
+     */
+    default Set<String> tokenizeWithoutOffsets(String content) {
+        List<Triple<String, Integer, Integer>> offsets = tokenize(content);
+        if(offsets!=null) {
+            return offsets.stream().map(t -> t.first).collect(Collectors.toSet());
+        }
+        else
+            return null;
+    }
 }

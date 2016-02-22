@@ -9,7 +9,6 @@ import edu.stanford.muse.Config;
 import opennlp.tools.chunker.Chunker;
 import opennlp.tools.chunker.ChunkerME;
 import opennlp.tools.chunker.ChunkerModel;
-import opennlp.tools.dictionary.Dictionary;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
@@ -39,15 +38,15 @@ public class NLPUtils {
         InputStream chunkerStream = Config.getResourceAsStream("models/en-chunker.bin");
         try {
             //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
-            //case-insesitive dictionary
+            //case-insensitive dictionary
             //Dictionary dictionary = new Dictionary(false);
             //dictionary.put(new StringList("Mr.","Mt."));
-            //When the sentence delimiter list contains '\n', some weird bug in SentenceDetector is causing an exception, dont want to get into that. Reverting the change for now.
+            //When the sentence delimiter list contains '\n', some weird bug in SentenceDetector is causing an exception, don't want to get into that. Reverting the change for now.
             SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,null,new char[] { '.', '?','!'});
             SentenceModel dummyModel = new SentenceModel(sentStream);
 
             //this way of getting maxent model from the initialised sentence model may look improper
-            //proper way to initialise the maxent model is:
+            //proper way to initialize the maxent model is:
             //AbstractModel model = new GenericModelReader(new File(modelName)).getModel()
             //but it was throwing java.io.UTFDataFormatException: malformed input around byte 48
             model = new SentenceModel("en",dummyModel.getMaxentModel(), null, cf);
@@ -68,7 +67,11 @@ public class NLPUtils {
                 if(is!=null)
                     close(is);
         }
+        assert model!=null;
         sentenceDetector = new SentenceDetectorME(model);
+        assert posTagger!=null;
+        assert tokenizer!=null;
+        assert chunker!=null;
 	}
 
     private static void close(InputStream stream){
@@ -80,13 +83,13 @@ public class NLPUtils {
     }
 
     //TODO: OpenNLP is too bad with tokenisation of special chars except period. At least handle new lines, '>' whicgh are common in the case of ePADD and muse
-	public static String[] tokeniseSentence(String text) {
+	public static String[] tokenizeSentence(String text) {
         if(text == null)
             return new String[]{};
         return sentenceDetector.sentDetect(text);
 	}
 
-	public static Span[] tokeniseSentenceAsSpan(String text) {
+	public static Span[] tokenizeSentenceAsSpan(String text) {
         try {
             return sentenceDetector.sentPosDetect(text);
         }catch(IllegalArgumentException e){
@@ -96,7 +99,7 @@ public class NLPUtils {
         }
 	}
 
-    public static String[] tokenise(String sentence){
+    public static String[] tokenize(String sentence){
         return tokenizer.tokenize(sentence);
     }
 
@@ -105,10 +108,10 @@ public class NLPUtils {
     }
 
     public static List<String> getAllProperNouns(String content){
-        String[] sents = tokeniseSentence(content);
+        String[] sents = tokenizeSentence(content);
         List<String> properNouns = new ArrayList<>();
         for(String sent: sents) {
-            String[] tokens = tokenise(sent);
+            String[] tokens = tokenize(sent);
             String[] tags = posTag(tokens);
             Span[] chunks = chunker.chunkAsSpans(tokens,tags);
             for(Span chunk: chunks){
@@ -131,7 +134,7 @@ public class NLPUtils {
     }
 
     public static List<Pair<String,String>> posTag(String sent){
-        String[] tokens = tokenise(sent);
+        String[] tokens = tokenize(sent);
         String[] tags = posTag(tokens);
         if(tokens.length!=tags.length){
             log.warn("Something wrong with POS tagging. Number of POS tags: " + tags.length + " not the same as number of tokens " + tokens.length);

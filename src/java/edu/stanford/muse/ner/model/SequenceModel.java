@@ -1,15 +1,10 @@
 package edu.stanford.muse.ner.model;
 
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
 import edu.stanford.muse.Config;
-import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.featuregen.FeatureGenerator;
-import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
@@ -17,7 +12,6 @@ import edu.stanford.muse.util.*;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameSample;
 import opennlp.tools.util.Span;
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -57,7 +51,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
-        this.tokenizer = tokenizer;
+        SequenceModel.tokenizer = tokenizer;
     }
 
     public SequenceModel() {
@@ -149,7 +143,7 @@ public class SequenceModel implements NERModel, Serializable {
         Set<String> vars = new LinkedHashSet<>();
         vars.add(phrase);
         vars.add("The "+phrase);
-        String dbpediaType = null;
+        String dbpediaType;
         for(String var: vars) {
             dbpediaType = dbpedia.get(var.toLowerCase());
             if(dbpediaType!=null) {
@@ -165,7 +159,7 @@ public class SequenceModel implements NERModel, Serializable {
      * The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length (a phrase with more than 7 words is rejected)
      * O(T*W^2) where W is number of tokens in the phrase and T is number of possible types
      * Since the word features that we are using are dependent on the boundary of the phrase i.e. the left and right semantic types, features on dictionary lookup e.t.c.
-     * @note This method only returns the entities from the best labeled sequence.
+     * Note: This method only returns the entities from the best labeled sequence.
      * @param phrase - String that is to be sequence labelled, keep this short; The string will be rejected if it contains more than 15 words
      * @return all the entities along with their types and quality score found in the phrase
     */
@@ -178,8 +172,6 @@ public class SequenceModel implements NERModel, Serializable {
             segments.put(phrase, new Pair<>(ct, 1.0));
             return segments;
         }
-//        if (log.isDebugEnabled() && dbpediaType != null)
-//            log.debug("Found match: Coded type: " + ct + "- Phrase:" + phrase + " - DBpedia type: " + dbpediaType);
 
         //This step of uncanonicalizing phrases helps merging things that have different capitalization and in lookup
         phrase = EmailUtils.uncanonicaliseName(phrase);
@@ -328,12 +320,12 @@ public class SequenceModel implements NERModel, Serializable {
                 return 1;
         }
 
-        String[] patts = FeatureDictionary.getPatts(phrase);
-        Map<String, Integer> map = new LinkedHashMap<>();
-        for (int si = 0; si < patts.length; si++) {
-            String patt = patts[si];
-            map.put(patt, si);
-        }
+//        String[] patts = FeatureDictionary.getPatts(phrase);
+//        Map<String, Integer> map = new LinkedHashMap<>();
+//        for (int si = 0; si < patts.length; si++) {
+//            String patt = patts[si];
+//            map.put(patt, si);
+//        }
 
         for (String mid : tokenFeatures.keySet()) {
             Double d;
@@ -346,7 +338,7 @@ public class SequenceModel implements NERModel, Serializable {
             //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous, which could have appeared many times, but does not appear to have common template
             //TODO: this check for "new" token is to reduce the noise coming from lowercase words starting with the word "new"
             if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>0)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
-                d = mu.getLikelihood(tokenFeatures.get(mid), dictionary);
+                d = mu.getLikelihood(tokenFeatures.get(mid));
             else
                 //a likelihood that assumes nothing
                 d = MU.getMaxEntProb();
@@ -359,27 +351,27 @@ public class SequenceModel implements NERModel, Serializable {
                 val *= freq;
             }
 
-            if(log.isDebugEnabled()) {
-                if(mu!=null) {
-                    List<String> tfs = tokenFeatures.get(mid);
-                    //log.debug("Features for: " + mid + " in " + phrase + ", " + tfs + " score: " + d + " - " + mu.getPrior() + ", type: " + type);
-                    for(String ft: tfs) {
-                        String dim = ft.substring(0,ft.indexOf(':'));
-                        float alpha_k = 0, alpha_k0 = 0;
-                        if(mu.alpha.containsKey(ft))
-                            alpha_k = mu.alpha.get(ft);
-                        if(mu.alpha_0.containsKey(dim))
-                            alpha_k0 = mu.alpha_0.get(dim);
-                        double v = MU.getNumberOfSymbols(ft);
-                        double mvp = 0;
-                        if(mu.muVectorPositive.containsKey(ft))
-                            mvp = mu.muVectorPositive.get(ft);
-                        //log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
-                    }
-                }
-                else
-                    ;//log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + " - " + freq + ", type: " + type + " MU: " + features.get(mid));
-            }
+//            if(log.isDebugEnabled()) {
+//                if(mu!=null) {
+//                    List<String> tfs = tokenFeatures.get(mid);
+//                    //log.debug("Features for: " + mid + " in " + phrase + ", " + tfs + " score: " + d + " - " + mu.getPrior() + ", type: " + type);
+//                    for(String ft: tfs) {
+//                        String dim = ft.substring(0,ft.indexOf(':'));
+//                        float alpha_k = 0, alpha_k0 = 0;
+//                        if(mu.alpha.containsKey(ft))
+//                            alpha_k = mu.alpha.get(ft);
+//                        if(mu.alpha_0.containsKey(dim))
+//                            alpha_k0 = mu.alpha_0.get(dim);
+//                        double v = MU.getNumberOfSymbols(ft);
+//                        double mvp = 0;
+//                        if(mu.muVectorPositive.containsKey(ft))
+//                            mvp = mu.muVectorPositive.get(ft);
+//                        //log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
+//                    }
+//                }
+//                else
+//                    ;//log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + " - " + freq + ", type: " + type + " MU: " + features.get(mid));
+            //}
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }
@@ -416,7 +408,7 @@ public class SequenceModel implements NERModel, Serializable {
                 for (String mid : tokenFeatures.keySet()) {
                     Double d;
                     if (dictionary.features.get(mid) != null)
-                        d = dictionary.features.get(mid).getLikelihood(tokenFeatures.get(mid), dictionary);
+                        d = dictionary.features.get(mid).getLikelihood(tokenFeatures.get(mid));
                     else
                         d = 0.0;//(1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
                     if (Double.isNaN(d))
@@ -438,35 +430,33 @@ public class SequenceModel implements NERModel, Serializable {
                 bs = s;
             }
         }
-        if (fdw != null) {
-            try {
-                String str = "";
-                for(int si=0;si<scores.length;si++)
-                    str += FeatureDictionary.allTypes[si]+":<"+scores[si]+"> ";
-                String[] words = phrase.split("[\\s,]+");
-                String labelStr = "";
-                for(String word: words) {
-                    Pair<String,Double> p = dictionary.getLabel(word, dictionary.features);
-                    FeatureDictionary.MU mu = dictionary.features.get(word);
-                    String label;
-                    if(mu == null)
+        if (fdw != null) try {
+            String str = "";
+            for (int si = 0; si < scores.length; si++)
+                str += FeatureDictionary.allTypes[si] + ":<" + scores[si] + "> ";
+            String[] words = phrase.split("[\\s,]+");
+            String labelStr = "";
+            for (String word : words) {
+                Pair<String, Double> p = dictionary.getLabel(word, dictionary.features);
+                MU mu = dictionary.features.get(word);
+                String label;
+                if (mu == null)
+                    label = p.getFirst();
+                else {
+                    if (mu.getLikelihoodWithType(FeatureDictionary.OTHER) > p.getSecond())
+                        label = "" + FeatureDictionary.OTHER;
+                    else
                         label = p.getFirst();
-                    else{
-                        if(mu.getLikelihoodWithType(FeatureDictionary.OTHER)>p.getSecond())
-                            label = ""+FeatureDictionary.OTHER;
-                        else
-                            label = p.getFirst();
-                    }
-                    labelStr += word+":"+label+" ";
                 }
-                fdw.write(labelStr+"\n");
-                fdw.write(dictionary.generateFeatures2(phrase, type).toString()+"\n");
-                fdw.write("String: " + phrase + " - " + str + "\n");
-            }catch(IOException e){
-                e.printStackTrace();
+                labelStr += word + ":" + label + " ";
             }
+            fdw.write(labelStr + "\n");
+            fdw.write(dictionary.generateFeatures2(phrase, type).toString() + "\n");
+            fdw.write("String: " + phrase + " - " + str + "\n");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return bs*((bt==type)?1:-1);
+        return bs*(bt.equals(type)?1:-1);
     }
 
     public static Map<Short,List<String>> mergeTypes(Map<Short,Map<String,Double>> entities){
@@ -490,9 +480,9 @@ public class SequenceModel implements NERModel, Serializable {
         for(Short at: FeatureDictionary.allTypes)
             maps.put(at, new LinkedHashMap<>());
 
-        String[] sents = NLPUtils.tokeniseSentence(content);
+        String[] sents = NLPUtils.tokenizeSentence(content);
         for(String sent: sents) {
-            List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent, false);
+            List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent);
             for (Triple<String, Integer, Integer> t : toks) {
                 //this should never happen
                 if(t==null || t.first == null)
@@ -693,98 +683,9 @@ public class SequenceModel implements NERModel, Serializable {
         //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
 
         //split the dictionary into train and test sets
-        Set<String> fts = new LinkedHashSet<>();
-        fts.add(WordSurfaceFeature.WORDS);
         FeatureDictionary dictionary = new FeatureDictionary(train, alpha, iter);
         nerModel.dictionary = dictionary;
-//        try {
-//            String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-//            String modelFile = mwl + SequenceModel.modelFileName;
-//            nerModel.writeModel(new File(modelFile));
-//            ////also write the test split
-//            //String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-//            //if(!new File(twl).exists()) {
-//            //OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-//            //int numTest = 0;
-//            //for (String str : test.keySet()) {
-//            //String orig = str;
-//            //str = str.replaceAll(" ", "_");
-//            //osw.write(str + " " + test.get(orig) + "\n");
-//            //numTest++;
-//            //}
-//            //osw.close();
-//            //System.err.println("Wrote "+numTest+" records in test split to: "+twl);
-//            //}
-//        }catch(IOException e){
-//            e.printStackTrace();
-//        }
         return nerModel;
-    }
-
-    public static void main1(String[] args){
-        try {
-            String content = "Bob,\n" +
-                    "Are you back from Maine: how is your sister?\n" +
-                    "One piece of business: the edition from Tamarind Insititute has not\n" +
-                    "arrived here. Do you know of some delay, or should I just get on the matter\n" +
-                    "my self.\n" +
-                    "I think you knew that ND was to publish the Duncan/Levertov letters,\n" +
-                    "but when the book got too big they were happy enough not to do it. Last week\n" +
-                    "the volume was accepted by the editorial board at Stanford Univ. Press. It\n" +
-                    "all comes out as a fine collaboration with Al Gelpi, half the letters here,\n" +
-                    "half the letters at Stanford. Out in about a year, so I am told. To replace\n" +
-                    "the ND book I have given them another book called \"Robert Duncan's Ezra\n" +
-                    "Pound,\" which has both sides of the correspondence in a narrative with other\n" +
-                    "docs. Plus poems and unpublished essays. Then a new edtion of Letters, RD\n" +
-                    "title, from a small press in St Louis. I've finished the Olson/Duncan\n" +
-                    "letters, but am now struggling with the transcriptions of RD lectures of CO.\n" +
-                    "They so resist being reading texts. I'll have more on that soon. Letters and\n" +
-                    "Lectures to go to Wisconsin. Or, the snow at Christmas kept me off the\n" +
-                    "streets and at my desk. In that sense it was a moral snow.\n" +
-                    "If you're in Buffalo could you stand a stop after work?\n" +
-                    "My best, " +
-                    "National Bank some. National Kidney Foundation some . University Commencement.\n" +
-                    "Address of Amuse Labs.OUT HOUSE, 19/1, Ramchandra Kripa, Mahishi Road, Malmaddi Dharwad.Address of US stay.483, Fulton Street, Palo Alto";
-            System.err.println("Tokens: "+new POSTokenizer().tokenize(content));
-
-            //String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user-creeley";
-            String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-            String modelFile = mwl + SequenceModel.modelFileName;
-            if (fdw == null) {
-                try {
-                    fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            System.err.println("Loading model...");
-            SequenceModel nerModel = null;
-            try{nerModel = SequenceModel.loadModel(modelFile);}
-            catch(IOException e){e.printStackTrace();}
-//            int di =0;
-//            for(Document doc: docs) {
-//                String content = archive.getContents(doc, true);
-//                System.err.println("Content: "+content);
-//                Pair<Map<Short,List<String>>, List<Triple<String,Integer,Integer>>> mapsAndOffsets = nerModel.find(content);
-//                for(Short type: mapsAndOffsets.getFirst().keySet())
-//                    System.err.println(type +" : "+mapsAndOffsets.getFirst().get(type));
-//                if(di++>10)
-//                    break;
-//            }
-            Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapsandoffsets = nerModel.find(content);
-            Map<Short, List<String>> map = SequenceModel.mergeTypes(mapsandoffsets.first);
-            for(Short type: map.keySet())
-                System.out.println(type + " : "+mapsandoffsets.first.get(type)+"<br>");
-            System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
-            System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
-            String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",
-                    "New York International Airport", "Ramchandra Kripa, Mahishi Road"};
-            for(String c: check) {
-                System.err.println(c + ", " + nerModel.seqLabel(c));
-            }
-        }catch(Exception e){
-            e.printStackTrace();
-        }
     }
 
     //we are missing F.C's like F.C. La Valletta
@@ -940,7 +841,7 @@ public class SequenceModel implements NERModel, Serializable {
                 }
 
                 if(verbose) {
-                    log.info("CIC tokens: " + tokenizer.tokenizeWithoutOffsets(sent, false));
+                    log.info("CIC tokens: " + tokenizer.tokenizeWithoutOffsets(sent));
                     log.info(temp);
                     String fn = "Found names:";
                     for (String f : foundNames)
@@ -991,13 +892,9 @@ public class SequenceModel implements NERModel, Serializable {
                 for (String str : correct)
                     log.info(str + " with " + new LinkedHashSet<>(matchMap.get(str)));
                 log.info("----Missed names----");
-                for (String str : real)
-                    if (!matchMap.values().contains(str))
-                        log.info(str);
+                real.stream().filter(str -> !matchMap.values().contains(str)).forEach(log::info);
                 log.info("---Extra names------");
-                for (String str : found)
-                    if (!matchMap.keySet().contains(str))
-                        log.info(str);
+                found.stream().filter(str -> !matchMap.keySet().contains(str)).forEach(log::info);
 
                 log.info("---Assigned wrong type------");
                 for (String str : wrongType) {

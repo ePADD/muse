@@ -131,7 +131,7 @@ public class FASTIndexer {
 		}
 		FASTDbFile = dbFile;
 
-		// initialise the indexer
+		// initialize the indexer
 		try {
 			StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
 			Directory index = FSDirectory.open(new File(indexPath));

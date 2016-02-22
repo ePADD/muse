@@ -320,7 +320,7 @@
     for(Document doc: docs) {
         String c = archive.getContents(doc, true);
         EmailDocument ed = (EmailDocument)doc;
-        String[] sents = NLPUtils.tokeniseSentence(c);
+        String[] sents = NLPUtils.tokenizeSentence(c);
         for(String sent: sents) {
             sent = sent.replaceAll("[><\\)\\(\"\\[\\]\\*\\+]+","");
             List<Triple<String,Integer,Integer>> toks = new Some().tokenizePOS(sent,FeatureDictionary.PLACE);//new CICTokenizer().tokenize(sent, false);

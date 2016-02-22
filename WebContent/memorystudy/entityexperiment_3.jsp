@@ -61,9 +61,9 @@
             int dir = ed.sentOrReceived(ab);
             boolean snt = (dir & EmailDocument.SENT_MASK) != 0;
             String content = archive.getContents(doc, true);
-            String[] sents = NLPUtils.tokeniseSentence(content);
+            String[] sents = NLPUtils.tokenizeSentence(content);
             for(String sent: sents){
-                String[] tokens = NLPUtils.tokenise(sent);
+                String[] tokens = NLPUtils.tokenize(sent);
                 boolean flag = false;
                 for(String t: tokens)
                     if(cues.contains(t.toLowerCase())){

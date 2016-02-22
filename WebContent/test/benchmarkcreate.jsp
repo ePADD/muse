@@ -50,7 +50,7 @@
     Random rand = new Random();
     for(Document doc: docs){
         String content = archive.getContents(doc, true);
-        String[] sents = NLPUtils.tokeniseSentence(content);
+        String[] sents = NLPUtils.tokenizeSentence(content);
         List<String> minorTypes = Arrays.asList("NATURE", "ROAD", "PARTY", "HEALTH", "AWARD","EVENT", "UNIVERSITY", "HEALTH", "NATURE");
         for(String sent: sents) {
             //having tokens that span multiple sentences is weird
