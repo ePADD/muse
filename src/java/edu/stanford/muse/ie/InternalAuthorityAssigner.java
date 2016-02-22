@@ -146,7 +146,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			try {
 				//TODO: trying to get acronyms this way is a hack and inefficient
 				//Initialise a special reg exp for this task
-				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
+				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content);
 				if (pnames != null)
 					for (String name : pnames) {
 						String tc = FeatureGeneratorUtil.tokenFeature(name);

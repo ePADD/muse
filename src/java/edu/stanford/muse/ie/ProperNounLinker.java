@@ -445,7 +445,6 @@ public class ProperNounLinker {
                 }
             }
 
-            Map<Integer, Long> levelMap = new LinkedHashMap<>();
             String vLevels[] = new String[hierarchy.getNumLevels()];
             for(int l=0;l<hierarchy.getNumLevels();l++)
                 vLevels[l] = hierarchy.getValue(l, mention.context);
@@ -455,30 +454,17 @@ public class ProperNounLinker {
                 if (mIdxs.size()>100)
                     log.debug("Found #"+mIdxs.size()+" mentions for "+mention.phrase);
 
-            for (int mid : mIdxs) {
-                EmailMention mmention = mentions.get(mid);
-                for (int l = 0; l < hierarchy.getNumLevels(); l++) {
+            for (int l = 0; l < hierarchy.getNumLevels(); l++) {
+                for (int mid : mIdxs) {
+                    EmailMention mmention = mentions.get(mid);
                     String mv = hierarchy.getValue(l, mmention.context);
-                    if(mv==null)
+                    if (mv == null)
                         continue;
-                    if (mv.equals(vLevels[l])) {
-                        long val = Math.abs(mmention.getDate().getTime() - time);
-                        if(val>=MAX_DIFF)
-                            log.error("FATAL!!! Time diff. between mentions is more than the maximum expected!! "+val+", "+MAX_DIFF+" -- "+(val/(31*24*3600*1000L))+" months... "+dateToMentionIdx.keySet());
-                        levelMap.put(mid, (l*MAX_DIFF) + val);
-                        break;
-                    }
-                }
-            }
-            //sorts in descending value
-            List<Pair<Integer,Long>> order = edu.stanford.muse.util.Util.sortMapByValue(levelMap);
-            Collections.reverse(order);
-            for(Pair<Integer,Long> p: order) {
-                EmailMention mmention = mentions.get(p.getFirst());
-                int level = (int) (p.getSecond()/MAX_DIFF);
-                if (mention.phrase!=null && !mention.phrase.equals(mmention.phrase)) {
-                    if (isValidMergeSimple(mmention.phrase, mention.phrase))
-                        return new Pair<>(mmention.phrase, level);
+                    if (mv.equals(vLevels[l]))
+                        if (mention.phrase!=null && !mention.phrase.equals(mmention.phrase))
+                            if (isValidMergeSimple(mmention.phrase, mention.phrase))
+                                return new Pair<>(mmention.phrase, l);
+
                 }
             }
             return new Pair<>(null, -1);
@@ -688,7 +674,7 @@ public class ProperNounLinker {
                 }
                 if (di++ % 1000 == 0) {
                     log.info("Search time: "+searchTime+" -- Add time: "+addTime);
-                    log.info("Done processing: " + di + "/" + docs.size() + " -- elapsed time: " + (System.currentTimeMillis() - st) + "ms -- estimated time " + ((float) (System.currentTimeMillis() - st) / (di * 1000 * 60)) * (docs.size() - di) + " minutes");
+                    log.info("Done processing: " + di + "/" + docs.size() + " -- elapsed time: " + (System.currentTimeMillis() - st) + "ms -- estimated time " + ((System.currentTimeMillis() - st) / (di * 1000 * 60)) * (docs.size() - di) + " minutes");
                 }
             }
 
