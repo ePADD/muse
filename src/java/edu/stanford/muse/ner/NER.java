@@ -1,17 +1,14 @@
 package edu.stanford.muse.ner;
 
-import edu.stanford.muse.Config;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.*;
-import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.*;
-import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.document.Field;
@@ -42,8 +39,7 @@ public class NER implements StatusProvider {
 	//in seconds
 	long						time				= -1, eta = -1;
 	static FieldType			ft;
-	int[]						pcts				= new int[] { 16, 32, 50, 100 };
-    StatusProvider statusProvider =  null;
+	StatusProvider statusProvider =  null;
 
 	public static class NERStats {
 		//non-repeating number of instances of each type
@@ -70,7 +66,7 @@ public class NER implements StatusProvider {
 				rcounts.put(type, rcounts.get(type) + allTypes.get(type).size());
 
 				if (!all.containsKey(type))
-					all.put(type, new HashSet<String>());
+					all.put(type, new HashSet<>());
 				if (allTypes.get(type) != null)
 					for (String str : allTypes.get(type).keySet())
 						all.get(type).add(str);
@@ -84,7 +80,7 @@ public class NER implements StatusProvider {
                 rcounts.put(type, rcounts.get(type) + mergedTypes.get(type).size());
 
                 if (!all.containsKey(type))
-                    all.put(type, new HashSet<String>());
+                    all.put(type, new HashSet<>());
                 if (mergedTypes.get(type) != null)
                     for (String str : mergedTypes.get(type))
                         all.get(type).add(str);
@@ -99,44 +95,6 @@ public class NER implements StatusProvider {
 			for (Short t : counts.keySet())
 				str += "Type: " + t + ":" + counts.get(t) + "\n";
 			return str;
-		}
-	}
-
-	public static class NEROptions {
-		public boolean addressbook = true, dbpedia = true, segmentation = true;
-		public String prefix = "";
-		public String wfsName = "WordFeatures.ser", modelName = "svm.model";
-		public String evaluatorName = "ePADD NER complete";
-		public String dumpFldr = null;
-
-		public NEROptions setAddressBook(boolean val) {
-			this.addressbook = val;
-			return this;
-		}
-
-		public NEROptions setDBpedia(boolean val) {
-			this.dbpedia = val;
-			return this;
-		}
-
-		public NEROptions setSegmentation(boolean val) {
-			this.segmentation = val;
-			return this;
-		}
-
-		public NEROptions setPrefix(String prefix){
-			this.prefix = prefix;
-			return this;
-		}
-
-		public NEROptions setName(String name){
-			this.evaluatorName = name;
-			return this;
-		}
-
-		public NEROptions setDumpFldr(String name){
-			this.dumpFldr = name;
-			return this;
 		}
 	}
 
@@ -175,16 +133,6 @@ public class NER implements StatusProvider {
 			e.printStackTrace();
 		}
 	}
-
-    //This method could be a little slower
-    public static List<Triple<String, Integer, Integer>> getNameOffsets(Document doc, Archive archive, boolean body) throws IOException{
-        if (archive == null || doc == null) {
-            Util.aggressiveWarn("Archive/doc is null to retrieve offsets", -1);
-            return null;
-        }
-        org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
-        return getNameOffsets(ldoc, body);
-    }
 
     public static List<Triple<String, Integer, Integer>> getNameOffsets(org.apache.lucene.document.Document doc, boolean body) {
         String fieldName;
@@ -262,7 +210,7 @@ public class NER implements StatusProvider {
                 entities.put(e,t);
 
         for(Short type: FeatureDictionary.allTypes)
-            eDoc.put(type, new LinkedHashMap<String, Double>());
+            eDoc.put(type, new LinkedHashMap<>());
 
         for(Triple<String,Integer,Integer> off: offsets){
             String bestMatch = null;
@@ -375,25 +323,21 @@ public class NER implements StatusProvider {
             ldoc.add(new StoredField(ELOC_TITLE, Util.join(locsTitle, Indexer.NAMES_FIELD_DELIMITER)));
             ldoc.add(new StoredField(EORG_TITLE, Util.join(orgsTitle, Indexer.NAMES_FIELD_DELIMITER)));
 
-			List<String> names_original = new ArrayList<String>(), names = new ArrayList<String>();
-			if(persons!=null)
-				names.addAll(persons);
-			if(locs!=null)
-				names.addAll(locs);
-			if(orgs!=null)
-				names.addAll(orgs);
+			List<String> names_original = new ArrayList<>(), names = new ArrayList<>();
+            names.addAll(persons);
+            names.addAll(locs);
+            names.addAll(orgs);
 			int ocs = originalContent.length();
 			List<Triple<String,Integer,Integer>> offsets = mapAndOffsets.getSecond();
-			for (int oi=0;oi<offsets.size();oi++) {
-				Triple<String,Integer,Integer> offset = offsets.get(oi);
-				String name = offset.getFirst();
-				if(offset  == null) {
-					log.warn("No offset found for: "+name);
-					break;
-				}
-				if(offset.getSecond() < ocs )
-					names_original.add(name);
-			}
+            for (Triple<String, Integer, Integer> offset : offsets) {
+                String name = offset.getFirst();
+                if (offset == null) {
+                    log.warn("No offset found for: " + name);
+                    break;
+                }
+                if (offset.getSecond() < ocs)
+                    names_original.add(name);
+            }
 
 			ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
 			//log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
@@ -430,15 +374,12 @@ public class NER implements StatusProvider {
 	//arrange offsets such that the end offsets are in increasing order and if there are any overlapping offsets, the bigger of them should appear first
 	//makes sure the redaction is proper.
 	public static void arrangeOffsets(List<Triple<String,Integer,Integer>> offsets) {
-		Collections.sort(offsets, new Comparator<Triple<String, Integer, Integer>>() {
-			@Override
-			public int compare(Triple<String, Integer, Integer> t1, Triple<String, Integer, Integer> t2) {
-				if (t1.getSecond() != t2.getSecond())
-                    return t1.getSecond()-t2.getSecond();
-                else
-                    return t2.getThird()-t1.getThird();
-			}
-		});
+		Collections.sort(offsets, (t1, t2) -> {
+            if (t1.getSecond() != t2.getSecond())
+                return t1.getSecond()-t2.getSecond();
+            else
+                return t2.getThird()-t1.getThird();
+        });
 	}
 
     //retains only filtered entities
