@@ -33,6 +33,7 @@ public class ArchiveCluer extends Cluer {
 	protected static final int MIN_CLUE_LENGTH = 25; // absolute min. clue length
 	protected static final int MIN_PREFERRED_CLUE_LENGTH = 80;
 	protected static final int MAX_PREFERRED_CLUE_LENGTH = 140;
+	protected static final int MIN_SENTENCE_LENGTH = 20; // less than this length is not considered a valid sentence at all because it could be just "Thanks" etc.
 
 	public final static Set<String> goodSentiments = new LinkedHashSet<String>();
 	static {
@@ -326,14 +327,21 @@ public class ArchiveCluer extends Cluer {
 					continue;
 
                 List<Clue> clueSet = new ArrayList<>();
+				outer:
 				for (int i = 0; i < sentences.size(); i++)
 				{
 					if (i < numSentences-1) // e.g. if nSentences = 3, we can start building candidate clues at i = 2
 						continue;
 
 					String originalSentence = "";
-					for (int j = i - numSentences+1; j <= i; j++)
+					for (int j = i - numSentences+1; j <= i; j++) {
+						// check if any of the sentences is < MIN_SENTENCE_LENGTH, if so, the clue is invalid, so just break out with an empty string
+						if (sentences.get(j).length() < MIN_SENTENCE_LENGTH) {
+							continue outer;
+						}
 						originalSentence += sentences.get(j);
+					}
+
                     //String oos = originalSentence;
 					originalSentence = originalSentence.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
 

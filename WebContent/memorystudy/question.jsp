@@ -115,36 +115,31 @@
 <script src="../js/muse.js"></script>
 <link rel="stylesheet" href="css/tester.css" />
 <link rel="icon" href="images/stanford-favicon.gif">
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>Study</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Research Study on Memory</title>
 </head>
 <body>
     <div class="heading">
-        <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
-        Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>
     </div>
 	<div class="box">
-	<div style="clear:both"></div>
+        <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
+        Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>
+    	<div style="clear:both"></div>
 		<br />
 		<p>
-			<script>
-				
-			</script>
 		<form id="testinput" name="testinput" action="question"
 			method="post">
 
-			<div id="question" class="question">
+			<div id="nohint-question" class="question">
 				<%
-					out.print(currentStudy.getQuestionindex() + ". ");
-                    String q = Util.escapeHTML(questiontodisplay.getPreHintQuestion());
-                    out.println(q);
+                    String q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithNoHintForCorrespondentTest()) + "</p>";
+                    out.println (q);
                 %>
 			</div>
 			<p>
-			<div id="hint-question" style="display: none">
+			<div id="hint-question" class="question" style="display: none">
 				<%
-				    out.print(currentStudy.getQuestionindex() + ". ");
-					q = Util.escapeHTML(questiontodisplay.getPostHintQuestion());
+                    q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()) + "</p>";
 				    out.println(q);
                 %>
 			</div>
@@ -210,6 +205,7 @@
         <br/>
         -->
 
+        <br/>
 
         <div>How vividly do you remember writing this mail?
             <br>
@@ -266,7 +262,8 @@
 				function show_hint() {
 					// copy answer to save the answer before the hint was typed
 					$('#answerBeforeHint').val($('#answer').val());
-					$('.question').text($('#hint-question').text()); // copy it over
+					$('#nohint-question').hide();
+                    $('#hint-question').show(); // copy it over
 					// remove hint button once its been shown
 					$('#hint-button').fadeOut();
 					$('#hintUsed').val('true');
@@ -299,11 +296,13 @@
                     }
                     else{
                         var mVal = parseInt($("#memory").val());
+                        /*
                         var cVal = parseInt($("#certainty").val());
                         if(isNaN(cVal) || cVal<1 || cVal>10){
                             alert('Please enter a number in the range of 1 to 10 for "How confident are you about your answer?"');
                             return false;
                         }
+                        */
                         if(isNaN(mVal) || mVal<1 || mVal>10){
                             alert('Please enter a number in the range of 1 to 10 for "How vividly do you remember writing this mail?"');
                             return false;
