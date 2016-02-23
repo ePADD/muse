@@ -14,16 +14,22 @@
 	Integer numQ = (Integer) session.getAttribute("numQuestions");
 	if (numQ == null)
 		numQ = HTMLUtils.getIntParam(request, "n", 40); //should be 40 by default
-	
-	Archive archive = JSPHelper.getArchive(session);
+
+    Archive archive = null;
+    String escapePassword = request.getParameter("escape");
+    if (escapePassword != null && escapePassword.equals(System.getProperty ("escape.password"))) {
+        archive = SimpleSessions.prepareAndLoadDefaultArchive(request);
+    } else
+ 	    archive = JSPHelper.getArchive(session);
+
 	if (archive == null) {
-%>
-<html>
-<body>No archive in session. Please login again.
-</body>
-</html>
-<%
-	return;
+        %>
+        <html>
+        <body>No archive in session. Please login again.
+        </body>
+        </html>
+        <%
+    	return;
 	}
 	Lexicon lex = (Lexicon) session.getAttribute("lexicon");
 	if (lex == null)
@@ -192,6 +198,7 @@
 				var correctAnswerLengthWithoutSpaces = <%=correctAnswerLengthWithoutSpaces%>;
 			</script>
 
+        <!--
         <div>On a scale of 1 to 10, how confident are you about your answer?
             <br>
             10 - I am Certain<br>
@@ -200,8 +207,9 @@
             <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
             <input name="certainty" id="certainty" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
-
         <br/>
+        -->
+
 
         <div>How vividly do you remember writing this mail?
             <br>

@@ -59,7 +59,7 @@ If you would like access to future versions of Muse, please send email to hangal
 	</form>
 </div>
 
-<b>Muse version v<%=Version.num%></b><p/>
+<b>Muse version <%=Version.version%></b><p/>
 
 <p/> <p/> <p/> <p/>
     <%@page language="java" import="edu.stanford.muse.index.*"%>

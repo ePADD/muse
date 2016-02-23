@@ -1,16 +1,13 @@
 #!/bin/csh -fe
-set build_info = "Built by `whoami`, `date '+%a %d %b %Y %l:%M %p'`"
+set build_info = "Built by `whoami`, `date '+%a %d %b %Y %l:%M %p'` git branch: `git rev-parse --abbrev-ref HEAD` latest commit id: `git rev-parse HEAD` working dir: `pwd`"
 java -version
 echo $build_info
 set version = `cat version`
 echo 'Muse version '${version}  
 echo 'Muse version '${version}  >! WebContent/version.jsp
-echo 'package edu.stanford.muse;' >! src/java/edu/stanford/muse/Version.java
-echo 'public class Version {  public static final String version = "'${version}'"; ' >> src/java/edu/stanford/muse/Version.java
-echo 'public static final String appName = "muse";' >> src/java/edu/stanford/muse/Version.java
-echo 'public static final String buildInfo = "'${build_info}'";} ' >> src/java/edu/stanford/muse/Version.java
+echo 'package edu.stanford.muse.util;' >! src/java/edu/stanford/muse/util/Version.java
+echo 'public class Version {  public static final String version = "'${version}'"; ' >> src/java/edu/stanford/muse/util/Version.java
+echo 'public static String appName = "muse";' >> src/java/edu/stanford/muse/util/Version.java
+echo 'public static String buildInfo = "'${build_info}'";} ' >> src/java/edu/stanford/muse/util/Version.java
 
-cd ../muse
-mvn -f pom-common.xml
-mvn -f pom-webapp.xml
-# now we'll have a muse-1.0.0.... .war available
+mvn 

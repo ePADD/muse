@@ -287,8 +287,8 @@ Dates <input size="30" id="dateRange" name="dateRange" value="<%=dateRange%>"/>
 </tr>
 </table>
 <br/>
-<div id="gobutton">
-<input type ="button"id="gobutton" onclick="go_button()" style="font-size:large" value="Start">
+<div>
+	<input type ="button" id="gobutton" onclick="go_button()" style="font-size:large" value="Start">
 </div> <!-- button -->
 <input type="hidden" name="simple" value="true"/>
 <br/>
