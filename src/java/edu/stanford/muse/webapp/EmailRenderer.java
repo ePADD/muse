@@ -143,7 +143,7 @@ public class EmailRenderer {
 
 		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments);
 
-		return new Pair<DataSet, String>(dataset, html.toString());
+		return new Pair<>(dataset, html.toString());
 	}
 
 	/**
@@ -245,7 +245,7 @@ public class EmailRenderer {
 			 */
 			page.append("\n<div class=\"muse-doc-body\">\n");
 			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTermsStemmed,
-					highlightTermsUnstemmed, authorisedEntities, IA_links, inFull, true);
+					highlightTermsUnstemmed, authorisedEntities, IA_links, inFull, false);
 			StringBuilder htmlMessageBody = contentsHtml.first;
 			overflow = contentsHtml.second;
 			// page.append(ed.getHTMLForContents(indexer, highlightTermsStemmed,

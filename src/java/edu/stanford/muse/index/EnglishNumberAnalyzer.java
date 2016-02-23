@@ -127,6 +127,14 @@ public class EnglishNumberAnalyzer extends StopwordAnalyzerBase {
                 return new TokenStreamComponents(source, result);
 			}
 		};
+        //Cheat sheet on how different analyzers work
+        //Standard Analyzer tokenizes phrase like: "W.S. Merwin" into "w.s" and "merwin"
+        //Simple Analyzer "w", "s", "merwin"
+        //WhiteSpaceAnalyzer: "W.S." and "Merwin"
+        //EnglishAnalyzer "w." and "merwin" (because of stop words filter)
+        // of all Simple Analyzer has more predictable behavior
+        //also want the stop words to be highlighted
+        //new SimpleAnalyzer(lv);
         String text = ".... .........,\n" +
               "\n" +
               "   ....... .. ... ... ............ .... ... ... ..../Buffalo's ........\n" +
@@ -157,7 +165,7 @@ public class EnglishNumberAnalyzer extends StopwordAnalyzerBase {
               "..... .....-............-....\n" +
               ">>";
         //String text = "Phillip Randolph, A.L. Lewis-, etc";
-        analyzer = new Highlighter.SimpleNumberAnalyzer(Version.LUCENE_47);
+        analyzer = new EnglishNumberAnalyzer(Version.LUCENE_47);//new Highlighter.SimpleNumberAnalyzer(Version.LUCENE_47);
 		try {
 			TokenStream stream = analyzer.tokenStream(null, new StringReader(text));
 			CharTermAttribute cattr = stream.addAttribute(CharTermAttribute.class);

@@ -195,7 +195,7 @@ public class Archive implements Serializable {
         public Map<String, Short> ids;
         //person,places,orgs, custom
         public String name;
-        Set<String> types = new HashSet<String>();
+        Set<String> types = new HashSet<>();
 
         public Entity(String name, Map<String, Short> ids, Set<String> types) {
             this.name = name;
@@ -897,18 +897,8 @@ public class Archive implements Serializable {
 
                     if (text != null) {
                         String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
-                        doc.add(new Field("body", redacted_text, Indexer.full_ft)); // this
-                        // uses
-                        // standard
-                        // analyzer,
-                        // not
-                        // stemming
-                        // because
-                        // redacted
-                        // bodys
-                        // only
-                        // have
-                        // names.
+                        doc.add(new Field("body", redacted_text, Indexer.full_ft));
+                        //this uses standard analyzer, not stemming because redacted bodys only have names.
                     }
                     String title = doc.get("title");
                     doc.removeFields("title");
@@ -978,16 +968,10 @@ public class Archive implements Serializable {
     }
 
     /**
-     * @return html for the given terms, with terms highlighted by the
-     * indexer.
-     * if IA_links is set, points links to the Internet archive's
-     * version
-     * of the
-     * page. docId is used to initialize a new view created by
-     * clicking on
-     * a
-     * link within this message, date is used to create the link to
-     * the IA
+     * @return html for the given terms, with terms highlighted by the indexer.
+     * if IA_links is set, points links to the Internet archive's version of the page.
+     * docId is used to initialize a new view created by clicking on a link within this message,
+     * date is used to create the link to the IA
      * @args ldoc - lucene doc corresponding to the content
      * s - content of the doc
      * Date
@@ -1007,16 +991,14 @@ public class Archive implements Serializable {
         try {
             Summarizer summarizer = new Summarizer(indexer);
 
-            s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed,
-                    entitiesWithId, null, summarizer.importantTermsCanonical /*
-																			 * unstemmed
-																			 * because
-																			 * we
-																			 * are
-																			 * only
-																			 * using
-																			 * names
-																			 */, showDebugInfo);
+            Set<String> highlightTerms = new LinkedHashSet<>();
+            if(highlightTermsStemmed!=null)
+                highlightTerms.addAll(highlightTermsStemmed);
+            if(highlightTermsUnstemmed!=null)
+                highlightTerms.addAll(highlightTermsUnstemmed);
+
+            s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTerms,
+                    entitiesWithId, summarizer.importantTermsCanonical /* unstemmed because we are only using names*/, showDebugInfo);
 
             //indexer
             //	.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, searchTerms, isRegexSearch, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId);
@@ -1055,19 +1037,19 @@ public class Archive implements Serializable {
         List<String> entities = new ArrayList<String>();
 
         if (cpeople == null)
-            cpeople = new ArrayList<String>();
+            cpeople = new ArrayList<>();
         if (cplaces == null)
-            cplaces = new ArrayList<String>();
+            cplaces = new ArrayList<>();
         if (corgs == null)
-            corgs = new ArrayList<String>();
+            corgs = new ArrayList<>();
         if (e == null)
-            e = new ArrayList<String>();
+            e = new ArrayList<>();
         if (orgs == null)
-            orgs = new ArrayList<String>();
+            orgs = new ArrayList<>();
         if (places == null)
-            places = new ArrayList<String>();
+            places = new ArrayList<>();
         if (acrs == null)
-            acrs = new HashSet<String>();
+            acrs = new HashSet<>();
 
         entities.addAll(cpeople);
         entities.addAll(cplaces);
@@ -1078,9 +1060,9 @@ public class Archive implements Serializable {
         entities.addAll(acrs);
 
         // Contains all entities and id if it is authorised else null
-        Map<String, Entity> entitiesWithId = new HashMap<String, Entity>();
+        Map<String, Entity> entitiesWithId = new HashMap<>();
         for (String entity : entities) {
-            Set<String> types = new HashSet<String>();
+            Set<String> types = new HashSet<>();
             if (cpeople.contains(entity))
                 types.add("cp");
             if (cplaces.contains(entity))
@@ -1104,30 +1086,22 @@ public class Archive implements Serializable {
                 entitiesWithId.put(entity, new Entity(entity, null, types));
         }
 
-        //dont want more button anymore
+        //don't want "more" button anymore
         boolean overflow = false;
 //		if (!inFull && contents.length() > 4999) {
 //			contents = Util.ellipsize(contents, 4999);
 //			overflow = true;
 //		}
         String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, showDebugInfo);
-        //also add NER offsets for debugging
-//		htmlContents += "<br>Offsets: <br>";
-//		List<Triple<String,Integer, Integer>> triples = edu.stanford.muse.ner.NER.getNamesOffsets(ldoc);
-//		for(Triple<String,Integer,Integer> t: triples)
-//			htmlContents += t.getFirst()+" <"+t.getSecond()+", "+t.getThird()+"><br>";
 
         if (ModeConfig.isPublicMode())
             htmlContents = Util.maskEmailDomain(htmlContents);
 
         StringBuilder sb = new StringBuilder();
         sb.append(htmlContents);
-        return new Pair<StringBuilder, Boolean>(sb, overflow);
+        return new Pair<>(sb, overflow);
     }
 
-    public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs) {
-        return clustersForDocs(docs, MultiDoc.ClusteringType.MONTHLY);
-    }
     /* break up docs into clusters, based on existing docClusters
     * Note: Clustering Type MONTHLY and YTEARLY not supported*/
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs, MultiDoc.ClusteringType ct) {

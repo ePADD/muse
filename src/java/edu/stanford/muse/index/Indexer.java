@@ -726,7 +726,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 			String[] defaultSearchFields, defaultSearchFieldsOriginal;
 			String[] defaultSearchFieldSubject = new String[] { "title" }; // for subject only search
-			String[] defaultSearchFieldCorrespondents = null;
+			String[] defaultSearchFieldCorrespondents;
             //body field should be there, as the content of the attachment lies in this field, should also include meta field?
             //why the search over en-names and en-names-original when body/body_original is included in the search fields?
             defaultSearchFields = new String[] { "body", "title", "to_names", "from_names", "cc_names", "bcc_names", "to_emails", "from_emails", "cc_emails", "bcc_emails" };

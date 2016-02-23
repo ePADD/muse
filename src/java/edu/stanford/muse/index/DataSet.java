@@ -34,9 +34,6 @@ import edu.stanford.muse.webapp.ModeConfig;
 public class DataSet {
     List<String> pages = new ArrayList<String>();
     List<Document> docs = new ArrayList<Document>();
-    private Indexer indexer;
-    private AddressBook addressBook;
-    private GroupAssigner groupAssigner;
     String datasetTitle;
     Archive archive;
     BlobStore attachmentsStore;
@@ -58,9 +55,6 @@ public class DataSet {
                 this.docs.add(d);
         }
         this.archive = archive;
-        this.indexer = archive.indexer;
-        this.addressBook = archive.addressBook;
-        this.groupAssigner = archive.groupAssigner;
         this.datasetTitle = datasetTitle;
         this.attachmentsStore = archive.blobStore;
         this.highlightContactIds = highlightContactIds;
