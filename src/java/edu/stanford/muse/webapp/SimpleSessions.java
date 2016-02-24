@@ -289,6 +289,7 @@ public class SimpleSessions {
 		String dir = request.getParameter("cacheDir");
 		if (Util.nullOrEmpty(dir))
 			dir = Sessions.CACHE_DIR;
+		JSPHelper.log.info("Trying to read archive from " + dir);
 
 		Archive archive = SimpleSessions.readArchiveIfPresent(dir);
 		if (archive != null)

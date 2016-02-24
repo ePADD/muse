@@ -419,12 +419,12 @@
             ci.nMessages = entityToMessages.get(ce).size();;
             ci.nThreads = entityToThreads.get(ce).size();
 
-            short clueType = (short) ((mode == null || !mode.equals("person")) ? 0 : 1);
-            if (clueType == 0) {
-                Clue clue = cluer.createClue(fullAnswer, clueType, evals, new LinkedHashSet<>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+            ArchiveCluer.QuestionType clueType = ((mode == null || !mode.equals("person")) ? ArchiveCluer.QuestionType.FILL_IN_THE_BLANK : ArchiveCluer.QuestionType.GUESS_CORRESPONDENT);
+            if (clueType == ArchiveCluer.QuestionType.FILL_IN_THE_BLANK) {
+                Clue clue = cluer.createClue(fullAnswer, clueType, evals, new LinkedHashSet<String>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
                 ci.clues = new Clue[]{clue};
             }else
-                ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), archive);
+                ci.clues = cluer.createClues(fullAnswer, clueType, evals, new LinkedHashSet<String>(), null, intervalStart, intervalEnd, HTMLUtils.getIntParam(request, "sentences", 2), 2, archive);
 
             if(ci.clues == null || ci.clues.length == 0){
                 JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);

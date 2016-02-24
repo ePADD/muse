@@ -55,10 +55,10 @@ We are sorry you encountered a problem with Muse.
 Submitting this report back to Stanford will help us fix it.<br/>
 
 <div id="submitFormDiv">
-    <input type="hidden" name="to" value="hangal@cs.stanford.edu"></input>
+    <input type="hidden" name="to" value="hangal@cs.stanford.edu"/>
 	<p>
-	<input id="submitter" style="background-color: #FAFFBD" type="text" value="" placeholder="your email address (optional)" size="40"></input><br/><br/>
-	<input style="font-size:24px" type="button" value="Submit" onclick="javascript:sendDebugInfo()"></input>
+	<input id="submitter" style="background-color: #FAFFBD" type="text" value="" placeholder="your email address (optional)" size="40"/><br/><br/>
+	<input style="font-size:24px" type="button" value="Submit" onclick="javascript:sendDebugInfo()"/>
 	<p>
 	<!--
 	What were you trying to do when you encountered an error?<br/> 
@@ -67,7 +67,7 @@ Submitting this report back to Stanford will help us fix it.<br/>
 	</form>
 </div>
 <hr style="color:rgba(0,0,0,0.2)"/>
-<b>Muse version <%=Version.num %> <%=Version.buildInfo%></b>
+<b>Muse version <%=Version.version %> <%=Version.buildInfo%></b>
 <p/>
 
 <% if (ModeConfig.isMultiUser()) { return; } %>

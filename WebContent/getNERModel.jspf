@@ -15,7 +15,7 @@
     {
         JSPHelper.log.info("Loading model ...");
         String modelFile = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel.ser";
-        nerModel = SequenceModel.loadModel(new File(modelFile));
+        nerModel = SequenceModel.loadModel(modelFile);
         JSPHelper.log.info("Loaded ner model from "+modelFile);
         request.getSession().setAttribute("ner", nerModel);
     }

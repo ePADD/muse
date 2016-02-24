@@ -18,7 +18,7 @@ String title = "Advanced Search";
   "http://www.w3.org/TR/html4/loose.dtd">
 <html lang="en">
 <head>
-<title><%=title%></title>
+<title>Advanced Search</title>
 <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <jsp:include page="../css/css.jsp"/>
 <link rel="icon" type="image/png" href="images/muse-favicon.png">

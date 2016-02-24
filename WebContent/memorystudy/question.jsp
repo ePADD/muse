@@ -7,21 +7,29 @@
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
+<%@ page import="java.text.SimpleDateFormat" %>
+<%@ page import="java.text.DateFormat" %>
 <%
 
 	Integer numQ = (Integer) session.getAttribute("numQuestions");
 	if (numQ == null)
 		numQ = HTMLUtils.getIntParam(request, "n", 40); //should be 40 by default
-	
-	Archive archive = JSPHelper.getArchive(session);
+
+    Archive archive = null;
+    String escapePassword = request.getParameter("escape");
+    if (escapePassword != null && escapePassword.equals(System.getProperty ("escape.password"))) {
+        archive = SimpleSessions.prepareAndLoadDefaultArchive(request);
+    } else
+ 	    archive = JSPHelper.getArchive(session);
+
 	if (archive == null) {
-%>
-<html>
-<body>No archive in session. Please login again.
-</body>
-</html>
-<%
-	return;
+        %>
+        <html>
+        <body>No archive in session. Please login again.
+        </body>
+        </html>
+        <%
+    	return;
 	}
 	Lexicon lex = (Lexicon) session.getAttribute("lexicon");
 	if (lex == null)
@@ -69,22 +77,20 @@
         }
         MemoryQuestion.RecallType recallType = null;
         Object recallObject = null;
-        String[] names = new String[]{"fComplete","fContext","fTip","unfair"};
-        for(int ni=0;ni<names.length;ni++) {
-            String name = names[ni];
-            if("on".equals(request.getParameter(name))){
-                if(ni==0)
+        if(request.getParameter("fail")!=null){
+            Integer failType = Integer.parseInt(request.getParameter("fail"));
+            if(failType!=null){
+                if(failType==0)
                     recallType = MemoryQuestion.RecallType.Nothing;
-                else if(ni==1)
+                else if(failType==1)
                     recallType = MemoryQuestion.RecallType.Context;
-                else if(ni==2){
+                else if(failType==2){
                     recallType = MemoryQuestion.RecallType.TipOfTongue;
                     recallObject = Integer.parseInt(request.getParameter("tipScore"));
                 }else {
                     recallType = MemoryQuestion.RecallType.UnfairQuestion;
                     recallObject = request.getParameter("unfairReason");
                 }
-                break;
             }
         }
 		
@@ -109,40 +115,39 @@
 <script src="../js/muse.js"></script>
 <link rel="stylesheet" href="css/tester.css" />
 <link rel="icon" href="images/stanford-favicon.gif">
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>Study</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Research Study on Memory</title>
 </head>
 <body>
     <div class="heading">
-        <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
-        Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>
     </div>
 	<div class="box">
-	<div style="clear:both"></div>
+        <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
+        Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>
+    	<div style="clear:both"></div>
 		<br />
 		<p>
-			<script>
-				
-			</script>
 		<form id="testinput" name="testinput" action="question"
 			method="post">
 
-			<div id="question" class="question">
+			<div id="nohint-question" class="question">
 				<%
-					out.print(currentStudy.getQuestionindex() + ". ");
-                    String q = Util.escapeHTML(questiontodisplay.getPreHintQuestion());
-                    out.println(q);
+                    String q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithNoHintForCorrespondentTest()) + "</p>";
+                    out.println (q);
                 %>
 			</div>
 			<p>
-			<div id="hint-question" style="display: none">
+			<div id="hint-question" class="question" style="display: none">
 				<%
-				    out.print(currentStudy.getQuestionindex() + ". ");
-					q = Util.escapeHTML(questiontodisplay.getPostHintQuestion());
+                    q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()) + "</p>";
 				    out.println(q);
                 %>
 			</div>
 
+            <datalist id="steplist">
+                <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+            </datalist>
 			<div style="margin-left: 20%">
                 <input type="hidden" name="hintUsed" id="hintUsed"
 				value="false"> <input type="hidden" name="millis"
@@ -164,19 +169,23 @@
                 </p>
 
                 <span>OR &nbsp;&nbsp; Answer why you forgot:<br></span>
-                <input id="fComplete" name="fComplete" type="checkbox"/>I forgot the email and events completely<br>
-                <input id="fContext" name="fContext" type="checkbox"/>I remember the email/surrounding events but not the email recipient<br>
+                <input id="fComplete" name="fail" value=0 type="radio"/>I forgot the email and events completely<br>
+                <input id="fContext" name="fail" value=1 type="radio"/>I remember the email/surrounding events but not the email recipient<br>
                 <span>
-                    <input id="fTip" name="fTip" type="checkbox" onclick="$('#tipRate').toggle()"/>I remember the person but their name is on the tip of my tongue
+                    <input id="fTip" name="fail" type="radio" value=2 onclick="$('#tipRate').toggle()"/>I remember the person but their name is on the tip of my tongue
                     <span id="tipRate" style="margin-left:3%;display:none">
                         <br>
-                        <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp; <input name="tipScore" id="tipScore" size="2"/></span><br>
-                        <span style="margin-left:3%">1&nbsp; - I have no idea &nbsp;&nbsp;</span><br>
-                        <span style="margin-left:3%">10 - It's close!</span>
+                        <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp;<br>
+                            <span style="margin-left:3%">1&nbsp; - I have no idea &nbsp;&nbsp;</span>&nbsp
+                            <span style="margin-left:3%">10 - It's close!</span><br>
+                            <span style="position:relative;left:30px">1</span><span style="position:relative;left:140px">5</span><span style="position:relative;left:280px">10</span><br>
+                            <input style="padding-left:10px" type="range" min=1 max=10 name="tipScore" id="tipScore" value="5" step="1" data-step="steplist"/>
+                        </span>
+                        <br>
                     </span>
                 </span>
                 <br>
-                <input id="unfair" name="unfair" type="checkbox" onclick='$("#unfairReason").toggle()'/> Unfair question?
+                <input id="unfair" name="fail" type="radio" value=3 onclick='$("#unfairReason").toggle()'/> Unfair question?
                 <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason" name="unfairReason"/>
             </div>
 
@@ -184,20 +193,28 @@
 				var correctAnswerLengthWithoutSpaces = <%=correctAnswerLengthWithoutSpaces%>;
 			</script>
 
-        <div>On a scale of 1 to 10, how confident are you about your answer? <input name="certainty" id="certainty" size="2"/>
+        <!--
+        <div>On a scale of 1 to 10, how confident are you about your answer?
             <br>
             10 - I am Certain<br>
             5&nbsp  - I am not sure<br>
             1&nbsp  - I have no Idea<br>
+            <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
+            <input name="certainty" id="certainty" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
         <br/>
+        -->
 
-        <div>How vividly do you remember writing this mail? <input name="memory" id="memory" size="2"/>
+        <br/>
+
+        <div>How vividly do you remember writing this mail?
             <br>
             10 - I clearly remember writing this mail<br>
-            6&nbsp - I rember the person<br>
+            6&nbsp - I remember the person<br>
             4&nbsp  - I recall the general context<br>
             1&nbsp  - I have no memory of the event<br>
+            <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
+            <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
         <br/>
 
@@ -218,8 +235,11 @@
                 <select name="timeMonth" id="timeMonth">
                     <option value="-1"></option>
                     <%
+                        Calendar cal = new GregorianCalendar();
+                        DateFormat df = new SimpleDateFormat("MMM");
                         for(int m=1;m<=12;m++){
-                    %><option value="<%=m%>"><%=m%></option><%
+                            cal.set(Calendar.MONTH, m-1);
+                    %><option value="<%=m%>"><%=df.format(cal.getTime())%></option><%
                     }
                 %>
                 </select>
@@ -242,7 +262,8 @@
 				function show_hint() {
 					// copy answer to save the answer before the hint was typed
 					$('#answerBeforeHint').val($('#answer').val());
-					$('.question').text($('#hint-question').text()); // copy it over
+					$('#nohint-question').hide();
+                    $('#hint-question').show(); // copy it over
 					// remove hint button once its been shown
 					$('#hint-button').fadeOut();
 					$('#hintUsed').val('true');
@@ -275,11 +296,13 @@
                     }
                     else{
                         var mVal = parseInt($("#memory").val());
+                        /*
                         var cVal = parseInt($("#certainty").val());
                         if(isNaN(cVal) || cVal<1 || cVal>10){
                             alert('Please enter a number in the range of 1 to 10 for "How confident are you about your answer?"');
                             return false;
                         }
+                        */
                         if(isNaN(mVal) || mVal<1 || mVal>10){
                             alert('Please enter a number in the range of 1 to 10 for "How vividly do you remember writing this mail?"');
                             return false;

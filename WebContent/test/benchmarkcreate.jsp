@@ -20,7 +20,7 @@
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
+            nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -41,10 +41,8 @@
     desc.put(FeatureDictionary.ROAD,"ROAD");
     desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");//desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");
     desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION"); desc.put(FeatureDictionary.GOVAGENCY,"ORGANISATION");
-    desc.put(FeatureDictionary.NEWSPAPER,"PRESS");desc.put(FeatureDictionary.ACADEMICJOURNAL,"PRESS");desc.put(FeatureDictionary.MAGAZINE,"PRESS");
-    desc.put(FeatureDictionary.POLITICALPARTY,"PARTY");
     desc.put(FeatureDictionary.AWARD,"AWARD");
-    desc.put(FeatureDictionary.MUSEUM,"BUILDING");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.HOTEL,"BUILDING");desc.put(FeatureDictionary.LIBRARY,"BUILDING");
+    desc.put(FeatureDictionary.MUSEUM,"BUILDING");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.LIBRARY,"BUILDING");
 
     int di = 0, numSent = 0;
     Random rand = new Random();

@@ -24,6 +24,8 @@ import edu.stanford.muse.groups.*;
 import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.model.DummyNERModel;
+import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.util.SloppyDates.DateRangeSpec;
@@ -403,11 +405,15 @@ public class JSPHelper {
 		archive.openForRead();
 
         String modelFile = SequenceModel.modelFileName;
-        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+        NERModel nerModel = (SequenceModel)session.getAttribute("ner");
         session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
         log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            String mode = System.getProperty("muse.mode");
+            if (mode!=null && "memorystudy".equals(mode))
+                nerModel = new DummyNERModel();
+            else
+                nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
         }
@@ -1130,7 +1136,7 @@ public class JSPHelper {
 			docsForTag = Document.selectDocByTag(allDocs, tag, true);
 		}
 		if (cluster >= 0) {
-			docsForCluster = new ArrayList<Document>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
+			docsForCluster = new ArrayList<>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
 		}
 
 		if (persons != null || contact_ids != null)
@@ -1139,13 +1145,16 @@ public class JSPHelper {
 			docsForPersons = IndexUtils.selectDocsByAllPersons(addressBook, (Collection) allDocs, persons, Util.toIntArray(contact_ids));
 		}
 
-		if (end_yy >= 1970 && yy >= 1970) // date range
+        //Some docs with faulty date are assigned 1960/01/01
+		if (end_yy >= 0 && yy >= 0) // date range
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
-		}
-		else if (yy >= 1970) // single month or year
+            log.info("Found " + docsForDateRange.size() + " docs in range: [" + yy+"/"+mm+"/"+dd+" - [" + end_yy + "/" + end_mm + "/" + end_dd + "]");
+        }
+		else if (yy >= 0) // single month or year
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd);
+            log.info("Found " + docsForDateRange.size() + " docs beyond " + yy+"/"+mm+"/"+dd);
 		}
 
 		if (groupIdx != Integer.MAX_VALUE)
@@ -1171,7 +1180,7 @@ public class JSPHelper {
 
 		if (!Util.nullOrEmpty(docIds))
 		{
-			docsForDocIds = new ArrayList<Document>();
+			docsForDocIds = new ArrayList<>();
 			for (String id : docIds)
 			{
 				Document d = archive.docForId(id);

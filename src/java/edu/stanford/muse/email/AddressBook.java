@@ -24,6 +24,7 @@ import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
+import org.w3c.tidy.Dict;
 
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
@@ -496,10 +497,12 @@ public class AddressBook implements Serializable {
 				name = ""; // name can't be an email address!
 		}
 
-		String accountName = EmailUtils.getAccountNameFromEmailAddress(email);
-		if (DictUtils.bannedAccountNamesInEmailAddresses.contains(accountName.toLowerCase())) {
-			log.info ("not going to consider name-email pair. email: " + email + " name: ");
-			name = ""; // usually something like info@paypal.com or info@evite.com or invitations-noreply@linkedin.com -- we need to ignore the name part of such an email address, so it doesn't get merged with anything else.
+		for (String s: DictUtils.bannedStartStringsForEmailAddresses) {
+			if (email.toLowerCase().startsWith(s)) {
+				log.info("not going to consider name-email pair. email: " + email + " name: " + name + " because email starts with " + s);
+				name = ""; // usually something like info@paypal.com or info@evite.com or invitations-noreply@linkedin.com -- we need to ignore the name part of such an email address, so it doesn't get merged with anything else.
+				break;
+			}
 		}
 
 		List nameTokens = Util.tokenize(name);
@@ -805,7 +808,7 @@ public class AddressBook implements Serializable {
 		return result;
 	}
 
-	/** recomputes contacts merging unified ones. */
+	/** recomputes contacts merging unified ones. Warning: must be done before using the address book, otherwise, contacts will remain un-unified! */
 	public synchronized void organizeContacts()
 	{
 		Set<Contact> allContacts = new LinkedHashSet<Contact>();

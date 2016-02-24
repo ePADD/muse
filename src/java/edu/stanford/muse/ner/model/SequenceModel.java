@@ -18,6 +18,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by vihari on 07/09/15.
@@ -29,7 +31,7 @@ import java.util.*;
  */
 public class SequenceModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
-    public static String modelFileName = "SeqModel.ser";
+    public static String modelFileName = "SeqModel.ser.gz";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
@@ -507,7 +509,9 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     public synchronized void writeModel(File modelFile) throws IOException{
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(modelFile));
+        FileOutputStream fos = new FileOutputStream(modelFile);
+        GZIPOutputStream gos = new GZIPOutputStream(fos);
+        ObjectOutputStream oos = new ObjectOutputStream(gos);
         oos.writeObject(this);
         oos.close();
     }
@@ -515,7 +519,8 @@ public class SequenceModel implements NERModel, Serializable {
     public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
         ObjectInputStream ois;
         try {
-            ois = new ObjectInputStream(Config.getResourceAsStream(modelPath));
+            //the buffer size can be much higher than default 512 for GZIPInputStream
+            ois = new ObjectInputStream(new GZIPInputStream(Config.getResourceAsStream(modelPath)));
             SequenceModel model = (SequenceModel) ois.readObject();
             ois.close();
             return model;

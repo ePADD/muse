@@ -373,7 +373,7 @@
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
+            nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -412,10 +412,7 @@
 //    List<Pair<String,Double>> pls = Util.sortMapByValue(map);
 //    for(Pair<String,Double> p: pls)
 //        out.println(p.getFirst()+" : "+p.getSecond()+"<br>");
-    Map<Short,String> desc = new LinkedHashMap<>();
-    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");
-    desc.put(FeatureDictionary.DISEASE,"DISEASE");
-    desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"POLITICALPARTY");desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"TRADEUNIN");desc.put(FeatureDictionary.PARK,"PARK");desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");desc.put(FeatureDictionary.OTHER,"OTHER");
+    Map<Short,String> desc = FeatureDictionary.desc;
     String[] phrases = new String[]{"Arts Awards","Geneva","Massachusetts College of Art in Boston","Delhi Times","Governor 's Arts Awards in New York State","Hatem Bazian from Univ. of California","U.S. Navy training academy","John F Kennedy International airport","fulbright scholar award in american Literature","New York Times","NY Times","Coffee Company","ad hoc March","Sidney","Smith","Chris Towne","song with texts by playwright/poet Bertolt Brecht","National Office in Washington DC","Bolivarian Circle","Organisation of Islamic Conference","California","Chicago March","Afghanistan","President Trent Willis","Drill Team","American Muslim Voice","BAYAN-USA Northern California","New Paltz","National Office in Washington DC","University of California at Berkeley","Grandmothers for Peace International in Phoenix","place at Highland Coffee Company","student at Senn High School","Fillipino community","Global Resistance Network","California Trent Willis","Paul George from Peninsula Peace","National Association of Purchasing Management","Reuters Ottawa Bureau","Douglas & Lomason Co","Caltex Petroleum Corp","China Daily"};//,"fulbright scholar award in american literature in syria","Buffalo Film Seminars Wendy Hiller","John F. Kennedy International Airport","Booker Prize recipient South African novelist John Coetzee","National Bank of Poland","called Iraqi National Bank"};
 
     for(String phrase: phrases) {
@@ -429,7 +426,7 @@
         out.println("===============<br>");
     }
     String phrase = "New York Times";
-    Short[] types = new Short[]{FeatureDictionary.NEWSPAPER, FeatureDictionary.PLACE};
+    Short[] types = new Short[]{FeatureDictionary.PERIODICAL_LITERATURE, FeatureDictionary.PLACE};
     for(short type: types) {
         out.println("Type: "+type+"<br><br>");
         Map<String, Set<String>> features = nerModel.dictionary.generateFeatures2(phrase, type);

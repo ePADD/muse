@@ -870,7 +870,7 @@ public class Archive implements Serializable {
         // save the states that may get modified
         List<Document> savedAllDocs = allDocs;
 
-        allDocs = new ArrayList<Document>(retainedDocs);
+        allDocs = new ArrayList<>(retainedDocs);
         if (exportInPublicMode)
             replaceDescriptionWithNames(allDocs, this);
 
@@ -881,7 +881,7 @@ public class Archive implements Serializable {
         for (Document d : allDocs)
             docIdSet.add(d.getUniqueId());
         final Set<String> retainedDocIds = docIdSet;
-        Indexer.FilterFunctor filter = new Indexer.FilterFunctor() {
+        Indexer.FilterFunctor emailFilter = new Indexer.FilterFunctor() {
             @Override
             public boolean filter(org.apache.lucene.document.Document doc) {
                 if (!retainedDocIds.contains(doc.get("docId")))
@@ -910,6 +910,27 @@ public class Archive implements Serializable {
                 return true;
             }
         };
+
+        Indexer.FilterFunctor attachmentFilter = new Indexer.FilterFunctor() {
+            @Override
+            public boolean filter(org.apache.lucene.document.Document doc) {
+                if(exportInPublicMode){
+                    return false;
+                }
+                String docId = doc.get("emailDocId");
+                if(docId == null){
+                    Integer di = Integer.parseInt(doc.get("docId"));
+                    //don't want to print too many messages
+                    if(di==null || di<10)
+                        log.error("Looks like this is an old archive, filtering all the attachments!!\n" +
+                                "Consider re-indexing with the latest version for a proper export.");
+                    return false;
+                }
+                if(!retainedDocIds.contains(docId))
+                    return false;
+                return true;
+            }
+        };
         if (exportInPublicMode) {
             List<Document> docs = this.getAllDocs();
             List<EmailDocument> eds = new ArrayList<EmailDocument>();
@@ -918,7 +939,7 @@ public class Archive implements Serializable {
             EmailUtils.maskEmailDomain(eds, this.addressBook);
         }
 
-        indexer.copyDirectoryWithDocFilter(out_dir, filter);
+        indexer.copyDirectoryWithDocFilter(out_dir, emailFilter, attachmentFilter);
         log.info("Completed exporting indexes");
 
         // save the blobs in a new blobstore
@@ -968,8 +989,15 @@ public class Archive implements Serializable {
     }
 
     /**
+<<<<<<< HEAD
      * @return html for the given terms, with terms highlighted by the indexer.
      * if IA_links is set, points links to the Internet archive's version of the page.
+=======
+     * @return html for the given terms, with terms highlighted by the
+     * indexer.
+     * if IA_links is set, points links to the Internet archive's
+     * version of the page.
+>>>>>>> ner
      * docId is used to initialize a new view created by clicking on a link within this message,
      * date is used to create the link to the IA
      * @args ldoc - lucene doc corresponding to the content
@@ -1032,7 +1060,7 @@ public class Archive implements Serializable {
         String contents = indexer.getContents(d, false);
         org.apache.lucene.document.Document ldoc = indexer.getDoc(d);
         if (ldoc == null)
-            System.err.println("lucenedoc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
+            System.err.println("Lucene Doc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
 
         List<String> entities = new ArrayList<String>();
 
@@ -1049,7 +1077,7 @@ public class Archive implements Serializable {
         if (places == null)
             places = new ArrayList<>();
         if (acrs == null)
-            acrs = new HashSet<>();
+            acrs = new LinkedHashSet<>();
 
         entities.addAll(cpeople);
         entities.addAll(cplaces);
@@ -1103,7 +1131,7 @@ public class Archive implements Serializable {
     }
 
     /* break up docs into clusters, based on existing docClusters
-    * Note: Clustering Type MONTHLY and YTEARLY not supported*/
+    * Note: Clustering Type MONTHLY and YEARLY not supported*/
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs, MultiDoc.ClusteringType ct) {
         //TODO: whats the right thing to do when docClusters is null?
         if (docClusters == null || (ct == MultiDoc.ClusteringType.NONE)) {
