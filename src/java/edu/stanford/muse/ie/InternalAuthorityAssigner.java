@@ -9,6 +9,7 @@ import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.JSONUtils;
@@ -21,6 +22,7 @@ import org.apache.lucene.analysis.util.CharArraySet;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class contains pre-processing computations for assign-authorities.jsp
@@ -201,9 +203,9 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 		di = 0;
 		for (EmailDocument ed : docs) {
-			List<String> people = archive.getEntitiesInDoc(ed, type);
-			List<String> orgs = archive.getEntitiesInDoc(ed, otype);
-			List<String> places = archive.getEntitiesInDoc(ed, ptype);
+            List<String> people = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PERSON, true, archive)).stream().map(s->s.text).collect(Collectors.toList()),
+                    places = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PLACE, true, archive)).stream().map(s->s.text).collect(Collectors.toList()),
+                    orgs = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.ORGANISATION, true, archive)).stream().map(s->s.text).collect(Collectors.toList());
 			//List<String> expansions = new ArrayList<String>();
 			String content = archive.getContents(ed, false);
 			//For an acronym, expand it to one of entities to only of the types: place, org or people

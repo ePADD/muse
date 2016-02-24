@@ -22,7 +22,6 @@ import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -34,6 +33,7 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Core data structure that represents an archive. Conceptually, an archive is a
@@ -51,14 +51,12 @@ public class Archive implements Serializable {
 
     /**
      * Recognises names in the supplied text with OpenNLP NER
-     * @Deprecated
+     * @deprecated
      */
     public static Set<String> extractNames(String text) throws Exception {
         List<Pair<String, Float>> pairs = edu.stanford.muse.index.NER.namesFromText(text);
-        Set<String> names = new LinkedHashSet<String>();
-        for (Pair<String, ?> p : pairs)
-            names.add(p.getFirst());
-
+        Set<String> names = new LinkedHashSet<>();
+        names.addAll(pairs.stream().map(p->p.first).collect(Collectors.toCollection(()->new LinkedHashSet<>())));
         return Util.scrubNames(names);
     }
 
@@ -75,7 +73,9 @@ public class Archive implements Serializable {
                 File settingsDir = new File(edu.stanford.muse.Config.SETTINGS_DIR);
                 if (!settingsDir.exists()) {
                     log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
-                    settingsDir.mkdirs();
+                    boolean created = settingsDir.mkdirs();
+                    if(!created)
+                        log.warn("Cannot create settings dir: "+settingsDir);
                 }
 
                 try {
@@ -146,7 +146,7 @@ public class Archive implements Serializable {
         return indexer.docsForQuery(term, options);
     }
 
-    //query term can be ommitted if the querytype is PRESET_REGEX
+    //query term can be omitted if the querytype is PRESET_REGEX
     public Collection<Document> docsForQuery(int cluster, Indexer.QueryType qt) {
         Indexer.QueryOptions options = new Indexer.QueryOptions();
         options.setCluster(cluster);
@@ -240,7 +240,6 @@ public class Archive implements Serializable {
         public Map<Short, Integer> entityCounts;
         public int numPotentiallySensitiveMessages = -1;
         public Date firstDate, lastDate;
-        public int numLexicons = -1;
 
         private static String mergeField(String a, String b) {
             if (a == null)
@@ -808,7 +807,7 @@ public class Archive implements Serializable {
                 // Collections.sort(names);
                 // d.description = Util.join(names,
                 // Indexer.NAMES_FIELD_DELIMITER);
-                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getDoc(d));
+                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getLuceneDoc(d));
             }
         }
     }
@@ -989,15 +988,8 @@ public class Archive implements Serializable {
     }
 
     /**
-<<<<<<< HEAD
      * @return html for the given terms, with terms highlighted by the indexer.
      * if IA_links is set, points links to the Internet archive's version of the page.
-=======
-     * @return html for the given terms, with terms highlighted by the
-     * indexer.
-     * if IA_links is set, points links to the Internet archive's
-     * version of the page.
->>>>>>> ner
      * docId is used to initialize a new view created by clicking on a link within this message,
      * date is used to create the link to the IA
      * @args ldoc - lucene doc corresponding to the content
@@ -1048,78 +1040,49 @@ public class Archive implements Serializable {
                                                            Set<String> highlightTermsUnstemmed, Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
         String type = "person", otype = "organization", ptype = "location";
         //not using filtered entities here as it looks weird especially in the redaction mode not to
-        // have a word not masked annotated. It is counter-intuitive.
-        List<String> cpeople = getEntitiesInDoc(d, NER.EPER, true);
-        List<String> corgs = getEntitiesInDoc(d, NER.EORG, true);
-        List<String> cplaces = getEntitiesInDoc(d, NER.ELOC, true);
+        //have a word unmasked annotated. It is counter-intuitive.
+        List<String> cpeople = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PERSON, true, this)).stream().map(s->s.text).collect(Collectors.toList()),
+                cplaces = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PLACE, true, this)).stream().map(s->s.text).collect(Collectors.toList()),
+                corgs = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.ORGANISATION, true, this)).stream().map(s->s.text).collect(Collectors.toList());
         Set<String> acrs = Util.getAcronyms(indexer.getContents(d, false));
 
-        List<String> e = getEntitiesInDoc(d, type, true);
-        List<String> orgs = getEntitiesInDoc(d, otype, true);
-        List<String> places = getEntitiesInDoc(d, ptype, true);
         String contents = indexer.getContents(d, false);
         org.apache.lucene.document.Document ldoc = indexer.getDoc(d);
         if (ldoc == null)
-            System.err.println("Lucene Doc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
+            log.warn("Lucene Doc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
 
-        List<String> entities = new ArrayList<String>();
-
-        if (cpeople == null)
-            cpeople = new ArrayList<>();
-        if (cplaces == null)
-            cplaces = new ArrayList<>();
-        if (corgs == null)
-            corgs = new ArrayList<>();
-        if (e == null)
-            e = new ArrayList<>();
-        if (orgs == null)
-            orgs = new ArrayList<>();
-        if (places == null)
-            places = new ArrayList<>();
         if (acrs == null)
             acrs = new LinkedHashSet<>();
 
-        entities.addAll(cpeople);
-        entities.addAll(cplaces);
-        entities.addAll(corgs);
-        entities.addAll(e);
-        entities.addAll(orgs);
-        entities.addAll(places);
-        entities.addAll(acrs);
+        List<String> names = new ArrayList<>();
+        names.addAll(cpeople);
+        names.addAll(cplaces);
+        names.addAll(corgs);
+        names.addAll(acrs);
 
         // Contains all entities and id if it is authorised else null
         Map<String, Entity> entitiesWithId = new HashMap<>();
-        for (String entity : entities) {
+        for (String name : names) {
             Set<String> types = new HashSet<>();
-            if (cpeople.contains(entity))
+            if (cpeople.contains(name))
                 types.add("cp");
-            if (cplaces.contains(entity))
+            if (cplaces.contains(name))
                 types.add("cl");
-            if (corgs.contains(entity))
+            if (corgs.contains(name))
                 types.add("co");
-            if (e.contains(entity))
-                types.add("person");
-            if (orgs.contains(entity))
-                types.add("org");
-            if (places.contains(entity))
-                types.add("place");
-            if (acrs.contains(entity))
+            if (acrs.contains(name))
                 types.add("acr");
-            String ce = IndexUtils.canonicalizeEntity(entity);
+            String ce = IndexUtils.canonicalizeEntity(name);
             if (ce == null)
                 continue;
             if (authorisedEntities != null && authorisedEntities.containsKey(ce)) {
-                entitiesWithId.put(entity, new Entity(entity, authorisedEntities.get(ce), types));
+                entitiesWithId.put(name, new Entity(name, authorisedEntities.get(ce), types));
             } else
-                entitiesWithId.put(entity, new Entity(entity, null, types));
+                entitiesWithId.put(name, new Entity(name, null, types));
         }
 
         //don't want "more" button anymore
         boolean overflow = false;
-//		if (!inFull && contents.length() > 4999) {
-//			contents = Util.ellipsize(contents, 4999);
-//			overflow = true;
-//		}
         String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, showDebugInfo);
 
         if (ModeConfig.isPublicMode())
@@ -1137,9 +1100,9 @@ public class Archive implements Serializable {
         if (docClusters == null || (ct == MultiDoc.ClusteringType.NONE)) {
             List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
             MultiDoc md = new MultiDoc(0,"all");
-            for (Document d : docs) {
+            for (Document d : docs)
                 md.add(d);
-            }
+
             new_mDocs.add(md);
             return new_mDocs;
         }
@@ -1153,8 +1116,7 @@ public class Archive implements Serializable {
         }
 
         List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
-        for (@SuppressWarnings("unused")
-        MultiDoc md : docClusters)
+        for (MultiDoc md : docClusters)
             new_mDocs.add(null);
 
         for (Document d : docs) {
@@ -1168,7 +1130,7 @@ public class Archive implements Serializable {
             new_mDoc.add(d);
         }
 
-        List<MultiDoc> result = new ArrayList<MultiDoc>();
+        List<MultiDoc> result = new ArrayList<>();
         for (MultiDoc md : new_mDocs)
             if (md != null)
                 result.add(md);
@@ -1193,23 +1155,23 @@ public class Archive implements Serializable {
         return sb.toString();
     }
 
-    public org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
+    public org.apache.lucene.document.Document getLuceneDoc(edu.stanford.muse.index.Document d) throws IOException {
         return indexer.getDoc(d);
     }
 
     private Set<String> getNames(edu.stanford.muse.index.Document d, Indexer.QueryType qt)
     {
         try {
-            return new LinkedHashSet<String>(getNamesForDocId(d.getUniqueId(), qt));
+            return new LinkedHashSet<>(getNamesForDocId(d.getUniqueId(), qt));
         } catch (Exception e) {
             Util.print_exception(e, log);
-            return new LinkedHashSet<String>();
+            return new LinkedHashSet<>();
         }
     }
 
     //returns a map of names recognised by NER to frequency
     private Map<String, Integer> countNames() {
-        Map<String, Integer> name_count = new LinkedHashMap<String, Integer>();
+        Map<String, Integer> name_count = new LinkedHashMap<>();
         for (Document d : getAllDocs()) {
             Set<String> names = getNames(d, Indexer.QueryType.FULL);
             // log.info("Names = " + Util.joinSort(names, "|"));
@@ -1253,12 +1215,8 @@ public class Archive implements Serializable {
     public List<Map.Entry<String, Integer>> getTopNames(int threshold_pct, int n, boolean sort_by_names) {
         if (topNames == null) {
             // sort by count
-            topNames = new ArrayList<Map.Entry<String, Integer>>(countNames().entrySet());
-            Collections.sort(topNames, new Comparator<Map.Entry<String, Integer>>() {
-                public int compare(Map.Entry<String, Integer> e1, Map.Entry<String, Integer> e2) {
-                    return e2.getValue().compareTo(e1.getValue());
-                }
-            });
+            topNames = new ArrayList<>(countNames().entrySet());
+            Collections.sort(topNames, (e1, e2) -> e2.getValue().compareTo(e1.getValue()));
 
             // rescale the count to be in the range of 0-100
             if (topNames.size() > 0) {
@@ -1418,7 +1376,7 @@ public class Archive implements Serializable {
         } catch (Exception e) {
             log.info("Failed to deserialize names_offsets");
             e.printStackTrace();
-            result = new ArrayList<Triple<String, Integer, Integer>>();
+            result = new ArrayList<>();
         }
 
         return result;
@@ -1450,84 +1408,6 @@ public class Archive implements Serializable {
             e.printStackTrace();
             return 0;
         }
-    }
-
-    public List<String> filterOriginalContent(edu.stanford.muse.index.Document doc, List<String> names) {
-        List<String> originalAllNames = getEntitiesInDoc(doc, NER.NAMES_ORIGINAL);
-        List<String> originalNames = new ArrayList<>();
-        for(String str: names)
-            if(originalAllNames.contains(str))
-               originalNames.add(str);
-        return originalNames;
-    }
-
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
-        if(originalContentOnly)
-            return filterOriginalContent(doc, getEntitiesInDoc(doc, type, filter));
-        else
-            return getEntitiesInDoc(doc, type, filter);
-    }
-
-    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
-        if(originalContentOnly)
-            return filterOriginalContent(doc, getQualityEntitiesInDoc(doc, type, filter));
-        else
-            return getQualityEntitiesInDoc(doc, type, filter);
-    }
-
-    //type should be one of strings EPER, ELOC, EORG, as set in NER.java
-    //returns filtered list of all names
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
-        org.apache.lucene.document.Document ldoc = null;
-        try {
-            ldoc = indexer.getDoc(doc);
-        } catch (IOException e) {
-            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
-            e.printStackTrace();
-            return null;
-        }
-        return getEntitiesInLuceneDoc(ldoc, type, filter);
-    }
-
-    //puts an extra layer of filtering over entities by filtering out entities also recognised as other type
-    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
-        org.apache.lucene.document.Document ldoc = null;
-        try {
-            ldoc = indexer.getDoc(doc);
-        } catch (IOException e) {
-            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
-            e.printStackTrace();
-            return null;
-        }
-        List<String> thises = getEntitiesInLuceneDoc(ldoc, type, filter);
-        String[] types = new String[]{NER.EPER, NER.ELOC, NER.EORG};
-        List<String> otheres = new ArrayList<>();
-        for(String et: types) {
-            if (et.equals(type))
-                continue;
-            List<String> temp = getEntitiesInLuceneDoc(ldoc, et, filter);
-            if(temp!=null)
-                otheres.addAll(temp);
-        }
-        List<String> ret = new ArrayList<>();
-        for(String te: thises)
-            if(!otheres.contains(te))
-                ret.add(te);
-        return ret;
-    }
-
-    /**@return a list of names filtered to remove dictionary matches*/
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type) {
-        return getEntitiesInDoc(d, type, true);
-    }
-
-    /**@return list of all names in the lucene doc without filtering dictionary words*/
-    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type, Boolean filter) {
-        String field = ldoc.get(type);
-        if(filter)
-            return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
-        else
-            return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
     }
 
     public static void main(String[] args) {

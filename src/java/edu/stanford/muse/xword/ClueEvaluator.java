@@ -6,6 +6,7 @@ import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -19,6 +20,7 @@ import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 11/12/15.
@@ -218,15 +220,10 @@ public class ClueEvaluator {
             double CUTOFF = 0.001;
             log.info("Identifying names in the content");
 
-            Map<Short, Map<String,Double>> eMap = edu.stanford.muse.ner.NER.getEntities(clue.d, true, archive);
-            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = edu.stanford.muse.ner.NER.getEntitiesInDoc(sOrig,eMap);
-            Map<Short, Map<String,Double>> map = mapAndOffsets.first;
-            log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig+"["+map+"]");
-            for (short x : map.keySet()) {
-                for(String e: map.get(x).keySet())
-                    if(map.get(x).get(e)>CUTOFF)
-                        names.add(e);
-            }
+            Span[] allMentions = edu.stanford.muse.ner.NER.getEntities(clue.d, true, archive);
+            Span[] sentMentions = edu.stanford.muse.ner.NER.getEntitiesInDoc(sOrig,allMentions);
+            log.info("Found: " + sentMentions.length + " names in sentences: " + sOrig+"["+allMentions+"]");
+            names.addAll(Arrays.asList(sentMentions).stream().filter(c->c.typeScore>CUTOFF).map(c->c.text).collect(Collectors.toList()));
 
             float namesScore = params[0]*names.size();
             score += namesScore;

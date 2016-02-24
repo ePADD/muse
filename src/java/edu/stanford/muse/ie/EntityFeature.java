@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
@@ -411,9 +413,9 @@ public class EntityFeature implements StatusProvider, Serializable {
 				}
 				di++;
 
-				List<String> entities = archive.getEntitiesInDoc(ed, type);
-				List<String> orgs = archive.getEntitiesInDoc(ed, otype);
-				List<String> places = archive.getEntitiesInDoc(ed, pType);
+                List<String> entities = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PERSON, true, archive)).stream().map(s->s.text).collect(Collectors.toList()),
+                        places = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PLACE, true, archive)).stream().map(s->s.text).collect(Collectors.toList()),
+                        orgs = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.ORGANISATION, true, archive)).stream().map(s->s.text).collect(Collectors.toList());
 				if (entities != null)
 					c1 += entities.size();
 				if (orgs != null)

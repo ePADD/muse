@@ -6,6 +6,7 @@ import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -14,6 +15,7 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Updates
@@ -38,6 +40,7 @@ public class FeatureDictionary implements Serializable {
             AWARD,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
 
     public static Map<Short,String> desc = new LinkedHashMap<>();
+    public static Map<Short, List<Short>> mappings = new LinkedHashMap<>();
     static Log log = LogFactory.getLog(FeatureDictionary.class);
     public static Map<Short, String[]> aTypes = new LinkedHashMap<>();
     public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<>();
@@ -53,17 +56,17 @@ public class FeatureDictionary implements Serializable {
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
-        aTypes.put(PERSON, new String[]{"Person","Agent"});
-        aTypes.put(PLACE, new String[]{"Place","Park|Place","ProtectedArea|Place","PowerStation|Infrastructure|ArchitecturalStructure|Place","ShoppingMall|Building|ArchitecturalStructure|Place"});
-        aTypes.put(COMPANY, new String[]{"Company|Organisation","Non-ProfitOrganisation|Organisation"});
-        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place","Hotel|Building|ArchitecturalStructure|Place"});
-        aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place","Canal|Stream|BodyOfWater|NaturalPlace|Place","Stream|BodyOfWater|NaturalPlace|Place","BodyOfWater|NaturalPlace|Place", "Lake|BodyOfWater|NaturalPlace|Place"});
+        aTypes.put(PERSON, new String[]{"Person", "Agent"});
+        aTypes.put(PLACE, new String[]{"Place", "Park|Place", "ProtectedArea|Place", "PowerStation|Infrastructure|ArchitecturalStructure|Place", "ShoppingMall|Building|ArchitecturalStructure|Place"});
+        aTypes.put(COMPANY, new String[]{"Company|Organisation", "Non-ProfitOrganisation|Organisation"});
+        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place", "Hotel|Building|ArchitecturalStructure|Place"});
+        aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place", "Canal|Stream|BodyOfWater|NaturalPlace|Place", "Stream|BodyOfWater|NaturalPlace|Place", "BodyOfWater|NaturalPlace|Place", "Lake|BodyOfWater|NaturalPlace|Place"});
         aTypes.put(ROAD, new String[]{"Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
-        aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation","School|EducationalInstitution|Organisation","College|EducationalInstitution|Organisation"});
+        aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation", "School|EducationalInstitution|Organisation", "College|EducationalInstitution|Organisation"});
         aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
         aTypes.put(AIRPORT, new String[]{"Airport|Infrastructure|ArchitecturalStructure|Place"});
-        aTypes.put(ORGANISATION, new String[]{"Organisation","PoliticalParty|Organisation","TradeUnion|Organisation"});
-        aTypes.put(PERIODICAL_LITERATURE, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work","AcademicJournal|PeriodicalLiterature|WrittenWork|Work","Magazine|PeriodicalLiterature|WrittenWork|Work"});
+        aTypes.put(ORGANISATION, new String[]{"Organisation", "PoliticalParty|Organisation", "TradeUnion|Organisation"});
+        aTypes.put(PERIODICAL_LITERATURE, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work", "AcademicJournal|PeriodicalLiterature|WrittenWork|Work", "Magazine|PeriodicalLiterature|WrittenWork|Work"});
         aTypes.put(ISLAND, new String[]{"Island|PopulatedPlace|Place"});
         aTypes.put(MUSEUM, new String[]{"Museum|Building|ArchitecturalStructure|Place"});
         aTypes.put(BRIDGE, new String[]{"Bridge|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
@@ -122,14 +125,40 @@ public class FeatureDictionary implements Serializable {
                 //should be careful about Agent type, though it contains personal names it can also contain many non-personal entities
                 "ComicsCharacter|FictionalCharacter|Person"
         );
-        desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
-        desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
-        desc.put(AIRPORT,"AIRPORT");desc.put(ORGANISATION,"ORGANISATION");desc.put(PERIODICAL_LITERATURE,"PERIODICAL_LITERATURE");
-        desc.put(ISLAND,"ISLAND");desc.put(MUSEUM,"MUSEUM");desc.put(BRIDGE,"BRIDGE");desc.put(AIRLINE,"AIRLINE");
-        desc.put(GOVAGENCY,"GOVAGENCY");
-        desc.put(HOSPITAL,"HOSPITAL");desc.put(AWARD,"AWARD");
-        desc.put(THEATRE,"THEATRE");desc.put(LEGISTLATURE,"LEGISTLATURE");desc.put(LIBRARY,"LIBRARY");desc.put(LAWFIRM,"LAWFIRM");
-        desc.put(MONUMENT,"MONUMENT");desc.put(DISEASE,"DISEASE");desc.put(EVENT,"EVENT");desc.put(OTHER,"OTHER");
+        desc.put(PERSON, "PERSON");
+        desc.put(COMPANY, "COMPANY");
+        desc.put(BUILDING, "BUILDING");
+        desc.put(PLACE, "PLACE");
+        desc.put(RIVER, "RIVER");
+        desc.put(ROAD, "ROAD");
+        desc.put(UNIVERSITY, "UNIVERSITY");
+        desc.put(MOUNTAIN, "MOUNTAIN");
+        desc.put(AIRPORT, "AIRPORT");
+        desc.put(ORGANISATION, "ORGANISATION");
+        desc.put(PERIODICAL_LITERATURE, "PERIODICAL_LITERATURE");
+        desc.put(ISLAND, "ISLAND");
+        desc.put(MUSEUM, "MUSEUM");
+        desc.put(BRIDGE, "BRIDGE");
+        desc.put(AIRLINE, "AIRLINE");
+        desc.put(GOVAGENCY, "GOVAGENCY");
+        desc.put(HOSPITAL, "HOSPITAL");
+        desc.put(AWARD, "AWARD");
+        desc.put(THEATRE, "THEATRE");
+        desc.put(LEGISTLATURE, "LEGISTLATURE");
+        desc.put(LIBRARY, "LIBRARY");
+        desc.put(LAWFIRM, "LAWFIRM");
+        desc.put(MONUMENT, "MONUMENT");
+        desc.put(DISEASE, "DISEASE");
+        desc.put(EVENT, "EVENT");
+        desc.put(OTHER, "OTHER");
+
+        FeatureDictionary.mappings.put(FeatureDictionary.PERSON, Arrays.asList(FeatureDictionary.PERSON));
+        FeatureDictionary.mappings.put(FeatureDictionary.PLACE, Arrays.asList(FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL, FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
+                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
+                FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY, FeatureDictionary.MONUMENT));
+        FeatureDictionary.mappings.put(FeatureDictionary.ORGANISATION, Arrays.asList(FeatureDictionary.COMPANY, FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
+                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
+                FeatureDictionary.PERIODICAL_LITERATURE,EVENT,DISEASE));
     }
     /**
      * Features for a word that corresponds to a mixture
@@ -1170,7 +1199,7 @@ public class FeatureDictionary implements Serializable {
                         ffw.close();
                     }
                 }
-                if(i==0 || i==2 || i==5 || i==7 || i==9){
+                if(DEBUG && (i==0 || i==2 || i==5 || i==7 || i==9)){
                     SequenceModel nerModel = new SequenceModel();
                     nerModel.dictionary = this;
                     String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"experiment"+File.separator;
@@ -1183,45 +1212,29 @@ public class FeatureDictionary implements Serializable {
         }
     }
 
+    /**Given a type described in text returns a coarse coding for the type
+     * for example: "University" -> 1 [COMPANY]*/
+    public static Short getCoarseType(Short type){
+        List<Short> coarseTypes = mappings.keySet().stream().filter(p -> mappings.get(p).contains(type)).collect(Collectors.toList());
+        if(coarseTypes == null || coarseTypes.size() == 0) {
+            log.warn("Unknown type: " + type);
+            return OTHER;
+        }
+        else if(coarseTypes.size()>1) {
+            log.warn("!!Unexpected!!Found more than one code for "+type);
+            return coarseTypes.get(0);
+        }
+        else
+            return coarseTypes.get(0);
+    }
+
     public static void main(String[] args) {
-//        String modelFile = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
-//        System.err.println("Loading model...");
-//        SequenceModel nerModel = null;
-//        try{nerModel = SequenceModel.loadModel(modelFile);}
-//        catch(IOException e){e.printStackTrace();}
-//        MU mu = nerModel.dictionary.features.get("tokyo");
-//        System.err.println("Likelihood: " + mu.getLikelihood(nerModel.dictionary.generateFeatures2("Tokyo", FeatureDictionary.PLACE).get("tokyo"),nerModel.dictionary));
-//        System.err.println(mu.muVectorPositive);
-//        System.err.println(mu.numMixture+" --- "+mu.numSeen);
-//        System.err.println(mu.alpha + " -- " + mu.alpha_0+" -- "+mu.alpha_pi+"\n\n");
-////        Map<String,Map<String,Integer>> priors = FeatureDictionary.getTokenTypePriors();
-////        System.err.println(priors.get("volkswagen"));
-//        //get it right for these phrases
-//        String[] phrases = new String[]{"Intelligence Minister Ali Fallahiyan","Information","Statistics Canada", "First Alliance Corporation and Subsidiaries", "North Atlantic Treaty Organisation",
-//            "CROFT RESTRICTS PAKISTAN TO","Turkish Foreign Minister Tansu Ciller","When Arafat","Labour Prime Minister Shimon Peres","Robert Creeley in University of Buffalo"};
-//        phrases = new String[]{"Tokyo"};
-//        for(String phrase: phrases)
-//            System.err.println("Phrase: "+phrase+" --- "+nerModel.seqLabel(phrase));
         String[] test = new String[]{"Settlement|PopulatedPlace|Place","Town|Settlement|PopulatedPlace|Place","Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place",
         "Village|Settlement|PopulatedPlace|Place","Building|ArchitecturalStructure|Place"};
         for(String t: test)
-            System.out.println(t + " - " + codeType(t));
-//        System.err.println(codeType("Hospital|Building|ArchitecturalStructure|Place"));
-       //System.err.println(MU.getMaxEntProb());
-//        gazz.put("Rajahmundry","City|Settlement|PopulatedPlace|Place");
-//        //gazz.put("Rajahmundry Airport", "Airport|Infrastructure|ArchitecturalStructure|Place");
-//        gazz.put("Rajahmundry (Rural)", "Settlement|PopulatedPlace|Place");
-//        gazz.put("Government_Arts_College,_Rajahmundry","University|EducationalInstitution|Organisation|Agent");
-//        gazz.put("Rajahmundry University","University|EducationalInstitution|Organisation|Agent");
-//        gazz.put("Andhra University Rajahmundry","University|EducationalInstitution|Organisation|Agent");
-//        gazz.put("Crandall University","University|EducationalInstitution|Organisation|Agent");
-//        gazz.put("Crandall","Town|Settlement|PopulatedPlace|Place");
-//        gazz.put("Crandall,Texas","City|Settlement|PopulatedPlace|Place");
-//        gazz.put("Stanford_University","University|EducationalInstitution|Organisation|Agent");
-//        gazz.put("Leland Stanford","Governor|Politician|Person|Agent");
-//        gazz.put("Stanford White","Architect|Person|Agent");
-//        gazz.put("Jane Stanford","Agent");
-//        gazz.put();
-//        dictionary.addGazz();
+            System.out.println(t + " - " + codeType(t) + " - " + getCoarseType(codeType(t)));
+        for(Short t: allTypes)
+            System.out.println(desc.get(t)+" -- "+getCoarseType(t));
+
     }
 }

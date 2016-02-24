@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -19,15 +20,12 @@ import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
-import edu.stanford.muse.util.DictUtils;
+import edu.stanford.muse.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ie.NameTypes;
-import edu.stanford.muse.util.CryptoUtils;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.xword.ArchiveCluer;
 import edu.stanford.muse.xword.Clue;
@@ -41,7 +39,6 @@ public class MemoryStudy implements Serializable{
 	private static final long serialVersionUID = 1L;
 
 	public static Log log = LogFactory.getLog(MemoryStudy.class);
-	private static final int MIN_ANSWER_LENGTH = 3, MAX_ANSWER_LENGTH = 15;
 	public static String PAYMENT = System.getProperty("PAYMENT"); // note, this does not have $10, only 10
 	
 	/** screening params */
@@ -273,13 +270,11 @@ public class MemoryStudy implements Serializable{
 
             List<String> entities = new ArrayList<>();
             if(!personTest) {
-                Map<Short, Map<String, Double>> es = edu.stanford.muse.ner.NER.getEntities(archive.getDoc(doc), true);
-                for (Short t : itypes) {
-                    Map<String, Double> tes = es.get(t);
-                    for (String str : tes.keySet())
-                        if (tes.get(str) > CUTOFF)
-                            entities.add(str);
-                }
+                Span[] es = edu.stanford.muse.ner.NER.getEntities(archive.getLuceneDoc(doc), true);
+                entities.addAll(Arrays.asList(es).stream()
+                        .filter(s -> (s.type!=FeatureDictionary.OTHER) && (s.typeScore>CUTOFF))
+                        .map(s -> s.text).collect(Collectors.toList())
+                );
             }
             else{
                 //do not consider mailing lists

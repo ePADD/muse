@@ -12,6 +12,7 @@ import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
@@ -22,6 +23,7 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 24/12/15.
@@ -631,14 +633,14 @@ public class ProperNounLinker {
                 cics.addAll(tokenizer.tokenizeWithoutOffsets(subject));
                 cics.addAll(hpeople);
                 Set<String> names = new LinkedHashSet<>();
-                Map<Short, Map<String, Double>> map = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
+                Span[] entities = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
 
                 double thresh = 0.001;
-                for (Short t : map.keySet())
-                    if (t != FeatureDictionary.OTHER)
-                        for (String str : map.get(t).keySet())
-                            if (map.get(t).get(str) > thresh)
-                                names.add(str);
+                names.addAll(
+                        Arrays.asList(entities).stream()
+                        .filter(s -> (s.type != FeatureDictionary.OTHER) && s.typeScore > thresh)
+                        .map(s -> s.text).collect(Collectors.toSet())
+                );
 
                 names.addAll(hpeople);
                 long st1 = System.currentTimeMillis();
@@ -845,9 +847,16 @@ public class ProperNounLinker {
 //        BOWtest();
 //        test();
         try {
-            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user-terry-important";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            findClusters(archive);
+            Document doc = archive.getAllDocs().get(0);
+            org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
+            System.out.println(ldoc);
+            Span[] ss = edu.stanford.muse.ner.NER.getEntities(archive.getLuceneDoc(doc), true);
+            for(Span s: ss)
+                System.out.println(s);
+            System.out.println(ldoc.get("en_person"));
+            //findClusters(archive);
         }catch(Exception e){
             e.printStackTrace();
         }

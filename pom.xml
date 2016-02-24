@@ -31,6 +31,9 @@
 	    </goals>
 	    <configuration>
 	      <webAppSourceDirectory>${basedir}/WebContent</webAppSourceDirectory>
+	      <sourceVersion>1.8</sourceVersion>
+	      <targetVersion>1.8</targetVersion>
+	      <excludes>**\/test\/**</excludes>
 	    </configuration>
 	  </execution>
 	</executions>

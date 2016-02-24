@@ -2,6 +2,7 @@ package edu.stanford.muse.webapp;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
@@ -13,6 +14,7 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 
@@ -475,10 +477,10 @@ public class EmailRenderer {
 		x = ed.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
-        List<String> cpeople = archive.getEntitiesInDoc(ed, NER.EPER_TITLE, true);
-        List<String> corgs = archive.getEntitiesInDoc(ed, NER.EORG_TITLE, true);
-        List<String> cplaces = archive.getEntitiesInDoc(ed, NER.ELOC_TITLE, true);
-        List<String> entities = new ArrayList<String>();
+        List<String> cpeople = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PERSON, false, archive)).stream().map(s->s.text).collect(Collectors.toList()),
+                cplaces = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PLACE, false, archive)).stream().map(s->s.text).collect(Collectors.toList()),
+                corgs = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.ORGANISATION, false, archive)).stream().map(s->s.text).collect(Collectors.toList());
+        List<String> entities = new ArrayList<>();
         entities.addAll(cpeople);
         entities.addAll(cplaces);
         entities.addAll(corgs);
