@@ -43,7 +43,7 @@ public class NER implements StatusProvider {
 	double						pctComplete			= 0;
 	boolean						cancelled			= false;
 	Archive						archive				= null;
-    SequenceModel               nerModel;
+    NERModel               nerModel;
 	//in seconds
 	long						time				= -1, eta = -1;
 	static FieldType			ft;
@@ -154,7 +154,7 @@ public class NER implements StatusProvider {
 		ft.freeze();
 	}
 
-	public NER(Archive archive, SequenceModel nerModel) {
+	public NER(Archive archive, NERModel nerModel) {
 		this.archive = archive;
         this.nerModel = nerModel;
 		time = 0;
@@ -361,8 +361,7 @@ public class NER implements StatusProvider {
         }
     }
 
-    //TODO: Consider using Atomic reader for accessing the index, if it improves performance
-	//main method trains the model, recognizes the entities and updates the doc.
+    //main method trains the model, recognizes the entities and updates the doc.
 	public void recognizeArchive() throws CancelledException, IOException {
 		time = 0;
 		archive.openForRead();

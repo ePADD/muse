@@ -24,6 +24,8 @@ import edu.stanford.muse.groups.*;
 import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.model.DummyNERModel;
+import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.util.SloppyDates.DateRangeSpec;
@@ -403,11 +405,15 @@ public class JSPHelper {
 		archive.openForRead();
 
         String modelFile = SequenceModel.modelFileName;
-        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+        NERModel nerModel = (SequenceModel)session.getAttribute("ner");
         session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
         log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            String mode = System.getProperty("muse.mode");
+            if (mode!=null && "memorystudy".equals(mode))
+                nerModel = new DummyNERModel();
+            else
+                nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
         }
