@@ -288,6 +288,7 @@ public class MemoryStudy implements Serializable{
                 //discard doc if it is not a sent mail
                 if((ed.sentOrReceived(archive.addressBook) & EmailDocument.SENT_MASK)==0)
                     continue;
+
                 List<Address> addrs = new ArrayList<>();
                 if(ed.to!=null)
                     for(Address addr: ed.to)
@@ -298,11 +299,12 @@ public class MemoryStudy implements Serializable{
                     Contact c = archive.addressBook.lookupByAddress(addr);
                     names.add(c.pickBestName());
                 }
-                for(String name: names){
-                    if(!ownerNames.contains(name) && !DictUtils.hasDictionaryWord(name)) {
-                        entities.add(name);
-                    }
-                }
+
+				for (String name : names) {
+					if (!ownerNames.contains(name) && !DictUtils.hasDictionaryWord(name)) {
+						entities.add(name);
+					}
+				}
             }
             allEntities.addAll(entities);
 

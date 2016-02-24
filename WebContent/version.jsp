@@ -1,1 +1,1 @@
-Muse version Aug 20, 2015
+Muse version v1.0beta

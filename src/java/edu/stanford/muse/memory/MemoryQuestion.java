@@ -96,25 +96,6 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 			return null;
 	}
 	
-	public String getPreHintQuestion() {
-		String originalClue = clue.getClue();
-		// do some slight reformatting... "______ Dumpty sat on a wall" to "_ _ _ _ _ _ Dumpty sat on a wall"
-		String correctanswer = this.correctAnswer;
-		String blanksToReplace = "", blanksPlusSpace = "";
-		for (int i = 0; i < correctanswer.length(); i++){
-            //we can reveal the spaces in the answer, else it is very counter-intuitive.
-            if(correctanswer.charAt(i) != ' ')
-			    blanksPlusSpace += "_ ";
-            else
-                blanksPlusSpace += "  ";
-            blanksToReplace +="_";
-		}
-        if(originalClue.contains(blanksToReplace))
-		    return originalClue.replaceAll(blanksToReplace, blanksPlusSpace);
-	    //some type of questions are not fill in the blank type
-        else
-            return originalClue+"\nEmail recipient name: "+blanksPlusSpace;
-    }
 
     /**
      * @param userAnswer - The user answer when the submit button is clicked
@@ -157,7 +138,60 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
             } catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }
 		} 
 	}
-	
+
+	public String getBlanksWithNoHintForCorrespondentTest() {
+		String correctanswer = this.correctAnswer;
+		String blanks = "";
+
+		for (int i = 0; i < correctanswer.length(); i++) {
+			//we can reveal the spaces in the answer, else it is very counter-intuitive.
+			if (correctanswer.charAt(i) != ' ')
+				blanks += "_ ";
+			else
+				blanks += "  ";
+		}
+
+		return blanks;
+	}
+
+	public String getBlanksWithHintForCorrespondentTest() {
+		String correctanswer = this.correctAnswer;
+		String blanks = "";
+		boolean showNextLetter = true;
+		for (int i = 0; i < correctanswer.length(); i++) {
+			char ch = correctanswer.charAt(i);
+			// we can reveal the spaces in the answer, else it is very counter-intuitive.
+			if (showNextLetter) {
+				blanks += ch;
+			} else {
+				blanks += (Character.isWhitespace(ch) ? " " : "_ ");
+			}
+
+			showNextLetter = (Character.isWhitespace(ch));
+		}
+		return blanks;
+	}
+
+	public String getPreHintQuestion() {
+		String originalClue = clue.getClue();
+		// do some slight reformatting... "______ Dumpty sat on a wall" to "_ _ _ _ _ _ Dumpty sat on a wall"
+		String correctanswer = this.correctAnswer;
+		String blanksToReplace = "", blanksPlusSpace = "";
+		for (int i = 0; i < correctanswer.length(); i++){
+			//we can reveal the spaces in the answer, else it is very counter-intuitive.
+			if(correctanswer.charAt(i) != ' ')
+				blanksPlusSpace += "_ ";
+			else
+				blanksPlusSpace += "  ";
+			blanksToReplace +="_";
+		}
+		if(originalClue.contains(blanksToReplace))
+			return originalClue.replaceAll(blanksToReplace, blanksPlusSpace);
+			//some type of questions are not fill in the blank type
+		else
+			return originalClue + "<p>Email recipient name: " + blanksPlusSpace + "</p>";
+	}
+
 	public String getPostHintQuestion() {
         String clueText = clue.getClue();
         String correctanswer = this.correctAnswer;
@@ -179,7 +213,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
             return clue.getClue().replaceAll(blanksToReplace, hint);
         }
         else {
-            return clueText+"\nEmail recipient name: "+hint;
+            return clueText+"<p>Email recipient name: "+hint + "</p>";
         }
     }
 
