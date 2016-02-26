@@ -41,6 +41,9 @@ public class MailingList implements java.io.Serializable {
 
 	public void addMember(Contact c)
 	{
+		if (c == null) // ignore null contacts
+			return;
+
 		members.add(c);
 	}
 
@@ -113,7 +116,10 @@ public class MailingList implements java.io.Serializable {
 					continue;
 	
 				Contact c = ab.registerAddress((InternetAddress) a);
-	
+
+				if (c == null)
+					continue;
+
 				if ((c.mailingListState & DEFINITE_NOT) != 0)
 					continue;
 	
@@ -162,7 +168,8 @@ public class MailingList implements java.io.Serializable {
 						continue;
 	
 					Contact c = ab.registerAddress((InternetAddress) a);
-					c.mailingListState |= DEFINITE_NOT;
+					if (c != null)
+						c.mailingListState |= DEFINITE_NOT;
 				}
 		}
 	}

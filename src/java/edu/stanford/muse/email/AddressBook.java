@@ -480,7 +480,8 @@ public class AddressBook implements Serializable {
 	}
 
 	/* Single place where a <name, email address> equivalence is registered (and used to build the address book and merge different names/email addresses together.
-		Any evidence of a name belonging to an email address should be logged by calling this method. */
+		Any evidence of a name belonging to an email address should be logged by calling this method.
+		Warning: can return null if the email address is null! */
 	Contact registerAddress(InternetAddress a)
 	{
 		// get email and name and normalize. email cannot be null, but name can be.
@@ -506,6 +507,10 @@ public class AddressBook implements Serializable {
 		}
 
 		List nameTokens = Util.tokenize(name);
+
+		if (Util.nullOrEmpty(email)) {
+			return null; // we see this happening in the scamletters dataset -- email addr itself is empty!
+		}
 
 		Contact c = unifyContact(email, name);
 
