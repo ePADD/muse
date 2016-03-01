@@ -69,7 +69,7 @@ int numQ = HTMLUtils.getIntParam(request, "n", 40);
 session.setAttribute("numQuestions", new Integer(numQ));
 
 session.setAttribute("mode", "memorytest");
-
+System.setProperty ("muse.dummy.ner", "true");
 String googleClientId = null;
 if(request.getLocalPort() == 8043) {
 	googleClientId = "1072171428245-72o4t2f53c1ksrnefnh6amofj6d7h4op.apps.googleusercontent.com"; // Client ID for mem study

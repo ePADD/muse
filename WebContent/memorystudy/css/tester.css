@@ -80,11 +80,10 @@ input[type="button"]:active {
 input[type="text"]{
 	background: #DADADA;
 	margin: auto;
+    border: solid 2px blue;
 	overflow: visible;
-	-moz-border-radius: 10px;
-	-webkit-border-radius: 10px;
-	-khtml-border-radius: 10px;
-	border-radius: 10px;
+    color: white;
+	border-radius: 4px;
 	font: 18px "Trebuchet MS", sans-serif;
 	letter-spacing: 1px;
 	width :200px;

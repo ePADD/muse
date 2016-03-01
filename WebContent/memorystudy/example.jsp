@@ -36,7 +36,7 @@ $(function() {
 <div class="box">
 <hr style="color:red;background-color:red">
 <div style="width:100%;text-align:center;color:red">
-Example
+Example <h1>NEEDS TO BE UPDATED</h1>
 </div>
 <hr style="color:red;background-color:red">
 <br/>
