@@ -282,12 +282,13 @@
                     var $target = $(event.target);
                     var button_text = $target.text(); // text on the button that was pressed
                     //ensure answer or the reason is filled
-                    if ($("#answer").val()=='' && !$("#fComplete")[0].checked && !$("#fContext")[0].checked && !($("#fTip")[0].checked && $("#tipScore").val() !== '') && !$("#unfair")[0].checked) {
+                    /*
+                    if ($("#answer").val()=='' && !$("#fComplete")[0].checked && !$("#fContext")[0].checked && !$("#unfair")[0].checked) {
                         alert("Please enter the answer or answer why you forgot.");
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
-                    } else if($("#fTip")[0].checked && $("#tipScore").val() !== ''){
+                    } */ /* else if($("#fTip")[0].checked && $("#tipScore").val() !== ''){
                         var tVal = parseInt($("#tipScore").val());
                         if(isNaN(tVal) || tVal<1 || tVal>10){
                             alert('Please enter a number in the range 1 to 10 for "how close you are to having the name pop into mind"');
@@ -295,12 +296,13 @@
                             event.stopPropagation();
                             return false;
                         }
+
                     } else if($("#unfair")[0].checked && $("#unfairReason").val() == ''){
                         alert("Please enter a reason why you think the question is unfair.")
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
-                    }
+                    } */
 
                     //ensure questions are filled out
                     if ($('#memory').val()=='' || $('#certainty').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {

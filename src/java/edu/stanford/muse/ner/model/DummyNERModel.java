@@ -16,7 +16,7 @@ public class DummyNERModel implements NERModel{
     public Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> find (String content) {
         // collect pseudo proper nouns
         if (Util.nullOrEmpty(content)) {
-            return new Pair(<new HashMap<>(), new ArrayList<>());
+            return new Pair(new HashMap<>(), new ArrayList<>());
         }
         List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content, false);
         //we will make a dummy object of type map
