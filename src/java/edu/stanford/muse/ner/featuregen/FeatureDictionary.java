@@ -655,7 +655,23 @@ public class FeatureDictionary implements Serializable {
 //            }
 //        }
         int wi=0, ws = words.size();
+        int numIgnored = 0;
         for(String str: words.keySet()){
+            double wordFreq = words.get(str).values().iterator().next().second;
+            if (wordFreq<3 || str.length()<=1) {
+                numIgnored++;
+                continue;
+            }
+            boolean hasNumber = false;
+            for(char c: str.toCharArray())
+                if(Character.isDigit(c)) {
+                    hasNumber = true;
+                    numIgnored++;
+                    break;
+                }
+            if (hasNumber)
+                continue;
+
             //dont touch priors that are already initialised
             if(features.containsKey(str))
                 continue;
@@ -1041,8 +1057,8 @@ public class FeatureDictionary implements Serializable {
             double p = this.getConditional(phrase, et, null);
             if(p!=0)
                 ll += Math.log(p);
-            else
-                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
+//            else
+//                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
         }
         return ll;
     }
@@ -1077,7 +1093,7 @@ public class FeatureDictionary implements Serializable {
                     }
                     MU mu = features.get(mi);
                     if(mu == null) {
-                        log.warn("!!FATAL!! mu null for: " + mi + ", " + features.size());
+                        //log.warn("!!FATAL!! mu null for: " + mi + ", " + features.size());
                         continue;
                     }
                     double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
@@ -1091,7 +1107,7 @@ public class FeatureDictionary implements Serializable {
                     //System.err.println(mi + " : " + d + ", "+mu.getLikelihood(wfeatures.get(mi), this) );
                 }
                 if (z == 0) {
-                    log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
+                    //log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
                     continue;
                 }
 
