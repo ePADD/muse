@@ -155,9 +155,6 @@
 				name="answerBeforeHint" id="answerBeforeHint" value="-1">
                 <br/>
                 <input style="border:solid 2px blue; background: #7c7c7c" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
-                <span id="hint-button" style="display: none">
-<!--                    <button id="hintbutton" type="button" onclick="show_hint(); return false;" style="">Show Hint</button> -->
-				<br /></span>
 			    <p class="smaller">
                 <span id="answerLength">
                     [<%
@@ -208,12 +205,9 @@
 
         <br/>
 
-        <div>How vividly do you remember writing this mail?
+        <div>How vividly do you remember writing this email?
             <br>
-            10 - I clearly remember writing this mail<br>
-            6&nbsp - I remember the person<br>
-            4&nbsp  - I recall the general context<br>
-            1&nbsp  - I have no memory of the event<br>
+            (1: no idea; 5: fair idea; 10:strong memory)<br/>
             <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
             <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
@@ -257,11 +251,8 @@
 
     <p/>
         <input type="hidden" name="submitType" value="submit"/> <!-- will be submit or giveup -->
-        <button class="submitButton" style="margin-left: 20%"
-				type="submit" value="Submit">Submit</button>
-
-        <button class="submitButton" style="margin-left: 20%"
-                type="submit" value="GiveUp">Give up</button>
+        <button class="submitButton" style="margin-left: 20%" type="submit" value="Submit">Submit</button>
+        <button class="submitButton" style="margin-left: 20%" type="submit" value="GiveUp">Give up</button>
 
         <script>
 				function show_hint() {
@@ -305,7 +296,7 @@
                     } */
 
                     //ensure questions are filled out
-                    if ($('#memory').val()=='' || $('#certainty').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
+                    if ($('#memory').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
                         alert("Please answer all the questions.");
                         event.preventDefault();
                         event.stopPropagation();
