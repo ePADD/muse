@@ -119,8 +119,6 @@
 <title>Research Study on Memory</title>
 </head>
 <body>
-    <div class="heading">
-    </div>
 	<div class="box">
         <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
         Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>

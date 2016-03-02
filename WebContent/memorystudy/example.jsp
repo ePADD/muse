@@ -12,7 +12,7 @@
 <link href="intro.js-0.5.0/example/assets/css/demo.css" rel="stylesheet">
 <link href="intro.js-0.5.0/introjs.css" rel="stylesheet">
 <link rel="stylesheet" href="css/tester.css"/>
-<link rel="icon" href="images/stanford-favicon.gif">
+<link rel="icon" href="images/ashoka-favicon.gif">
 <title>Example</title>
 <script>
 $(function() {
@@ -27,18 +27,13 @@ $(function() {
 <script type="text/javascript" src="intro.js-0.5.0/intro.js"></script>
 
 <p>
-<div class="heading">
-    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
-    <span style="float: right;font-size: 30px;color: black;">
-            COGNITIVE EXPERIMENTS ON LIFE-LOGS (CELL)<br>Ashoka University
-        </span>
-</div>
+
 <div class="box">
-<hr style="color:red;background-color:red">
-<div style="width:100%;text-align:center;color:red">
-Example <h1>NEEDS TO BE UPDATED</h1>
-</div>
-<hr style="color:red;background-color:red">
+    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
+    <span style="float: right;font-size: 30px;color: red;">
+        Example</span>
+    <div style="clear:both"></div>
+
 <br/>
 <div class="container2">
 <form id="testinput" name = "testinput" action = "examplehandler" method="post">
@@ -175,10 +170,12 @@ Example <h1>NEEDS TO BE UPDATED</h1>
                 return false;
             }
 */
+            /*
             if ($('#memory').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
                 alert("Please answer all the questions.");
                 return false;
             }
+            */
 
 			return true;				
 		}
