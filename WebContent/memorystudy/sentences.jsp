@@ -27,7 +27,7 @@
     <link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
     <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
-    <link rel="icon" href="memorystudy/images/stanford-favicon.gif">
+    <link rel="icon" href="images/ashoka-favicon.gif">
     <jsp:include page="../css/css.jsp"/>
     <script type="text/javascript" src="js/jquery/jquery.js"></script>
     <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>

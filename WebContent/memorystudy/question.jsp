@@ -114,7 +114,7 @@
 <script src="../js/jquery/jquery.js"></script>
 <script src="../js/muse.js"></script>
 <link rel="stylesheet" href="css/tester.css" />
-<link rel="icon" href="images/stanford-favicon.gif">
+    <link rel="icon" href="images/ashoka-favicon.gif">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Research Study on Memory</title>
 </head>
