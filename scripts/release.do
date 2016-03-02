@@ -1,5 +1,5 @@
 #!/bin/csh -fe
-set build_info = "Built by `whoami`, `date '+%a %d %b %Y %l:%M %p'` git branch: `git rev-parse --abbrev-ref HEAD` latest commit id: `git rev-parse HEAD` working dir: `pwd`"
+set build_info = "Built by `whoami` on `hostname`, `date '+%a %d %b %Y %l:%M %p'` git branch: `git rev-parse --abbrev-ref HEAD` latest commit id: `git rev-parse HEAD` working dir: `pwd`"
 java -version
 echo $build_info
 set version = `cat version`
