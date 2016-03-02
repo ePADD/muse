@@ -11,7 +11,6 @@
 <%@ page import="javax.mail.Address" %>
 <%@ page import="com.google.common.collect.Multimap" %>
 <%@ page import="com.google.common.collect.LinkedHashMultimap" %>
-<%@ page import="oracle.jrockit.jfr.StringConstantPool" %>
 <%@ page import="edu.stanford.muse.util.DictUtils" %>
 <%@ page import="org.w3c.tidy.Dict" %>
 <%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
