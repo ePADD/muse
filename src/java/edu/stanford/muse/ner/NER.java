@@ -396,6 +396,7 @@ public class NER implements StatusProvider {
 			String content = archive.getContents(ldoc, false);
             String title = archive.getTitle(ldoc);
 			//original content is substring of content;
+			if(di == 0) {status = "Loading DBpedia into memory..."; EmailUtils.readDBpedia();}
             Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
             Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
 			recTime += System.currentTimeMillis() - st;

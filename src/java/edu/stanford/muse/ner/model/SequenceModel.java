@@ -10,7 +10,6 @@ import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -827,6 +826,17 @@ public class SequenceModel implements NERModel, Serializable {
         };
     }
 
+    static void printMemoryUsage(){
+        int mb = 1024*1024;
+        Runtime runtime = Runtime.getRuntime();
+        log.info(
+                "Used memory: " + ((runtime.totalMemory() - runtime.freeMemory()) / mb) + "MB\n" +
+                        "Free memory: " + (runtime.freeMemory() / mb) + "MB\n" +
+                        "Total memory: " + (runtime.totalMemory() / mb) + "MB\n" +
+                        "-------------"
+        );
+    }
+
     public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String modelFile = SequenceModel.modelFileName;
@@ -839,8 +849,10 @@ public class SequenceModel implements NERModel, Serializable {
         }
         System.err.println("Loading model...");
         SequenceModel nerModel = null;
+        printMemoryUsage();
         try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
+        printMemoryUsage();
         if(nerModel == null)
             nerModel = train();
 
@@ -849,5 +861,6 @@ public class SequenceModel implements NERModel, Serializable {
             System.out.println(nerModel.find("Mr. HariPrasad was present."));
             System.out.println(nerModel.find("A book named Information Retrieval by Christopher Manning"));
         }
+        printMemoryUsage();
     }
 }
