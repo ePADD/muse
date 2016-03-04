@@ -705,7 +705,7 @@ public class ProperNounLinker {
                             searchTime += System.currentTimeMillis() - st1;
                             if (match.getSecond() >= 0) {
                                 Span me = match.getFirst().entity;
-                                log.info("Found a match " + cic + "<->" + me.text + " - Level: " + match.getSecond() + " - UID: " + ed.getUniqueId());
+                                //log.info("Found a match " + cic + "<->" + me.text + " - Level: " + match.getSecond() + " - UID: " + ed.getUniqueId());
                                 //We consider the match only if the name expands to a person or is an acronym
                                 if (me.type == FeatureDictionary.PERSON || FeatureGeneratorUtil.tokenFeature(cic).equals("ac")) {
                                     Integer sidx;

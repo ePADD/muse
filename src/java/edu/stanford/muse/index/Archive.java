@@ -1038,12 +1038,12 @@ public class Archive implements Serializable {
 
     public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed,
                                                            Set<String> highlightTermsUnstemmed, Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
-        String type = "person", otype = "organization", ptype = "location";
         //not using filtered entities here as it looks weird especially in the redaction mode not to
         //have a word unmasked annotated. It is counter-intuitive.
-        List<String> cpeople = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PERSON, true, this)).stream().map(s->s.text).collect(Collectors.toList()),
-                cplaces = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PLACE, true, this)).stream().map(s->s.text).collect(Collectors.toList()),
-                corgs = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.ORGANISATION, true, this)).stream().map(s->s.text).collect(Collectors.toList());
+        float THRESH = 0.001f;
+        List<String> cpeople = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PERSON, true, this)).stream().filter(s->s.typeScore>THRESH).map(s -> s.text).collect(Collectors.toList()),
+                cplaces = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PLACE, true, this)).stream().filter(s->s.typeScore>THRESH).map(s->s.text).collect(Collectors.toList()),
+                corgs = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.ORGANISATION, true, this)).stream().filter(s->s.typeScore>THRESH).map(s->s.text).collect(Collectors.toList());
         Map<String,String> expansions = new LinkedHashMap<>();
         Arrays.asList(NER.getEntities(d, true, this)).stream().filter(e->e.link!=null).forEach(e->expansions.put(e.text, e.link));
         Arrays.asList(NER.getEntities(d, false, this)).stream().filter(e->e.link!=null).forEach(e->expansions.put(e.text, e.link));
@@ -1102,16 +1102,15 @@ public class Archive implements Serializable {
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs, MultiDoc.ClusteringType ct) {
         //TODO: whats the right thing to do when docClusters is null?
         if (docClusters == null || (ct == MultiDoc.ClusteringType.NONE)) {
-            List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
+            List<MultiDoc> new_mDocs = new ArrayList<>();
             MultiDoc md = new MultiDoc(0,"all");
-            for (Document d : docs)
-                md.add(d);
+            docs.forEach(md::add);
 
             new_mDocs.add(md);
             return new_mDocs;
         }
 
-        Map<Document, Integer> map = new LinkedHashMap<Document, Integer>();
+        Map<Document, Integer> map = new LinkedHashMap<>();
         int i = 0;
         for (MultiDoc mdoc : docClusters) {
             for (Document d : mdoc.docs)
@@ -1119,7 +1118,7 @@ public class Archive implements Serializable {
             i++;
         }
 
-        List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
+        List<MultiDoc> new_mDocs = new ArrayList<>();
         for (MultiDoc md : docClusters)
             new_mDocs.add(null);
 
