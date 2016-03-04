@@ -5,7 +5,6 @@ import com.google.common.collect.Sets;
 
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.index.Document;
-import edu.stanford.muse.ner.*;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -448,8 +447,6 @@ public class ProperNounLinker {
             String vLevels[] = new String[hierarchy.getNumLevels()];
             for(int l=0;l<hierarchy.getNumLevels();l++)
                 vLevels[l] = hierarchy.getValue(l, mention.context);
-            long time = mention.getDate().getTime();
-            long MAX_DIFF = (WINDOW+1)*31*24*3600*1000L;
             if(log.isDebugEnabled())
                 if (mIdxs.size()>100)
                     log.debug("Found #"+mIdxs.size()+" mentions for "+mention.entity.text);
@@ -746,14 +743,14 @@ public class ProperNounLinker {
             log.info("Done finding merges in " + (System.currentTimeMillis() - st) + "ms");
             archive.processingMetadata.entityCounts = stats.counts;
             log.info(stats.counts);
-            SimpleSessions.saveArchive(archive.baseDir, "default", archive);
             archive.close();
+            archive.openForRead();
         }catch(IOException e){
             e.printStackTrace();
         }
     }
 
-    public static void test() {
+    static void test() {
         BOWtest();
         Map<Pair<String,String>,Boolean> tps = new LinkedHashMap<>();
         tps.put(new Pair<>("NYTimes", "NY Times"),true);
@@ -917,6 +914,7 @@ public class ProperNounLinker {
             String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             findMerges(archive);
+            SimpleSessions.saveArchive(archive.baseDir, "default", archive);
         }catch(Exception e){
             e.printStackTrace();
         }

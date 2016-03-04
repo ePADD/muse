@@ -22,6 +22,7 @@ import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
 import edu.stanford.muse.groups.*;
 import edu.stanford.muse.ie.InternalAuthorityAssigner;
+import edu.stanford.muse.ie.ProperNounLinker;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.model.DummyNERModel;
@@ -430,43 +431,23 @@ public class JSPHelper {
         archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
         log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
-//
-//		try {
-//			//train an epadd ner ; recognise the entities and dd it to the index
-//			NER ner = new NER(archive);
-//			session.setAttribute("statusProvider", ner);
-//			log.info("Base dir: " + getBaseDir(m, request));
-//            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
-//            if("memorytest".equals(mode)) {
-//                log.info("Setting dump model to false for NER");
-//                ner.recognizeArchive(false);
-//            }else
-//                ner.recognizeArchive(true);
-
-//		}
-//		//trying to be extra defensive during indexing.
-//		catch (Exception e) {
-//			e.printStackTrace();
-//			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
-//		}
-
         //Is there a reliable and more proper way of checking the mode it is running in?
         String logF = System.getProperty("muse.log");
         if(logF == null || logF.endsWith("epadd.log")) {
-            //one final step of building entity feature index to build context for every entity
             try {
-                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-                session.setAttribute("statusProvider", assignauthorities);
-                assignauthorities.initialize(archive);
-                if (!assignauthorities.isCancelled())
-                    request.getSession().setAttribute("authorities", assignauthorities);
-                else
-                    assignauthorities = null;
-                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
-                if (!success) {
-                    log.warn("Could not build context features for entities");
-                } else
-                    log.info("Successfully built context features for entities");
+//                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+//                session.setAttribute("statusProvider", assignauthorities);
+//                assignauthorities.initialize(archive);
+//                if (!assignauthorities.isCancelled())
+//                    request.getSession().setAttribute("authorities", assignauthorities);
+//                else
+//                    assignauthorities = null;
+//                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+//                if (!success) {
+//                    log.warn("Could not build context features for entities");
+//                } else
+//                    log.info("Successfully built context features for entities");
+                ProperNounLinker.findMerges(archive);
             } catch (Exception e) {
                 log.warn("Exception while building context features", e);
             }
