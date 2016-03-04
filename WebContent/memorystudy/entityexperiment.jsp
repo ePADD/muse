@@ -47,7 +47,7 @@
             for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
                 List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
-                List<Triple<String,Integer,Integer>> triples = archive.getNamesOffsets(doc);
+                List<Triple<String,Integer,Integer>> triples = new ArrayList<>();
                 String contents = archive.getContents(doc, false);
                 if(triples == null){
                     continue;

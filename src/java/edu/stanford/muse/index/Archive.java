@@ -29,7 +29,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.util.BytesRef;
 
 import java.io.*;
 import java.util.*;
@@ -194,13 +193,14 @@ public class Archive implements Serializable {
     public static class Entity {
         public Map<String, Short> ids;
         //person,places,orgs, custom
-        public String name;
+        public String name, expandsTo;
         Set<String> types = new HashSet<>();
 
-        public Entity(String name, Map<String, Short> ids, Set<String> types) {
+        public Entity(String name, Map<String, Short> ids, Set<String> types, String expansion) {
             this.name = name;
             this.ids = ids;
             this.types = types;
+            this.expandsTo = expansion;
         }
 
         @Override
@@ -1044,6 +1044,10 @@ public class Archive implements Serializable {
         List<String> cpeople = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PERSON, true, this)).stream().map(s->s.text).collect(Collectors.toList()),
                 cplaces = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.PLACE, true, this)).stream().map(s->s.text).collect(Collectors.toList()),
                 corgs = Arrays.asList(NER.getCoarseEntities(d, FeatureDictionary.ORGANISATION, true, this)).stream().map(s->s.text).collect(Collectors.toList());
+        Map<String,String> expansions = new LinkedHashMap<>();
+        Arrays.asList(NER.getEntities(d, true, this)).stream().filter(e->e.link!=null).forEach(e->expansions.put(e.text, e.link));
+        Arrays.asList(NER.getEntities(d, false, this)).stream().filter(e->e.link!=null).forEach(e->expansions.put(e.text, e.link));
+
         Set<String> acrs = Util.getAcronyms(indexer.getContents(d, false));
 
         String contents = indexer.getContents(d, false);
@@ -1076,9 +1080,9 @@ public class Archive implements Serializable {
             if (ce == null)
                 continue;
             if (authorisedEntities != null && authorisedEntities.containsKey(ce)) {
-                entitiesWithId.put(name, new Entity(name, authorisedEntities.get(ce), types));
+                entitiesWithId.put(name, new Entity(name, authorisedEntities.get(ce), types, expansions.get(name)));
             } else
-                entitiesWithId.put(name, new Entity(name, null, types));
+                entitiesWithId.put(name, new Entity(name, null, types, expansions.get(name)));
         }
 
         //don't want "more" button anymore
@@ -1237,11 +1241,7 @@ public class Archive implements Serializable {
         if (sort_by_names) {
             // NOTE: this sort triggers java.lang.AbstractMethodError at
             // java.util.Arrays.mergeSort when placed in JSP.
-            Collections.sort(result, new Comparator<Map.Entry<String, Integer>>() {
-                public int compare(Map.Entry<String, Integer> e1, Map.Entry<String, Integer> e2) {
-                    return e1.getKey().compareTo(e2.getKey());
-                }
-            });
+            Collections.sort(result, (e1, e2) -> e1.getKey().compareTo(e2.getKey()));
         }
 
         return result;
@@ -1289,10 +1289,8 @@ public class Archive implements Serializable {
     }
 
     public void merge(Archive other) {
-        for (Document doc : other.getAllDocs()) {
-            if (!this.containsDoc(doc))
-                this.addDoc(doc, other.getContents(doc, /* originalContentOnly */false));
-        }
+        /* originalContentOnly */
+        other.getAllDocs().stream().filter(doc -> !this.containsDoc(doc)).forEach(doc -> this.addDoc(doc, other.getContents(doc, /* originalContentOnly */false)));
 
         addressBook.merge(other.addressBook);
         this.processingMetadata.merge(other.processingMetadata);
@@ -1356,42 +1354,6 @@ public class Archive implements Serializable {
     public void updateDocument(org.apache.lucene.document.Document doc) {
         indexer.updateDocument(doc);
     }
-
-    /**Reads offset field in the supplied lucene doc, deserializes it and returns
-     */
-    public static List<Triple<String, Integer, Integer>> getNamesOffsets(org.apache.lucene.document.Document doc) {
-        BytesRef bytesRef = doc.getBinaryValue(NER.NAMES_OFFSETS);
-        if (bytesRef == null)
-            return null;
-        byte[] data = bytesRef.bytes;
-        if (data == null)
-            return null;
-
-        ByteArrayInputStream bs = new ByteArrayInputStream(data);
-        List<Triple<String, Integer, Integer>> result;
-        ObjectInputStream ois;
-        try {
-            ois = new ObjectInputStream(bs);
-            result = (List<Triple<String, Integer, Integer>>) ois.readObject();
-        } catch (Exception e) {
-            log.info("Failed to deserialize names_offsets");
-            e.printStackTrace();
-            result = new ArrayList<>();
-        }
-
-        return result;
-    }
-
-    public List<Triple<String, Integer, Integer>> getNamesOffsets(Document doc) {
-        try {
-            org.apache.lucene.document.Document ldoc = indexer.getLDoc(doc.getUniqueId());
-            return getNamesOffsets(ldoc);
-        }catch(Exception e){
-            log.info("Ldoc for "+doc.getUniqueId()+" not found");
-            return null;
-        }
-    }
-
 
     public void setupForWrite() throws IOException{
         indexer.setupForWrite();

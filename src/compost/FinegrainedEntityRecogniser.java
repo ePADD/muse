@@ -13,7 +13,6 @@ import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.NameSample;
 import opennlp.tools.namefind.NameSampleDataStream;
 import opennlp.tools.namefind.TokenNameFinderModel;
-import opennlp.tools.sentdetect.SentenceDetector;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.TokenizerME;
@@ -32,7 +31,15 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 /**
- * [Experimental] Fine-grained entity recogniser
+ * @author vihari
+ * [Experimental]
+ * Trains an OpenNLP Maxent model for different entity types, see KNownClasses for the types that are experimented with
+ * It works by first generating training data from sentences from archive, the seed set for various types are from a Gazette (DBpedia instance types) lookup in the archive.
+ * The model so trained can recognize more instances of the type in the archive (depending on the type, can recognize four or more fold).
+ * I found that the trained model is highly dependant on the initial seed set and the trained model did not do well in recognizing certain types such as movies and companies
+ * The technical report at http://vihari.github.io/personal_website/xwww.pdf discusses at length the approach and results.
+
+ * Fine-grained entity recogniser
  * Default fine-grained types are: book, universities, museums, movies, awards, company
  */
 public class FinegrainedEntityRecogniser implements StatusProvider {
@@ -45,7 +52,6 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 	boolean						cancelled			= false;
 	Collection<EmailDocument>	docs				= null;
 	Archive archive = null;
-	SentenceDetector			sentenceDetector;
 	public static String		TRAIN_FILE			= "en-ner-finetypes.train";
 
 	public FinegrainedEntityRecogniser() {
@@ -101,7 +107,6 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 						new PreviousMapFeatureGenerator(),
 						new BigramNameFeatureGenerator(),
 						new SentenceFeatureGenerator(true, false)
-				//new RefFeatureGenerator()
 				});
 
 		String modeldir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user" + File.separator + "models";
@@ -238,7 +243,6 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 					}
 					if (!typeRelated) {
 						tsw.println(sent);
-						//acw.println(acontext);
 						numNegativeSamples++;
 					}
 				}
@@ -251,7 +255,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 
 	/** Generates training data and trains the NER */
 	public void trainNER(Archive archive) {
-		archive = archive;
+		this.archive = archive;
 		String[] ftypes = new String[] { KnownClasses.BOOK, KnownClasses.DISEASE, KnownClasses.UNIV, KnownClasses.MUSEUM, KnownClasses.MOVIE, KnownClasses.AWARD, KnownClasses.COMPANY };
 		KnownClasses kc = new KnownClasses();
 		Set<String> keywords = new HashSet<String>();

@@ -87,8 +87,8 @@ public class EntityFeature implements StatusProvider, Serializable {
 
 	public EntityFeature(String name, short type) {
 		this.name = name;
-		this.cooccuringEntities = new HashMap<String, Integer>();
-		this.emailAddresses = new HashMap<String, Integer>();
+		this.cooccuringEntities = new HashMap<>();
+		this.emailAddresses = new HashMap<>();
 		this.type = type;
 	}
 
@@ -543,9 +543,9 @@ public class EntityFeature implements StatusProvider, Serializable {
 			log.info("Name: " + name + ", on normalisation gave null. Returning!");
 			return null;
 		}
-		IndexReader reader = null;
-		IndexSearcher searcher = null;
-		Set<EntityFeature> efs = new HashSet<EntityFeature>();
+		IndexReader reader;
+		IndexSearcher searcher;
+		Set<EntityFeature> efs = new HashSet<>();
 		try {
 			reader = DirectoryReader.open(FSDirectory.open(new File(iDir)));
 			searcher = new IndexSearcher(reader);

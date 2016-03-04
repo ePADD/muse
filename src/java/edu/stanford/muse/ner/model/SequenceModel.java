@@ -10,6 +10,7 @@ import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.*;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameSample;
+import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -22,7 +23,7 @@ import java.util.zip.GZIPOutputStream;
  * Created by vihari on 07/09/15.
  * This class implements NER task with a Bernoulli Mixture model, every word or pattern is considered a mixture. It does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
  * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K. It is sometimes desired to train over a larger training files.
- * Consider implementing online EM based param estimation -- see http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf
+ * TODO: Consider implementing an online EM based param estimation -- see http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf
  * It is beneficial to include Address-book in training. Names can have an uncommon first and last name --
  * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
  */
@@ -211,11 +212,7 @@ public class SequenceModel implements NERModel, Serializable {
             for (Pair<Short, Double> p : scands)
                 if (si++ < MAX)
                     cands.add(p.getFirst());
-//            if (log.isDebugEnabled())
-//                log.debug("Token: " + token + " - cands: " + scands);
         }
-//        if (log.isDebugEnabled())
-//            log.debug("Candidate types for phrase: " + phrase + " -- " + cands);
         //This is just a standard dynamic programming algo. used in HMMs, with the difference that
         //at every word we are checking for the every possible segment
         short OTHER = -2;
@@ -264,8 +261,6 @@ public class SequenceModel implements NERModel, Serializable {
             numSegmenation.put(ti, ((bi>=0)?numSegmenation.get(bi):0)+1);
             tracks.put(ti, new Triple<>(bestValue, bi, bt));
         }
-//        System.err.println("Tracks: "+tracks);
-//        System.err.println("numSegs: "+numSegmenation);
 
         //the backtracking step
         int start = tokens.length - 1;
@@ -275,13 +270,18 @@ public class SequenceModel implements NERModel, Serializable {
             for (int ti = t.second + 1; ti <= start; ti++)
                 seg += tokens[ti] + " ";
             seg = seg.substring(0,seg.length()-1);
+
             double val;
             if(t.getThird() != OTHER)
                 val = getConditional(seg, t.getThird()) * getLikelihoodWithOther(seg, false);
             else
                 val = getLikelihoodWithOther(seg, true);
 
-            segments.put(seg, new Pair<>(t.getThird(), val));
+            //if is a single word and dictionary word or word with less than 4 chars and not acronym, then break
+            if (!seg.contains(" ") && (seg.length()<3 || (seg.length()<4 && !FeatureGeneratorUtil.tokenFeature(seg).equals("ac")) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
+                ;
+            else
+                segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)
                 break;
@@ -307,13 +307,6 @@ public class SequenceModel implements NERModel, Serializable {
                 return 1;
         }
 
-//        String[] patts = FeatureDictionary.getPatts(phrase);
-//        Map<String, Integer> map = new LinkedHashMap<>();
-//        for (int si = 0; si < patts.length; si++) {
-//            String patt = patts[si];
-//            map.put(patt, si);
-//        }
-
         for (String mid : tokenFeatures.keySet()) {
             Double d;
             MU mu = features.get(mid);
@@ -338,27 +331,6 @@ public class SequenceModel implements NERModel, Serializable {
                 val *= freq;
             }
 
-//            if(log.isDebugEnabled()) {
-//                if(mu!=null) {
-//                    List<String> tfs = tokenFeatures.get(mid);
-//                    //log.debug("Features for: " + mid + " in " + phrase + ", " + tfs + " score: " + d + " - " + mu.getPrior() + ", type: " + type);
-//                    for(String ft: tfs) {
-//                        String dim = ft.substring(0,ft.indexOf(':'));
-//                        float alpha_k = 0, alpha_k0 = 0;
-//                        if(mu.alpha.containsKey(ft))
-//                            alpha_k = mu.alpha.get(ft);
-//                        if(mu.alpha_0.containsKey(dim))
-//                            alpha_k0 = mu.alpha_0.get(dim);
-//                        double v = MU.getNumberOfSymbols(ft);
-//                        double mvp = 0;
-//                        if(mu.muVectorPositive.containsKey(ft))
-//                            mvp = mu.muVectorPositive.get(ft);
-//                        //log.debug(ft+"--"+(mvp+alpha_k+1)/(mu.numMixture+alpha_k0+v));
-//                    }
-//                }
-//                else
-//                    ;//log.debug("Features for: " + mid + " in " + phrase + ", " + tokenFeatures.get(mid) + " score: " + d + " - " + freq + ", type: " + type + " MU: " + features.get(mid));
-            //}
             //Should actually use logs here, not sure how to handle sums with logarithms
             sorg += val;
         }

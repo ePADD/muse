@@ -1213,7 +1213,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     /**Given a type described in text returns a coarse coding for the type
-     * for example: "University" -> 1 [COMPANY]*/
+     * for example: "University" -> [ORGANIZATION]*/
     public static Short getCoarseType(Short type){
         List<Short> coarseTypes = mappings.keySet().stream().filter(p -> mappings.get(p).contains(type)).collect(Collectors.toList());
         if(coarseTypes == null || coarseTypes.size() == 0) {

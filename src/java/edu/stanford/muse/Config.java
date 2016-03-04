@@ -20,7 +20,7 @@ public class Config {
 	public static String	NER_MODEL_FILE, WORD_FEATURES;
 
 	public static String 	FAST_INDEX, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
-	public static String	FEATURES_INDEX, TABOO_FILE;
+	public static String	FEATURES_INDEX;
 
 	//this is the folder name that contains the cache for internal authority assignment
 	public static int		MAX_ENTITY_FEATURES			= 200;
@@ -45,7 +45,6 @@ public class Config {
 				e.printStackTrace();
 			}
 		}
-		TABOO_FILE = props.getProperty("TABOO_FILE", SETTINGS_DIR + File.separator + "kill.txt");
 		FEATURES_INDEX = props.getProperty("FEATURES_INDEX", "features");
 		AUTHORITIES_FILENAME		= props.getProperty("AUTHORITIES_FILENAME", "authorities.ser");
 		AUTHORITIES_CSV_FILENAME	= props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");

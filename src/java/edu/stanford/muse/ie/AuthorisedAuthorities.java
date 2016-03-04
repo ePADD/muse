@@ -16,7 +16,7 @@ import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.index.Archive;
 
 /**
- * Data structure that holds assigned authority of a record
+ * Data structure to hold assigned authority of a record
  */
 public class AuthorisedAuthorities {
 	private static Log						log					= LogFactory.getLog(AuthorisedAuthorities.class);
@@ -29,16 +29,15 @@ public class AuthorisedAuthorities {
 		try {
 			cnameToDefiniteID = (Map<String, Authority>) Util.readObjectFromFile(filename);
 		} catch (Exception e) {
-			cnameToDefiniteID = new LinkedHashMap<String, Authority>();
+			cnameToDefiniteID = new LinkedHashMap<>();
 			//JSPHelper.log.info("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
 		}
 		if (cnameToDefiniteID == null)
-			cnameToDefiniteID = new LinkedHashMap<String, Authority>();
+			cnameToDefiniteID = new LinkedHashMap<>();
 
-		if (cnameToDefiniteID != null && cnameToDefiniteID.size() > 0) {
+		if (cnameToDefiniteID.size() > 0) {
 			log.info("Found " + cnameToDefiniteID.size() + " definite fast id mappings.");
-			for (String key : cnameToDefiniteID.keySet())
-				log.info(key);
+            cnameToDefiniteID.keySet().forEach(log::info);
 		}
 		return cnameToDefiniteID;
 	}
@@ -48,49 +47,48 @@ public class AuthorisedAuthorities {
         if(exportType == null)
             exportType = "csv";
 
-		Map<String, Authority> cnameToDefiniteID = new LinkedHashMap<String, Authority>();
+		Map<String, Authority> cnameToDefiniteID;
 		try {
 			cnameToDefiniteID = (Map<String, Authority>) Util.readObjectFromFile(filename);
 		} catch (Exception e) {
-			cnameToDefiniteID = new LinkedHashMap<String, Authority>();
+			cnameToDefiniteID = new LinkedHashMap<>();
 			JSPHelper.log.info("Unable to find existing authorities file:" + filename + " :" + e.getMessage());
 		}
 		if (cnameToDefiniteID != null && cnameToDefiniteID.size() > 0) {
 			System.out.println("Found " + cnameToDefiniteID.size() + " definite fast id mappings.");
-			for (String key : cnameToDefiniteID.keySet())
-				System.out.println(key);
+            cnameToDefiniteID.keySet().forEach(log::info);
 		}
 		if (exportType.equals("csv")) {
 			StringWriter sw = new StringWriter();
 			CSVWriter writer = new CSVWriter(sw, ',', '"', '\n');
 
-			List<String> line = new ArrayList<String>();
+			List<String> line = new ArrayList<>();
 			line.add("name");
-			for (String type : Authority.types)
-				line.add(type);
+            Collections.addAll(line, Authority.types);
 			writer.writeNext(line.toArray(new String[line.size()]));
 
-			for (Authority auth : cnameToDefiniteID.values()) {
-				line.clear();
-				Map<String, Short> sources = auth.sources;
-				Map<Short, String> is = new HashMap<Short, String>();
-				if (sources == null) {
-					System.err.println("sources:  null for " + auth.name);
-					continue;
-				}
-				for (String s : sources.keySet()) {
-					is.put(sources.get(s), s);
-					System.err.println("putting: " + sources.get(s) + " for: " + s + ", check: " + is.get(sources.get(s)));
-				}
+            if (cnameToDefiniteID != null) {
+                for (Authority auth : cnameToDefiniteID.values()) {
+                    line.clear();
+                    Map<String, Short> sources = auth.sources;
+                    Map<Short, String> is = new HashMap<>();
+                    if (sources == null) {
+                        log.warn("sources: null for " + auth.name);
+                        continue;
+                    }
+                    for (String s : sources.keySet()) {
+                        is.put(sources.get(s), s);
+                        log.warn("Putting: " + sources.get(s) + " for: " + s + ", check: " + is.get(sources.get(s)));
+                    }
 
-				line.add(EmailUtils.uncanonicaliseName(auth.name));
-				for (short i = 0; i < Authority.types.length; i++)
-					line.add(is.get(i));
-				writer.writeNext(line.toArray(new String[line.size()]));
-			}
-			writer.close();
-			String csv = sw.toString();
-			return csv;
+                    line.add(EmailUtils.uncanonicaliseName(auth.name));
+                    for (short i = 0; i < Authority.types.length; i++)
+                        line.add(is.get(i));
+                    writer.writeNext(line.toArray(new String[line.size()]));
+                }
+            }
+            writer.close();
+			return sw.toString();
 		}
 		return "Unsupported export type: " + exportType;
 	}

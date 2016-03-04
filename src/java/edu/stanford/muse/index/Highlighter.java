@@ -156,7 +156,7 @@ public class Highlighter {
 	public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, Boolean sensitive,
 			Set<String> termsToHighlight, Map<String, Archive.Entity> entitiesWithId,
 			Set<String> termsToHyperlink, boolean showDebugInfo) {
-		short HIGHLIGHT = 0, HYPERLINK = 1;
+      	short HIGHLIGHT = 0, HYPERLINK = 1;
         Random rand = new Random();
 		//pp for post process, as we cannot add complex tags which highlighting
 		String preHighlightTag = "<span class='hilitedTerm rounded' >", postHighlightTag = "</span>";
@@ -188,7 +188,7 @@ public class Highlighter {
 
 		//entitiesid stuff is already canonicalized with tokenizer used with analyzer
 		if (entitiesWithId != null)
-			termsToHyperlink.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toCollection(() -> new LinkedHashSet<>())));
+			termsToHyperlink.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
 
 		//If there are overlapping annotations, then they need to be serialised.
 		//This is serialized order for such annotations.
@@ -217,17 +217,22 @@ public class Highlighter {
             //we better annotate them first as it may go into span tags and annotate the stuff, causing the highlighter to break
 			Set<String> substrs = IndexUtils.computeAllSubstrings(at);
 			for (String substr : substrs) {
+                if(at.equals(substr) || at.equals("\""+substr+"\""))
+                    continue;
                 short tag = -1;
                 boolean match = catchTerms.contains(substr.toLowerCase());
                 int val = match?Integer.MAX_VALUE:substr.length();
                 //remove it from terms to be annotated.
-				if (termsToHighlight.contains(substr)) {
-                    o.put(new Pair<>(substr, HIGHLIGHT), val);
+                //The highlight or hyperlink terms may have quotes, specially handling below is for that.. is there a better way?
+				if (termsToHighlight.contains(substr) || termsToHighlight.contains("\""+substr+"\"")) {
+                    tag = HIGHLIGHT;
 					termsToHighlight.remove(substr);
+                    termsToHighlight.remove("\""+substr+"\"");
                 }
-				if (termsToHyperlink.contains(substr)) {
-					tag = HYPERLINK;
+				if (termsToHyperlink.contains(substr) || termsToHyperlink.contains("\""+substr+"\"")) {
+                	tag = HYPERLINK;
                     termsToHyperlink.remove(substr);
+                    termsToHyperlink.remove("\""+substr+"\"");
                 }
 
                 //there should be no repetitions in the order array, else it leads to multiple annotations i.e. two spans around one single element
@@ -240,7 +245,7 @@ public class Highlighter {
 
 		//now sort the phrases from longest length to smallest length
 		List<Pair<Pair<String, Short>, Integer>> os = Util.sortMapByValue(o);
-        order.addAll(os.stream().map(pair -> pair.first).collect(Collectors.toCollection(()->new LinkedHashSet<>())));
+        order.addAll(os.stream().map(pair -> pair.first).collect(Collectors.toSet()));
 
 		//annotate whatever is left in highlight and hyperlink Terms.
 		String result = highlightBatch(contents, termsToHighlight.toArray(new String[termsToHighlight.size()]), preHighlightTag, postHighlightTag);
@@ -374,15 +379,18 @@ public class Highlighter {
                         entity = entity.replaceAll("(^\\s+|\\s+$)", "");
                         if (!entity.contains(" ")) {
                             String rnd = rand.nextInt() + "";
-                            title += "<div class=\"resolutions\" id=\"expand_" + rnd + "\"><img src=\"images/spinner.gif\" style=\"height:15px\"/></div><script>expand(\"" + entity + "\",\"" + StringEscapeUtils.escapeJava(docId) + "\",\"" + rnd + "\");</script>";
+                            //<img src="images/spinner.gif" style="height:15px"/>
+                            //<script>expand("" + entity + "\",\"" + StringEscapeUtils.escapeJava(docId) + "\",\"" + rnd + "");</script>
+                            if(info.expandsTo!=null)
+                                title += "<div class=\"resolutions\" id=\"expand_" + rnd + "\"><a href='browse?term=\""+info.expandsTo+"\"'>"+info.expandsTo+"</a></div>";
                         }
                     }
 				}
 
 				for (int k = j; k <= span_j; k++) {
 					elt = elts.get(k);
-                    //don't annotate nested tags
-                    if(elt.parent().tag().getName().toLowerCase().equals("span")) {
+                    //don't annotate nested tags-- double check if the parent tag is highlight related tag or entity related annotation
+                    if(elt.parent().tag().getName().toLowerCase().equals("span") && elt.parent().classNames().toString().contains("custom")) {
                         continue;
                     }
 
@@ -441,9 +449,10 @@ public class Highlighter {
 	{
 		try {
 	        String text = "On Tue, Jun 24, 2014 at 11:56 AM, Aparna Vedant's <aparna.vedant@XXX.edu.in> wrote: Rachelle K. Learner W.S. Merwin\nVery elated to see you yesterday. Can wee meet over a cup of coffee?\nI am hoping to hear back from you. BTW I also invited Tanmai Gopal to join. WHat a pleasure to have the company of Tanmai.\n---Aparna\nUniversity of Florida";
-			String str = Highlighter.highlightBatch(text, new String[] { "\"University of Florida\"","\"Aparna Vaidik\"", "\"tanmai gopal\"","\"W.S. Merwin\"","Rachelle K. Learner", "elate|happy|invite", "hope","met", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" }, "<B >", "</B>");
-            str = Highlighter.highlightBatch(str, new String[] {"Aparna"}, "<B >", "</B>");
+			String str = Highlighter.highlightBatch(text, new String[] { "\"University of Florida\"","\"Aparna Vedant\"", "\"tanmai gopal\"","\"W.S. Merwin\"","Rachelle K. Learner", "elate|happy|invite", "hope","met", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" }, "<B >", "</B>");
+            //str = Highlighter.highlightBatch(str, new String[] {"Aparna"}, "<B >", "</B>");
             System.err.println("Highlighted content: "+str);
+            getHTMLAnnotatedDocumentContents("", new Date(), "", false, new LinkedHashSet<>(Arrays.asList("Robert Creeley")), null, new LinkedHashSet<String>(Arrays.asList("Charles", "Susan Howe", "Betty", "Charles Bernstein", "Carl Dennis", "Joseph Conte", "Bob Creeley", "Residence", "Uday", "LWOP", "U Penn", "Joseph", "Betty Capaldi", "Capen Chair")), false);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

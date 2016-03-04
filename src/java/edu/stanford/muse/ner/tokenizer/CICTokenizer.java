@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
  *
  * TODO: CIC tokenizer fails when the sentence tokenizer fails, it is required to make the sentence tokenizer handle at least a few common abbreviations (such as Col. Mt. Inc. Corp. etc.) to make the application look less stupid; OpenNLP splits on some of the periods falsely
  * TODO: split tokens like P.V. Krishnamoorthi -> P. V. Krishnamoorthi
+ * TODO: canonicalize and tokenize words such that stop words irrespective of their capitalised form are recognized, for example: "In American Culture", "IN SPANISH", "A NEW FEDERAL POLICY", "THE PROVOST"
  */
 public class CICTokenizer implements Tokenizer, Serializable {
     public static Log log						= LogFactory.getLog(CICTokenizer.class);
@@ -55,7 +56,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
     //how useful is "on" in the stop words list
     //Consecutive capital words are allowed to be separated by these words, so this list is more restrictive than general stop words list
-	public static List<String> stopWords =  Arrays.asList(
+	static List<String> stopWords =  Arrays.asList(
             "and","for","a","the","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"/*John den Braber*/
@@ -97,6 +98,11 @@ public class CICTokenizer implements Tokenizer, Serializable {
 		//allow comma only once after the first word
 		//nps = "(" + nameP + "([" + allowedCharsPerson + ",]" + recur + "(" + nameP + "[" + allowedCharsPerson + "]" + recur + ")*" + nameP + ")?)";
 		//personNamePattern = Pattern.compile(nps);
+    }
+
+    public static void setStopWords(List<String> stopWords){
+        CICTokenizer.stopWords = stopWords;
+        initPattern();
     }
 
     /**

@@ -5,6 +5,8 @@ import com.google.common.collect.Sets;
 
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.index.Document;
+import edu.stanford.muse.ner.*;
+import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
@@ -13,12 +15,14 @@ import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 
 import edu.stanford.muse.util.Span;
+import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -374,14 +378,8 @@ public class ProperNounLinker {
             this.hierarchy = hierarchy;
         }
 
-        public void add(Set<String> mentions, Object context){
-            for(String m: mentions)
-                add(new EmailMention(m, context));
-//            log.info("Added #"+mentions.size()+" mentions to the index in "+(System.currentTimeMillis()-st)+"ms");
-        }
-
         public void add(EmailMention mention) {
-            if(mention == null || mention.phrase == null)
+            if(mention == null || mention.entity.text == null)
                 return;
 
             checkIfIndexRecent(mention);
@@ -392,7 +390,7 @@ public class ProperNounLinker {
             if(!dateToMentionIdx.containsKey(time))
                 dateToMentionIdx.put(time, new LinkedHashSet<>());
             dateToMentionIdx.get(time).add(mentions.size());
-            Set<String> bow = bow(mention.phrase);
+            Set<String> bow = bow(mention.entity.text);
             for(String word: bow){
                 word = word.toLowerCase();
                 if(!tokenToMentionIdx.containsKey(word))
@@ -400,9 +398,9 @@ public class ProperNounLinker {
                 tokenToMentionIdx.get(word).add(mentions.size());
             }
             //get acronym if it is not already an acronym
-            String tc = FeatureGeneratorUtil.tokenFeature(mention.phrase);
+            String tc = FeatureGeneratorUtil.tokenFeature(mention.entity.text);
             if(!tc.equals("ac")) {
-                String acr = Util.getAcronym(mention.phrase);
+                String acr = Util.getAcronym(mention.entity.text);
                 if (acr != null) {
                     if (!acronymToMentionIdx.containsKey(acr))
                         acronymToMentionIdx.put(acr, new LinkedHashSet<>());
@@ -413,27 +411,27 @@ public class ProperNounLinker {
             mentions.add(mention);
         }
 
-        public Pair<String,Integer> getNearestMatch(EmailMention mention) {
-            if(mention == null || mention.phrase==null)
+        public Pair<EmailMention,Integer> getNearestMatch(EmailMention mention) {
+            if(mention == null || mention.entity==null || mention.entity.text==null)
                 return new Pair<>(null,-1);
 
             //collect cands. first
             Set<Integer> mIdxs = new LinkedHashSet<>();
-            String tc = FeatureGeneratorUtil.tokenFeature(mention.phrase);
+            String tc = FeatureGeneratorUtil.tokenFeature(mention.entity.text);
             if(tc.equals("ac")) {
                 //if the acronym is of size less than 3, the expansion is wrong most of the time
                 //CY<->Companys Yosem - Level: 5 - UID: /home/dev/data/Terry/terry-split/Important-7454
                 //Found a match HC<->Hong Cao, CC<->Christy Chin
-                if (mention.phrase.length() > 2) {
-                    if (acronymToMentionIdx.containsKey(mention.phrase))
-                        mIdxs.addAll(acronymToMentionIdx.get(mention.phrase));
+                if (mention.entity.text.length() > 2) {
+                    if (acronymToMentionIdx.containsKey(mention.entity.text))
+                        mIdxs.addAll(acronymToMentionIdx.get(mention.entity.text));
                 }
                 else {
                     return new Pair<>(null,-1);
                 }
             }
             else {
-                Set<String> bow = bow(mention.phrase);
+                Set<String> bow = bow(mention.entity.text);
                 int ti = 0;
                 for (String tok : bow) {
                     tok = tok.toLowerCase();
@@ -454,7 +452,7 @@ public class ProperNounLinker {
             long MAX_DIFF = (WINDOW+1)*31*24*3600*1000L;
             if(log.isDebugEnabled())
                 if (mIdxs.size()>100)
-                    log.debug("Found #"+mIdxs.size()+" mentions for "+mention.phrase);
+                    log.debug("Found #"+mIdxs.size()+" mentions for "+mention.entity.text);
 
             for (int l = 0; l < hierarchy.getNumLevels(); l++) {
                 for (int mid : mIdxs) {
@@ -463,9 +461,9 @@ public class ProperNounLinker {
                     if (mv == null)
                         continue;
                     if (mv.equals(vLevels[l]))
-                        if (mention.phrase!=null && !mention.phrase.equals(mmention.phrase))
-                            if (isValidMergeSimple(mmention.phrase, mention.phrase))
-                                return new Pair<>(mmention.phrase, l);
+                        if (mention!=null && !mention.entity.text.equals(mmention.entity.text))
+                            if (isValidMergeSimple(mmention.entity.text, mention.entity.text))
+                                return new Pair<>(mmention, l);
 
                 }
             }
@@ -581,10 +579,10 @@ public class ProperNounLinker {
     }
 
     public static class EmailMention{
-        public String phrase;
+        public Span entity;
         public EmailDocument context;
-        public EmailMention(String phrase, Object context){
-            this.phrase = phrase;
+        public EmailMention(Span entity, Object context){
+            this.entity = entity;
             if(context instanceof EmailDocument) {
                 this.context = (EmailDocument)context;
             }
@@ -599,7 +597,7 @@ public class ProperNounLinker {
         }
     }
 
-    public static void findClusters(Archive archive){
+    public static void findMerges(Archive archive){
         //The size of the sliding window in number of months and quantum jumps of the window again in months
         //for example window: 12 and quantum: 1 means all the messages in batches of one year are considered and the batch is moved by a month after every processing step
         //The sliding window is the blocking mechanism here
@@ -607,6 +605,7 @@ public class ProperNounLinker {
             return;
         long st = System.currentTimeMillis();
         try {
+            archive.openForWrite();
             List<Document> docs = archive.getAllDocs();
             //reverse chronological order, recent last
             Collections.sort(docs);
@@ -615,73 +614,141 @@ public class ProperNounLinker {
             Calendar startCal = new GregorianCalendar(), endCal = new GregorianCalendar();
             startCal.setTime(startDoc.getDate());
             endCal.setTime(endDoc.getDate());
+            //we are only interested in expanding people names, so restricting the stop words
+            CICTokenizer.setStopWords(Arrays.asList("de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"));
             Tokenizer tokenizer = new CICTokenizer();
             archive.assignThreadIds();
             EmailHierarchy hierarchy = new EmailHierarchy();
             Mentions mentions = new Mentions(hierarchy);
             int di = 0;
+            double THRESH = 0.001;
 
+            //initially populate the mentions with some number of docs inorder to avoid cold start, since we only look at entities mentioned in docs before a date
+            //there are no docs before the initial starting dates
+            int numDocsStart = 1000;
+            for (int dii = 0;dii < numDocsStart; dii++) {
+                Document doc = docs.get(dii);
+                Span[] entities = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
+                Set<Span> names = new LinkedHashSet<>();
+                names.addAll(
+                        Arrays.asList(entities).stream()
+                                .filter(s -> (s != null && s.type != FeatureDictionary.OTHER) && s.typeScore > THRESH)
+                                .collect(Collectors.toSet())
+                );
+                names.forEach(name -> mentions.add(new EmailMention(name, doc)));
+                List<String> hpeople = ((EmailDocument)doc).getAllNames();
+                for (String hp : hpeople) {
+                    Span s = new Span(hp, -1, -1);
+                    s.setType(FeatureDictionary.PERSON, 1.0f);
+                    mentions.add(new EmailMention(s, doc));
+                }
+            }
+            NER.NERStats stats = new NER.NERStats();
             long addTime = 0, searchTime = 0;
             for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
+                org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
                 String body = archive.getContents(doc, false);
                 String subject = ed.getSubject();
                 //people in the headers
                 List<String> hpeople = ed.getAllNames();
-                Set<String> cics = new LinkedHashSet<>();
-                cics.addAll(tokenizer.tokenizeWithoutOffsets(body));
-                cics.addAll(tokenizer.tokenizeWithoutOffsets(subject));
-                cics.addAll(hpeople);
-                Set<String> names = new LinkedHashSet<>();
-                Span[] entities = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
+                List<Triple<String, Integer, Integer>> cics = new ArrayList<>();
+                String[] txtFields = new String[]{body, subject};
+                boolean isBody = false, updated = false;
 
-                double thresh = 0.001;
-                names.addAll(
-                        Arrays.asList(entities).stream()
-                        .filter(s -> (s.type != FeatureDictionary.OTHER) && s.typeScore > thresh)
-                        .map(s -> s.text).collect(Collectors.toSet())
-                );
-
-                names.addAll(hpeople);
-                long st1 = System.currentTimeMillis();
-                mentions.add(names, ed);
-                addTime += System.currentTimeMillis() - st1;
-
-                //The SequenceModel based NER model fails or does not do a very good job on
-                //1. Single word names [It just gives up on these, unless it is a country name or a non-dictionary word that appears in a longer CIC phrase in which case it may end up recognising it but should not rely on it]
-                //2. Single word names also includes acronyms
-                //3. Person names of the format: [A-Z].? [A-Z][A-Za-z']+
-                //4. It may also fail at phrases of format: [FIRST NAME] (&|and) [FIRST NAME]. Yes, it can magically handle phrases like "Adam M. Weber and Sophie Reine" into two persons
-                for (String cic : cics) {
-                    if (cic == null)
+                for (int ti = 0; ti < txtFields.length; ti++) {
+                    if (ti == 0)
+                        isBody = true;
+                    cics.addAll(tokenizer.tokenize(txtFields[ti]));
+                    Set<Span> names = new LinkedHashSet<>();
+                    Span[] tmpE = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
+                    if(tmpE == null)
                         continue;
-                    String tokens[] = new String[]{cic};
-                    int idx;
-                    if ((idx = cic.indexOf(" and ")) > -1) {
-                        if (!cic.substring(0, idx).contains(" ") && !cic.substring(idx + 5).contains(" "))
-                            tokens = new String[]{cic.substring(0, idx), cic.substring(idx + 5)};
+                    List<Span> entities = new ArrayList<>();
+                    for(Span e: tmpE)
+                        entities.add(e);
+                    //name to span index
+                    Map<String, Integer> spanIdx = new LinkedHashMap<>();
+
+                    names.addAll(
+                            entities.stream()
+                                    .filter(s -> (s != null && s.type != FeatureDictionary.OTHER) && s.typeScore > THRESH)
+                                    .collect(Collectors.toSet())
+                    );
+                    for (int ei = 0; ei < entities.size(); ei++)
+                        if (entities.get(ei) != null)
+                            spanIdx.put(entities.get(ei).text, ei);
+
+                    long st1 = System.currentTimeMillis();
+                    //don't have to add a mention if it is in docs that are already added
+                    if(di>=numDocsStart) {
+                        names.forEach(name -> mentions.add(new EmailMention(name, doc)));
+                        for (String hp : hpeople) {
+                            Span s = new Span(hp, -1, -1);
+                            s.setType(FeatureDictionary.PERSON, 1.0f);
+                            mentions.add(new EmailMention(s, doc));
+                        }
                     }
-                    for (String token : tokens) {
-                        cic = token;
+                    addTime += System.currentTimeMillis() - st1;
+
+                    //The SequenceModel based NER model fails or does not do a very good job on
+                    //1. Single word names [It just gives up on these, unless it is a country name or a non-dictionary word that appears in a longer CIC phrase in which case it may end up recognising it but should not rely on it]
+                    //2. Single word names also includes acronyms
+                    //3. Person names of the format: [A-Z].? [A-Z][A-Za-z']+
+                    //4. It may also fail at phrases of format: [FIRST NAME] (&|and) [FIRST NAME]. Yes, it can magically handle phrases like "Adam M. Weber and Sophie Reine" into two persons
+                    for (Triple<String, Integer, Integer> chunk : cics) {
+                        String cic = chunk.first;
+                        if (cic == null)
+                            continue;
                         String coreCIC = stripTitles(cic);
                         String type = FeatureGeneratorUtil.tokenFeature(cic);
                         if (!coreCIC.contains(" ") || type.equals("ac")) {
                             st1 = System.currentTimeMillis();
-                            Pair<String, Integer> match = mentions.getNearestMatch(new EmailMention(coreCIC, ed));
+                            Pair<EmailMention, Integer> match = mentions.getNearestMatch(new EmailMention(new Span(coreCIC, -1, -1), ed));
                             searchTime += System.currentTimeMillis() - st1;
-                            if (match.getSecond() >= 0)
-                                log.info("Found a match " + cic + "<->" + match.getFirst() + " - Level: " + match.getSecond() + " - UID: " + ed.getUniqueId());
+                            if (match.getSecond() >= 0) {
+                                Span me = match.getFirst().entity;
+                                log.info("Found a match " + cic + "<->" + me.text + " - Level: " + match.getSecond() + " - UID: " + ed.getUniqueId());
+                                //We consider the match only if the name expands to a person or is an acronym
+                                if (me.type == FeatureDictionary.PERSON || FeatureGeneratorUtil.tokenFeature(cic).equals("ac")) {
+                                    Integer sidx;
+                                    if ((sidx = spanIdx.get(cic)) != null && sidx >= 0 && sidx < entities.size() && entities.get(sidx) != null) {
+                                        //TODO: should we assign the type only if score of the link is better than what it is already assigned?
+                                        entities.get(sidx).setLink(me.text, match.getSecond());
+                                        entities.get(sidx).setType(me.type, me.typeScore);
+                                        log.info("Updated the entity mention " + cic + " <-> " + me.text);
+                                    } else {
+                                        Span e = new Span(chunk.first, chunk.second, chunk.third);
+                                        e.setLink(me.text, match.getSecond());
+                                        e.setType(me.type, me.typeScore);
+                                        entities.add(e);
+                                        log.info("Added an entity mention " + e.text + " <-> " + me.text);
+                                    }
+                                    updated = true;
+                                }
+                            }
                         }
                     }
+
+                    if (updated)
+                        ldoc = edu.stanford.muse.ner.NER.updateDoc(ldoc, entities.toArray(new Span[entities.size()]), isBody, archive);
+                    stats.update(entities.toArray(new Span[entities.size()]));
                 }
+                if (updated)
+                    archive.updateDocument(ldoc);
+
                 if (di++ % 1000 == 0) {
-                    log.info("Search time: "+searchTime+" -- Add time: "+addTime);
+                    log.info("Search time: " + searchTime + " -- Add time: " + addTime);
                     log.info("Done processing: " + di + "/" + docs.size() + " -- elapsed time: " + (System.currentTimeMillis() - st) + "ms -- estimated time " + ((System.currentTimeMillis() - st) / (di * 1000 * 60)) * (docs.size() - di) + " minutes");
                 }
             }
 
             log.info("Done finding merges in " + (System.currentTimeMillis() - st) + "ms");
-        }catch(Exception e){
+            archive.processingMetadata.entityCounts = stats.counts;
+            log.info(stats.counts);
+            SimpleSessions.saveArchive(archive.baseDir, "default", archive);
+            archive.close();
+        }catch(IOException e){
             e.printStackTrace();
         }
     }
@@ -849,35 +916,9 @@ public class ProperNounLinker {
         try {
             String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            Document doc = archive.getAllDocs().get(0);
-            org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
-            System.out.println(ldoc);
-            Span[] ss = edu.stanford.muse.ner.NER.getEntities(archive.getLuceneDoc(doc), true);
-            for(Span s: ss)
-                System.out.println(s);
-            System.out.println(ldoc.get("en_person"));
-            //findClusters(archive);
+            findMerges(archive);
         }catch(Exception e){
             e.printStackTrace();
         }
-//        try {
-//            RAMDirectory dir = new RAMDirectory();
-//            Analyzer analyzer = new EnglishAnalyzer(Version.LUCENE_47, Indexer.MUSE_STOP_WORDS_SET);
-//            IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(Version.LUCENE_47, analyzer));
-//            org.apache.lucene.document.Document ldoc = new org.apache.lucene.document.Document();
-//            ldoc.add(new TextField("content","Some gibberish and something else, hello",Field.Store.YES));
-//            writer.addDocument(ldoc);
-//            writer.commit();
-//            DirectoryReader reader = DirectoryReader.open(dir);
-//            IndexSearcher searcher = new IndexSearcher(reader);
-//            // Parse a simple query that searches for "text":
-//            QueryParser parser = new QueryParser(Version.LUCENE_47, "content", analyzer);
-//            Query query = parser.parse("some something nothing");
-//            TopDocs tds = searcher.search(query,10);
-//            for(ScoreDoc sd: tds.scoreDocs)
-//                System.err.println("Content: "+searcher.doc(sd.doc).get("content"));
-//        }catch(Exception e){
-//            e.printStackTrace();
-//        }
     }
 }

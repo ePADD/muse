@@ -28,8 +28,7 @@ public class NER implements StatusProvider {
     //names and names_original should include all the names in the title
     public static String EPER = "en_person", ELOC = "en_loc", EORG = "en_org", NAMES_ORIGINAL = "en_names_original";
     public static String EPER_TITLE = "en_person_title", ELOC_TITLE = "en_loc_title", EORG_TITLE = "en_org_title";
-    public static String NAMES_OFFSETS = "en_names_offsets", TITLE_NAMES_OFFSETS = "en_names_offsets_title";
-    public static String FINE_ENTITIES = "en_fine_entities", TITLE_FINE_ENTITIES = "en_fine_entities_title";
+    public static String NAMES_OFFSETS = "en_names_offsets";
 
     String status;
     double pctComplete = 0;
@@ -48,7 +47,7 @@ public class NER implements StatusProvider {
         public Map<Short, Integer> rcounts;
         public Map<Short, Set<String>> all;
 
-        NERStats() {
+        public NERStats() {
             counts = new LinkedHashMap<>();
             rcounts = new LinkedHashMap<>();
             all = new LinkedHashMap<>();
@@ -56,7 +55,7 @@ public class NER implements StatusProvider {
 
         public void update(Span[] chunks) {
             Map<Short, List<Span>> fineTypes = Arrays.asList(chunks).stream().collect(Collectors.groupingBy(c -> c.type));
-            Map<Short, List<Span>> coarseTypes = Arrays.asList(chunks).stream().collect(Collectors.groupingBy(c -> c.type));
+            Map<Short, List<Span>> coarseTypes = Arrays.asList(chunks).stream().collect(Collectors.groupingBy(c -> FeatureDictionary.getCoarseType(c.type)));
 
             Set<Short> allTypes = new LinkedHashSet<>();
             allTypes.addAll(fineTypes.keySet());
@@ -122,7 +121,8 @@ public class NER implements StatusProvider {
         for (String field : fields) {
             String fv = doc.get(field);
             String[] txtChunks = fv.split(Indexer.NAMES_FIELD_DELIMITER);
-            names.addAll(Arrays.asList(txtChunks).stream().map(Span::parse).collect(Collectors.toList()));
+            if(fv!=null && fv.length()>0)
+                names.addAll(Arrays.asList(txtChunks).stream().map(Span::parse).collect(Collectors.toList()));
         }
         return names.toArray(new Span[names.size()]);
     }
@@ -152,6 +152,46 @@ public class NER implements StatusProvider {
         }
     }
 
+    public static org.apache.lucene.document.Document updateDoc(org.apache.lucene.document.Document ldoc, Span[] chunks, boolean body, Archive archive){
+        List<String> persons = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PERSON).map(Span::parsablePrint).collect(Collectors.toList());
+        List<String> locs = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PLACE).map(Span::parsablePrint).collect(Collectors.toList());
+        List<String> orgs = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.ORGANISATION).map(Span::parsablePrint).collect(Collectors.toList());
+
+        if(body) {
+            ldoc.removeField(EPER);
+            ldoc.removeField(ELOC);
+            ldoc.removeField(EORG);
+        }else {
+            ldoc.removeField(EPER_TITLE);
+            ldoc.removeField(ELOC_TITLE);
+            ldoc.removeField(EORG_TITLE);
+        }
+
+        if (body) {
+            ldoc.add(new StoredField(EPER, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
+            ldoc.add(new StoredField(ELOC, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
+            ldoc.add(new StoredField(EORG, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
+        } else {
+            ldoc.add(new StoredField(EPER_TITLE, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
+            ldoc.add(new StoredField(ELOC_TITLE, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
+            ldoc.add(new StoredField(EORG_TITLE, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
+        }
+
+        String originalContent = archive.getContents(ldoc, true);
+        List<String> names_original = new ArrayList<>();
+        int ocs = originalContent.length();
+        for (Span chunk: chunks) {
+            if(chunk == null)
+                continue;
+            String name = chunk.text;
+            if (chunk.start < ocs)
+                names_original.add(name);
+        }
+
+        ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
+        return ldoc;
+    }
+
     //main method trains the model, recognizes the entities and updates the doc.
     public void recognizeArchive() throws CancelledException, IOException {
         time = 0;
@@ -174,8 +214,8 @@ public class NER implements StatusProvider {
         int ps = 0, ls = 0, os = 0;
 
         long totalTime = 0, updateTime = 0, recTime = 0, duTime = 0, snoTime = 0;
+        long st1 = System.currentTimeMillis();
         for (Document doc : docs) {
-            long st1 = System.currentTimeMillis();
             long st = System.currentTimeMillis();
             org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
             //pass the lucene doc instead of muse doc, else a major performance penalty
@@ -183,7 +223,6 @@ public class NER implements StatusProvider {
             //Its possible to improve the performance further by using linear kernel
             // instead of RBF kernel and classifier instead of a regression model
             // (the confidence scores of regression model can be useful in segmentation)
-            String originalContent = archive.getContents(ldoc, true);
             String content = archive.getContents(ldoc, false);
             String title = archive.getTitle(ldoc);
             //original content is substring of content;
@@ -197,47 +236,8 @@ public class NER implements StatusProvider {
             updateTime += System.currentTimeMillis() - st;
             st = System.currentTimeMillis();
 
-            //!!!!!!SEVERE!!!!!!!!!!
-            //TODO: an entity name is stored in NAMES, NAMES_ORIGINAL, nameoffsets, and one or more of EPER, ELOC, EORG fields, that is a lot of redundancy
-            //!!!!!!SEVERE!!!!!!!!!!
-
-            List<String> persons = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PERSON).map(Span::parsablePrint).collect(Collectors.toList());
-            List<String> locs = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PLACE).map(Span::parsablePrint).collect(Collectors.toList());
-            List<String> orgs = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.ORGANISATION).map(Span::parsablePrint).collect(Collectors.toList());
-            List<String> personsTitle = Arrays.asList(chunksTitle).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PERSON).map(Span::parsablePrint).collect(Collectors.toList());
-            List<String> locsTitle = Arrays.asList(chunksTitle).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PLACE).map(Span::parsablePrint).collect(Collectors.toList());
-            List<String> orgsTitle = Arrays.asList(chunksTitle).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.ORGANISATION).map(Span::parsablePrint).collect(Collectors.toList());
-            ps += persons.size() + personsTitle.size();
-            ls += locs.size() + locsTitle.size();
-            os += orgs.size() + orgsTitle.size();
-            snoTime += System.currentTimeMillis() - st;
-            st = System.currentTimeMillis();
-
-            ldoc.removeField(EPER);
-            ldoc.removeField(EPER_TITLE);
-            ldoc.removeField(ELOC);
-            ldoc.removeField(ELOC_TITLE);
-            ldoc.removeField(EORG);
-            ldoc.removeField(EORG_TITLE);
-
-            ldoc.add(new StoredField(EPER, Util.join(persons, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(ELOC, Util.join(locs, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EORG, Util.join(orgs, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EPER_TITLE, Util.join(personsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(ELOC_TITLE, Util.join(locsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-            ldoc.add(new StoredField(EORG_TITLE, Util.join(orgsTitle, Indexer.NAMES_FIELD_DELIMITER)));
-
-            List<String> names_original = new ArrayList<>();
-            int ocs = originalContent.length();
-            for (Span chunk: chunks) {
-                if(chunk == null)
-                    continue;
-                String name = chunk.text;
-                if (chunk.start < ocs)
-                    names_original.add(name);
-            }
-
-            ldoc.add(new StoredField(NAMES_ORIGINAL, Util.join(names_original, Indexer.NAMES_FIELD_DELIMITER)));
+            ldoc = updateDoc(ldoc, chunks, true, archive);
+            ldoc = updateDoc(ldoc, chunks, false, archive);
             //log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
 
             //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance
@@ -246,7 +246,6 @@ public class NER implements StatusProvider {
             duTime += System.currentTimeMillis() - st;
             di++;
 
-            totalTime += System.currentTimeMillis() - st1;
             pctComplete = 30 + ((double) di / (double) ds) * 70;
             double ems = (double) (totalTime * (ds - di)) / (double) (di * 1000);
             status = "Recognized entities in " + Util.commatize(di) + " of " + Util.commatize(ds) + " emails ";
@@ -263,7 +262,7 @@ public class NER implements StatusProvider {
             }
         }
 
-        log.info("Trained and recognised entities in " + di + " docs in " + totalTime + "ms" + "\nPerson: " + ps + "\nOrgs:" + os + "\nLocs:" + ls);
+        log.info("Trained and recognised entities in " + di + " docs in " + (System.currentTimeMillis()-st1) + "ms");
         archive.close();
         //prepare to read again.
         archive.openForRead();
@@ -339,7 +338,7 @@ public class NER implements StatusProvider {
             int begin_pos = t.second();
             int end_pos = t.third();
             if (begin_pos > len || end_pos > len) {
-                // TODO: this is unclean. Happens because we concat body & title together when we previously generated these offsets but now we only have body.
+                //TODO: this is unclean. Happens because we concat body & title together when we previously generated these offsets but now we only have body.
                 begin_pos = end_pos = len;
             }
 

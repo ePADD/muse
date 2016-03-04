@@ -175,17 +175,21 @@ public class EmailRenderer {
                     //The goal here is to explain why a doc is selected and hence we should replicate Lucene doc selection and Lucene is case insensitive most of the times
                     String lc = str.toLowerCase();
                     if (highlightUnstemmed != null)
-                        for (String hs : highlightUnstemmed)
-                            if (lc.contains(hs.toLowerCase())) {
+                        for (String hs : highlightUnstemmed) {
+                            String hlc = hs.toLowerCase().replaceAll("^\\W+|\\W+$","");
+                            if (lc.contains(hlc)) {
                                 match = true;
                                 break;
                             }
+                        }
                     if (!match && highlightNames != null)
-                        for (String hn : highlightNames)
-                            if (lc.contains(hn.toLowerCase())) {
+                        for (String hn : highlightNames) {
+                            String hlc = hn.toLowerCase().replaceAll("^\\W+|\\W+$","");
+                            if (lc.contains(hlc)) {
                                 match = true;
                                 break;
                             }
+                        }
                 }
                 if(addr!=null){
                     if (!match && highlightAddresses != null)
@@ -484,6 +488,9 @@ public class EmailRenderer {
         entities.addAll(cpeople);
         entities.addAll(cplaces);
         entities.addAll(corgs);
+        Map<String,String> expansions = new LinkedHashMap<>();
+        Arrays.asList(NER.getEntities(ed, true, archive)).stream().filter(e->e.link!=null).forEach(e->expansions.put(e.text, e.link));
+        Arrays.asList(NER.getEntities(ed, false, archive)).stream().filter(e->e.link!=null).forEach(e->expansions.put(e.text, e.link));
 
         // Contains all entities and id if it is authorised else null
         Map<String, Archive.Entity> entitiesWithId = new HashMap<String, Archive.Entity>();
@@ -498,7 +505,7 @@ public class EmailRenderer {
             String ce = IndexUtils.canonicalizeEntity(entity);
             if (ce == null)
                 continue;
-            entitiesWithId.put(entity, new Archive.Entity(entity, null, types));
+            entitiesWithId.put(entity, new Archive.Entity(entity, null, types, expansions.get(entity)));
         }
         x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, false);
 

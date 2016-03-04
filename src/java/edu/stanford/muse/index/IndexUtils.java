@@ -395,7 +395,7 @@ public class IndexUtils {
 
 	/**
 	 * splits the input search query string into indiv. words.
-	 * e.g. a b|"c d"|e returns a list of length 4: a, b, c d, e
+	 * e.g. a b|"c d"|e returns a list of length 4: a, b, "c d", e
 	 * 
 	 * @return
 	 */
@@ -411,9 +411,6 @@ public class IndexUtils {
 				//				String word = st1.nextToken().trim().toLowerCase(); // canonicalize and add
 				String word = st.nextToken();
 				word = word.trim();
-				// handle quoted phrases
-				if (word.length() > 2 && word.startsWith("\"") && word.endsWith("\""))
-					word = word.substring(1, word.length() - 1);
 				if (word.length() > 0)
 					result.add(word);
 			}

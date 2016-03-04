@@ -30,7 +30,7 @@ public class Util {
 	 * @return score of the Wikipedia page and summary text of entities upon
 	 *         which the Wikipedia page is scored.
 	 * @bug revision: original name should not contribute to the score.
-	 * @bug? this method only looks for two consecutive words in a phrase, for
+	 * @bug this method only looks for two consecutive words in a phrase, for
 	 *       example for the phrase: (expansion of NHPRC) it only looks at
 	 *       combinations: NH, HP, PR, RC, hence counting it 4 times instead of
 	 *       once. The reason for a matching method like this is: it captured
@@ -171,8 +171,7 @@ public class Util {
 
 	//TODO: ideally kill phrases class should be doing all this.
 	static Log						log								= LogFactory.getLog(Util.class);
-	static Map<String, Set<String>>	files							= new LinkedHashMap<String, Set<String>>();
-	static String					COMMON_WORDS_FILE				= edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "kill.txt";
+	static Map<String, Set<String>>	files							= new LinkedHashMap<>();
 	//order person, location, org
 	static String[]					TYPE_SPECIFIC_COMMON_WORDS_FILE	= new String[] { edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "per-kill.txt", edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "loc-kill.txt", edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "org-kill.txt" };
 
