@@ -416,27 +416,29 @@ public class ProperNounLinker {
 
             //collect cands. first
             Set<Integer> mIdxs = new LinkedHashSet<>();
-            String tc = FeatureGeneratorUtil.tokenFeature(mention.entity.text);
+            String text = mention.entity.text;
+            String tc = FeatureGeneratorUtil.tokenFeature(text);
             if(tc.equals("ac")) {
                 //if the acronym is of size less than 3, the expansion is wrong most of the time
                 //CY<->Companys Yosem - Level: 5 - UID: /home/dev/data/Terry/terry-split/Important-7454
                 //Found a match HC<->Hong Cao, CC<->Christy Chin
-                if (mention.entity.text.length() > 2) {
-                    if (acronymToMentionIdx.containsKey(mention.entity.text))
-                        mIdxs.addAll(acronymToMentionIdx.get(mention.entity.text));
+                if (text.length() > 2) {
+                    if (acronymToMentionIdx.containsKey(text))
+                        mIdxs = acronymToMentionIdx.get(text);
                 }
                 else {
                     return new Pair<>(null,-1);
                 }
             }
             else {
-                Set<String> bow = bow(mention.entity.text);
+                Set<String> bow = bow(text);
                 int ti = 0;
                 for (String tok : bow) {
                     tok = tok.toLowerCase();
-                    if (tokenToMentionIdx.containsKey(tok)) {
+                    Set<Integer> tmp = tokenToMentionIdx.get(tok);
+                    if (tmp!=null) {
                         if(ti == 0)
-                            mIdxs.addAll(tokenToMentionIdx.get(tok));
+                            mIdxs = tmp;
                         else
                             mIdxs = new LinkedHashSet<>(Sets.intersection(mIdxs, tokenToMentionIdx.get(tok)));
                     }
@@ -444,24 +446,22 @@ public class ProperNounLinker {
                 }
             }
 
-            String vLevels[] = new String[hierarchy.getNumLevels()];
-            for(int l=0;l<hierarchy.getNumLevels();l++)
-                vLevels[l] = hierarchy.getValue(l, mention.context);
-            if(log.isDebugEnabled())
-                if (mIdxs.size()>100)
-                    log.debug("Found #"+mIdxs.size()+" mentions for "+mention.entity.text);
+            String vLevels[] = mention.contextLevels;
+//            if(log.isDebugEnabled())
+//                if (mIdxs.size()>100)
+//                    log.debug("Found #"+mIdxs.size()+" mentions for "+mention.entity.text);
 
             for (int l = 0; l < hierarchy.getNumLevels(); l++) {
                 for (int mid : mIdxs) {
                     EmailMention mmention = mentions.get(mid);
-                    String mv = hierarchy.getValue(l, mmention.context);
+                    String mtext = mmention.entity.text;
+                    String mv = mmention.contextLevels[l];
                     if (mv == null)
                         continue;
                     if (mv.equals(vLevels[l]))
-                        if (mention!=null && !mention.entity.text.equals(mmention.entity.text))
-                            if (isValidMergeSimple(mmention.entity.text, mention.entity.text))
+                        if (mention!=null && !text.equals(mtext))
+                            if (isValidMergeSimple(mtext, text))
                                 return new Pair<>(mmention, l);
-
                 }
             }
             return new Pair<>(null, -1);
@@ -577,20 +577,18 @@ public class ProperNounLinker {
 
     public static class EmailMention{
         public Span entity;
-        public EmailDocument context;
-        public EmailMention(Span entity, Object context){
+        public String[] contextLevels;
+        Date date;
+        public EmailMention(Span entity, Document context, Hierarchy hierarchy){
             this.entity = entity;
-            if(context instanceof EmailDocument) {
-                this.context = (EmailDocument)context;
-            }
-            else {
-                log.error("FATAL!!! Cannot handle context of type: " + (context == null ? "null" : context.getClass().getName()));
-            }
+            contextLevels = new String[hierarchy.getNumLevels()];
+            for(int l=0;l<hierarchy.getNumLevels();l++)
+                this.contextLevels[l] = hierarchy.getValue(l, context);
+            date = ((EmailDocument)context).getDate();
         }
 
         public Date getDate(){
-            if(context == null) return null;
-            return context.getDate();
+            return date;
         }
     }
 
@@ -627,17 +625,16 @@ public class ProperNounLinker {
                 Document doc = docs.get(dii);
                 Span[] entities = edu.stanford.muse.ner.NER.getEntities(doc, true, archive);
                 Set<Span> names = new LinkedHashSet<>();
-                names.addAll(
-                        Arrays.asList(entities).stream()
-                                .filter(s -> (s != null && s.type != FeatureDictionary.OTHER) && s.typeScore > THRESH)
-                                .collect(Collectors.toSet())
-                );
-                names.forEach(name -> mentions.add(new EmailMention(name, doc)));
+                for(Span e: entities)
+                    if(e!=null && e.type!=FeatureDictionary.OTHER && e.typeScore>THRESH)
+                        names.add(e);
+
+                names.forEach(name -> mentions.add(new EmailMention(name, (EmailDocument)doc, hierarchy)));
                 List<String> hpeople = ((EmailDocument)doc).getAllNames();
                 for (String hp : hpeople) {
                     Span s = new Span(hp, -1, -1);
                     s.setType(FeatureDictionary.PERSON, 1.0f);
-                    mentions.add(new EmailMention(s, doc));
+                    mentions.add(new EmailMention(s, (EmailDocument)doc, hierarchy));
                 }
             }
             NER.NERStats stats = new NER.NERStats();
@@ -667,11 +664,9 @@ public class ProperNounLinker {
                     //name to span index
                     Map<String, Integer> spanIdx = new LinkedHashMap<>();
 
-                    names.addAll(
-                            entities.stream()
-                                    .filter(s -> (s != null && s.type != FeatureDictionary.OTHER) && s.typeScore > THRESH)
-                                    .collect(Collectors.toSet())
-                    );
+                    for(Span e: entities)
+                        if(e!=null && e.type!=FeatureDictionary.OTHER && e.typeScore>THRESH)
+                            names.add(e);
                     for (int ei = 0; ei < entities.size(); ei++)
                         if (entities.get(ei) != null)
                             spanIdx.put(entities.get(ei).text, ei);
@@ -679,11 +674,11 @@ public class ProperNounLinker {
                     long st1 = System.currentTimeMillis();
                     //don't have to add a mention if it is in docs that are already added
                     if(di>=numDocsStart) {
-                        names.forEach(name -> mentions.add(new EmailMention(name, doc)));
+                        names.forEach(name -> mentions.add(new EmailMention(name, doc, hierarchy)));
                         for (String hp : hpeople) {
                             Span s = new Span(hp, -1, -1);
                             s.setType(FeatureDictionary.PERSON, 1.0f);
-                            mentions.add(new EmailMention(s, doc));
+                            mentions.add(new EmailMention(s, doc, hierarchy));
                         }
                     }
                     addTime += System.currentTimeMillis() - st1;
@@ -701,7 +696,7 @@ public class ProperNounLinker {
                         String type = FeatureGeneratorUtil.tokenFeature(cic);
                         if (!coreCIC.contains(" ") || type.equals("ac")) {
                             st1 = System.currentTimeMillis();
-                            Pair<EmailMention, Integer> match = mentions.getNearestMatch(new EmailMention(new Span(coreCIC, -1, -1), ed));
+                            Pair<EmailMention, Integer> match = mentions.getNearestMatch(new EmailMention(new Span(coreCIC, -1, -1), ed, hierarchy));
                             searchTime += System.currentTimeMillis() - st1;
                             if (match.getSecond() >= 0) {
                                 Span me = match.getFirst().entity;
@@ -713,13 +708,13 @@ public class ProperNounLinker {
                                         //TODO: should we assign the type only if score of the link is better than what it is already assigned?
                                         entities.get(sidx).setLink(me.text, match.getSecond());
                                         entities.get(sidx).setType(me.type, me.typeScore);
-                                        log.info("Updated the entity mention " + cic + " <-> " + me.text);
+                                        //log.info("Updated the entity mention " + cic + " <-> " + me.text);
                                     } else {
                                         Span e = new Span(chunk.first, chunk.second, chunk.third);
                                         e.setLink(me.text, match.getSecond());
                                         e.setType(me.type, me.typeScore);
                                         entities.add(e);
-                                        log.info("Added an entity mention " + e.text + " <-> " + me.text);
+                                        //log.info("Added an entity mention " + e.text + " <-> " + me.text);
                                     }
                                     updated = true;
                                 }
@@ -736,7 +731,7 @@ public class ProperNounLinker {
 
                 if (di++ % 1000 == 0) {
                     log.info("Search time: " + searchTime + " -- Add time: " + addTime);
-                    log.info("Done processing: " + di + "/" + docs.size() + " -- elapsed time: " + (System.currentTimeMillis() - st) + "ms -- estimated time " + ((System.currentTimeMillis() - st) / (di * 1000 * 60)) * (docs.size() - di) + " minutes");
+                    log.info("Done processing: " + di + "/" + docs.size() + " -- elapsed time: " + (System.currentTimeMillis() - st) + "ms -- estimated time " + ((System.currentTimeMillis() - st) / (di * 1000f * 60f)) * (docs.size() - di) + " minutes");
                 }
             }
 
