@@ -16,6 +16,7 @@
 package edu.stanford.muse.index;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
@@ -38,28 +39,25 @@ public class DataSet {
     Archive archive;
     BlobStore attachmentsStore;
     Set<Integer> highlightContactIds;
-    Set<String> highlightTermsStemmed;
-    Set<String> highlightTermsUnstemmed;
+    Set<String> highlightTerms;
     Set<Blob> highlightAttachments;
     //String -> <dbId -> dbType>
     Map<String, Map<String, Short>> authorisedEntities;
 
     public Boolean sensitive;
 
-    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTerms,
                    Collection<Blob> highlightAttachments) {
         if(docs!=null) {
             //calling assigning new ArrayList<>(docs) is calling sort on docs by default
             this.docs = new ArrayList<>();
-            for(Document d: docs)
-                this.docs.add(d);
+            this.docs.addAll(docs.stream().collect(Collectors.toList()));
         }
         this.archive = archive;
         this.datasetTitle = datasetTitle;
         this.attachmentsStore = archive.blobStore;
         this.highlightContactIds = highlightContactIds;
-        this.highlightTermsStemmed = highlightTermsStemmed;
-        this.highlightTermsUnstemmed = highlightTermsUnstemmed;
+        this.highlightTerms = highlightTerms;
         if(highlightAttachments!=null)
             this.highlightAttachments = new LinkedHashSet<>(highlightAttachments);
         for (@SuppressWarnings("unused")
@@ -104,8 +102,8 @@ public class DataSet {
             {
                 // we are assuming one one page per doc for now. (true for
                 // emails)
-                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightContactIds, highlightTermsStemmed,
-                        highlightTermsUnstemmed, highlightAttachments, authorisedEntities, IA_links, inFull, debug);
+                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightContactIds, highlightTerms,
+                        highlightAttachments, authorisedEntities, IA_links, inFull, debug);
                 boolean overflow = htmlResut.second;
                 Util.ASSERT(!(inFull && overflow));
                 String pageContent = htmlResut.first

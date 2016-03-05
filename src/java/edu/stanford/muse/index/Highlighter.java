@@ -2,13 +2,10 @@ package edu.stanford.muse.index;
 
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -23,7 +20,6 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.io.StringReader;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -250,6 +246,9 @@ public class Highlighter {
 		//annotate whatever is left in highlight and hyperlink Terms.
 		String result = highlightBatch(contents, termsToHighlight.toArray(new String[termsToHighlight.size()]), preHighlightTag, postHighlightTag);
         result = highlightBatch(result, termsToHyperlink.toArray(new String[termsToHyperlink.size()]), preHyperlinkTag, postHyperlinkTag);
+//        System.out.println("Terms to highlight: " + termsToHighlight);
+//        System.out.println("Terms to hyperlink: "+termsToHyperlink);
+//        System.out.println("order: "+order);
 
 		//need to post process.
 		//now highlight terms in order.
@@ -267,9 +266,9 @@ public class Highlighter {
 
 			try {
 				result = highlight(result, term, preTag, postTag);
-			} catch (Exception e) {
+			} catch (IOException|InvalidTokenOffsetsException e) {
 				Util.print_exception("Exception while adding html annotation: " + ann.first, e, log);
-			}
+			} catch(ParseException e){}
 		}
 		//do some line breaking and show overflow.
 		String[] lines = result.split("\\n");
@@ -448,11 +447,13 @@ public class Highlighter {
 	public static void main(String args[])
 	{
 		try {
-	        String text = "On Tue, Jun 24, 2014 at 11:56 AM, Aparna Vedant's <aparna.vedant@XXX.edu.in> wrote: Rachelle K. Learner W.S. Merwin\nVery elated to see you yesterday. Can wee meet over a cup of coffee?\nI am hoping to hear back from you. BTW I also invited Tanmai Gopal to join. WHat a pleasure to have the company of Tanmai.\n---Aparna\nUniversity of Florida";
-			String str = Highlighter.highlightBatch(text, new String[] { "\"University of Florida\"","\"Aparna Vedant\"", "\"tanmai gopal\"","\"W.S. Merwin\"","Rachelle K. Learner", "elate|happy|invite", "hope","met", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" }, "<B >", "</B>");
+	        String text = "On Tue, Jun 24, 2014 at 11:56 AM, Aparna Vedant's <aparna.vedant@XXX.edu.in> wrote: Rachelle K. Learner W.S. Merwin\nVery elated to see you yesterday. Can wee meet over a cup of coffee?\nI am hoping to hear back from you. BTW I also invited Tanmai Gopal to join. WHat a pleasure to have the company of Tanmai  and I'd like to do so one last time..\n---Aparna\nUniversity of Florida";
+			List<String> arr = Arrays.asList( "\"Keep it to yourself\"","\"University of Florida\"","\"Aparna Vedant\"", "\"tanmai gopal\"","\"W.S. Merwin\"","Rachelle K. Learner", "elate|happy|invite", "hope","met", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" );
+            String str = Highlighter.highlightBatch(text, arr.toArray(new String[arr.size()]), "<B >", "</B>");
+            System.out.println(arr);
             //str = Highlighter.highlightBatch(str, new String[] {"Aparna"}, "<B >", "</B>");
             System.err.println("Highlighted content: "+str);
-            getHTMLAnnotatedDocumentContents("", new Date(), "", false, new LinkedHashSet<>(Arrays.asList("Robert Creeley")), null, new LinkedHashSet<String>(Arrays.asList("Charles", "Susan Howe", "Betty", "Charles Bernstein", "Carl Dennis", "Joseph Conte", "Bob Creeley", "Residence", "Uday", "LWOP", "U Penn", "Joseph", "Betty Capaldi", "Capen Chair")), false);
+            getHTMLAnnotatedDocumentContents("", new Date(), "", false, new LinkedHashSet<>(Arrays.asList("Robert Creeley")), null, new LinkedHashSet<>(Arrays.asList("Charles", "Susan Howe", "Betty", "Charles Bernstein", "Carl Dennis", "Joseph Conte", "Bob Creeley", "Residence", "Uday", "LWOP", "U Penn", "Joseph", "Betty Capaldi", "Capen Chair")), false);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

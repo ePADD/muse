@@ -1005,17 +1005,11 @@ public class Archive implements Serializable {
      * entitiesWithId - authorisedauthorities, for annotation
      * showDebugInfo - enabler to show debug info
      */
-    public String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+    public String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
                            Map<String, Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
         getAllDocs();
         try {
             Summarizer summarizer = new Summarizer(indexer);
-
-            Set<String> highlightTerms = new LinkedHashSet<>();
-            if(highlightTermsStemmed!=null)
-                highlightTerms.addAll(highlightTermsStemmed);
-            if(highlightTermsUnstemmed!=null)
-                highlightTerms.addAll(highlightTermsUnstemmed);
 
             s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTerms,
                     entitiesWithId, summarizer.importantTermsCanonical /* unstemmed because we are only using names*/, showDebugInfo);
@@ -1030,14 +1024,14 @@ public class Archive implements Serializable {
         return s;
     }
 
-    public String annotate(String s, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+    public String annotate(String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
                            Map<String, Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
-        return annotate(null, s, date, docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed,
+        return annotate(null, s, date, docId, sensitive, highlightTerms,
                 entitiesWithId, IA_links, showDebugInfo);
     }
 
-    public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed,
-                                                           Set<String> highlightTermsUnstemmed, Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
+    public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
+                                                           Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
         //not using filtered entities here as it looks weird especially in the redaction mode not to
         //have a word unmasked annotated. It is counter-intuitive.
         float THRESH = 0.001f;
@@ -1087,7 +1081,7 @@ public class Archive implements Serializable {
 
         //don't want "more" button anymore
         boolean overflow = false;
-        String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, showDebugInfo);
+        String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
 
         if (ModeConfig.isPublicMode())
             htmlContents = Util.maskEmailDomain(htmlContents);
@@ -1373,31 +1367,33 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-            List<Document> docs = archive.getAllDocs();
-            int i=0;
-            archive.assignThreadIds();
-            for(Document doc: docs) {
-                EmailDocument ed = (EmailDocument)doc;
-                List<Document> threads = archive.docsWithThreadId(ed.threadID);
-                if(threads.size()>0){
-                    int numSent = 0;
-                    for(Document d: threads){
-                        EmailDocument thread = (EmailDocument)d;
-                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
-                        if(sent>0)
-                            numSent++;
-                    }
-                    if(threads.size()!=numSent || threads.size()>2){
-                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
-                        break;
-                    }
-                    if(i%100 == 0)
-                        System.err.println("Scanned: "+i+" docs");
-                }
-                i++;
-            }
+            Lexicon lex = archive.getLexicon("pride");
+            System.out.println(lex);
+//            List<Document> docs = archive.getAllDocs();
+//            int i=0;
+//            archive.assignThreadIds();
+//            for(Document doc: docs) {
+//                EmailDocument ed = (EmailDocument)doc;
+//                List<Document> threads = archive.docsWithThreadId(ed.threadID);
+//                if(threads.size()>0){
+//                    int numSent = 0;
+//                    for(Document d: threads){
+//                        EmailDocument thread = (EmailDocument)d;
+//                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
+//                        if(sent>0)
+//                            numSent++;
+//                    }
+//                    if(threads.size()!=numSent || threads.size()>2){
+//                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
+//                        break;
+//                    }
+//                    if(i%100 == 0)
+//                        System.err.println("Scanned: "+i+" docs");
+//                }
+//                i++;
+//            }
         } catch (Exception e) {
             e.printStackTrace();
         }
