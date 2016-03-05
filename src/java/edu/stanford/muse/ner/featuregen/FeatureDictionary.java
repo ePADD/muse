@@ -6,7 +6,6 @@ import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
-import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -17,12 +16,6 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * Updates
- * bug-fixes
- * 1. Fixed MU initialisation bug related to setting nmL and nmR to non-zero value.
- * 2. Specially handled numbers in ROADS. There are many repetitions with U.S. route NUMBER, e.t.c. removes the last word if it contains number, see EmailUtils.cleanRoad
- * */
 public class FeatureDictionary implements Serializable {
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
@@ -42,13 +35,10 @@ public class FeatureDictionary implements Serializable {
     public static Map<Short,String> desc = new LinkedHashMap<>();
     public static Map<Short, List<Short>> mappings = new LinkedHashMap<>();
     static Log log = LogFactory.getLog(FeatureDictionary.class);
+    //DBpedia type mapping of the types this can handle
     public static Map<Short, String[]> aTypes = new LinkedHashMap<>();
-    public static Map<Short, String[]> startMarkersForType = new LinkedHashMap<>();
-    public static Map<Short, String[]> endMarkersForType = new LinkedHashMap<>();
     public static List<String> ignoreTypes = new ArrayList<>();
-    //feature types
-    public static short NOMINAL = 0, BOOLEAN = 1;
-    public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
+    static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
     public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is", "from",
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","ap","le","bint","do");
     static List<String> symbols = Arrays.asList("&","-",",");
@@ -82,14 +72,6 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(DISEASE, new String[]{"Disease|Medicine"});
         aTypes.put(EVENT, new String[]{"SocietalEvent|Event"});
 
-        //case insensitive
-        startMarkersForType.put(FeatureDictionary.PERSON, new String[]{"dear", "hi", "hello", "mr", "mr.", "mrs", "mrs.", "miss", "sir", "madam", "dr.", "prof", "dr", "prof.", "dearest", "governor", "gov."});
-        endMarkersForType.put(FeatureDictionary.PERSON, new String[]{"jr", "sr"});
-        startMarkersForType.put(FeatureDictionary.PLACE, new String[]{"new"});
-        endMarkersForType.put(FeatureDictionary.PLACE, new String[]{"shire", "city", "state", "bay", "beach", "building", "hall"});
-        startMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"the", "national", "univ", "univ.", "university", "school"});
-        endMarkersForType.put(FeatureDictionary.ORGANISATION, new String[]{"inc.", "inc", "school", "university", "univ", "studio", "center", "service", "service", "institution", "institute", "press", "foundation", "project", "org", "company", "club", "industry", "factory"});
-
         //Do not expect that these ignore types will get rid of person names with any stop word in it.
         //Consider this, the type dist. of person-like types with the stop word _of_ is
         //10005 Person|Agent
@@ -115,7 +97,7 @@ public class FeatureDictionary implements Serializable {
                 "Album|MusicalWork|Work",
                 "Film|Work",
                 //This type is too noisy and contain titles like
-                //Cincinatti Kids, FA_Youth_Cup_Finals, The Stongest (and other such team names)
+                //Cincinatti Kids, FA_Youth_Cup_Finals, The Strongest (and other such team names)
                 "OrganisationMember|Person",
                 "PersonFunction",
                 "GivenName",
@@ -125,34 +107,16 @@ public class FeatureDictionary implements Serializable {
                 //should be careful about Agent type, though it contains personal names it can also contain many non-personal entities
                 "ComicsCharacter|FictionalCharacter|Person"
         );
-        desc.put(PERSON, "PERSON");
-        desc.put(COMPANY, "COMPANY");
-        desc.put(BUILDING, "BUILDING");
-        desc.put(PLACE, "PLACE");
-        desc.put(RIVER, "RIVER");
-        desc.put(ROAD, "ROAD");
-        desc.put(UNIVERSITY, "UNIVERSITY");
-        desc.put(MOUNTAIN, "MOUNTAIN");
-        desc.put(AIRPORT, "AIRPORT");
-        desc.put(ORGANISATION, "ORGANISATION");
-        desc.put(PERIODICAL_LITERATURE, "PERIODICAL_LITERATURE");
-        desc.put(ISLAND, "ISLAND");
-        desc.put(MUSEUM, "MUSEUM");
-        desc.put(BRIDGE, "BRIDGE");
-        desc.put(AIRLINE, "AIRLINE");
-        desc.put(GOVAGENCY, "GOVAGENCY");
-        desc.put(HOSPITAL, "HOSPITAL");
-        desc.put(AWARD, "AWARD");
-        desc.put(THEATRE, "THEATRE");
-        desc.put(LEGISTLATURE, "LEGISTLATURE");
-        desc.put(LIBRARY, "LIBRARY");
-        desc.put(LAWFIRM, "LAWFIRM");
-        desc.put(MONUMENT, "MONUMENT");
-        desc.put(DISEASE, "DISEASE");
-        desc.put(EVENT, "EVENT");
+        desc.put(PERSON, "PERSON");desc.put(COMPANY, "COMPANY");desc.put(BUILDING, "BUILDING");
+        desc.put(PLACE, "PLACE");desc.put(RIVER, "RIVER");desc.put(ROAD, "ROAD");desc.put(UNIVERSITY, "UNIVERSITY");
+        desc.put(MOUNTAIN, "MOUNTAIN");desc.put(AIRPORT, "AIRPORT");desc.put(ORGANISATION, "ORGANISATION");
+        desc.put(PERIODICAL_LITERATURE, "PERIODICAL_LITERATURE");desc.put(ISLAND, "ISLAND");desc.put(MUSEUM, "MUSEUM");
+        desc.put(BRIDGE, "BRIDGE");desc.put(AIRLINE, "AIRLINE");desc.put(GOVAGENCY, "GOVAGENCY");desc.put(HOSPITAL, "HOSPITAL");
+        desc.put(AWARD, "AWARD");desc.put(THEATRE, "THEATRE");desc.put(LEGISTLATURE, "LEGISTLATURE");desc.put(LIBRARY, "LIBRARY");
+        desc.put(LAWFIRM, "LAWFIRM");desc.put(MONUMENT, "MONUMENT");desc.put(DISEASE, "DISEASE");desc.put(EVENT, "EVENT");
         desc.put(OTHER, "OTHER");
 
-        FeatureDictionary.mappings.put(FeatureDictionary.PERSON, Arrays.asList(FeatureDictionary.PERSON));
+        FeatureDictionary.mappings.put(FeatureDictionary.PERSON, Collections.singletonList(FeatureDictionary.PERSON));
         FeatureDictionary.mappings.put(FeatureDictionary.PLACE, Arrays.asList(FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL, FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
                 FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
                 FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY, FeatureDictionary.MONUMENT));
@@ -162,11 +126,9 @@ public class FeatureDictionary implements Serializable {
     }
     /**
      * Features for a word that corresponds to a mixture
-     * position: SOLO, INSIDE, BEGIN, END
-     * number of words: number of words in the phrase, can be any value from 1 to 10
      * left and right labels, LABEL is one of: LOC, ORG,PER, OTHER, NEW, stop words, special chars
      * Change log
-     * 1. Changed all the MU values from double to float to reduce the model size and we are not interested (actually undesired) to have very small feature values in MU*/
+     * 1. Changed all the MU values from double to float to reduce the model size and we are not interested (actually undesired) to have very small values in MU*/
     public static class MU implements Serializable{
         static final long serialVersionUID = 1L;
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
@@ -183,7 +145,6 @@ public class FeatureDictionary implements Serializable {
         }
 
         public String id;
-
         //static int NUM_WORDLENGTH_LABELS = 10;
         //feature and the value, for example: <"LEFT: and",200>
         //indicates if the values are final or if they have to be learned
@@ -219,8 +180,7 @@ public class FeatureDictionary implements Serializable {
                 mu.muVectorPositive.put("T:"+type, initialParams.get(type).first);
                 s2 = initialParams.get(type).second;
             }
-//            if(initialParams.size()==0 || n==0 || d==0 || n!=d)
-//                log.error("!!!FATAL!!! mu initialisation improper" + ", " + n + ", " + d + ", " + mu.muVectorPositive + ", word: " + word);
+
             //initially don't assume anything about gammas and pi's
             mu.numMixture = s2;
             mu.numSeen = s2;
@@ -282,7 +242,7 @@ public class FeatureDictionary implements Serializable {
         }
 
         //gets number of symbols in the dimension represented by this feature
-        public static int getNumberOfSymbols(String f){
+        static int getNumberOfSymbols(String f){
             if(f.startsWith("L:")||f.startsWith("R:"))
                 return WORD_LABELS.length;
             if(f.startsWith("T:"))
@@ -496,24 +456,6 @@ public class FeatureDictionary implements Serializable {
     //patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
     //mixtures of the BMM model
     public Map<String, MU> features = new LinkedHashMap<>();
-    //contains number of times a CIC pattern is seen (once per doc), also considers quoted text which may reflect wrong count
-    //This can get quite depending on the archive and is not a scalable solution
-
-    //this data-structure is only used for Segmentation which itself is not employed anywhere
-    public Map<String, Integer> counts = new LinkedHashMap<>();
-    //sum of all integers in the map above, i.e. frequencies of all pairs of words, required for normalization
-    //public int totalcount = 0;
-    //total number of word patterns
-//        ignoreTypes = Arrays.asList(
-//                "Election|Event", "MilitaryUnit|Organisation", "Ship|MeanOfTransportation", "OlympicResult",
-//                "SportsTeamMember|OrganisationMember|Person", "TelevisionShow|Work", "Book|WrittenWork|Work",
-//                "Film|Work", "Album|MusicalWork|Work", "Band|Organisation", "SoccerClub|SportsTeam|Organisation",
-//                "TelevisionEpisode|Work", "SoccerClubSeason|SportsTeamSeason|Organisation", "Album|MusicalWork|Work",
-//                "Ship|MeanOfTransportation", "Newspaper|PeriodicalLiterature|WrittenWork|Work", "Single|MusicalWork|Work",
-//                "FilmFestival|Event",
-//                "SportsTeamMember|OrganisationMember|Person",
-//                "SoccerClub|SportsTeam|Organisation"
-//        );
 
     public FeatureDictionary(){
         features = new LinkedHashMap<>();
@@ -569,7 +511,7 @@ public class FeatureDictionary implements Serializable {
         );
     }
 
-    public FeatureDictionary addGazz(Map<String,String> gazettes, float alphaFraction){
+    FeatureDictionary addGazz(Map<String,String> gazettes, float alphaFraction){
         long start_time = System.currentTimeMillis();
         long timeToComputeFeatures = 0, tms;
         log.info("Analysing gazettes");
@@ -712,34 +654,6 @@ public class FeatureDictionary implements Serializable {
         return this;
     }
 
-    //returns P(type/w)
-    public double getConditionalOfTypeWithWord(String word, String type){
-        if(word.startsWith("L:")||word.startsWith("R:"))
-            word = word.substring(2);
-        //base case
-        if(word.equals("NULL") || type.equals("NULL")) {
-            if (word.equals("NULL") && type.equals("NULL"))
-                return 1.0;
-            else
-                return 0.0;
-        }
-
-        MU mu = features.get(word);
-        Short t = Short.parseShort(type);
-
-        //smoothing is very important, there are two facets to it
-        //by adding some numbers to both numerator and denominator, we are encouraging ratios with higher components than just the ratio
-        //when the values are smoothed, the values are virtually clamped and will be swayed only if a good evidence is found
-         if(mu!=null) {
-            return mu.getLikelihoodWithType(t);
-        }
-        else {
-            if(DEBUG)
-                log.info("Unknown word: "+word+", returning best guess");
-            return (1.0 / allTypes.length);
-        }
-    }
-
     //codes a given DBpedia type into type coding of this class
     public static Short codeType(String type){
         Short ct = FeatureDictionary.OTHER;
@@ -772,7 +686,7 @@ public class FeatureDictionary implements Serializable {
         return ct;
     }
 
-    public static String[] getPatts(String phrase){
+    static String[] getPatts(String phrase){
         List<String> patts = new ArrayList<>();
         String[] words = phrase.split("\\s+");
         for (int i = 0; i < words.length; i++) {
@@ -804,35 +718,12 @@ public class FeatureDictionary implements Serializable {
         return patts.toArray(new String[patts.size()]);
     }
 
-    //there is no point emitting OTHER label, since the constraint is too broad, leads to noise
-    public Pair<String,Double> getLabel(String word, Map<String, MU> mixtures){
-        if(word == null)
-            return new Pair<>("NULL",1.0);
-        word = word.toLowerCase();
-        //this can happen, since we ignore a few types
-        //this label cannot be the same as OTHER, these are NEW or previously unseen tokens.
-        if(mixtures.get(word) == null)
-            return new Pair<>(""+(-2),1.0);
-        String bl = "-2";
-        double bs =-1;
-        //Have to be extremely careful about OTHER symbol
-        for(String tl: MU.TYPE_LABELS) {
-            if(tl.equals(""+FeatureDictionary.OTHER))
-                continue;
-            double s = mixtures.get(word).getLikelihoodWithType("T:"+tl);
-            bs = Math.max(s, bs);
-            if(s==bs)
-                bl=tl;
-        }
-        return new Pair<>(bl, 1.0);
-    }
-
     static Random rand = new Random();
     static{
         rand.setSeed(5);
     }
 
-    //Input is a token and returns the bet type assignment for token
+    //Input is a token and returns the best type assignment for token
     Short getType(String token){
         MU mu = features.get(token);
         if(mu == null){
@@ -860,7 +751,7 @@ public class FeatureDictionary implements Serializable {
      * requires mixtures as a parameter, because some of the features depend on this
      * returns a map of mixture identity to the set of features relevant to the mixture
      * Map<String,Double> because features sometimes are associated with a score, for semantic type, get label to be precise</>*/
-    public Map<String,List<String>> generateFeatures(String phrase, Short type){
+    Map<String,List<String>> generateFeatures(String phrase, Short type){
         Map<String, List<String>> mixtureFeatures = new LinkedHashMap<>();
         String[] patts = getPatts(phrase);
         String[] words = phrase.split("\\W+");
@@ -942,7 +833,7 @@ public class FeatureDictionary implements Serializable {
         return ffeatures;
     }
 
-    public double getIncompleteDateLogLikelihood(){
+    double getIncompleteDateLogLikelihood(){
         double ll = 0;
         List<String> nsws = new ArrayList<>();
         nsws.addAll(sws);nsws.add("NULL");
@@ -1040,7 +931,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     //the argument alpha fraction is required only for naming of the dumped model size
-    public void EM(Map<String,String> gazettes, float alphaFraction, int iter){
+    void EM(Map<String,String> gazettes, float alphaFraction, int iter){
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood();
         log.info("Start Data Log Likelihood: "+ll);
@@ -1069,7 +960,6 @@ public class FeatureDictionary implements Serializable {
                 Map<String, List<String>> wfeatures = generateFeatures2(phrase, coarseType);
 
                 if(coarseType!=FeatureDictionary.OTHER) {
-                    //System.err.println(" ---- ");
                     for (String mi : wfeatures.keySet()) {
                         if (wfeatures.get(mi) == null) {
                             continue;
@@ -1115,7 +1005,7 @@ public class FeatureDictionary implements Serializable {
                     if (mu == null)//|| (mu.numSeen > 0 && (mu.numMixture + mu.alpha_pi) < 1))
                         continue;
                     if (!revisedMixtures.containsKey(g))
-                        revisedMixtures.put(g, new MU(g, (mu != null) ? mu.alpha : (new LinkedHashMap<>()), mu.alpha_pi));
+                        revisedMixtures.put(g, new MU(g, mu.alpha, mu.alpha_pi));
 
                     if (Double.isNaN(gamma.get(g)))
                         log.error("Gamma NaN for MID: " + g);

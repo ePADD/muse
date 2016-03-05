@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * TODO: canonicalize and tokenize words such that stop words irrespective of their capitalised form are recognized, for example: "In American Culture", "IN SPANISH", "A NEW FEDERAL POLICY", "THE PROVOST"
  */
 public class CICTokenizer implements Tokenizer, Serializable {
-    public static Log log						= LogFactory.getLog(CICTokenizer.class);
+    static Log log						= LogFactory.getLog(CICTokenizer.class);
 
     static Pattern	entityPattern, multipleStopWordPattern;
     //NOTE: All the string lists below namely commonStartWords, commonEndWords, badSubstrings are case-insensitive
@@ -305,7 +305,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         return nts.toArray(new String[nts.size()]);
     }
 
-    public static void test(){
+    static void test(){
         Tokenizer tokenizer = new CICTokenizer();
         String[] contents = new String[]{
                 "A book named Information Retrieval by Christopher Manning",

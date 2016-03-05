@@ -35,7 +35,7 @@ public class SequenceModel implements NERModel, Serializable {
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
     public static CICTokenizer tokenizer = new CICTokenizer();
-    public Map<String, String> dbpedia;
+    Map<String, String> dbpedia;
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
@@ -48,7 +48,7 @@ public class SequenceModel implements NERModel, Serializable {
     /**
      * @param other boolean if is of other type
      */
-    public static double getLikelihoodWithOther(String phrase, boolean other) {
+    static double getLikelihoodWithOther(String phrase, boolean other) {
         phrase = phrase.replaceAll("^\\W+|\\W+$", "");
         if (phrase.length() == 0) {
             if (other)
@@ -151,7 +151,7 @@ public class SequenceModel implements NERModel, Serializable {
      * @param phrase - String that is to be sequence labelled, keep this short; The string will be rejected if it contains more than 15 words
      * @return all the entities along with their types and quality score found in the phrase
     */
-    public Map<String, Pair<Short, Double>> seqLabel(String phrase) {
+    Map<String, Pair<Short, Double>> seqLabel(String phrase) {
         Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
         String dbpediaType = lookup(phrase);
         Short ct = FeatureDictionary.codeType(dbpediaType);
@@ -289,7 +289,7 @@ public class SequenceModel implements NERModel, Serializable {
         return segments;
     }
 
-    public double getConditional(String phrase, Short type) {
+    double getConditional(String phrase, Short type) {
         Map<String, FeatureDictionary.MU> features = dictionary.features;
         Map<String, List<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
         String[] tokens = phrase.split("\\s+");
@@ -335,87 +335,6 @@ public class SequenceModel implements NERModel, Serializable {
             sorg += val;
         }
         return sorg;
-    }
-
-    public double score(String phrase, Short type) {
-        //if contains "The" in the beginning, score it without "The"
-        if(phrase.startsWith("The "))
-            phrase = phrase.replaceAll("^The ","");
-        List<String> commonWords = Arrays.asList("as", "because", "just", "in", "by", "for", "and", "to", "on", "of", "dear", "according", "think", "a", "an", "if", "at", "but", "the", "is");
-        //what the candidate starts or ends with is important
-        String[] swords = phrase.split("\\s+");
-        String fw = swords[0].toLowerCase();
-        fw = FeatureDictionary.endClean.matcher(fw).replaceAll("");
-        String sw = null;
-        if (swords.length > 1) {
-            sw = swords[swords.length - 1].toLowerCase();
-            sw = FeatureDictionary.endClean.matcher(sw).replaceAll("");
-        }
-        //the first word should not just be a word of special chars
-        if (commonWords.contains(fw) || commonWords.contains(sw) || fw.equals(""))
-            return 0.0;
-
-        String[] scores = new String[FeatureDictionary.allTypes.length];
-        Short bt = FeatureDictionary.OTHER;
-        double bs = -1;
-        for(int ti=0;ti<FeatureDictionary.allTypes.length;ti++){
-            Short t = FeatureDictionary.allTypes[ti];
-            double s = 0;
-            String frags = "";
-            {
-                Map<String, List<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
-                for (String mid : tokenFeatures.keySet()) {
-                    Double d;
-                    if (dictionary.features.get(mid) != null)
-                        d = dictionary.features.get(mid).getLikelihood(tokenFeatures.get(mid));
-                    else
-                        d = 0.0;//(1.0/MU.WORD_LABELS.length)*(1.0/MU.WORD_LABELS.length)*(1.0/MU.TYPE_LABELS.length)*(1.0/MU.POSITION_LABELS.length)*(1.0/MU.ADJ_LABELS.length)*(1.0/MU.ADV_LABELS.length)*(1.0/MU.DICT_LABELS.length)*(1.0/MU.PREP_LABELS.length)*(1.0/MU.V_LABELS.length)*(1.0/MU.PN_LABELS.length);
-                    if (Double.isNaN(d))
-                        log.warn("Conditional NaN for mixture ID: " + mid);
-                    double val = d;
-                    if (val > 0) {
-                        double freq = 0;
-                        if (dictionary.features.get(mid) != null)
-                            freq = dictionary.features.get(mid).getPrior();
-                        val *= freq;
-                    }
-                    s += val;//*dictionary.getMarginal(word);
-                    frags += val+" ";
-                }
-            }
-            scores[ti] = frags;
-            if(s>bs) {
-                bt = t;
-                bs = s;
-            }
-        }
-        if (fdw != null) try {
-            String str = "";
-            for (int si = 0; si < scores.length; si++)
-                str += FeatureDictionary.allTypes[si] + ":<" + scores[si] + "> ";
-            String[] words = phrase.split("[\\s,]+");
-            String labelStr = "";
-            for (String word : words) {
-                Pair<String, Double> p = dictionary.getLabel(word, dictionary.features);
-                MU mu = dictionary.features.get(word);
-                String label;
-                if (mu == null)
-                    label = p.getFirst();
-                else {
-                    if (mu.getLikelihoodWithType(FeatureDictionary.OTHER) > p.getSecond())
-                        label = "" + FeatureDictionary.OTHER;
-                    else
-                        label = p.getFirst();
-                }
-                labelStr += word + ":" + label + " ";
-            }
-            fdw.write(labelStr + "\n");
-            fdw.write(dictionary.generateFeatures2(phrase, type).toString() + "\n");
-            fdw.write("String: " + phrase + " - " + str + "\n");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return bs*(bt.equals(type)?1:-1);
     }
 
     public Span[] find (String content){
@@ -470,7 +389,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     //samples [fraction] fraction of entries from dictionary supplied and splices the supplied dict
-    public static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
+    static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
         Map<String,String> dict1 = new LinkedHashMap<>(), dict2 = new LinkedHashMap<>();
         Random rand = new Random();
         for(String str: dict.keySet()){

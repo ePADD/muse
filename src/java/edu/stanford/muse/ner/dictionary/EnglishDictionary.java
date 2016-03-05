@@ -11,6 +11,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.*;
 import java.util.*;
 
+/**
+ * A language related util class, created so as to be able to easily expand to other languages by just creating and using a similar dictionary for the language*/
 public class EnglishDictionary {
     static String adverbsFile = "dictionaries/en-pure-adv.txt";
     static String adjFile = "dictionaries/en-pure-adj.txt";
@@ -242,7 +244,7 @@ public class EnglishDictionary {
                     if(!exp.contains("("))
                         abbDict.put(abbr.toLowerCase(), exp.toLowerCase());
                     else{
-                        if(exp.contains(" (") || exp.indexOf(")")==-1){
+                        if(exp.contains(" (") || !exp.contains(")")){
                             log.warn("The entry: "+exp+" in Line: "+line+" not properly cleaned!\nFile: "+abbFile);
                             continue;
                         }
@@ -276,15 +278,16 @@ public class EnglishDictionary {
             log.warn("Cannot read file: "+fileName);
             e.printStackTrace();
         }
-        try { if (br != null) br.close(); } catch (Exception e) { Util.print_exception(e);}
+        try {
+            br.close();
+        } catch (Exception e) { Util.print_exception(e);}
         return entries;
     }
 
     public static Set<String> getCanonicalizedEntriesInFile(String fileName){
         Set<String> lines = readFile(fileName);
         Set<String> ces = new LinkedHashSet<>();
-        for(String line: lines)
-            ces.add(line.toLowerCase());
+        lines.forEach(line -> ces.add(line.toLowerCase()));
         return ces;
     }
 
@@ -307,7 +310,7 @@ public class EnglishDictionary {
         return tagDict;
     }
 
-    public static void testPlurals(){
+    static void testPlurals(){
         List<Pair<String,String>> plurals = new ArrayList<>();
         plurals.add(new Pair<>("selves","self"));
         plurals.add(new Pair<>("indices", "index"));

@@ -26,7 +26,6 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 24/12/15.
@@ -447,10 +446,6 @@ public class ProperNounLinker {
             }
 
             String vLevels[] = mention.contextLevels;
-//            if(log.isDebugEnabled())
-//                if (mIdxs.size()>100)
-//                    log.debug("Found #"+mIdxs.size()+" mentions for "+mention.entity.text);
-
             for (int l = 0; l < hierarchy.getNumLevels(); l++) {
                 for (int mid : mIdxs) {
                     EmailMention mmention = mentions.get(mid);
@@ -629,12 +624,12 @@ public class ProperNounLinker {
                     if(e!=null && e.type!=FeatureDictionary.OTHER && e.typeScore>THRESH)
                         names.add(e);
 
-                names.forEach(name -> mentions.add(new EmailMention(name, (EmailDocument)doc, hierarchy)));
+                names.forEach(name -> mentions.add(new EmailMention(name, doc, hierarchy)));
                 List<String> hpeople = ((EmailDocument)doc).getAllNames();
                 for (String hp : hpeople) {
                     Span s = new Span(hp, -1, -1);
                     s.setType(FeatureDictionary.PERSON, 1.0f);
-                    mentions.add(new EmailMention(s, (EmailDocument)doc, hierarchy));
+                    mentions.add(new EmailMention(s, doc, hierarchy));
                 }
             }
             NER.NERStats stats = new NER.NERStats();
