@@ -786,8 +786,12 @@ public class ProperNounLinker {
 
         Hierarchy hierarchy = new EmailHierarchy();
         Mentions mentions = new Mentions(hierarchy);
+        long addingTime = 0, parsingTime = 0;
         for (Document sdoc : sdocs) {
+            long st1 = System.currentTimeMillis();
             Span[] entities = NER.getEntities(sdoc, true, archive);
+            parsingTime += (System.currentTimeMillis()-st1);
+            st1 = System.currentTimeMillis();
             Arrays.asList(entities).stream().forEach(s->mentions.add(new EmailMention(s, sdoc, hierarchy)));
             EmailDocument ed = (EmailDocument)sdoc;
             List<String> hpeople = ed.getAllNames();
@@ -796,7 +800,9 @@ public class ProperNounLinker {
                 s.setType(FeatureDictionary.PERSON, 1.0f);
                 mentions.add(new EmailMention(s, sdoc, hierarchy));
             }
+            addingTime += (System.currentTimeMillis()-st1);
         }
+        System.out.println("Parsing time: "+parsingTime+" -- Adding time: "+addingTime);
 
         return mentions.getNearestMatches(mention,maxMatches);
     }
