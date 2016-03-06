@@ -22,32 +22,34 @@ import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by vihari on 07/09/15.
- * This class implements NER task with a Bernoulli Mixture model, every word or pattern is considered a mixture. It does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
- * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K. It is sometimes desired to train over a much larger training files.
+ * This class implements NER task with a Bernoulli Mixture model.
+ * Templates or Binomial mixtures are learned over any list of entities without any supervision required.
+ * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K.
+ * It is sometimes desired to train over a much larger training files.
  * TODO: Consider implementing an online EM based param estimation -- see http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf
  * It is beneficial to include Address-book in training. Names can have an uncommon first and last name --
  * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
  */
-public class SequenceModel implements NERModel, Serializable {
+public class BMMModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
     public static String modelFileName = "SeqModel.ser.gz";
     private static final long serialVersionUID = 1L;
-    static Log log = LogFactory.getLog(SequenceModel.class);
+    static Log log = LogFactory.getLog(BMMModel.class);
     public static FileWriter fdw = null;
     public static Tokenizer tokenizer = new CICTokenizer();
 
-    public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
+    public BMMModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
-        SequenceModel.tokenizer = tokenizer;
+        BMMModel.tokenizer = tokenizer;
     }
 
-    public SequenceModel() {
+    public BMMModel() {
     }
 
     /**
      * @param other boolean if is of other type
      */
-    static double getLikelihoodWithOther(String phrase, boolean other) {
+    private static double getLikelihoodWithOther(String phrase, boolean other) {
         phrase = phrase.replaceAll("^\\W+|\\W+$", "");
         if (phrase.length() == 0) {
             if (other)
@@ -117,7 +119,7 @@ public class SequenceModel implements NERModel, Serializable {
         return p;
     }
 
-    String lookup(String phrase) {
+    private String lookup(String phrase) {
         Map<String, String> dbpedia = EmailUtils.readDBpedia();
 
         //if the phrase is from CIC Tokenizer, it won't start with an article
@@ -137,15 +139,14 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     /**
-     * Does sequence labeling of a phrase -- a dynamic programming approach
+     * Does sequence labeling of a phrase with type -- a dynamic programming approach
      * The complexity of this method has quadratic dependence on number of words in the phrase, hence should be careful with the length (a phrase with more than 7 words is rejected)
      * O(T*W^2) where W is number of tokens in the phrase and T is number of possible types
-     * Since the word features that we are using are dependent on the boundary of the phrase i.e. the left and right semantic types, features on dictionary lookup e.t.c.
      * Note: This method only returns the entities from the best labeled sequence.
-     * @param phrase - String that is to be sequence labelled, keep this short; The string will be rejected if it contains more than 15 words
+     * @param phrase - String that is to be sequence labelled, keep this short; The string will be rejected if it contains more than 9 words
      * @return all the entities along with their types and quality score found in the phrase
     */
-    Map<String, Pair<Short, Double>> seqLabel(String phrase) {
+    private Map<String, Pair<Short, Double>> seqLabel(String phrase) {
         Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
         String dbpediaType = lookup(phrase);
         Short ct = FeatureDictionary.codeType(dbpediaType);
@@ -180,7 +181,7 @@ public class SequenceModel implements NERModel, Serializable {
          * 1     11
          * Total: 64,369 -- hence the cutoff below
          */
-        if (tokens.length > 7) {
+        if (tokens.length > 9) {
             return new LinkedHashMap<>();
         }
         //since there can be large number of types every token can take
@@ -208,7 +209,7 @@ public class SequenceModel implements NERModel, Serializable {
                     cands.add(p.getFirst());
         }
         //This is just a standard dynamic programming algo. used in HMMs, with the difference that
-        //at every word we are checking for the every possible segment
+        //at every word we are checking for the every possible segment (or chunk)
         short OTHER = -2;
         cands.add(OTHER);
         Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
@@ -271,7 +272,7 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 val = getLikelihoodWithOther(seg, true);
 
-            //if is a single word and dictionary word or word with less than 4 chars and not acronym, then break
+            //if is a single word and a dictionary word or word with less than 4 chars and not acronym, then skip the segment
             if (seg.contains(" ") || (seg.length() >= 3 && (seg.length() >= 4 || FeatureGeneratorUtil.tokenFeature(seg).equals("ac")) && !DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
                 segments.put(seg, new Pair<>(t.getThird(), val));
 
@@ -282,7 +283,7 @@ public class SequenceModel implements NERModel, Serializable {
         return segments;
     }
 
-    double getConditional(String phrase, Short type) {
+    private double getConditional(String phrase, Short type) {
         Map<String, FeatureDictionary.MU> features = dictionary.features;
         Map<String, List<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
         String[] tokens = phrase.split("\\s+");
@@ -309,7 +310,7 @@ public class SequenceModel implements NERModel, Serializable {
 
             int THRESH = 0;
             //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous, which could have appeared many times, but does not appear to have common template
-            //TODO: this check for "new" token is to reduce the noise coming from lowercase words starting with the word "new"
+            //the check for "new" token is to reduce the noise coming from lowercase words starting with the word "new"
             if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>0)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
                 d = mu.getLikelihood(tokenFeatures.get(mid));
             else
@@ -359,6 +360,7 @@ public class SequenceModel implements NERModel, Serializable {
         return chunks.toArray(new Span[chunks.size()]);
     }
 
+    //writes a .ser.gz file to the file passed in args.
     public synchronized void writeModel(File modelFile) throws IOException{
         FileOutputStream fos = new FileOutputStream(modelFile);
         GZIPOutputStream gos = new GZIPOutputStream(fos);
@@ -367,12 +369,13 @@ public class SequenceModel implements NERModel, Serializable {
         oos.close();
     }
 
-    public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
+    //loads a .ser.gz from the path specified
+    public static synchronized BMMModel loadModel(String modelPath) throws IOException{
         ObjectInputStream ois;
         try {
             //the buffer size can be much higher than the default 512 for GZIPInputStream
             ois = new ObjectInputStream(new GZIPInputStream(Config.getResourceAsStream(modelPath)));
-            SequenceModel model = (SequenceModel) ois.readObject();
+            BMMModel model = (BMMModel) ois.readObject();
             ois.close();
             return model;
         } catch (Exception e) {
@@ -381,16 +384,34 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
-    //alpha for initializing Dir.priors and iter is number of EM iterations
-    public static SequenceModel train(float alpha, int iter){
-        SequenceModel nerModel = new SequenceModel();
-        Map<String,String> train = EmailUtils.readDBpedia(1.0);
-        //This split is essential to isolate some entries that trained model has not seen
-        //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
-
-        //split the dictionary into train and test sets
-        nerModel.dictionary = new FeatureDictionary(train, alpha, iter);
-        return nerModel;
+    //TODO: Add to the project the code that produces this file
+    //returns token -> {redirect (can be the same as token), page length of the page it redirects to}
+    static Map<String,Map<String,Integer>> getTokenTypePriors(){
+        Map<String,Map<String,Integer>> pageLengths = new LinkedHashMap<>();
+        log.info("Parsing token types...");
+        try{
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(Config.getResourceAsStream("TokenTypes.txt")));
+            String line;
+            while((line=lnr.readLine())!=null){
+                String[] fields = line.split("\\t");
+                if(fields.length!=4){
+                    log.warn("Line --"+line+"-- has an unexpected pattern!");
+                    continue;
+                }
+                int pageLen = Integer.parseInt(fields[3]);
+                String redirect = fields[2];
+                //if the page is not a redirect, then itself is the title
+                if(fields[2] == null || fields[2].equals("null"))
+                    redirect = fields[1];
+                String lc = fields[0].toLowerCase();
+                if(!pageLengths.containsKey(lc))
+                    pageLengths.put(lc, new LinkedHashMap<>());
+                pageLengths.get(lc).put(redirect, pageLen);
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        return pageLengths;
     }
 
     //we are missing F.C's like F.C. La Valletta
@@ -433,30 +454,30 @@ public class SequenceModel implements NERModel, Serializable {
      *  8. We are missing Times of London?! We get nothing that contains "Newsroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
      *     Why are we getting "Students of South Korea" instead of "South Korea"?
      *
-     * 06 Feb 00:18:01 SequenceModel INFO  - -------------
-     * 06 Feb 00:18:01 SequenceModel INFO  - Found: 4119 -- Total: 4236 -- Correct: 3392 -- Missed due to wrong type: 323
-     * 06 Feb 00:18:01 SequenceModel INFO  - Precision: 0.8235009
-     * 06 Feb 00:18:01 SequenceModel INFO  - Recall: 0.80075544
-     * 06 Feb 00:18:01 SequenceModel INFO  - F1: 0.81196886
-     * 06 Feb 00:18:01 SequenceModel INFO  - ------------
+     * 06 Feb 00:18:01 BMMModel INFO  - -------------
+     * 06 Feb 00:18:01 BMMModel INFO  - Found: 4119 -- Total: 4236 -- Correct: 3392 -- Missed due to wrong type: 323
+     * 06 Feb 00:18:01 BMMModel INFO  - Precision: 0.8235009
+     * 06 Feb 00:18:01 BMMModel INFO  - Recall: 0.80075544
+     * 06 Feb 00:18:01 BMMModel INFO  - F1: 0.81196886
+     * 06 Feb 00:18:01 BMMModel INFO  - ------------
      *
      * 1/50th on only MWs
-     * 13 Feb 13:24:54 SequenceModel INFO  - -------------
-     * 13 Feb 13:24:54 SequenceModel INFO  - Found: 4238 -- Total: 4236 -- Correct: 3242 -- Missed due to wrong type: 358
-     * 13 Feb 13:24:54 SequenceModel INFO  - Precision: 0.7649835
-     * 13 Feb 13:24:54 SequenceModel INFO  - Recall: 0.7653447
-     * 13 Feb 13:24:54 SequenceModel INFO  - F1: 0.765164
-     * 13 Feb 13:24:54 SequenceModel INFO  - ------------
+     * 13 Feb 13:24:54 BMMModel INFO  - -------------
+     * 13 Feb 13:24:54 BMMModel INFO  - Found: 4238 -- Total: 4236 -- Correct: 3242 -- Missed due to wrong type: 358
+     * 13 Feb 13:24:54 BMMModel INFO  - Precision: 0.7649835
+     * 13 Feb 13:24:54 BMMModel INFO  - Recall: 0.7653447
+     * 13 Feb 13:24:54 BMMModel INFO  - F1: 0.765164
+     * 13 Feb 13:24:54 BMMModel INFO  - ------------
      *
      * Best performance on CONLL testa full, model trained on entire DBpedia.
-     * 4 Feb 00:41:34 SequenceModel INFO  - -------------
-     * 14 Feb 00:41:34 SequenceModel INFO  - Found: 6707 -- Total: 7219 -- Correct: 4988 -- Missed due to wrong type: 1150
-     * 14 Feb 00:41:34 SequenceModel INFO  - Precision: 0.7437006
-     * 14 Feb 00:41:34 SequenceModel INFO  - Recall: 0.69095445
-     * 14 Feb 00:41:34 SequenceModel INFO  - F1: 0.71635795
-     * 14 Feb 00:41:34 SequenceModel INFO  - ------------
+     * 4 Feb 00:41:34 BMMModel INFO  - -------------
+     * 14 Feb 00:41:34 BMMModel INFO  - Found: 6707 -- Total: 7219 -- Correct: 4988 -- Missed due to wrong type: 1150
+     * 14 Feb 00:41:34 BMMModel INFO  - Precision: 0.7437006
+     * 14 Feb 00:41:34 BMMModel INFO  - Recall: 0.69095445
+     * 14 Feb 00:41:34 BMMModel INFO  - F1: 0.71635795
+     * 14 Feb 00:41:34 BMMModel INFO  - ------------
      * */
-    public static void test(SequenceModel seqModel, boolean verbose){
+    public static void test(BMMModel seqModel, boolean verbose){
         try {
             InputStream in = new FileInputStream(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"umasshw"+File.separator+"testaspacesep.txt"));
             //7==0111 PER, LOC, ORG
@@ -630,9 +651,10 @@ public class SequenceModel implements NERModel, Serializable {
         String resultsFile = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"paramResults.txt";
         //flush the previous results
         try{new FileOutputStream(resultsFile);}catch(IOException e){}
-
+        String oldName = modelFileName;
         for(float alpha: alphas) {
-            String modelFile = expFolder + File.separator + "ALPHA_" + alpha + "-Iter_" + emIters[emIters.length - 1] + SequenceModel.modelFileName;
+            BMMModel.modelFileName = "ALPHA_"+alpha+"-"+oldName;
+            String modelFile = expFolder + File.separator + "Iter_" + emIters[emIters.length - 1] + BMMModel.modelFileName;
             try {
                 if (!new File(modelFile).exists()) {
                     PrintStream def = System.out;
@@ -643,8 +665,8 @@ public class SequenceModel implements NERModel, Serializable {
                     System.setOut(def);
                 }
                 for (int emIter : emIters) {
-                    modelFile = expFolder + File.separator + "ALPHA_" + alpha + "-Iter_" + emIter + "-" + SequenceModel.modelFileName;
-                    SequenceModel seqModel = loadModel(modelFile);
+                    modelFile = expFolder + File.separator + "Iter_" + emIter + "-" + BMMModel.modelFileName;
+                    BMMModel seqModel = loadModel(modelFile);
                     PrintStream def = System.out;
                     System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
                     System.out.println("------------------\n" +
@@ -656,10 +678,46 @@ public class SequenceModel implements NERModel, Serializable {
                 e.printStackTrace();
             }
         }
+        modelFileName = oldName;
     }
 
+    /**
+     * A low level train interface for experimentation and extension over the default model.
+     * Use {@link #train} method for training the default model
+     * Training data should be a list of phrases and their types, the type should follow DBpedia ontology; specifically http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2
+     * See epadd-settings/instance_types to understand the format better
+     * It is possible to relax the ontology constraint by changing the aTypes and ignoreTypes fields in FeatureDictionary appropriately
+     * With tokenPriors it is possible to set initial beliefs, for example "Nokia" is a popular company; the first key in the map should be a single word token, the second map is the types and its affiliation for various types (DBpedia ontology again)
+     * iter param is the number of EM iterations, any value >5 is observed to have no effect on performance with DBpedia as training data
+     *  */
+    public static BMMModel train(Map<String,String> trainData, Map<String,Map<String,Float>> tokenPriors, int iter){
+        BMMModel nerModel = new BMMModel();
+        nerModel.dictionary = new FeatureDictionary(trainData, tokenPriors, iter);
+        return nerModel;
+    }
+
+    private static BMMModel train(float alpha, int emIter){
+        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        //page lengths from wikipedia
+        Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
+        //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
+        Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
+        //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
+        for(String tok: pageLens.keySet()) {
+            tokenPriors.put(tok, new LinkedHashMap<>());
+            Map<String,Integer> tpls = pageLens.get(tok);
+            for(String page: tpls.keySet()) {
+                String type = dbpedia.get(page);
+                tokenPriors.get(tok).put(type, tpls.get(page)*alpha/1000f);
+            }
+        }
+        return train(dbpedia, tokenPriors, emIter);
+    }
+
+    /**
+     * Trains a BMMModel with default parameters*/
     public static void train() {
-        SequenceModel model = train(0.2f, 10);
+        BMMModel model = train(0.2f, 10);
         try {
             model.writeModel(new File(Config.SETTINGS_DIR+File.separator+modelFileName));
         } catch(IOException e){
@@ -672,7 +730,7 @@ public class SequenceModel implements NERModel, Serializable {
 //        testParams();
 //        String modelFilePath = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
 //        try {
-//            SequenceModel model = SequenceModel.loadModel(modelFilePath);
+//            BMMModel model = BMMModel.loadModel(modelFilePath);
 ////            test(model,true);
 //        }catch(IOException e){
 //            e.printStackTrace();

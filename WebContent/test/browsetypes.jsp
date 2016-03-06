@@ -1,7 +1,7 @@
 <%@ page import="edu.stanford.muse.util.Pair" %>
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.model.BMMModel" %>
 <%@ page import="java.io.*" %>
 <%@ page import="edu.stanford.muse.util.Triple" %>
 <%@ page import="edu.stanford.muse.util.Util" %>
@@ -11,7 +11,7 @@
 <%@ page import="edu.stanford.muse.index.Document" %>
 <%
     class Some{
-        public Map<String,Double> find (String content, Short type, SequenceModel model){
+        public Map<String,Double> find (String content, Short type, BMMModel model){
             Map<String,Double> map = new LinkedHashMap<>();
             List<Triple<String,Integer,Integer>> cands = new CICTokenizer().tokenize(content, type==FeatureDictionary.PERSON);
             for(Triple<String,Integer, Integer> t: cands){
@@ -39,18 +39,18 @@
 //            FeatureDictionary.POWERSTATION,FeatureDictionary.TRADEUNIN,FeatureDictionary.LEGISTLATURE,FeatureDictionary.LIBRARY,FeatureDictionary.LAWFIRM,FeatureDictionary.COLLEGE};
         types = FeatureDictionary.allTypes;
     }
-    String modelFile = mwl + SequenceModel.modelFileName;
-    SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+    String modelFile = mwl + BMMModel.modelFileName;
+    BMMModel nerModel = (BMMModel)session.getAttribute("ner");
 
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            nerModel = BMMModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
         if (nerModel == null)
-            nerModel = SequenceModel.train();
+            nerModel = BMMModel.train();
         session.setAttribute("ner", nerModel);
     }
 

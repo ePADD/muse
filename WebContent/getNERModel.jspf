@@ -1,6 +1,6 @@
 <%@ page import="edu.stanford.muse.webapp.*" %>
 <%@ page import="java.io.File" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.model.BMMModel" %>
 <%--
   User: vihari
   Date: 31/08/15
@@ -8,12 +8,12 @@
 --%>
 <%
 // if archive not in session, nothing can be done
-    SequenceModel nerModel = (SequenceModel)JSPHelper.getSessionAttribute(session, "ner");
+    BMMModel nerModel = (BMMModel)JSPHelper.getSessionAttribute(session, "ner");
     if (nerModel == null)
     {
         JSPHelper.log.info("Loading model ...");
         String modelFile = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel.ser";
-        nerModel = SequenceModel.loadModel(modelFile);
+        nerModel = BMMModel.loadModel(modelFile);
         JSPHelper.log.info("Loaded ner model from "+modelFile);
         request.getSession().setAttribute("ner", nerModel);
     }

@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.io.File" %>
 <%@ page import="java.io.IOException" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.model.BMMModel" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
@@ -15,17 +15,17 @@
     Archive archive = JSPHelper.getArchive(request.getSession());
     List<Document> docs = archive.getAllDocs();
     String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-    String modelFile = mwl + SequenceModel.modelFileName;
-    SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+    String modelFile = mwl + BMMModel.modelFileName;
+    BMMModel nerModel = (BMMModel)session.getAttribute("ner");
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            nerModel = BMMModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
         if (nerModel == null)
-            nerModel = SequenceModel.train();
+            nerModel = BMMModel.train();
         session.setAttribute("ner", nerModel);
     }
 

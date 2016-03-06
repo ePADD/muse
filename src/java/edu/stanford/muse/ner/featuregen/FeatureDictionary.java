@@ -1,8 +1,7 @@
 package edu.stanford.muse.ner.featuregen;
 
-import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
-import edu.stanford.muse.ner.model.SequenceModel;
+import edu.stanford.muse.ner.model.BMMModel;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
@@ -461,39 +460,9 @@ public class FeatureDictionary implements Serializable {
         features = new LinkedHashMap<>();
     }
 
-    public FeatureDictionary(Map<String, String> gazettes, float alpha, int iter) {
-        addGazz(gazettes, alpha);
-        EM(gazettes, alpha, iter);
-    }
-
-    //TODO: Add to the project the code that produces this file
-    //returns token -> {redirect (can be the same as token), page length of the page it redirects to}
-    static Map<String,Map<String,Integer>> getTokenTypePriors(){
-        Map<String,Map<String,Integer>> pageLengths = new LinkedHashMap<>();
-        log.info("Parsing token types...");
-        try{
-            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(Config.getResourceAsStream("TokenTypes.txt")));
-            String line;
-            while((line=lnr.readLine())!=null){
-                String[] fields = line.split("\\t");
-                if(fields.length!=4){
-                    log.warn("Line --"+line+"-- has an unexpected pattern!");
-                    continue;
-                }
-                int pageLen = Integer.parseInt(fields[3]);
-                String redirect = fields[2];
-                //if the page is not a redirect, then itself is the title
-                if(fields[2] == null || fields[2].equals("null"))
-                    redirect = fields[1];
-                String lc = fields[0].toLowerCase();
-                if(!pageLengths.containsKey(lc))
-                    pageLengths.put(lc, new LinkedHashMap<>());
-                pageLengths.get(lc).put(redirect, pageLen);
-            }
-        }catch(IOException e){
-            e.printStackTrace();
-        }
-        return pageLengths;
+    public FeatureDictionary(Map<String, String> gazettes, Map<String,Map<String,Float>> tokenPriors, int iter) {
+        addGazz(gazettes, tokenPriors);
+        EM(gazettes, iter);
     }
 
     void printMemoryUsage(){
@@ -507,7 +476,8 @@ public class FeatureDictionary implements Serializable {
         );
     }
 
-    FeatureDictionary addGazz(Map<String,String> gazettes, float alphaFraction){
+    //initializes the mixtures
+    private FeatureDictionary addGazz(Map<String,String> gazettes, Map<String, Map<String,Float>> tokenPriors){
         long start_time = System.currentTimeMillis();
         long timeToComputeFeatures = 0, tms;
         log.info("Analysing gazettes");
@@ -576,8 +546,6 @@ public class FeatureDictionary implements Serializable {
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
         log.info("Initialising MUs");
 
-        //page lengths from wikipedia
-        Map<String, Map<String,Integer>> pageLens = getTokenTypePriors();
         int initAlpha = 0;
         int wi=0, ws = words.size();
         int numIgnored = 0, numConsidered = 0;
@@ -616,10 +584,9 @@ public class FeatureDictionary implements Serializable {
             }
             Map<String, Float> alpha = new LinkedHashMap<>();
             float alpha_pi = 0;
-            if (str.length() > 2 && pageLens.containsKey(str)) {
-                Map<String, Integer> pls = pageLens.get(str);
-                for (String page : pls.keySet()) {
-                    String gt = dbpedia.get(page);
+            if (str.length() > 2 && tokenPriors.containsKey(str)) {
+                Map<String, Float> tps = tokenPriors.get(str);
+                for (String gt : tps.keySet()) {
                     //Music bands especially are noisy
                     if (gt != null && !(ignoreTypes.contains(gt) || gt.equals("Agent"))) {
                         Short ct = codeType(gt);
@@ -629,9 +596,9 @@ public class FeatureDictionary implements Serializable {
                         String[] features = new String[]{"T:" + ct, "L:NULL", "R:NULL", "SW:NULL"};
                         for (String f : features) {
                             if (!alpha.containsKey(f)) alpha.put(f, 0f);
-                            alpha.put(f, alpha.get(f) + (alphaFraction * pls.get(page) / 1000f));
+                            alpha.put(f, alpha.get(f) + tps.get(gt));
                         }
-                        alpha_pi += alphaFraction * pls.get(page) / 1000f;
+                        alpha_pi += tps.get(gt);
                     }
                 }
             }
@@ -681,7 +648,7 @@ public class FeatureDictionary implements Serializable {
         return ct;
     }
 
-    static String[] getPatts(String phrase){
+    private static String[] getPatts(String phrase){
         List<String> patts = new ArrayList<>();
         String[] words = phrase.split("\\s+");
         for (int i = 0; i < words.length; i++) {
@@ -719,7 +686,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     //Input is a token and returns the best type assignment for token
-    Short getType(String token){
+    private Short getType(String token){
         MU mu = features.get(token);
         if(mu == null){
             //log.warn("Token: "+token+" not initialised!!");
@@ -746,7 +713,7 @@ public class FeatureDictionary implements Serializable {
      * requires mixtures as a parameter, because some of the features depend on this
      * returns a map of mixture identity to the set of features relevant to the mixture
      * Map<String,Double> because features sometimes are associated with a score, for semantic type, get label to be precise</>*/
-    Map<String,List<String>> generateFeatures(String phrase, Short type){
+    private Map<String,List<String>> generateFeatures(String phrase, Short type){
         Map<String, List<String>> mixtureFeatures = new LinkedHashMap<>();
         String[] patts = getPatts(phrase);
         String[] words = phrase.split("\\W+");
@@ -828,7 +795,7 @@ public class FeatureDictionary implements Serializable {
         return ffeatures;
     }
 
-    double getIncompleteDateLogLikelihood(){
+    private double getIncompleteDateLogLikelihood(){
         double ll = 0;
         List<String> nsws = new ArrayList<>();
         nsws.addAll(sws);nsws.add("NULL");
@@ -861,7 +828,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     //just cleans up trailing numbers in the string
-    static String cleanRoad(String title){
+    private static String cleanRoad(String title){
         String[] words = title.split(" ");
         String lw = words[words.length-1];
         String ct = "";
@@ -894,7 +861,7 @@ public class FeatureDictionary implements Serializable {
      * 6. If the type is person like but the phrase contains either "and" or "of", we filter this out.
      * returns either the cleaned phrase or null if the phrase cannot be cleaned.
      */
-    String filterTitle(String phrase, String type){
+    private String filterTitle(String phrase, String type){
         int cbi = phrase.indexOf(" (");
         if(cbi>=0)
             phrase = phrase.substring(0, cbi);
@@ -926,7 +893,7 @@ public class FeatureDictionary implements Serializable {
     }
 
     //the argument alpha fraction is required only for naming of the dumped model size
-    void EM(Map<String,String> gazettes, float alphaFraction, int iter){
+    void EM(Map<String,String> gazettes, int iter){
         log.info("Performing EM on: #" + features.size() + " words");
         double ll = getIncompleteDateLogLikelihood();
         log.info("Start Data Log Likelihood: "+ll);
@@ -1085,10 +1052,10 @@ public class FeatureDictionary implements Serializable {
                     }
                 }
                 if(DEBUG && (i==0 || i==2 || i==5 || i==7 || i==9)){
-                    SequenceModel nerModel = new SequenceModel();
+                    BMMModel nerModel = new BMMModel();
                     nerModel.dictionary = this;
                     String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"experiment"+File.separator;
-                    String modelFile = mwl + "ALPHA_"+alphaFraction+"-Iter_"+i+"-"+SequenceModel.modelFileName;
+                    String modelFile = mwl + "Iter_"+i+"-"+ BMMModel.modelFileName;
                     nerModel.writeModel(new File(modelFile));
                 }
             } catch (IOException e) {

@@ -1,6 +1,6 @@
 <%@ page import="java.io.File" %>
 <%@ page import="java.io.IOException" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.model.BMMModel" %>
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="java.io.FileWriter" %>
 <%@ page import="java.util.*" %>
@@ -368,17 +368,17 @@
     if(!f.exists())
         f.mkdir();
 
-    String modelFile = mwl + SequenceModel.modelFileName;
-    SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+    String modelFile = mwl + BMMModel.modelFileName;
+    BMMModel nerModel = (BMMModel)session.getAttribute("ner");
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            nerModel = BMMModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
         if (nerModel == null)
-            nerModel = SequenceModel.train();
+            nerModel = BMMModel.train();
         session.setAttribute("ner", nerModel);
     }
 

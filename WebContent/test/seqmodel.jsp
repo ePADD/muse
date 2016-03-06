@@ -1,6 +1,6 @@
 <%@ page import="java.io.File" %>
 <%@ page import="java.io.IOException" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.model.BMMModel" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
 <%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
@@ -44,7 +44,7 @@
             return phrase;
         }
 
-        public List<Triple<String, Integer, Integer>> tokenize(String sent, Map<String, Integer> dict, SequenceModel nerModel) {
+        public List<Triple<String, Integer, Integer>> tokenize(String sent, Map<String, Integer> dict, BMMModel nerModel) {
             String[] tokens = sent.split("[\\s,\\-:;\"\\(\\))!\\?]+");
             String[] labels = new String[tokens.length];
             List<String> sws = Arrays.asList("and", "for", "to", "in", "at", "on", "the", "of", "a", "an", "is");
@@ -277,17 +277,17 @@
     if(!f.exists())
         f.mkdir();
 
-    String modelFile = mwl + SequenceModel.modelFileName;
-    SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
+    String modelFile = mwl + BMMModel.modelFileName;
+    BMMModel nerModel = (BMMModel)session.getAttribute("ner");
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            nerModel = BMMModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
         if (nerModel == null)
-            nerModel = SequenceModel.train();
+            nerModel = BMMModel.train();
         session.setAttribute("ner", nerModel);
     }
 

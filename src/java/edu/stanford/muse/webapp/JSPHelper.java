@@ -21,13 +21,12 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
 import edu.stanford.muse.groups.*;
-import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.ie.ProperNounLinker;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.model.BMMModel;
 import edu.stanford.muse.ner.model.DummyNERModel;
 import edu.stanford.muse.ner.model.NERModel;
-import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.util.SloppyDates.DateRangeSpec;
 import org.apache.commons.logging.Log;
@@ -405,8 +404,8 @@ public class JSPHelper {
 		archive.close();
 		archive.openForRead();
 
-        String modelFile = SequenceModel.modelFileName;
-        NERModel nerModel = (SequenceModel)session.getAttribute("ner");
+        String modelFile = BMMModel.modelFileName;
+        NERModel nerModel = (BMMModel)session.getAttribute("ner");
         session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
         log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
@@ -414,7 +413,7 @@ public class JSPHelper {
             if (mode!=null && "memorystudy".equals(mode))
                 nerModel = new DummyNERModel();
             else
-                nerModel = SequenceModel.loadModel(modelFile);
+                nerModel = BMMModel.loadModel(modelFile);
         } catch (IOException e) {
             Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
         }

@@ -706,7 +706,7 @@ public class ProperNounLinker {
                     }
                     addTime += System.currentTimeMillis() - st1;
 
-                    //The SequenceModel based NER model fails or does not do a very good job on
+                    //The BMMModel based NER model fails or does not do a very good job on
                     //1. Single word names [It just gives up on these, unless it is a country name or a non-dictionary word that appears in a longer CIC phrase in which case it may end up recognising it but should not rely on it]
                     //2. Single word names also includes acronyms
                     //3. Person names of the format: [A-Z].? [A-Z][A-Za-z']+
@@ -768,6 +768,11 @@ public class ProperNounLinker {
         }
     }
 
+
+    /**Use this method with caution! Don't use this method for bulk resolutions by making repeated calls to the method.
+     * The response time of this method can be in the order of fraction of secs.
+     * Given an EmailMention, gets the closest possible resolutions in the archive.
+     * Uses EMailHierarchy to measure distance between email mentions.*/
     public static List<Pair<EmailMention,Integer>> getNearestMatches(EmailMention mention, int maxMatches, Archive archive) {
         //Collect one year of docs
         long WINDOW = 365 * 24 * 3600 * 1000l;
@@ -778,7 +783,6 @@ public class ProperNounLinker {
         Collection<DatedDocument> docs = (Collection) archive.getAllDocs();
         List<Document> sdocs = IndexUtils.selectDocsByDateRange(docs, scal.get(Calendar.YEAR), scal.get(Calendar.MONTH), scal.get(Calendar.DATE),
                 ecal.get(Calendar.YEAR), ecal.get(Calendar.MONTH), ecal.get(Calendar.DATE));
-        docs = null;
 
         Hierarchy hierarchy = new EmailHierarchy();
         Mentions mentions = new Mentions(hierarchy);
