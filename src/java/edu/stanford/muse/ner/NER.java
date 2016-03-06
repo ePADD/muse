@@ -9,6 +9,7 @@ import edu.stanford.muse.ner.featuregen.*;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -134,7 +135,7 @@ public class NER implements StatusProvider {
      * @arg content - Typically a substring of the content from which the entities (second arg; eMentions) are extracted.
      */
     public static Span[] getEntitiesInDoc(String content, Span[] eMentions) {
-        CICTokenizer tokenizer = SequenceModel.tokenizer;
+        Tokenizer tokenizer = SequenceModel.tokenizer;
         List<Triple<String, Integer, Integer>> offsets = tokenizer.tokenize(content);
         Set<String> tokens = offsets.stream().map(t->t.first).collect(Collectors.toSet());
         List<Span> foundChunks = Arrays.asList(eMentions).stream().filter(c->tokens.contains(c)).collect(Collectors.toList());

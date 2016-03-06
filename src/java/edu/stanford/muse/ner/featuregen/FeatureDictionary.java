@@ -461,10 +461,6 @@ public class FeatureDictionary implements Serializable {
         features = new LinkedHashMap<>();
     }
 
-    /**
-     * address book should be specially handled and DBpedia gazette is required.
-     * and make sure the address book is cleaned see cleanAB method
-     */
     public FeatureDictionary(Map<String, String> gazettes, float alpha, int iter) {
         addGazz(gazettes, alpha);
         EM(gazettes, alpha, iter);
@@ -474,7 +470,7 @@ public class FeatureDictionary implements Serializable {
     //returns token -> {redirect (can be the same as token), page length of the page it redirects to}
     static Map<String,Map<String,Integer>> getTokenTypePriors(){
         Map<String,Map<String,Integer>> pageLengths = new LinkedHashMap<>();
-        log.info("Parsing token types");
+        log.info("Parsing token types...");
         try{
             LineNumberReader lnr = new LineNumberReader(new InputStreamReader(Config.getResourceAsStream("TokenTypes.txt")));
             String line;
@@ -561,7 +557,7 @@ public class FeatureDictionary implements Serializable {
 
         /*
         * Here is the histogram of frequencies of words from the 2014 dump of DBpedia
-        * To read -- there are 861K words taht are seen just seen once.
+        * To read -- there are 861K words that are seen just once.
         * By ignoring words that are only seen once or twice we can reduce the number of mixtures by a factor of ~ 10
         * PAIR<1 -- 861698>
         * PAIR<2 -- 146458>
@@ -574,7 +570,7 @@ public class FeatureDictionary implements Serializable {
         * PAIR<9 -- 6480>
         * PAIR<10 -- 5327>
         *
-        * Also, single character words, words with numbers (like jos%c3%a9), numbers (like 2008, 2014), empty tokens
+        * Also, single character words, words with numbers (like jos%c3%a9), numbers (like 2008, 2014), empty tokens are ignored
         */
         log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
         log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
@@ -584,7 +580,6 @@ public class FeatureDictionary implements Serializable {
         Map<String, Map<String,Integer>> pageLens = getTokenTypePriors();
         int initAlpha = 0;
         int wi=0, ws = words.size();
-        //float fraction = 1.0f/5;
         int numIgnored = 0, numConsidered = 0;
         for(String str: words.keySet()) {
             float wordFreq = wordFreqs.get(str);
@@ -1045,7 +1040,7 @@ public class FeatureDictionary implements Serializable {
                             log.warn("Cannot create cache dir. "+cacheDir);
                     }
                     for (Short type : ats) {
-                        FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
+                        //FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
                         FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
                         Map<String, Double> sortScores = new LinkedHashMap<>();
                         Map<String, Double> scores = new LinkedHashMap<>();
@@ -1064,10 +1059,10 @@ public class FeatureDictionary implements Serializable {
                         }
                         List<Pair<String, Double>> ps = Util.sortMapByValue(sortScores);
                         for (Pair<String, Double> p : ps) {
-                            if(type.equals(ats[0])){
-                                fw.write(features.get(p.getFirst()).toString());
-                                fw.write("========================\n");
-                            }
+//                            if(type.equals(ats[0])){
+//                                fw.write(features.get(p.getFirst()).toString());
+//                                fw.write("========================\n");
+//                            }
 
                             MU mu = features.get(p.getFirst());
                             Short maxT = -1;double maxV = -1;
@@ -1085,7 +1080,7 @@ public class FeatureDictionary implements Serializable {
                                 ffw.write("========================\n");
                             }
                         }
-                        fw.close();
+                        //fw.close();
                         ffw.close();
                     }
                 }

@@ -2,6 +2,7 @@ package edu.stanford.muse.index;
 
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -48,12 +49,13 @@ public class Highlighter {
      * @param preTag - HTML pre-tag, for ex: <B>
      * @param postTag - HTML post-tag, for ex: </B>
      * The highlighted content would have [pre Tag] matching term [post tag]
-	 * When the term is "Robert Creeley, the output is "On Tue, Jun 24, 2014 at 11:56 AM, [preTag]Robert Creeley's[postTag] <creeley@acsu.buffalo.edu> wrote:"
+	 * When the term is "Robert Creeley", the output is "On Tue, Jun 24, 2014 at 11:56 AM, [preTag]Robert Creeley's[postTag] <creeley@acsu.buffalo.edu> wrote:"
 	 */
 	public static String highlight(String content, String term, String preTag, String postTag) throws IOException, ParseException, InvalidTokenOffsetsException{
         //The Lucene Highlighter is used in a hacky way here, it is intended to be used to retrieve fragments from a matching Lucene document.
         //The Lucene Highlighter introduces tags around every token that matched the query, hence it is required to merge these fragmented annotations into one inorder to fit our needs.
         //To truly differentiate contiguous fragments that match a term supplied we add a unique id to the pretag, hence the randum instance
+        //TODO: Explain what is happening here
         Version lv = Indexer.LUCENE_VERSION;
         //hell with reset close, stuff. initialized two analyzers to evade the problem.
         //TODO: get rid of two analyzers.
@@ -97,6 +99,8 @@ public class Highlighter {
     }
 
 	//In this particular case, regexp replacing is much easier than html parsing.
+    //[preTag]Robert[postTag] [preTag]Creeley's[postTag] ==> [preTag]Robert Creeley's[postTag]
+    //[preTag]Robert Creeley[posTag] [preTag]UB[postTag]
 	static String mergeContiguousFragments(String result, String preTag, String postTag) {
 		Pattern patt;
         if(edu.stanford.muse.webapp.ModeConfig.isPublicMode())
@@ -149,6 +153,7 @@ public class Highlighter {
      * @param sensitive - when set will highlight all the expressions matching Indexer.presetQueries
      * @param showDebugInfo - when set will append to the output some debug info. related to the entities present in the content and passed through entitiesWithId
 	 * */
+    //TODO: can also get rid of termsToHyperlink
 	public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, Boolean sensitive,
 			Set<String> termsToHighlight, Map<String, Archive.Entity> entitiesWithId,
 			Set<String> termsToHyperlink, boolean showDebugInfo) {
@@ -201,6 +206,8 @@ public class Highlighter {
 		 * TODO:
 		 * This test can still miss cases when a regular expression that eventually matches a word already annotated and
 		 * when two terms like "Robert Creeley" "Mr Robert" to match a text like: "Mr Robert Creeley".
+		 * TODO: Give pref. to highlighter over hyperlink
+		 * TODO: remove order and simplify
 		 * In such cases one of the terms may not be annotated.
 		 * Terms that are added to o are those that just share at-least one word
 		 */
@@ -377,11 +384,12 @@ public class Highlighter {
                         //TODO: remove regexs
                         entity = entity.replaceAll("(^\\s+|\\s+$)", "");
                         if (!entity.contains(" ")) {
-                            String rnd = rand.nextInt() + "";
+                            //String rnd = rand.nextInt() + "";
                             //<img src="images/spinner.gif" style="height:15px"/>
                             //<script>expand("" + entity + "\",\"" + StringEscapeUtils.escapeJava(docId) + "\",\"" + rnd + "");</script>
-                            if(info.expandsTo!=null)
-                                title += "<div class=\"resolutions\" id=\"expand_" + rnd + "\"><a href='browse?term=\""+info.expandsTo+"\"'>"+info.expandsTo+"</a></div>";
+//                            if(info.expandsTo!=null)
+//                                title += "<div class=\"resolutions\" id=\"expand_" + rnd + "\"><a href='browse?term=\""+info.expandsTo+"\"'>"+info.expandsTo+"</a></div>";
+                            cssclass += " expand";
                         }
                     }
 				}
@@ -397,6 +405,9 @@ public class Highlighter {
 					elt.attr("class", cc + " " + cssclass);
 					elt.attr("title", title);
 					elt.attr("onclick", "window.location='" + link + "'");
+                    //A tag may have nested tags in it and is involved to get the text in it.
+                    elt.attr("data-text", entity);
+                    elt.attr("data-docId", StringEscapeUtils.escapeHtml(docId));
 				}
 			} catch (Exception e) {
 			    Util.print_exception("Some unknown error while highlighting", e, log);
@@ -447,13 +458,13 @@ public class Highlighter {
 	public static void main(String args[])
 	{
 		try {
-	        String text = "On Tue, Jun 24, 2014 at 11:56 AM, Aparna Vedant's <aparna.vedant@XXX.edu.in> wrote: Rachelle K. Learner W.S. Merwin\nVery elated to see you yesterday. Can wee meet over a cup of coffee?\nI am hoping to hear back from you. BTW I also invited Tanmai Gopal to join. WHat a pleasure to have the company of Tanmai  and I'd like to do so one last time..\n---Aparna\nUniversity of Florida";
-			List<String> arr = Arrays.asList( "\"Keep it to yourself\"","\"University of Florida\"","\"Aparna Vedant\"", "\"tanmai gopal\"","\"W.S. Merwin\"","Rachelle K. Learner", "elate|happy|invite", "hope","met", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" );
-            String str = Highlighter.highlightBatch(text, arr.toArray(new String[arr.size()]), "<B >", "</B>");
-            System.out.println(arr);
+	        String text = "On Tue, Jun 24, 2014 at 11:56 AM, Aparna Vedant's UCB <aparna.vedant@XXX.edu.in> wrote: Rachelle K. Learner W.S. Merwin\nVery elated to see you yesterday. Can wee meet over a cup of coffee?\nI am hoping to hear back from you. BTW I also invited Tanmai Gopal to join. WHat a pleasure to have the company of Tanmai  and I'd like to do so one last time..\n---Aparna\nUniversity of Florida";
+			//List<String> arr = Arrays.asList( "\"Keep it to yourself\"","\"University of Florida\"","\"Aparna Vedant\"", "\"tanmai gopal\"","\"W.S. Merwin\"","Rachelle K. Learner", "elate|happy|invite", "hope","met", "/guth.*/", "/[0-9\\-]*[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}[0-9\\-]*/ ", "you", "yours" );
+            String[] hts = new String[]{"\"Aparna Vedant\""};
+            String str = Highlighter.highlightBatch(text, hts, "<B >", "</B>");
             //str = Highlighter.highlightBatch(str, new String[] {"Aparna"}, "<B >", "</B>");
             System.err.println("Highlighted content: "+str);
-            getHTMLAnnotatedDocumentContents("", new Date(), "", false, new LinkedHashSet<>(Arrays.asList("Robert Creeley")), null, new LinkedHashSet<>(Arrays.asList("Charles", "Susan Howe", "Betty", "Charles Bernstein", "Carl Dennis", "Joseph Conte", "Bob Creeley", "Residence", "Uday", "LWOP", "U Penn", "Joseph", "Betty Capaldi", "Capen Chair")), false);
+            //getHTMLAnnotatedDocumentContents("", new Date(), "", false, new LinkedHashSet<>(Arrays.asList("Robert Creeley")), null, new LinkedHashSet<>(Arrays.asList("Charles", "Susan Howe", "Betty", "Charles Bernstein", "Carl Dennis", "Joseph Conte", "Bob Creeley", "Residence", "Uday", "LWOP", "U Penn", "Joseph", "Betty Capaldi", "Capen Chair")), false);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

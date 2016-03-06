@@ -219,6 +219,8 @@ public class EmailRenderer {
 	 * @param highlightAttachments
 	 * @throws Exception
 	 */
+    //TODO: inFull, debug params can be removed
+    //TODO: Consider a HighlighterOptions class
 	public static Pair<String, Boolean> htmlForDocument(Document d, Archive archive, String datasetTitle, BlobStore attachmentsStore,
 			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms,Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
 			boolean IA_links, boolean inFull, boolean debug) throws Exception
@@ -247,6 +249,7 @@ public class EmailRenderer {
 			 * page.append("<br/>\n"); }
 			 */
 			page.append("\n<div class=\"muse-doc-body\">\n");
+            //TODO archive call can be bypassed
 			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTerms,
                     authorisedEntities, IA_links, inFull, false);
 			StringBuilder htmlMessageBody = contentsHtml.first;

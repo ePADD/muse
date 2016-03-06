@@ -7,6 +7,7 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.*;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameSample;
@@ -22,7 +23,7 @@ import java.util.zip.GZIPOutputStream;
 /**
  * Created by vihari on 07/09/15.
  * This class implements NER task with a Bernoulli Mixture model, every word or pattern is considered a mixture. It does the parameter learning (mu, pi) for every mixture and assigns probabilities to every phrase.
- * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K. It is sometimes desired to train over a larger training files.
+ * An EM algorithm is used to estimate the params. The implementation can handle training size of order 100K. It is sometimes desired to train over a much larger training files.
  * TODO: Consider implementing an online EM based param estimation -- see http://cs.stanford.edu/~pliang/papers/online-naacl2009.pdf
  * It is beneficial to include Address-book in training. Names can have an uncommon first and last name --
  * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
@@ -32,10 +33,8 @@ public class SequenceModel implements NERModel, Serializable {
     public static String modelFileName = "SeqModel.ser.gz";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
-    //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
-    public static CICTokenizer tokenizer = new CICTokenizer();
-    Map<String, String> dbpedia;
+    public static Tokenizer tokenizer = new CICTokenizer();
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
@@ -119,12 +118,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     String lookup(String phrase) {
-        if (dbpedia == null) {
-            Map<String, String> orig = EmailUtils.readDBpedia();
-            dbpedia = new LinkedHashMap<>();
-            for (String str : orig.keySet())
-                dbpedia.put(str.toLowerCase(), orig.get(str));
-        }
+        Map<String, String> dbpedia = EmailUtils.readDBpedia();
 
         //if the phrase is from CIC Tokenizer, it won't start with an article
         //enough with the confusion between [New York Times, The New York Times], [Giant Magellan Telescope, The Giant Magellan Telescope]
@@ -278,10 +272,9 @@ public class SequenceModel implements NERModel, Serializable {
                 val = getLikelihoodWithOther(seg, true);
 
             //if is a single word and dictionary word or word with less than 4 chars and not acronym, then break
-            if (!seg.contains(" ") && (seg.length()<3 || (seg.length()<4 && !FeatureGeneratorUtil.tokenFeature(seg).equals("ac")) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
-                ;
-            else
+            if (seg.contains(" ") || (seg.length() >= 3 && (seg.length() >= 4 || FeatureGeneratorUtil.tokenFeature(seg).equals("ac")) && !DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
                 segments.put(seg, new Pair<>(t.getThird(), val));
+
             start = t.second;
             if (t.second == -1)
                 break;
@@ -388,21 +381,6 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
-    //samples [fraction] fraction of entries from dictionary supplied and splices the supplied dict
-    static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
-        Map<String,String> dict1 = new LinkedHashMap<>(), dict2 = new LinkedHashMap<>();
-        Random rand = new Random();
-        for(String str: dict.keySet()){
-            if(rand.nextFloat()<fraction){
-                dict1.put(str, dict.get(str));
-            }else{
-                dict2.put(str, dict.get(str));
-            }
-        }
-        System.err.println("Sliced " + dict.size() + " entries into " + dict1.size() + " and " + dict2.size());
-        return new Pair<>(dict1, dict2);
-    }
-
     //alpha for initializing Dir.priors and iter is number of EM iterations
     public static SequenceModel train(float alpha, int iter){
         SequenceModel nerModel = new SequenceModel();
@@ -411,8 +389,7 @@ public class SequenceModel implements NERModel, Serializable {
         //Do the train and test splits only in a controlled environment, creating a new copy of DBpedia is costly
 
         //split the dictionary into train and test sets
-        FeatureDictionary dictionary = new FeatureDictionary(train, alpha, iter);
-        nerModel.dictionary = dictionary;
+        nerModel.dictionary = new FeatureDictionary(train, alpha, iter);
         return nerModel;
     }
 
@@ -693,13 +670,17 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static void main(String[] args) {
 //        testParams();
-        String modelFilePath = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
-        try {
-            SequenceModel model = SequenceModel.loadModel(modelFilePath);
-            test(model,true);
-        }catch(IOException e){
-            e.printStackTrace();
-        }
-//        train();
+//        String modelFilePath = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
+//        try {
+//            SequenceModel model = SequenceModel.loadModel(modelFilePath);
+////            test(model,true);
+//        }catch(IOException e){
+//            e.printStackTrace();
+//        }
+        train();
+//        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+//        System.out.println(dbpedia.get("The New York Times"));
+//        System.out.println(dbpedia.get("the new York Times"));
+//        System.out.println(dbpedia.get("the new york times"));
     }
 }

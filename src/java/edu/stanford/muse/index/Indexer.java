@@ -1697,7 +1697,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	{
 		TermQuery q = new TermQuery(new Term("docId", docId));
 		TopDocs td = isearcher.search(q, 1); // there must be only 1 doc with this id anyway
-		Util.softAssert(td.totalHits == 0, "Oboy! docId: " + docId + " already present in the index, don't try to add it again!");
+        Util.softAssert(td.totalHits == 0, "Oboy! docId: " + docId + " already present in the index, don't try to add it again!");
 	}
 
 	// look up the doc from doc id assigned to it

@@ -1406,8 +1406,6 @@ public class EmailUtils {
             typesFile = "instance_types_2014-04.en.txt.bz2";
         //dbpedia = new LinkedHashMap<>();
 		//we want to be able to access elements in the map in a case-sensitive manner, this is a way to do that.
-		//CAUTION!! TreeMap is not O(1) access time but guarantees O(ln n) access time.
-        //dbpedia = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		dbpedia = new org.apache.commons.collections4.map.CaseInsensitiveMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {

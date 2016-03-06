@@ -191,10 +191,11 @@ public class Archive implements Serializable {
     public EmailDocument docForId(String id){ return indexer.docForId(id);}
 
     public static class Entity {
+        //for manually confirmed authorities
         public Map<String, Short> ids;
         //person,places,orgs, custom
         public String name, expandsTo;
-        Set<String> types = new HashSet<>();
+        Set<String> types;
 
         public Entity(String name, Map<String, Short> ids, Set<String> types, String expansion) {
             this.name = name;
