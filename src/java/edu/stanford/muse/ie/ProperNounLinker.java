@@ -383,7 +383,7 @@ public class ProperNounLinker {
         }
 
         public void add(EmailMention mention) {
-            if (mention == null || mention.entity.text == null)
+            if (mention == null || mention.entity==null || mention.entity.text == null)
                 return;
 
             checkIfIndexRecent(mention);
@@ -775,7 +775,7 @@ public class ProperNounLinker {
      * Uses EMailHierarchy to measure distance between email mentions.*/
     public static List<Pair<EmailMention,Integer>> getNearestMatches(EmailMention mention, int maxMatches, Archive archive) {
         //Collect one year of docs
-        long WINDOW = 365 * 24 * 3600 * 1000l;
+        long WINDOW = 3 * 30 * 24 * 3600 * 1000l;
         Date st = new Date(mention.date.getTime() - WINDOW / 2), et = new Date(mention.date.getTime() + WINDOW / 2);
         Calendar scal = new GregorianCalendar(), ecal = new GregorianCalendar();
         scal.setTime(st);
