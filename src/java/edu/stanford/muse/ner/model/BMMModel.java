@@ -704,20 +704,22 @@ public class BMMModel implements NERModel, Serializable {
         Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
         //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
         for(String tok: pageLens.keySet()) {
-            tokenPriors.put(tok, new LinkedHashMap<>());
+            Map<String,Float> tmp =  new LinkedHashMap<>();
             Map<String,Integer> tpls = pageLens.get(tok);
             for(String page: tpls.keySet()) {
-                String type = dbpedia.get(page);
-                tokenPriors.get(tok).put(type, tpls.get(page)*alpha/1000f);
+                String type = dbpedia.get(page.toLowerCase());
+                tmp.put(type, tpls.get(page)*alpha/1000f);
             }
+	    tokenPriors.put(tok, tmp);
         }
+	log.info("Initialized "+tokenPriors.size()+" token priors.");
         return train(dbpedia, tokenPriors, emIter);
     }
 
     /**
      * Trains a BMMModel with default parameters*/
     public static void train() {
-        BMMModel model = train(0.2f, 10);
+        BMMModel model = train(0.2f, 5);
         try {
             model.writeModel(new File(Config.SETTINGS_DIR+File.separator+modelFileName));
         } catch(IOException e){

@@ -446,7 +446,6 @@ public class JSPHelper {
 //                    log.warn("Could not build context features for entities");
 //                } else
 //                    log.info("Successfully built context features for entities");
-                ProperNounLinker.findMerges(archive);
             } catch (Exception e) {
                 log.warn("Exception while building context features", e);
             }
