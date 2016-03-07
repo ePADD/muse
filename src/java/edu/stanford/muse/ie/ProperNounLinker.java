@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 24/12/15.
@@ -322,8 +323,7 @@ public class ProperNounLinker {
      * assumes that one of c1,c2 is a single word
      */
     static boolean isValidMergeSimple(String c1, String c2) {
-        if (c1.contains(" ") && c2.contains(" ")) {
-            log.warn("Cannot handle [" + c1 + ", " + c2 + "] since they both contain space");
+        if (c1 == null || c2 == null || (c1.contains(" ") && c2.contains(" "))) {
             return false;
         }
         c1 = stripTitles(c1);
@@ -774,8 +774,10 @@ public class ProperNounLinker {
      * Given an EmailMention, gets the closest possible resolutions in the archive.
      * Uses EMailHierarchy to measure distance between email mentions.*/
     public static List<Pair<EmailMention,Integer>> getNearestMatches(EmailMention mention, int maxMatches, Archive archive) {
+        //maximum number of documents to consider before giving up on the search
+        int MAX_DOCS = 1000;
         //Collect one year of docs
-        long WINDOW = 3 * 30 * 24 * 3600 * 1000l;
+        long WINDOW = 365 * 24 * 3600 * 1000l;
         Date st = new Date(mention.date.getTime() - WINDOW / 2), et = new Date(mention.date.getTime() + WINDOW / 2);
         Calendar scal = new GregorianCalendar(), ecal = new GregorianCalendar();
         scal.setTime(st);
@@ -783,28 +785,100 @@ public class ProperNounLinker {
         Collection<DatedDocument> docs = (Collection) archive.getAllDocs();
         List<Document> sdocs = IndexUtils.selectDocsByDateRange(docs, scal.get(Calendar.YEAR), scal.get(Calendar.MONTH), scal.get(Calendar.DATE),
                 ecal.get(Calendar.YEAR), ecal.get(Calendar.MONTH), ecal.get(Calendar.DATE));
+        Set<String> docIds = sdocs.stream().map(d->d.getUniqueId()).collect(Collectors.toSet());
 
         Hierarchy hierarchy = new EmailHierarchy();
-        Mentions mentions = new Mentions(hierarchy);
-        long addingTime = 0, parsingTime = 0;
-        for (Document sdoc : sdocs) {
-            long st1 = System.currentTimeMillis();
-            Span[] entities = NER.getEntities(sdoc, true, archive);
-            parsingTime += (System.currentTimeMillis()-st1);
-            st1 = System.currentTimeMillis();
-            Arrays.asList(entities).stream().forEach(s->mentions.add(new EmailMention(s, sdoc, hierarchy)));
-            EmailDocument ed = (EmailDocument)sdoc;
-            List<String> hpeople = ed.getAllNames();
-            for (String hp : hpeople) {
-                Span s = new Span(hp, -1, -1);
-                s.setType(FeatureDictionary.PERSON, 1.0f);
-                mentions.add(new EmailMention(s, sdoc, hierarchy));
-            }
-            addingTime += (System.currentTimeMillis()-st1);
-        }
-        System.out.println("Parsing time: "+parsingTime+" -- Adding time: "+addingTime);
+        String[] vlevels = new String[hierarchy.getNumLevels()];
+        for(int i=0;i<hierarchy.getNumLevels();i++)
+            vlevels[i] = hierarchy.getValue(i, mention.ed);
 
-        return mentions.getNearestMatches(mention,maxMatches);
+        boolean isAcronym = mention.entity.text.length()>2 && FeatureGeneratorUtil.tokenFeature(mention.entity.text).equals("ac");
+        if(mention.entity.text.length()<=2)
+            return new ArrayList<>();
+
+        long addingTime = 0, ldocTime = 0, pst = 0;
+        List<Pair<EmailMention, Integer>> matches = new ArrayList<>();
+
+        //order the docs based on distance from the current doc
+        //Under the assumption that the hierarchy would always impose distance between two email mentions at doc level granularity in the least
+        Map<Integer, List<String>> docDist = new LinkedHashMap<>();
+        for(String docId: docIds){
+            EmailDocument ed = archive.docForId(docId);
+            int dist = -1;
+            for(int i=0;i<hierarchy.getNumLevels();i++)
+                if(vlevels[i]!=null && vlevels[i].equals(hierarchy.getValue(i, ed))) {
+                    dist = i;
+                    break;
+                }
+            if(dist == -1)
+                continue;
+            if(!docDist.containsKey(dist))
+                docDist.put(dist, new ArrayList<>());
+            docDist.get(dist).add(docId);
+        }
+
+        Set<String> fieldsToLoad = new LinkedHashSet<>();
+        fieldsToLoad.add(NER.EPER);fieldsToLoad.add(NER.ELOC);fieldsToLoad.add(NER.EORG);
+        fieldsToLoad.add(NER.EPER_TITLE);fieldsToLoad.add(NER.ELOC_TITLE);fieldsToLoad.add(NER.EORG_TITLE);
+
+        //cache stuff
+        Map<String, Boolean> processed = new LinkedHashMap<>();
+        Set<String> considered = new LinkedHashSet<>();
+
+        int docsProcessed = 0;
+        outer:
+        for (Integer level=0;level<hierarchy.getNumLevels();level++) {
+            if(!docDist.containsKey(level))
+                continue;
+            Set<Integer> ldocIds = archive.getLuceneDocIdsForDocIds(new LinkedHashSet<>(docDist.get(level)));
+            if(docDist.get(level).size() != ldocIds.size())
+                log.warn("The mapping ldocIds("+ldocIds.size()+") for docIds("+docDist.get(level).size()+") differ in size!\n This is not supposed to happen!!");
+            for(Integer ldocId: ldocIds) {
+                long st1 = System.currentTimeMillis();
+                org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(ldocId, fieldsToLoad);
+                ldocTime += System.currentTimeMillis() - st1;
+                st1 = System.currentTimeMillis();
+                Span[] entities = NER.getEntities(ldoc, true);
+                pst += (System.currentTimeMillis() - st1);
+                st1 = System.currentTimeMillis();
+                List<Span> names = new ArrayList<>();
+                names.addAll(Arrays.asList(entities));
+                EmailDocument ed = archive.docForId(archive.getDocIdForLuceneDocId(ldocId));
+                List<String> hpeople = ed.getAllNames();
+                for (String hp : hpeople) {
+                    Span s = new Span(hp, -1, -1);
+                    s.setType(FeatureDictionary.PERSON, 1.0f);
+                    names.add(s);
+                }
+
+                for (Span name : names) {
+                    if (name == null || name.text == null)
+                        continue;
+                    String tText = mention.entity.text;
+                    boolean match;
+                    Boolean pMatch = processed.get(name.text);
+                    if (pMatch == null) {
+                        match = (isAcronym && !name.text.equals(tText) && Util.getAcronym(name.text).equals(tText)) ||
+                                (name.text.contains(" " + tText + " ") || name.text.startsWith(tText + " ") || name.text.endsWith(" " + tText));
+                        processed.put(name.text, match);
+                    } else
+                        match = pMatch;
+                    if (match) {
+                        if (!considered.contains(name.text)) {
+                            considered.add(name.text);
+                            matches.add(new Pair<>(new EmailMention(name, ed, hierarchy), level));
+                            if(matches.size()>=maxMatches)
+                                return matches;
+                        }
+                    }
+                }
+                addingTime += (System.currentTimeMillis() - st1);
+                if(docsProcessed++>MAX_DOCS)
+                    break outer;
+            }
+        }
+        System.out.println("Ldoc get time"+ldocTime+" -- Parsing time: "+pst+" -- Adding time: "+addingTime);
+        return matches;
     }
 
     static void test() {
@@ -976,7 +1050,7 @@ public class ProperNounLinker {
             List<Document> docs = archive.getAllDocs();
             long st = System.currentTimeMillis();
             int numQ = 0;
-            for(int i=0;i<10;i++) {
+            for(int i=0;i<5;i++) {
                 Document doc = docs.get(rand.nextInt(docs.size()));
                 Span[] es = NER.getEntities(doc, true, archive);
                 Arrays.asList(es).stream().filter(s -> !s.text.contains(" "))

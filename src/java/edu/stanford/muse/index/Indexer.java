@@ -106,7 +106,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	transient private QueryParser parser, parserOriginal, parserSubject, parserCorrespondents, parserRegex, parserMeta;		// parserOriginal searches the original content (non quoted parts) of a message
 	transient private IndexWriter iwriter;
 	transient private IndexWriter					iwriter_blob;
-	transient private Map<Integer,String>			blobDocIds, contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
+	transient protected Map<Integer,String>			blobDocIds, contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
 
 	transient private String						baseDir					= null;												// where the file-based directories should be stored (under "indexes" dir)
 
@@ -762,14 +762,17 @@ public class Indexer implements StatusProvider, java.io.Serializable {
                     log.warn ("!!!!!!!\nIndex reader has " + ireader.numDocs() + " doc(s) of which " + ireader.numDeletedDocs() + " are deleted)\n!!!!!!!!!!");
 				isearcher = new IndexSearcher(ireader);
 				contentDocIds = new LinkedHashMap<>();
-
                 numContentDocs = ireader.numDocs();
                 numContentDeletedDocs = ireader.numDeletedDocs();
 
+                Bits liveDocs = MultiFields.getLiveDocs(ireader);
                 Set<String> fieldsToLoad = new HashSet<>();
                 fieldsToLoad.add("docId");
                 for(int i=0;i<ireader.maxDoc();i++){
 					org.apache.lucene.document.Document doc = ireader.document(i,fieldsToLoad);
+                    if(liveDocs!=null && !liveDocs.get(i))
+                        continue;
+
                     if(doc == null || doc.get("docId") == null)
 						continue;
 					contentDocIds.put(i, doc.get("docId"));
@@ -786,10 +789,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
                 numAttachmentDocs = ireader_blob.numDocs();
                 numAttachmentDeletedDocs = ireader_blob.numDeletedDocs();
 
+                Bits liveDocs = MultiFields.getLiveDocs(ireader_blob);
                 Set<String> fieldsToLoad = new HashSet<String>();
 				fieldsToLoad.add("docId");
 				for(int i=0;i<ireader_blob.maxDoc();i++){
 					org.apache.lucene.document.Document doc = ireader_blob.document(i,fieldsToLoad);
+                    if(liveDocs!=null && !liveDocs.get(i))
+                        continue;
+
 					if(doc == null || doc.get("docId") == null)
 						continue;
 					blobDocIds.put(i,doc.get("docId"));
@@ -1791,6 +1798,18 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return contents;
     }
 
+    protected org.apache.lucene.document.Document getLDoc(Integer ldocId, Set<String> fieldsToLoad) {
+        try {
+            if (isearcher == null) {
+                DirectoryReader ireader = DirectoryReader.open(directory);
+                isearcher = new IndexSearcher(ireader);
+            }
+            return isearcher.doc(ldocId, fieldsToLoad);
+        } catch(IOException e){
+            Util.print_exception(e, log);
+            return null;
+        }
+    }
 
 	public static void main(String args[]) throws IOException, ClassNotFoundException, ParseException, GeneralSecurityException
 	{

@@ -1366,6 +1366,19 @@ public class Archive implements Serializable {
         }
     }
 
+    //Given set of Document (muse.document) ids, returns
+    public Set<Integer> getLuceneDocIdsForDocIds(Set<String> docIds){
+        return indexer.contentDocIds.entrySet().stream().filter(e->docIds.contains(e.getValue())).map(e->e.getKey()).collect(Collectors.toSet());
+    }
+
+    public String getDocIdForLuceneDocId(Integer ldocId){
+        return indexer.contentDocIds.get(ldocId);
+    }
+
+    public org.apache.lucene.document.Document getLuceneDoc(Integer ldocId, Set<String> fieldsToLoad){
+        return indexer.getLDoc(ldocId, fieldsToLoad);
+    }
+
     public static void main(String[] args) {
         try {
             String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";

@@ -142,6 +142,7 @@ public class NER implements StatusProvider {
         return foundChunks.toArray(new Span[foundChunks.size()]);
     }
 
+    /**Use this method with caution, resolving Lucene Doc corresponding to doc can be a costly operation depending on the archive*/
     public static Span[] getEntities(Document doc, boolean body, Archive archive) {
         try {
             org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);

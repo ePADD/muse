@@ -516,7 +516,7 @@ public class EmailUtils {
 		for (String t: Util.tokenize(name))
 		{
 			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase())) {
-				log.info ("Will not consider name (because it has a banned word): " + name);
+				//log.info ("Will not consider name (because it has a banned word): " + name);
 				return null;
 			}
 			result += t + " ";
