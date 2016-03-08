@@ -10,7 +10,15 @@
 </head>
 <body>
 <div class="box">
-<%
+    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
+    <span style="float: right;font-size: 30px;color: #a70e13;">
+        Example</span>
+    <div style="clear:both"></div>
+
+    <br/>
+    <br/>
+
+    <%
 String correctanswer = "Humpty";
 String useranswer = request.getParameter("answer");
 if (useranswer.toLowerCase().equals(correctanswer.toLowerCase())){
@@ -28,7 +36,9 @@ Please answer the questions from memory only; do NOT refer to your email, ask an
 not spend more than a couple of minutes on a single question.
 When the test is complete, you will be able to see the answers to all the questions, and we will ask you for some reactions.
 
+    <!--
 <p> Remember: 1) The answer to each of these questions is generally <b>a name</b>, and 2) All the sentences are contained in emails <b>you've written</b> over the last one year.
+-->
 
 <br>
 <p class="bold" style="font-size: 1.25em;">Are you ready to begin the study?</p>

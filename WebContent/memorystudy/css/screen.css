@@ -4,7 +4,8 @@ html, body, h1, div, fieldset, legend, ol, li {
 	}
 
 body {
-	background-image: url('../images/tweed_muse.png');
+/*	background-image: url('../images/tweed_muse.png'); */
+	background-color: #082041; /*#faf6e3;*/
 	color: #ffffff;
 	font-family: "Futura", "Trebuchet MS", sans-serif;
 	font-size: 13px;
@@ -90,3 +91,8 @@ input[type="button"]:active{
 	font-family: "Myriad Pro", Courier, Arial, sans-serif;
 	font-variant: small-caps;
 }
+
+/** ashoka colors:
+red: RGB: #a70e13
+blue: RGB: #082041
+ivory: RGB: #faf6e3 */

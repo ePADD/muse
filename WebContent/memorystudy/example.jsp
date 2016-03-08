@@ -1,3 +1,4 @@
+<%@page language="java" contentType="text/html; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
 <%@page language="java" import="java.util.*"%>
 <%@ page import="java.text.DateFormat" %>
@@ -30,7 +31,7 @@ $(function() {
 
 <div class="box">
     <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
-    <span style="float: right;font-size: 30px;color: red;">
+    <span style="float: right;font-size: 30px;color: #a70e13;">
         Example</span>
     <div style="clear:both"></div>
 
@@ -48,9 +49,12 @@ $(function() {
 		<p/>
 
             <div style="margin-left: 20%">
-                <input class="answer" id="answer" style="border:solid 2px blue; background: #7c7c7c" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured out yet, the correct answer is 'Humpty'." type="text" size="40" name="answer" autofocus autocomplete = "off">
-                <p style="margin-left:20%" class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer. Sometimes the answer may be 2 words. This description will turn green when the number of letters you have entered in the answer box is correct.">[1 word: 6 characters]
-                </span></p>
+                <input class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured out yet, the correct answer is 'Humpty'." type="text" size="40" name="answer" autofocus autocomplete = "off">
+                <p style="margin-left:20%" class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer. Sometimes the answer may be 2 words. This description will turn green when the number of letters you have entered in the answer box is correct.">
+                    [1 word: 6 characters<span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
+                </span>
+
+                </p>
                 <span data-step="5" data-intro="If you don't remember the name for some reason, choose the option that best applies to you">OR &nbsp;&nbsp; Answer why you forgot:<br></span>
                 <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
@@ -91,15 +95,26 @@ $(function() {
             -->
 		    <br/>
 
-            <div>How vividly do you remember writing this email?
+            <div>
+                <p>
+                    How vividly do you remember writing this email?
                 <br>
-                (1: no idea; 5: fair idea; 10:strong memory)<br/>
+                (1: no idea; 5: fair idea; 10:strong memory)
+                <p>
 
-                <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
-                <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
+                <div style="line-height:0.5em">
+                <span style="font-size: small; position:relative;left:0px">1</span><span style="font-size: small; position:absolute;left:300px">10</span><br>
+                <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
+                <output for="memory" id="memory-amount">5</output>
+                </div>
             </div>
             <br/>
 
+            <script>
+                function outputUpdate(v) {
+                    document.querySelector('#memory-amount').value = v;
+                }
+            </script>
             <div>
                 Approximately when do you think was this sentence written?
             </div>
@@ -187,12 +202,19 @@ $(function() {
 			// check # of letters in answer
 			var val = $('#answer').val();
 			val = val.replace(/ /g, '');
-			if (val.length == correctAnswerLengthWithoutSpaces)
-				$('#answerLength').css('color', 'green');
-			else
-				$('#answerLength').css('color', 'red');
+            if (val.length == correctAnswerLengthWithoutSpaces) {
+                $('#answerLength').css('color', 'green');
+                $('#nLettersCheck').show();
+
+            }
+            else {
+                $('#answerLength').css('color', 'red');
+                $('#nLettersCheck').hide();
+            }
 		});
-		</script>
+        $('#answer').focus();
+
+        </script>
 	
 		</form>
 	</div>

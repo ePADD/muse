@@ -1,8 +1,8 @@
 body{
 	font-family:"Trebuchet MS", sans-serif;
 	/*background-image: url('../images/tweed_muse.png');*/
-	background-color: grey;
-    ont-size: 14pt;
+	background-color: #082041; /* #faf6e3 /* grey */;
+    font-size: 14pt;
 }
 p.bold{font-weight:bold;}
 .consent{
@@ -46,13 +46,14 @@ hr {
 	padding-right:10px;
 	z-index:15;
 	text-align: left;
-    background-color: lightgrey;
+    background-color: #faf6e3; /* #faf6e3; /* lightgrey; */
 }
+
 .hintwait{
 	display:none;
 }
 input[type="button"]{
-				background: #484848;
+				background: #faf6e3; /* #484848; */
 				border: none;
 				-moz-border-radius: 10px;
 				-webkit-border-radius: 10px;
@@ -68,20 +69,22 @@ input[type="button"]{
 }
 					
 input[type="button"]:hover{
-	background: #33aa33; /* #63AF96; */
+	background: #a70e13; /* #33aa33; /* #63AF96; */
 	cursor: pointer;
 }
 
 input[type="button"]:active {
   position: relative;
   top: 1px;
+  background: #a70e13; /
 }
 
 input[type="text"]{
 	background: #DADADA;
 	margin: auto;
-    border: solid 2px blue;
-	overflow: visible;
+    border-width: 2px;
+    border-color: #082041;
+    overflow: visible;
     color: white;
 	border-radius: 4px;
 	font: 18px "Trebuchet MS", sans-serif;
@@ -135,12 +138,8 @@ button {
 }
 					
 button:hover {
- background: #33aa33; /* #63AF96; */
+ background: #a70e13; /* #33aa33; /* #63AF96; */
  cursor: pointer;
-}
-
-button:active{
-	background: #33aa33;
 }
 
 .title {
@@ -152,7 +151,8 @@ button:active{
 .smaller{
 	font-size: 0.85em;
 }
-questiontext{
+
+.questiontext{
 	font: 18px "Futura", "Trebuchet MS", sans-serif;
 }
 
@@ -207,8 +207,9 @@ input[type=range] {
     /*removes default webkit styles*/
     -webkit-appearance: none;
     width: 300px;
-    heigh:20px;
-    position: relative
+    height:20px;
+    position: relative;
+    background-color: transparent;
 }
 input[type=range]::-webkit-slider-runnable-track {
     width: 300px;
@@ -223,7 +224,7 @@ input[type=range]::-webkit-slider-thumb {
     height: 18px;
     width: 18px;
     border-radius: 50%;
-    background: red;
+    background: #a70e13;
     margin-top: -4px;
 }
 input[type=range]:focus {
@@ -253,7 +254,7 @@ input[type=range]::-moz-range-thumb {
     height: 18px;
     width: 18px;
     border-radius: 50%;
-    background: red;
+    background: #a70e13;
 }
 
 /*hide the outline behind the border*/
@@ -262,3 +263,5 @@ input[type=range]:-moz-focusring{
 }
 
 .answer { letter-spacing: 3px; 	color: royalblue;}
+
+output { color: white; background-color: black; padding: 5px;}

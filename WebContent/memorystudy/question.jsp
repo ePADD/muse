@@ -152,14 +152,15 @@
 				id="millis" value="-1"> <input type="hidden"
 				name="answerBeforeHint" id="answerBeforeHint" value="-1">
                 <br/>
-                <input style="border:solid 2px blue; background: #7c7c7c" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
+                <input style="border:solid 2px #082041; background: #082041"  type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
 			    <p class="smaller">
                 <span id="answerLength">
                     [<%
                         out.print(questiontodisplay.lengthDescr);
                         //Should also be able to handle Dileep A. D
                         int correctAnswerLengthWithoutSpaces = questiontodisplay.correctAnswer.replaceAll("\\W", "").length();
-                    %>]
+                    %>
+                    <span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
                 </span>
                 </p>
 
@@ -203,14 +204,23 @@
 
         <br/>
 
-        <div>How vividly do you remember writing this email?
+        <div>
+            <p>
+                How vividly do you remember writing this email?
             <br>
             (1: no idea; 5: fair idea; 10:strong memory)<br/>
-            <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
-            <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
+            <div style="line-height:0.5em">
+                <span style="font-size: small; position:relative;left:0px">1</span><span style="font-size: small; position:absolute;left:300px">10</span><br>
+                <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
+                <output for="memory" id="memory-amount">5</output>
+            </div>
         </div>
         <br/>
-
+        <script>
+            function outputUpdate(v) {
+                document.querySelector('#memory-amount').value = v;
+            }
+        </script>
         <div>
             Approximately when do you think was this sentence written?
 
@@ -294,26 +304,29 @@
                     } */
 
                     //ensure questions are filled out
-                    if ($('#memory').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
-                        alert("Please answer all the questions.");
-                        event.preventDefault();
-                        event.stopPropagation();
-                        return false;
-                    }
-                    else {
-                        var mVal = parseInt($("#memory").val());
-                        /*
-                        var cVal = parseInt($("#certainty").val());
-                        if(isNaN(cVal) || cVal<1 || cVal>10){
-                            alert('Please enter a number in the range of 1 to 10 for "How confident are you about your answer?"');
-                            return false;
-                        }
-                        */
-                        if(isNaN(mVal) || mVal<1 || mVal>10){
-                            alert('Please enter a number in the range of 1 to 10 for "How vividly do you remember writing this mail?"');
+                    if (button_text != 'Give up') {
+                        if ($('#memory').val() == '' || (!$("#timeInfo")[0].checked && ($('#timeYear').val() == -1 || $("#timeMonth").val() == -1))) {
+                            alert("Please answer all the questions.");
                             event.preventDefault();
                             event.stopPropagation();
                             return false;
+                        }
+                        else {
+                            var mVal = parseInt($("#memory").val());
+                            /*
+                            var cVal = parseInt($("#certainty").val());
+                            if(isNaN(cVal) || cVal<1 || cVal>10){
+                                alert('Please enter a number in the range of 1 to 10 for "How confident are you about your answer?"');
+                                return false;
+                            }
+                            */
+                            if(isNaN(mVal) || mVal<1 || mVal>10){
+                                alert(
+                                        'Please enter a number in the range of 1 to 10 for "How vividly do you remember writing this mail?"');
+                                event.preventDefault();
+                                event.stopPropagation();
+                                return false;
+                            }
                         }
                     }
 
@@ -337,12 +350,19 @@
 						// check # of letters in answer
 						var val = $('#answer').val();
 						val = val.replace(/ /g, '');
-						if (val.length == correctAnswerLengthWithoutSpaces)
-							$('#answerLength').css('color', 'green');
-						else
-							$('#answerLength').css('color', 'red');
+						if (val.length == correctAnswerLengthWithoutSpaces) {
+                            $('#answerLength').css('color', 'green');
+                            $('#nLettersCheck').show();
+
+                        }
+						else {
+                            $('#answerLength').css('color', 'red');
+                            $('#nLettersCheck').hide();
+                        }
 					});
 				});
+
+            $('#answer').focus();
 			</script>
 
 		</form>
