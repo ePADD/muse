@@ -164,9 +164,9 @@
                         //Should also be able to handle Dileep A. D
                         int correctAnswerLengthWithoutSpaces = questiontodisplay.correctAnswer.replaceAll("\\W", "").length();
                     %>
-                    <span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
+                    <span id="nLettersCheck" style="color:green; display:none"> ✔</span>
                 </span>
-
+                <br/>
                 <span>Or choose one of the following:</span><br/>
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
@@ -261,7 +261,7 @@
                 <br>
                 <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
             </span><br>
-            <input  type="checkbox" style="margin-left:10%" id="timeInfo" name="noTime" onclick='$("#time").toggle()'> I have no idea<br>
+            <input  type="checkbox" style="margin-left:10%" id="timeInfo" name="noTime"> I have no idea<br>
         </div>
 
     <p/>
@@ -321,7 +321,7 @@
                         else {
                             var answer = $('#answer').val();
                             var any_hint_taken = $('#fTip').is(':checked') || $('#fContext').is(':checked') || $('#fComplete').is(':checked');
-                            if ((answer && answer.length == 0) && !any_hint_taken) {
+                            if (answer.length == 0 && !any_hint_taken) {
                                 alert("Try to use one of the hint options before clicking submit.");
                                 event.preventDefault();
                                 event.stopPropagation();
