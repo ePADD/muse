@@ -11,8 +11,6 @@
 <body>
 <div class="box">
     <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
-    <span style="float: right;font-size: 30px;color: #a70e13;">
-        Example</span>
     <div style="clear:both"></div>
 
     <br/>

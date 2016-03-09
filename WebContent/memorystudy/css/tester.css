@@ -2,7 +2,7 @@ body{
 	font-family:"Trebuchet MS", sans-serif;
 	/*background-image: url('../images/tweed_muse.png');*/
 	background-color: #082041; /* #faf6e3 /* grey */;
-    font-size: 14pt;
+    font-size: 16px;
 }
 p.bold{font-weight:bold;}
 .consent{
@@ -149,7 +149,7 @@ button:hover {
 	font-variant: small-caps;
 }
 .smaller{
-	font-size: 0.85em;
+	font-size: 1em;
 }
 
 .questiontext{

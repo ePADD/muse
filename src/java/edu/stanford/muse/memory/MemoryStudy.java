@@ -439,7 +439,7 @@ public class MemoryStudy implements Serializable{
                 lengthDescr += Integer.toString(lengthList.size()) + " words: ";
 
             for (Integer i :lengthList) {
-                lengthDescr += i + " characters, ";
+                lengthDescr += Util.pluralize(i, "letter") + ", ";
             }
             lengthDescr = lengthDescr.substring(0, lengthDescr.length()-2); //subtract the extra comma.
 

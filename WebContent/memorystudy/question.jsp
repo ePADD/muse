@@ -115,7 +115,10 @@
 <script src="../js/muse.js"></script>
 <link rel="stylesheet" href="css/tester.css" />
     <link rel="icon" href="images/ashoka-favicon.gif">
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link href="../css/fonts/font-awesome/css/font-awesome.css" rel="stylesheet">
+    <link href="../css/fonts/font-awesome/css/font-awesome-4.3.min.css" rel="stylesheet">
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Research Study on Memory</title>
 </head>
 <body>
@@ -146,14 +149,15 @@
                 <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
                 <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
             </datalist>
-			<div style="margin-left: 20%">
-                <input type="hidden" name="hintUsed" id="hintUsed"
-				value="false"> <input type="hidden" name="millis"
-				id="millis" value="-1"> <input type="hidden"
-				name="answerBeforeHint" id="answerBeforeHint" value="-1">
+
+                <input type="hidden" name="hintUsed" id="hintUsed" value="false">
+                <input type="hidden" name="millis" id="millis" value="-1">
+                <input type="hidden" name="answerBeforeHint" id="answerBeforeHint" value="-1">
                 <br/>
+
+            <div style="margin-left: 5%">
+                <i class="fa fa-caret-right"></i> Type here:<br/>
                 <input style="border:solid 2px #082041; background: #082041"  type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
-			    <p class="smaller">
                 <span id="answerLength">
                     [<%
                         out.print(questiontodisplay.lengthDescr);
@@ -162,12 +166,11 @@
                     %>
                     <span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
                 </span>
-                </p>
 
-                <span>OR &nbsp;&nbsp; Answer why you forgot:<br></span>
-                <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
-                <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
+                <span>Or choose one of the following:</span><br/>
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
+                <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
+                <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
                     <!--
                     <span id="tipRate" style="margin-left:3%;display:none">
                         <br>
@@ -184,7 +187,6 @@
                 <input id="unfair" name="fail" type="radio" value=3 onclick='$("#unfairReason").toggle()'/> Unfair question?
                 <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason" name="unfairReason"/>
                 -->
-            </div>
 
 			<script type="text/javascript">
 				var correctAnswerLengthWithoutSpaces = <%=correctAnswerLengthWithoutSpaces%>;
@@ -206,15 +208,20 @@
 
         <div>
             <p>
-                How vividly do you remember writing this email?
+                <i class="fa fa-caret-right"></i> How vividly do you remember writing this email?
             <br>
             (1: no idea; 5: fair idea; 10:strong memory)<br/>
             <div style="line-height:0.5em">
-                <span style="font-size: small; position:relative;left:0px">1</span><span style="font-size: small; position:absolute;left:300px">10</span><br>
+            <span style="font-size: small; position:relative;left:0px">1</span>
+            <span style="font-size: small; position:relative;left:120px">5</span>
+            <span style="font-size: small; position:absolute;left:300px">10</span><br>
+
                 <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
-                <output for="memory" id="memory-amount">5</output>
-            </div>
+                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">5</output>
         </div>
+        </div>
+        </div>
+
         <br/>
         <script>
             function outputUpdate(v) {
@@ -222,12 +229,12 @@
             }
         </script>
         <div>
-            Approximately when do you think was this sentence written?
+            <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
 
         </div>
         <div>
 		    <span id="time">
-                <select style="margin-left:20%" name="timeDate" id="timeDate">
+                <select style="margin-left:10%" name="timeDate" id="timeDate">
                     <option value="-1"></option>
                     <%
                         for(int d=1;d<=31;d++){
@@ -252,9 +259,9 @@
                     <option value="2016">2016</option>
                 </select>
                 <br>
-                <span style="margin-left:20%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
+                <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
             </span><br>
-            <input  type="checkbox" style="margin-left:20%" id="timeInfo" name="noTime" onclick='$("#time").toggle()'> I have no idea<br>
+            <input  type="checkbox" style="margin-left:10%" id="timeInfo" name="noTime" onclick='$("#time").toggle()'> I have no idea<br>
         </div>
 
     <p/>
@@ -305,24 +312,17 @@
 
                     //ensure questions are filled out
                     if (button_text != 'Give up') {
-                        if ($('#memory').val() == '' || (!$("#timeInfo")[0].checked && ($('#timeYear').val() == -1 || $("#timeMonth").val() == -1))) {
-                            alert("Please answer all the questions.");
+                        if (!$("#timeInfo")[0].checked && ($('#timeYear').val() == -1 || $("#timeMonth").val() == -1)) {
+                            alert("Please enter the month and the year.");
                             event.preventDefault();
                             event.stopPropagation();
                             return false;
                         }
                         else {
-                            var mVal = parseInt($("#memory").val());
-                            /*
-                            var cVal = parseInt($("#certainty").val());
-                            if(isNaN(cVal) || cVal<1 || cVal>10){
-                                alert('Please enter a number in the range of 1 to 10 for "How confident are you about your answer?"');
-                                return false;
-                            }
-                            */
-                            if(isNaN(mVal) || mVal<1 || mVal>10){
-                                alert(
-                                        'Please enter a number in the range of 1 to 10 for "How vividly do you remember writing this mail?"');
+                            var answer = $('#answer').val();
+                            var any_hint_taken = $('#fTip').is(':checked') || $('#fContext').is(':checked') || $('#fComplete').is(':checked');
+                            if ((answer && answer.length == 0) && !any_hint_taken) {
+                                alert("Try to use one of the hint options before clicking submit.");
                                 event.preventDefault();
                                 event.stopPropagation();
                                 return false;
@@ -351,9 +351,8 @@
 						var val = $('#answer').val();
 						val = val.replace(/ /g, '');
 						if (val.length == correctAnswerLengthWithoutSpaces) {
-                            $('#answerLength').css('color', 'green');
-                            $('#nLettersCheck').show();
-
+                            $('#answerLength').css('color', '#05C105');
+//                            $('#nLettersCheck').show();
                         }
 						else {
                             $('#answerLength').css('color', 'red');

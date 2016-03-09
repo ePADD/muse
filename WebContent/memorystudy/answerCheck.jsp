@@ -26,13 +26,10 @@ if (nWrongAnswers == 0) {
 <body>
 <div class="box">
 <p>
-    Almost done! Now, we'll show you the answers that the computer marked as incorrect.
-    Please provide us a little more information about these answers.
-    It's possible that your answers are actually correct, or reasonably close to being correct.
-    For example, you may have entered a nickname for a person's real name.
-    In such cases, select the option: "My answer is essentially correct".
+	Almost done! We would now like some more information on the answers that the computer has marked as incorrect.
+	It is possible that your answer is really correct. For example, you may have used a nickname, or only the first or last name, or made a typo.
+	In such cases, please choose the option &quot;My answer is essentially correct&quot;.
 </p>
-
 
 <form action = "answers.jsp?details=1" method="post">
 
@@ -49,13 +46,12 @@ for (MemoryQuestion mq : study.getQuestions()) {
 	<br/>Answer: <%=mq.getCorrectAnswer()%>
 	<span style="color:red"> Your answer: <%=((Util.nullOrEmpty(mq.userAnswer))?"&lt;No answer&gt;":mq.userAnswer)%> </span>
 		<p>
-		<select class="wrongAnswerOption" name="wrongAnswerOption<%=idx%>" id="<%=idx%>">
+			<select class="wrongAnswerOption" name="wrongAnswerOption<%=idx%>" id="<%=idx%>">
 			<option value="0">About this answer...</option>
-			<option value="1">I really should have gotten this correct</option>
-			<option value="2">The answer was on the "tip of my tongue"</option>
-			<option value="3">My answer is essentially correct</option>
-			<option value="4">This is an insignificant detail that I'm unlikely to have remembered</option>
-			<option value="5">The answer is hard to guess... the clue sentence did not provide enough context</option>
+			<option value="1">I feel like I should have remembered this name</option>
+			<option value="2">My answer is essentially correct</option>
+			<option value="3">I'm unlikely to have remembered this person</option>
+			<option value="4">the clue was not good enough to trigger the memory of this email</option>
 		</select>
 	<br/><hr/>
 <% } %>
