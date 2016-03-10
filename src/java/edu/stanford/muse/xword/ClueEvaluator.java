@@ -26,14 +26,14 @@ import java.util.regex.Pattern;
  * for example: if an NER Model can recognise a answer as entity in clue or if the answer has been mentioned after a long period
  */
 public class ClueEvaluator {
-    public static Log log						= LogFactory.getLog(ClueEvaluator.class);
+    public static Log log = LogFactory.getLog(ClueEvaluator.class);
     public static List<ClueEvaluator> getDefaultEvaluators(){
         List<ClueEvaluator> evals;
-        evals = Arrays.asList(new LengthEvaluator(), new EmotionEvaluator(), new DirtEvaluator(), new NamesEvaluator(), new ListEvaluator(),new EmailDocumentEvaluator());
+        evals = Arrays.asList(new LengthEvaluator(), new EmotionEvaluator(), new NamesEvaluator(), new ListEvaluator(),new EmailDocumentEvaluator());
         return evals;
     }
 
-    public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
+    public double computeScore(double score, Clue clue, String answer,  NERModel nerModel, Archive archive){
         return score;
     }
 
@@ -60,7 +60,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive){
+        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive){
             String s = clue.getFullSentenceOriginal();
             // clue gets points the closer it is to the preferred clue length
             // lengthBoost is really a penalty (its -ve)
@@ -94,7 +94,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
             //TODO: considers two exclamations and question marks as the same, is that OK?
             String s = clue.getFullSentenceOriginal().toLowerCase();
             // prefer exclamations, highly memorable
@@ -122,39 +122,6 @@ public class ClueEvaluator {
     /**
      * Penalises any dirty words in the clue
      * */
-    public static class DirtEvaluator extends ClueEvaluator {
-        float[] params;
-
-        /**
-         * Required param to weight the number of bad names in the sentence
-         * default: -20.0f
-         */
-        public DirtEvaluator(float[] params) {
-            this();
-            if (params == null || params.length != 1) {
-                log.error("Wrong initialisation of params in " + DirtEvaluator.class + "!! Required 1 param");
-            }else {
-                this.params = params;
-            }
-        }
-
-        public DirtEvaluator(){
-            this.params = new float[]{-20.0f};
-        }
-
-        @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
-            String s = clue.getFullSentenceOriginal().toLowerCase();
-            for (String badName : tabooNames) { //drop own name, as well as other terms that may be overused in the xword/memorystudy.
-                if (s.contains(badName)) {
-                    score += params[0];
-                    clue.clueStats.containsBadName = true;
-                    break;
-                }
-            }
-            return score;
-        }
-    }
 
     /**
      * Penalises the existence of any non-specific words
@@ -180,7 +147,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerMode, Archive archivel) {
+        public double computeScore(double score, Clue clue, String answer, NERModel nerMode, Archive archivel) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             if (s.startsWith("this") || s.startsWith("that") || s.startsWith("however")) {
                 clue.clueStats.containsNonSpecificWords = true;
@@ -211,7 +178,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer,Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
             String sOrig = clue.getFullSentenceOriginal();
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
@@ -369,7 +336,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             float boost = 0;
             for(int i=0;i<params.length;i++) {
@@ -440,27 +407,17 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, ArchiveCluer.QuestionType questionType, Clue clue, String answer, Date startDate, Date endDate, Set<String> tabooNames, NERModel nerModel, Archive archive) {
+        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
             if(archive!=null) {
                 //String s = clue.getFullSentenceOriginal();
                 EmailDocument ed = clue.d;
                 Indexer.QueryOptions qo = new Indexer.QueryOptions();
                 qo.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
                 String term = "\"" + answer + "\"";
-                log.info("Searching for: "+term);
+                log.info("Searching for: " + term);
                 Collection<Document> docs = new ArrayList<>();
-                if(questionType == ArchiveCluer.QuestionType.FILL_IN_THE_BLANK) {
-                    docs = archive.docsForQuery(term, qo);
-                }else {
-                    Contact c = archive.addressBook.lookupByName(answer);
-                    Collection<Document> allDocs = archive.getAllDocs();
-                    for(Document doc: allDocs) {
-                        EmailDocument edd = (EmailDocument)doc;
-                        if(edd.getAllAddrs()!=null && c.emails!=null)
-                            if(Sets.intersection(new LinkedHashSet<>(edd.getAllAddrs()), c.emails).size()>0)
-                                docs.add(edd);
-                    }
-                }
+                docs = archive.docsForQuery(term, qo);
+
                 if (docs.size() == 0)
                     log.error("Something is not right! Did not find: " + answer + " in the index!!");
                 else if (docs.size() == 1) {
@@ -478,63 +435,14 @@ public class ClueEvaluator {
                     lc.setTime(ld);
 
                     //float timeScore = params[0] * docs.size() * (lc.getTime().lc.get(Calendar.MONTH) - fc.get(Calendar.MONTH) + 12 * (lc.get(Calendar.YEAR) - fc.get(Calendar.YEAR)));
-                    double timeDiff = (lc.getTime().getTime()-fc.getTime().getTime())/(3600.0*1000*24*30);
-                    float timeScore = params[0]*docs.size()* (float)timeDiff;
+                    double timeDiff = (lc.getTime().getTime() - fc.getTime().getTime()) / (3600.0 * 1000 * 24 * 30);
+                    float timeScore = params[0] * docs.size() * (float) timeDiff;
                     clue.clueStats.firstMention = fc.getTime();
                     clue.clueStats.lastMention = lc.getTime();
                     clue.clueStats.timeAnswerScore = timeScore;
-                    clue.clueStats.timeDiff = (float)timeDiff;
+                    clue.clueStats.timeDiff = (float) timeDiff;
                     score += timeScore;
                 }
-                //some rules are valid ony when we are generating questions for person names ie. guess the corr. type questions
-                if(questionType== ArchiveCluer.QuestionType.GUESS_CORRESPONDENT) {
-                    Collection<Document> docsInInterval = new ArrayList<>();
-                    for(Document doc: docs) {
-                        EmailDocument ed1 = (EmailDocument)doc;
-                        if(ed1!=null && ed1.date.after(startDate) && ed1.date.before(endDate))
-                            docsInInterval.add(ed1);
-                    }
-                    docs = docsInInterval;
-
-                    //if the number of recipients in an email exceeds 2, penalise
-                    List<Address> addrs = new ArrayList<>();
-                    if(ed.to!=null)
-                        for(Address adr: ed.to)
-                            addrs.add(adr);
-                    if (ed.cc!=null)
-                        for(Address adr: ed.cc)
-                            addrs.add(adr);
-                    if(ed.bcc!=null)
-                        for(Address adr: ed.bcc)
-                            addrs.add(adr);
-                    if(addrs.size()>2) {
-                        float s = (float)-10.0*(addrs.size()-2);
-                        score += s;
-                        clue.clueStats.recipientScore = s;
-                    }
-
-                    int nMessages = docs.size();
-                    float boost = 0;
-                    if(nMessages>5 && nMessages<10)
-                        boost = 30;
-                    else if(nMessages>=10 && nMessages<15)
-                        boost = 50;
-                    else if(nMessages>=15)
-                        boost = 100;
-                    score += boost;
-                    clue.clueStats.nMessageScore = boost;
-                }
-
-                //thread score
-                //proportional to number of sent mails in the thread
-                log.info("Looking for docs with thread Id: "+ed.threadID);
-                long st = System.currentTimeMillis();
-                List<Document> threads = archive.docsWithThreadId(ed.threadID);
-                log.info("Done looking for docs with thread Id: "+ed.threadID+" in "+(System.currentTimeMillis()-st));
-                score += params[1] * threads.size();
-                clue.clueStats.noisyThreadScore = params[1] * threads.size();
-            }else{
-                log.error("The archive param supplied to "+EmailDocument.class+" is null!!");
             }
             return score;
         }

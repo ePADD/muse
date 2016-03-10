@@ -533,7 +533,7 @@ public class MemoryStudy implements Serializable{
     }
 
 	/** Generates person names tests from the given archive. @throws IOException */
-	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int maxInt) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int cluesPerInterval) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
 		this.archive = archive;
 		if (allDocs == null)
 			allDocs = (Collection) archive.getAllDocs();
@@ -547,26 +547,29 @@ public class MemoryStudy implements Serializable{
 		Multimap<Contact, EmailDocument> contactToMessages = LinkedHashMultimap.create();
 		Multimap<Contact, Long> contactToThreadIds = LinkedHashMultimap.create();
 
-        int di = 0;
-
 		// sort by date
 		Collections.sort(docs);
 
 		Date earliestDate = null, latestDate = null;
         Map<Contact, Date> contactToLatestDate = new LinkedHashMap<>();
 
+        // compute earliest and latest date across all messages in corpus
+        for (Document doc : docs) {
+            EmailDocument ed = (EmailDocument) doc;
+
+            if (earliestDate == null || ed.date.before(earliestDate))
+                earliestDate = ed.date;
+            if (latestDate == null || ed.date.after(latestDate))
+                latestDate = ed.date;
+        }
+        JSPHelper.log.info ("In " + docs.size() + " messages, earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate)
+                        + "latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+
         // compute contactToLatestDate that contact has been seen on
         for (Document doc : docs) {
-			EmailDocument ed = (EmailDocument) doc;
-			if (earliestDate == null || ed.date.before(earliestDate))
-				earliestDate = ed.date;
-			if (latestDate == null || ed.date.after(latestDate))
-				latestDate = ed.date;
-            //do not consider mailing lists
-            if(ed.sentToMailingLists!=null && ed.sentToMailingLists.length>0)
-                continue;
+            EmailDocument ed = (EmailDocument) doc;
             //discard doc if it is not a sent mail
-            if((ed.sentOrReceived(archive.addressBook) & EmailDocument.SENT_MASK)==0)
+            if ((ed.sentOrReceived(archive.addressBook) & EmailDocument.SENT_MASK)==0)
                 continue;
 
             for (Contact c: ed.getParticipatingContactsExceptOwn(archive.addressBook)) {
@@ -578,11 +581,10 @@ public class MemoryStudy implements Serializable{
             }
 		}
 
-		log.info("Considered #" + contactToLatestDate.size() + " contacts");
-		JSPHelper.log.info ("earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate));
-		JSPHelper.log.info ("latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+		log.info("We are considering #" + contactToLatestDate.size() + " contacts");
 
-        List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, latestDate); // should latestDate be today's date instead?
+        Date currentDate = new Date();
+        List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, currentDate); // should latestDate be today's date instead?
         JSPHelper.log.info ("done computing intervals, #time intervals: " + intervals.size());
         for (Pair<Date, Date> p: intervals)
             JSPHelper.log.info ("Interval: " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()));
@@ -590,7 +592,7 @@ public class MemoryStudy implements Serializable{
 		// initialize clueInfos to empty lists
 		List<ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
 		for (int i = 0; i < intervals.size(); i++) {
-			clueInfos[i] = new ArrayList<ClueInfo>();
+			clueInfos[i] = new ArrayList<>();
 		}
 
         Multimap<Integer, Contact> intervalToContacts = LinkedHashMultimap.create();
@@ -634,51 +636,60 @@ public class MemoryStudy implements Serializable{
         for (int interval: intervalToContacts.keys()) {
             Date intervalStart = intervals.get(interval).getFirst();
             Date intervalEnd = intervals.get(interval).getSecond();
-            Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(currentInterval);
+            Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(interval);
 
+            Map<Clue, Contact> clueToContact = new LinkedHashMap<>();
+
+            outer:
             for (Contact c: candidateContactsForThisInterval) {
-                Clue clue = cluer.createClue(fullAnswer, ArchiveCluer.QuestionType.GUESS_CORRESPONDENT, null, tabooCluesSet, null, intervalStart, intervalEnd, nSent, archive);
-                clue.
+                String name = c.pickBestName();
+                if (name.length() < 2) // could also check if alphanumberic only
+                    continue outer;
+
+                // ignore contact if name does not contain all alphabets. Even a period is not allowed.
+                for (char ch : name.toCharArray()) {
+                    if (!Character.isAlphabetic(ch))
+                        continue outer;
+                }
+
+                Clue clue = cluer.createPersonNameClue(c, null, nerModel, intervalStart, intervalEnd, nSent, archive);
+                clueToContact.put(clue, c);
             }
 
-            List<Integer> lengthList = Crossword.convertToWord(c.pickBestName()).getSecond();
-            String lengthDescr = "";
-            if (lengthList.size() > 1)
-                lengthDescr += Integer.toString(lengthList.size()) + " words: ";
+            List<Clue> clueList = new ArrayList(clueToContact.keySet());
+            Collections.sort (clueList);
 
-            for (Integer i : lengthList) {
-                lengthDescr += Util.pluralize(i, "letter") + ", ";
+            List<Clue> selectedClues = new ArrayList<>();
+            for (int i = 0; i < cluesPerInterval && i < clueList.size(); i++) {
+                selectedClues.add(clueList.get(i));
             }
-            lengthDescr = lengthDescr.substring(0, lengthDescr.length() - 2); //subtract the extra comma.
-        }
 
-			ClueInfo ci = new ClueInfo();
-			ci.lastSeenDate = lastSeenDate;
-			ci.nMessages = contactToThreadIds.get(c).size();;
-			ci.nThreads = contactToThreadIds.get(c).size();
+            for (Clue selectedClue: selectedClues) {
+                Contact c = clueToContact.get(selectedClue);
+                String name = c.pickBestName();
 
-			//TODO: we are doing default initialisation of evaluators by setting it to null below, it is more appropriate to consider it as an argument for this method
-			if(clue!=null)
-				ci.clues = new Clue[]{clue};
+                List<Integer> lengthList = Crossword.convertToWord(name).getSecond();
+                String lengthDescr = "";
+                if (lengthList.size() > 1)
+                    lengthDescr += Integer.toString(lengthList.size()) + " words: ";
 
-			if(ci.clues == null || ci.clues.length == 0 || clue==null){
-				JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);
+                for (Integer i : lengthList) {
+                    lengthDescr += Util.pluralize(i, "letter") + ", ";
+                }
+                lengthDescr = lengthDescr.substring(0, lengthDescr.length() - 2); //subtract the extra comma.
+
+                ClueInfo ci = new ClueInfo();
+                ci.lastSeenDate = contactToLatestDate.get(c);
+                ci.nMessages = contactToThreadIds.get(c).size();;
+                ci.nThreads = contactToThreadIds.get(c).size();
+
+				questions.add(new MemoryQuestion(this,name,selectedClue, 1, lengthDescr));
 			}
-			else{
-				//is the times value of the clue important?
-				questions.add(new MemoryQuestion(this,fullAnswer,clue, 1, lengthDescr));
-				nvalidclues++;
-				//makes sure that the clue with the same statement is not generated again
-				tabooCluesSet.add(clue.clue);
-			}
-			clueInfos[interval].add(ci);
 		}
-		log.info("Found valid clues for "+nvalidclues+" answers");
-		JSPHelper.log.info("Found valid clues for "+nvalidclues+" answers");
 
-		log.info("Top candidates are:");
-		for (MemoryQuestion mq: questions)
-			log.info (mq.correctAnswer + " times=" + mq.stats.nMessagesWithAnswer);
+		log.info (questions.size() + " questions generated");
+
+		log.info ("Top candidates are:");
 
 		// sort q's by clue score
 		Collections.sort(questions);
@@ -686,14 +697,6 @@ public class MemoryStudy implements Serializable{
 		log.info("Based on clue score, top answers:");
 		for (MemoryQuestion mq: questions)
 			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
-
-		// now we have up to 2*N questions, sorted by cluescore.
-		// drop ones that are prefix/suffix of another, and cap to N
-		int prev_size = questions.size();
-
-		int new_size = questions.size();
-
-		log.info ("#questions before prefix-suffix elim: " + prev_size + " after: " + new_size);
 
 		int count = 0;
 		for (MemoryQuestion mq: questions) {

@@ -44,7 +44,6 @@ if (!found) {
 	<html>
 	<head>
 		<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css"/>
-		<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 		<link rel="icon" href="images/ashoka-favicon.gif">
 	</head>
 	<body>
@@ -93,54 +92,57 @@ if(request.getLocalPort() == 8043) {
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
-<link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
-<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
-<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
+	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
+	<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
 	<link rel="icon" href="images/ashoka-favicon.gif">
-<jsp:include page="css/css.jsp"/>
-<script type="text/javascript" src="js/jquery/jquery.js"></script>
-<script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
-<script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>
-<script type="text/javascript" src="js/statusUpdate.js"></script>
-<script type="text/javascript" src="js/muse.js"></script>
-<script type="text/javascript" src="js/ops.js"></script>
-<script>
+	<jsp:include page="css/css.jsp"/>
+	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 
-muse.mode = "memorytest";
-function googleOAuth(idx) {
-	alert ("Please ensure that popup windows are enabled in your browser. You will authenticate directly with Google in another window. After you have authenticated, click the Start button.");
-    var config = {
-        'client_id': '<%=googleClientId%>',
-        'scope': 'https://mail.google.com/ https://www.googleapis.com/auth/userinfo.email',
-        'response_type': 'token',
-        'immediate': false
-    };
-    gapi.auth.authorize(config, function() {
-        var token = gapi.auth.getToken();
-       
-        if(!!token) {
-      	    gapi.client.load('oauth2', 'v2', function() { 
-      		    var request = gapi.client.oauth2.userinfo.get();
-      		    request.execute(function (resp) {
-          	        $('#loginName' + idx).attr('value', resp.email);
-                	$('#message' + idx).html(resp.email);        	  
-                });
-            });
-            $('#password' + idx).attr('value', 'xoauth' + token.access_token); // this field is already hidden
-            $('#password' + idx).append($('<div style="font-size:small"><i>' + resp.email + '</i></div>'));
-        } else {
-  	        $('#message' + idx).html('No authorization');        	  
-            $('#password' + idx).attr('value', '');
-        }
-    });
-}
+	<script type="text/javascript" src="js/jquery/jquery.js"></script>
+	<script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
+	<script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>
+	<script type="text/javascript" src="js/statusUpdate.js"></script>
+	<script type="text/javascript" src="js/muse.js"></script>
+	<script type="text/javascript" src="js/ops.js"></script>
+	<script>
+
+	muse.mode = "memorytest";
+	function googleOAuth(idx) {
+		alert ("Please ensure that popup windows are enabled in your browser. You will authenticate directly with Google in another window. After you have authenticated, click the Start button.");
+		var config = {
+			'client_id': '<%=googleClientId%>',
+			'scope': 'https://mail.google.com/ https://www.googleapis.com/auth/userinfo.email',
+			'response_type': 'token',
+			'immediate': false
+		};
+		gapi.auth.authorize(config, function() {
+			var token = gapi.auth.getToken();
+
+			if(!!token) {
+				gapi.client.load('oauth2', 'v2', function() {
+					var request = gapi.client.oauth2.userinfo.get();
+					request.execute(function (resp) {
+						$('#loginName' + idx).attr('value', resp.email);
+						$('#message' + idx).html(resp.email);
+					});
+				});
+				$('#password' + idx).attr('value', 'xoauth' + token.access_token); // this field is already hidden
+				$('#password' + idx).append($('<div style="font-size:small"><i>' + resp.email + '</i></div>'));
+			} else {
+				$('#message' + idx).html('No authorization');
+				$('#password' + idx).attr('value', '');
+			}
+		});
+	}
 
 
-$(document).ready(function() {
-	$('input[type=password]').clickOnEnter($('#gobutton')[0]);
-});
+	$(document).ready(function() {
+		$('input[type=password]').clickOnEnter($('#gobutton')[0]);
+	});
 
-// function handleClientLoad() { gapi.auth.authorize({client_id: <%=googleClientId%>, 'scope': 'https://mail.google.com/ https://www.googleapis.com/auth/userinfo.email','response_type':'token','immediate': false}, function() { console.log('done init'); }); }</script>
+		// function handleClientLoad() { gapi.auth.authorize({client_id: <%=googleClientId%>, 'scope': 'https://mail.google.com/ https://www.googleapis.com/auth/userinfo.email','response_type':'token','immediate': false}, function() { console.log('done init'); }); }
+	</script>
 
 <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=handleClientLoad"></script>
 
@@ -233,7 +235,6 @@ function accountTypeChanged(e)
 <div id="main"> <!-- style="margin-top:200px;position:relative;width:1200px;overflow:hidden" -->
 <input style="display:none" id="dateRange" name="dateRange" value="<%=edu.stanford.muse.email.Filter.getDateRangeForLast1Year() %>"/>
 
-<h1 style="color:#ffffff;text-align:center;font-family:Allura">Cognitive experiments with Life-Logs</h1>
 
 <% String error = (String) JSPHelper.getSessionAttribute(session, "loginErrorMessage");
 if (!Util.nullOrEmpty(error))
@@ -247,8 +248,11 @@ String dateRange = request.getParameter("dateRange");
 if (dateRange == null)
 	dateRange = edu.stanford.muse.email.Filter.getDateRangeForLast1Year();
 %>
-<div class="boxorange" style="font-size:11pt">
-This step will generate questions for you and can take 5 to 15 minutes, depending on your volume of email. 
+<div class="boxorange" style="font-size:11pt;position:relative;">
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+	This step will generate questions for you and can take 5 to 15 minutes, depending on your volume of email.
 You can do other things while you wait, but please do not close this browser window.
 <div class="login-account">
 <div class="styled-select">

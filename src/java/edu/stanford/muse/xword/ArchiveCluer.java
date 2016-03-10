@@ -7,14 +7,11 @@ import edu.stanford.muse.memory.MemoryStudy;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.store.LockObtainFailedException;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -153,17 +150,269 @@ public class ArchiveCluer extends Cluer {
             return clues[0];
     }
 
-	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
-		Clue[] clues = createPersonNameClues(c, evals, tabooClues, nerModel, startDate, endDate, numSentences, 1, archive);
-		if(clues==null || clues.length==0)
-			return null;
-		else
-			return clues[0];
+	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evals,  NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+		Clue clue = createPersonNameClues(c, evals, nerModel, startDate, endDate, numSentences, 1, archive);
+        return clue;
 	}
 
 	public enum QuestionType{
         FILL_IN_THE_BLANK, GUESS_CORRESPONDENT;
     };
+
+	private static List<ClueEvaluator> getDefaultEvals()
+	{
+		List<ClueEvaluator> evals = new ArrayList<>();
+		//default tuned params
+		evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f, -20.0f, 0f}));
+		evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f, 7.0f, 7.0f}));
+		evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
+		evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f, -20.0f}));
+//		evals.add(new ClueEvaluator.EmailDocumentEvaluator(new float[]{-0.5f, 5.0f}));
+		float[] params = new float[]{0.0f, 0.0f, 10.0f, 10.0f};
+		List<String[]> lists = new ArrayList<>();
+		lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
+		lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
+		lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder".split("\\s*,\\s*"));
+		lists.add("he,she,i,me,you".split("\\s*,\\s*"));
+		evals.add(new ClueEvaluator.ListEvaluator(params, lists));
+		return evals;
+
+	}
+
+	/**
+	 * <ol>
+	 *     <li>Fill in the blank type where the answer is blanked out in the best context found</li>
+	 *     <li>Clues that test the recall of the subjects in a conversation (ie. correspondents)</li>
+	 * </ol>
+	 * The type of clue can be selected by setting the mode value, 0 for type 1, and 1 for type 2
+	 * when mode is 0, i.e. first type of clue, then returns clues formed from alternate sentences from the best context (in a doc)
+	 * when mode is 1, i.e. second type of clue, returns the top 5 best clues in all the docs
+	 * @param c - contact
+	 * @param evaluationRules - Clue evaluators to evaluate the clue statement
+	 * @param nerModel - clue evaluators depend on the model to recognise names and for evaluation
+	 * @param startDate @param endDate - Marks the beginning and end of the time interval
+	 * @param numSentences - Number of sentences in the clue
+	 * @param maxClues - maximum number of high scoring clues returned
+	 * */
+	public Clue createPersonNameClues(Contact c, List<ClueEvaluator> evaluationRules, NERModel nerModel, Date startDate, Date endDate, int numSentences, int maxClues, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	{
+		if (evaluationRules == null || evaluationRules.size()==0) {
+			evaluationRules = getDefaultEvals();
+		}
+
+        String name = c.pickBestName();
+        // messages for c
+		List<EmailDocument> messagesWithContact = new ArrayList<>((Set) IndexUtils.selectDocsByContact(archive.addressBook,(Collection)archive.getAllDocs(),c));
+
+		log.info("Messages with contact: " + name + " is #" + messagesWithContact.size());
+
+        // find valid docs -- those sent only to c, and within the specified time window
+		List<EmailDocument> validMessages = new ArrayList<>();
+        {
+            for (EmailDocument ed : messagesWithContact) {
+                if (startDate.before(ed.date) && endDate.after(ed.date)) {
+                    Collection<Contact> contacts = ed.getParticipatingContactsExceptOwn(archive.addressBook);
+                    if (contacts.size() == 1)
+                        validMessages.add(ed);
+                }
+            }
+            log.info("Messages with contact: " + name + " and within the window: [" + startDate + ", " + endDate + "] is " + validMessages.size());
+        }
+
+        Set<Long> threadIds = new LinkedHashSet<>();
+        for (EmailDocument ed: messagesWithContact)
+            threadIds.add(ed.threadID);
+        int nThreadsWithThisContact = threadIds.size();
+
+		// now find the clue with the best score
+		Clue bestClue = null;
+		Document bestClueMessage = null;
+		//set of clues formed around best clue, but different sentence choice for clue sentence
+		Map<Clue, Float> scoredClues = new LinkedHashMap<>();
+
+		float bestScore = -Float.MAX_VALUE;
+
+		int docCount = 0;
+		int nValidClueCandidates = 0;
+		for (EmailDocument message: validMessages)
+		{
+			try {
+				if (filteredIds != null && !filteredIds.contains(message.getUniqueId()))
+					continue; // not in filter docs, so can't use this doc
+
+				Pair<Float, Map<String, Integer>> p = scoreDocForSentiments(message);
+				float docSentimentScore = p.getFirst();
+				Map<String, Integer> sentimentMap = p.getSecond();
+
+				// check the # of names in this doc, drastic penalty in doc score if
+				// there are a lot of names in it (typically a complete news article)
+				List<String> namesInMessage = archive.getNamesForDocId(message.getUniqueId(), Indexer.QueryType.ORIGINAL);
+				if (namesInMessage.size() > 10)
+					docSentimentScore /= namesInMessage.size();
+
+				int subjectLength = (message.description != null ? message.description.length() : 0);
+				// now process sentences within the doc
+				String contents = archive.getContents(message, true);
+				String cleanedContents = EmailUtils.cleanupEmailMessage(contents);
+				SentenceTokenizer st = new SentenceTokenizer(cleanedContents);
+
+                // make a list of all sentences in the message
+				List<String> sentences = new ArrayList<>();
+				while (st.hasMoreSentences())
+					sentences.add(st.nextSentence(true));
+
+				if (sentences.size() < numSentences)
+					continue;
+
+				List<Clue> clueSet = new ArrayList<>();
+
+				outer:
+				for (int i = 0; i < sentences.size(); i++)
+				{
+					if (i < numSentences-1) // e.g. if nSentences = 3, we can start building candidate clues at i = 2
+						continue;
+
+					String candidateClue = "";
+
+					for (int j = i - numSentences+1; j <= i; j++) {
+						// check if any of the sentences is < MIN_SENTENCE_LENGTH, if so, the clue is invalid, so just break out with an empty string
+						if (sentences.get(j).length() < MIN_SENTENCE_LENGTH || !sentenceIsValidAsClue(sentences.get(j).toLowerCase(), numSentences)) {
+							continue outer;
+						}
+						candidateClue += sentences.get(j);
+					}
+
+					//String oos = originalSentence;
+					candidateClue = candidateClue.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
+
+					// 2 newlines are normal, but more is bad...it tends to be a signature or list... or code.... doesn't make for a good clue.
+					float linesBoost = 1.0f;
+					for (int j = 0; j < numSentences; j++) {
+						int nLines = new StringTokenizer(sentences.get(i-j), "\n").countTokens();
+						if (nLines > numSentences)
+							linesBoost += (float) -Math.pow(5.0f, nLines - numSentences); // steep penalty if it spans more than numSentence physical lines
+					}
+
+					candidateClue = candidateClue.trim().replaceAll("\n", " ");
+					candidateClue = Util.canonicalizeSpaces(candidateClue);
+					String lowerCaseSentence = candidateClue.toLowerCase();
+
+					int MAX_CLUE_CHARS = 200 * numSentences;
+
+					if (candidateClue.length() >= MAX_CLUE_CHARS) {
+						JSPHelper.log.warn("Rejecting candidate clue due to overlong length");
+						continue;
+					}
+
+					// now score the sentence
+					nValidClueCandidates++;
+					Clue clue = new Clue(lowerCaseSentence, candidateClue, lowerCaseSentence, "" /* hint */, null /* url */, null /* ellipsis message */, message);
+
+
+					float clueScore = scoreClueByEvalRules(clue, name, evaluationRules, nerModel, archive);
+					clueScore += linesBoost;
+
+					// add in the score for message factors
+					clueScore += docSentimentScore;
+
+					clue.clueStats.finalScore = clueScore;
+					log.info("clue score for " + c + " is " + clueScore + " (docscore: " + docSentimentScore + ") for sentence# " + i + " in doc #" + docCount + ":" + clue + " lines boost = " + linesBoost);
+
+					if (clueScore > bestScore)
+					{
+						log.info ("Prev. clue: New high!");
+						bestClue = clue;
+						bestClueMessage = message;
+						bestScore = clueScore;
+					}
+					scoredClues.put(clue, clueScore);
+
+					// the below should ideally be updated only inside the above if
+
+					// update all the stats now
+					clue.clueStats.linesBoost = linesBoost;
+					clue.clueStats.docSentimentScore = docSentimentScore;
+					clue.clueStats.docSentiments = sentimentMap;
+
+					clue.clueStats.sentenceNumInMessage = i;
+
+					// copy stats related to the message
+					clue.clueStats.namesInMessage = namesInMessage.size();
+					clue.clueStats.charsInMessage = archive.getContents(message, false /* full message, not just original content */).length();
+
+                    clue.clueStats.subjectLength = subjectLength;
+
+					List<DatedDocument> messagesInThread = (List) archive.docsWithThreadId(message.threadID);
+					clue.clueStats.nMessagesInThread = messagesInThread.size();
+					if (messagesInThread.size() > 0)
+					{
+						Collections.sort(messagesInThread);
+						clue.clueStats.daysSpannedByThread = (int) ((messagesInThread.get(messagesInThread.size()-1).date.getTime() - messagesInThread.get(0).date.getTime())/EmailUtils.MILLIS_PER_DAY);
+
+						// 2 ways of trying to guess if this thread was initiated by the user.
+						// 1. check if the first message in thread has original content == full content, i.e. no quoted parts).
+						// 2. check if subject line starts with Re:
+						// Document firstMessageInThread = messagesInThread.get(0);
+						// String firstMessageOriginalContent = archive.getContents(firstMessageInThread, true);
+						// String firstMessageFullContent = archive.getContents(firstMessageInThread, false);
+//							clue.clueStats.threadInitiatedByUser = firstMessageOriginalContent.equals(firstMessageFullContent);
+						clue.clueStats.threadInitiatedByUser = !(message.description != null && message.description.trim().toLowerCase().startsWith("re:")); // really means this message is not the first one in the thread
+					}
+					// Pair<String, String> p1 = Util.fieldsToCSV(clue.clueStats, false);
+					//	JSPHelper.log.info ("CLUELOG-1 " + p1.getFirst() + "answer,clue");
+					//	JSPHelper.log.info ("CLUELOG-2 " + p1.getSecond() + "," + answer + "," + clue.clue.replaceAll(",", " "));
+//					}
+					clueSet.add(clue);
+				}
+
+				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
+				if (bestClueMessage == message) {
+					bestClue.clueStats.sentencesInMessage = sentences.size();
+				}
+			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
+
+			docCount++;
+		}
+
+		if (bestClue != null)
+		{
+			bestClue.clueStats.nValidClueCandidates = nValidClueCandidates; // # of clues considered seriously, i.e. given a score
+
+			int daysSinceFirstMention, daysSinceLastMention;
+			if (messagesWithContact.size() > 0)
+			{
+				bestClue.clueStats.nMessagesWithAnswer = messagesWithContact.size();
+				bestClue.clueStats.nThreadsWithAnswer = nThreadsWithThisContact;
+
+				Collections.sort(messagesWithContact);
+				EmailDocument firstMentionDoc = (EmailDocument) messagesWithContact.get(0);
+				EmailDocument lastMentionDoc = (EmailDocument) messagesWithContact.get(messagesWithContact.size()-1);
+				daysSinceFirstMention = (int) ((new Date().getTime() - firstMentionDoc.date.getTime())/EmailUtils.MILLIS_PER_DAY);
+				daysSinceLastMention = (int) ((new Date().getTime() - lastMentionDoc.date.getTime())/EmailUtils.MILLIS_PER_DAY);
+				bestClue.clueStats.daysSinceFirstMention = daysSinceFirstMention;
+				bestClue.clueStats.daysSinceLastMention = daysSinceLastMention;
+
+				// compute mention frequency for each of the last N months
+				List<Date> datesOfMessagesWithContact = new ArrayList<Date>();
+				for (Document doc: messagesWithContact) {
+					EmailDocument ed = (EmailDocument) doc;
+					datesOfMessagesWithContact.add(ed.date);
+				}
+				List<Integer> hist = EmailUtils.histogram(datesOfMessagesWithContact, new Date().getTime(), MemoryStudy.INTERVAL_MILLIS);
+
+				// copy over histogram to dates, up to the first 12 intervals (hist might possibly have more?)
+				int[] histogram = new int[MemoryStudy.N_INTERVALS]; // 12 intervals
+				int count = 0;
+				for (Integer I : hist) {
+					histogram[count] = I;
+					if (++count >= histogram.length)
+						break;
+				}
+				bestClue.clueStats.histogramOfAnswerOccurrence = histogram;
+			}
+		}
+        return bestClue;
+	}
 
     /**
      * <ol>
@@ -194,36 +443,23 @@ public class ArchiveCluer extends Cluer {
         if(answer == null){
             log.warn("Unexpected arguments!! Answer: "+answer+", Evaluators: "+evals);
         }
-        if(endDate == null){
+        if (endDate == null){
             Calendar cal = Calendar.getInstance();
             endDate = cal.getTime();
             log.warn("Initialized end date to "+endDate);
         }
-        if(startDate == null){
+        if (startDate == null){
             Calendar cal = new GregorianCalendar();
             cal.set(1960, 0, 1);
             startDate = cal.getTime();
             log.warn("Initialized start date to "+startDate);
         }
 
-        if(evals == null || evals.size()==0) {
-            evals = new ArrayList<>();
-            //default tuned params
-            evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f,-20.0f,0f}));
-            evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f,7.0f,7.0f}));
-            evals.add(new ClueEvaluator.DirtEvaluator(new float[]{-20.0f}));
-            evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
-            evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f,-20.0f}));
-            evals.add(new ClueEvaluator.EmailDocumentEvaluator(new float[]{-0.5f,5.0f}));
-            float[] params = new float[]{0.0f,0.0f,10.0f,10.0f};
-            List<String[]> lists = new ArrayList<>();
-            lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
-            lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
-            lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder".split("\\s*,\\s*"));
-            lists.add("he,she,i,me,you".split("\\s*,\\s*"));
-            evals.add(new ClueEvaluator.ListEvaluator(params, lists));
-        }
-        boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
+		if (evals == null || evals.size()==0) {
+			evals = getDefaultEvals();
+		}
+
+		boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);
         if(questionType == QuestionType.FILL_IN_THE_BLANK)
             docs = archive.docsForQuery("\"" + answer + "\"", Indexer.QueryType.ORIGINAL); // look up inside double quotes since answer may contain blanks
         else{
@@ -300,14 +536,7 @@ public class ArchiveCluer extends Cluer {
 				List<String> namesInMessage = archive.getNamesForDocId(ed.getUniqueId(), Indexer.QueryType.ORIGINAL);
 				if (namesInMessage.size() > 10)
 					docSentimentScore /= namesInMessage.size(); 
-	
-				Set<String> namesSet = new LinkedHashSet<String>();
-				for (String name: namesInMessage)
-					namesSet.add( Util.canonicalizeSpaces(name.toLowerCase()));
-	
-				if (!namesSet.contains(Util.canonicalizeSpaces(answer.toLowerCase())))
-					docSentimentScore /= 10;
-	
+
 				// check if the answer is part of the name of a person on this message
 				boolean answerPartOfRecipientName = false;
 				for (String addr: ed.getAllAddrs())
@@ -433,7 +662,7 @@ public class ArchiveCluer extends Cluer {
                     }
                     if(dirty)
                         continue;
-                    float clueScore = scoreClue(clue, questionType, answer,evals, startDate, endDate, tabooNamesSet, nerModel, archive);
+                    float clueScore = scoreClueByEvalRules(clue, answer, evals, nerModel, archive);
 					clueScore += linesBoost;
 
 					// a small boost for sentences earlier in the message -- other things being equal, they are likely to be more important
@@ -571,7 +800,7 @@ public class ArchiveCluer extends Cluer {
 	
 	// returns a score for the given string as a clue. this does not take into account the doc s is a part of. 
 	// note s is not lower-cased
-	public static float scoreClue(Clue clue, QuestionType questionType, String answer, List<ClueEvaluator> evals, Date startDate, Date endDate, Set<String> tabooNames,NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
+	public static float scoreClueByEvalRules(Clue clue, String answer, List<ClueEvaluator> evals, NERModel nerModel, Archive archive) throws ClassCastException, IOException, ClassNotFoundException
 	{
 //		String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
 //		String s = clue.getFullSentenceOriginal();
@@ -597,10 +826,10 @@ public class ArchiveCluer extends Cluer {
 
 		double score = 0;
         for(ClueEvaluator eval: evals)
-            score = eval.computeScore(score, questionType, clue,answer, startDate, endDate, tabooNames,nerModel, archive);
+            score = eval.computeScore(score, clue, answer, nerModel, archive);
 
         //log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
-		log.info("Score: "+score+" "+clue.clueStats);
+        // log.info("Score: "+score+" "+clue.clueStats);
         return (float)score;
 	}
 

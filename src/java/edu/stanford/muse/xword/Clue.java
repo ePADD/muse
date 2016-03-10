@@ -14,7 +14,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Util;
 
 /* a committed clue, including how its displayed, any url's, any metadata about the clue etc */
-public class Clue implements Serializable {
+public class Clue implements Serializable, Comparable<Clue> {
 	class MyAddr implements Serializable { public final static long serialVersionUID = 1L; String email, personal; } // little class because Address does not have a default constructor #!#*($. so these fields can't really be relied upon
 	
 	public final static long serialVersionUID = 8699239120657874242L;
@@ -86,9 +86,16 @@ public class Clue implements Serializable {
         public String toString(){
             return "namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost;
         }
+
 	}
 	
 	public String refText;
+
+	public int compareTo(Clue other) {
+		if (other.clueStats.finalScore == this.clueStats.finalScore)
+			return 0;
+		return ((other.clueStats.finalScore - this.clueStats.finalScore) > 0) ? 1 : -1;
+	}
 
 	public long date; 
 	MyAddr to[], cc[], bcc[], from[]; 

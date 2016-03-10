@@ -51,7 +51,7 @@
 			// create a new study from the current archive, this is for debug only
 			MemoryStudy.UserStats us = new MemoryStudy.UserStats("<unk>", "<unk>", "<unk>", "<unk>", "<unk>", "<unk>", "<unk>", request.getRemoteAddr().toString(), request.getHeader("User-Agent"));
 			currentStudy = new MemoryStudy(us);
-			currentStudy.generateQuestions(archive, nerModel, (Collection<EmailDocument>) session.getAttribute("emailDocs"), lex, numQ, true);
+			currentStudy.generatePersonNameQuestions(archive, nerModel, (Collection<EmailDocument>) session.getAttribute("emailDocs"), lex, numQ);
 			session.setAttribute("study", currentStudy);
 		}
 		currentStudy.recordStartTime();
@@ -115,7 +115,6 @@
 <script src="../js/muse.js"></script>
 <link rel="stylesheet" href="css/tester.css" />
     <link rel="icon" href="images/ashoka-favicon.gif">
-    <link href="../css/fonts/font-awesome/css/font-awesome.css" rel="stylesheet">
     <link href="../css/fonts/font-awesome/css/font-awesome-4.3.min.css" rel="stylesheet">
 
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">

@@ -102,7 +102,7 @@
                     Collection<EmailDocument> allDocs = (Collection<EmailDocument>) session.getAttribute("emailDocs");
                     int numQ = HTMLUtils.getIntParam(request, "n", 4); //should be 4 by default
 
-                    currentStudy.generateQuestions(archive, nerModel, allDocs, lex, numQ, true);
+                    currentStudy.generatePersonNameQuestions(archive, nerModel, allDocs, lex, numQ);
                     resultPage = "memorystudy/welcome";
                     JSPHelper.log.info("Generated #"+currentStudy.getQuestions().size()+" questions");
                     Map<String,NameInfo>names = NameTypes.computeNameMap(archive, allDocs);
