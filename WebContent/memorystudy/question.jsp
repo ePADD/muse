@@ -45,7 +45,7 @@
 
 	if (userAnswer == null) {
 		// no answer => this is the first question
-		if (currentStudy == null) 
+		if (currentStudy == null || request.getParameter("newStudy") != null)
 		{
             NERModel nerModel = (NERModel)session.getAttribute("ner");
 			// create a new study from the current archive, this is for debug only

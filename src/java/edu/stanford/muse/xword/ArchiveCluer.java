@@ -150,11 +150,6 @@ public class ArchiveCluer extends Cluer {
             return clues[0];
     }
 
-	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evals,  NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
-		Clue clue = createPersonNameClues(c, evals, nerModel, startDate, endDate, numSentences, 1, archive);
-        return clue;
-	}
-
 	public enum QuestionType{
         FILL_IN_THE_BLANK, GUESS_CORRESPONDENT;
     };
@@ -194,7 +189,7 @@ public class ArchiveCluer extends Cluer {
 	 * @param numSentences - Number of sentences in the clue
 	 * @param maxClues - maximum number of high scoring clues returned
 	 * */
-	public Clue createPersonNameClues(Contact c, List<ClueEvaluator> evaluationRules, NERModel nerModel, Date startDate, Date endDate, int numSentences, int maxClues, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evaluationRules, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		if (evaluationRules == null || evaluationRules.size()==0) {
 			evaluationRules = getDefaultEvals();

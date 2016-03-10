@@ -24,12 +24,14 @@ if (!MemoryStudy.anyCodesAvailable()) {
 	JSPHelper.log.info("NOC: no more codes available");
 %>
 <html>
+<head>
+	<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css" />
+	<link rel="stylesheet" href="memorystudy/css/tester.css" type="text/css" />
+</head>
 <body>
-<div style="margin:10%;font-size:12pt">
-Sorry, but all available codes have been used up.<br/>
-Please sign up for our mailing list 
-<a href="https://mailman.stanford.edu/mailman/listinfo/memorystudy" target="_blank" >here</a> to be notified about future studies.
-
+<div class="box">
+	Sorry, but all available codes have been used up.<br/>
+	Please email cell@ashoka.edu.in to be notified about future studies.
 </div>
 </body>
 </html>

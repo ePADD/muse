@@ -563,7 +563,7 @@ public class MemoryStudy implements Serializable{
                 latestDate = ed.date;
         }
         JSPHelper.log.info ("In " + docs.size() + " messages, earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate)
-                        + "latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+                        + " latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
 
         // compute contactToLatestDate that contact has been seen on
         for (Document doc : docs) {
@@ -581,7 +581,7 @@ public class MemoryStudy implements Serializable{
             }
 		}
 
-		log.info("We are considering #" + contactToLatestDate.size() + " contacts");
+		log.info("We are considering " + contactToLatestDate.size() + " contacts");
 
         Date currentDate = new Date();
         List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, currentDate); // should latestDate be today's date instead?
@@ -627,13 +627,14 @@ public class MemoryStudy implements Serializable{
             intervalToContacts.put(interval, c);
         }
 
-        for (int interval: intervalToContacts.keys()) {
+        log.info ("Interval information (interval 0 is the most recent):");
+        for (int interval: intervalToContacts.keySet()) {
             Collection<Contact> contacts = intervalToContacts.get(interval);
             int nContactsForThisInterval = (contacts == null) ? 0 : contacts.size();
             log.info ("In interval " + interval + " there are " + Util.pluralize (nContactsForThisInterval, "candidate contact"));
         }
 
-        for (int interval: intervalToContacts.keys()) {
+        for (int interval: intervalToContacts.keySet()) {
             Date intervalStart = intervals.get(interval).getFirst();
             Date intervalEnd = intervals.get(interval).getSecond();
             Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(interval);
@@ -646,9 +647,9 @@ public class MemoryStudy implements Serializable{
                 if (name.length() < 2) // could also check if alphanumberic only
                     continue outer;
 
-                // ignore contact if name does not contain all alphabets. Even a period is not allowed.
+                // ignore contact if name does not contain all alphabets. Even a period is not allowed. only space is allowed.
                 for (char ch : name.toCharArray()) {
-                    if (!Character.isAlphabetic(ch))
+                    if (!Character.isAlphabetic(ch) && !Character.isSpaceChar(ch))
                         continue outer;
                 }
 
