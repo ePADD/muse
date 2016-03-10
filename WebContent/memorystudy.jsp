@@ -44,6 +44,7 @@ if (!found) {
 	<html>
 	<head>
 		<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css"/>
+		<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 		<link rel="icon" href="images/ashoka-favicon.gif">
 	</head>
 	<body>
@@ -143,7 +144,7 @@ $(document).ready(function() {
 
 <script type="text/javascript" src="https://apis.google.com/js/client.js?onload=handleClientLoad"></script>
 
-<title>Muse Login</title>
+<title>CELL Login</title>
 </head>
 <!-- 
 <body style="background-color: #FFBB56">
@@ -232,9 +233,7 @@ function accountTypeChanged(e)
 <div id="main"> <!-- style="margin-top:200px;position:relative;width:1200px;overflow:hidden" -->
 <input style="display:none" id="dateRange" name="dateRange" value="<%=edu.stanford.muse.email.Filter.getDateRangeForLast1Year() %>"/>
 
-<h1 style="color:#ffffff;text-align:center">Memory Study Login</h1>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<p>
+<h1 style="color:#ffffff;text-align:center;font-family:Allura">Cognitive experiments with Life-Logs</h1>
 
 <% String error = (String) JSPHelper.getSessionAttribute(session, "loginErrorMessage");
 if (!Util.nullOrEmpty(error))
@@ -251,7 +250,6 @@ if (dateRange == null)
 <div class="boxorange" style="font-size:11pt">
 This step will generate questions for you and can take 5 to 15 minutes, depending on your volume of email. 
 You can do other things while you wait, but please do not close this browser window.
-<br>
 <div class="login-account">
 <div class="styled-select">
 <select style="font-size:11pt" class="accountType" name="accountType0" id="accountType0">

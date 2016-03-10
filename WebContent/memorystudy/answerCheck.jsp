@@ -51,7 +51,7 @@ for (MemoryQuestion mq : study.getQuestions()) {
 			<option value="1">I feel like I should have remembered this name</option>
 			<option value="2">My answer is essentially correct</option>
 			<option value="3">I'm unlikely to have remembered this person</option>
-			<option value="4">the clue was not good enough to trigger the memory of this email</option>
+			<option value="4">The clue was not good enough to trigger the memory of this email</option>
 		</select>
 	<br/><hr/>
 <% } %>

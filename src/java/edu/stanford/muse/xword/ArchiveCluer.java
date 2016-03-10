@@ -153,7 +153,15 @@ public class ArchiveCluer extends Cluer {
             return clues[0];
     }
 
-    public enum QuestionType{
+	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evals, Set<String> tabooClues, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+		Clue[] clues = createPersonNameClues(c, evals, tabooClues, nerModel, startDate, endDate, numSentences, 1, archive);
+		if(clues==null || clues.length==0)
+			return null;
+		else
+			return clues[0];
+	}
+
+	public enum QuestionType{
         FILL_IN_THE_BLANK, GUESS_CORRESPONDENT;
     };
 

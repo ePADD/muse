@@ -496,7 +496,214 @@ public class MemoryStudy implements Serializable{
 		// log the questions as well, just in case we don't get to the final point due to user fatigue or crashes
 		logStats("questions.final");
 	}
-	
+
+    // Compute date intervals
+    private static List<Pair<Date, Date>>  computeDateIntervals(Date earliestDate, Date latestDate) {
+        int DAYS_PER_INTERVAL = 30;
+        List<Pair<Date, Date>> intervals = new ArrayList<Pair<Date, Date>>();
+        {
+            JSPHelper.log.info("computing time intervals");
+            Date closingDate = latestDate;
+
+            JSPHelper.log.info("closing = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(closingDate));
+            while (earliestDate.before(closingDate)) {
+                Calendar cal = new GregorianCalendar();
+                cal.setTime(closingDate);
+                // scroll to the beginning of this month
+                cal.set(Calendar.HOUR_OF_DAY, 23);
+                cal.set(Calendar.MINUTE, 59);
+                cal.set(Calendar.SECOND, 59);
+                Date endDate = cal.getTime();
+
+                cal.add(Calendar.DATE, (1 - DAYS_PER_INTERVAL)); // 1- because we want from 0:00 of first date to 23:59 of last date
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                Date startDate = cal.getTime();
+
+                intervals.add(new Pair<Date, Date>(startDate, endDate));
+                // ok we got an interval
+
+                // closing date for the next interval is 1 day before endDate
+                cal.add(Calendar.DATE, -1);
+                closingDate = cal.getTime();
+            }
+        }
+        return intervals;
+    }
+
+	/** Generates person names tests from the given archive. @throws IOException */
+	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int maxInt) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+		this.archive = archive;
+		if (allDocs == null)
+			allDocs = (Collection) archive.getAllDocs();
+		questions = new ArrayList<>();
+		ArchiveCluer cluer = new ArchiveCluer(null, archive, nerModel, null, lex);
+
+		tabooCluesSet = new LinkedHashSet<>();
+		archive.assignThreadIds();
+
+		List<Document> docs = archive.getAllDocs();
+		Multimap<Contact, EmailDocument> contactToMessages = LinkedHashMultimap.create();
+		Multimap<Contact, Long> contactToThreadIds = LinkedHashMultimap.create();
+
+        int di = 0;
+
+		// sort by date
+		Collections.sort(docs);
+
+		Date earliestDate = null, latestDate = null;
+        Map<Contact, Date> contactToLatestDate = new LinkedHashMap<>();
+
+        // compute contactToLatestDate that contact has been seen on
+        for (Document doc : docs) {
+			EmailDocument ed = (EmailDocument) doc;
+			if (earliestDate == null || ed.date.before(earliestDate))
+				earliestDate = ed.date;
+			if (latestDate == null || ed.date.after(latestDate))
+				latestDate = ed.date;
+            //do not consider mailing lists
+            if(ed.sentToMailingLists!=null && ed.sentToMailingLists.length>0)
+                continue;
+            //discard doc if it is not a sent mail
+            if((ed.sentOrReceived(archive.addressBook) & EmailDocument.SENT_MASK)==0)
+                continue;
+
+            for (Contact c: ed.getParticipatingContactsExceptOwn(archive.addressBook)) {
+                Date currentLatestDate = contactToLatestDate.get(c);
+                if (currentLatestDate == null || currentLatestDate.before(ed.date))
+                    contactToLatestDate.put(c, ed.date);
+                contactToMessages.put(c, ed);
+                contactToThreadIds.put(c, ed.threadID);
+            }
+		}
+
+		log.info("Considered #" + contactToLatestDate.size() + " contacts");
+		JSPHelper.log.info ("earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate));
+		JSPHelper.log.info ("latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+
+        List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, latestDate); // should latestDate be today's date instead?
+        JSPHelper.log.info ("done computing intervals, #time intervals: " + intervals.size());
+        for (Pair<Date, Date> p: intervals)
+            JSPHelper.log.info ("Interval: " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()));
+
+		// initialize clueInfos to empty lists
+		List<ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
+		for (int i = 0; i < intervals.size(); i++) {
+			clueInfos[i] = new ArrayList<ClueInfo>();
+		}
+
+        Multimap<Integer, Contact> intervalToContacts = LinkedHashMultimap.create();
+
+        //nSent is the number of sentences allowed in a clue text
+		int nSent = 2;
+		for (Contact c: contactToLatestDate.keySet()) {
+            Date lastSeenDate = contactToLatestDate.get(c);
+
+            // which interval does this date belong to? we'll assign this contact in that interval in the intervalToContacts map
+            int interval = -1;
+            Date intervalStart = null, intervalEnd = null;
+            {
+                int i = 0;
+                for (Pair<Date, Date> p : intervals) {
+                    intervalStart = p.getFirst();
+                    intervalEnd = p.getSecond();
+
+                    if ((intervalStart.before(lastSeenDate) && intervalEnd.after(lastSeenDate)) || intervalStart.equals(lastSeenDate) || intervalEnd.equals(lastSeenDate)) {
+                        interval = i;
+                        break;
+                    }
+                    i++;
+                }
+            }
+
+            if (interval < 0 || interval == intervals.size()) {
+                JSPHelper.log.info("What, no interval!? for " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate));
+                continue;
+            }
+
+            intervalToContacts.put(interval, c);
+        }
+
+        for (int interval: intervalToContacts.keys()) {
+            Collection<Contact> contacts = intervalToContacts.get(interval);
+            int nContactsForThisInterval = (contacts == null) ? 0 : contacts.size();
+            log.info ("In interval " + interval + " there are " + Util.pluralize (nContactsForThisInterval, "candidate contact"));
+        }
+
+        for (int interval: intervalToContacts.keys()) {
+            Date intervalStart = intervals.get(interval).getFirst();
+            Date intervalEnd = intervals.get(interval).getSecond();
+            Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(currentInterval);
+
+            for (Contact c: candidateContactsForThisInterval) {
+                Clue clue = cluer.createClue(fullAnswer, ArchiveCluer.QuestionType.GUESS_CORRESPONDENT, null, tabooCluesSet, null, intervalStart, intervalEnd, nSent, archive);
+                clue.
+            }
+
+            List<Integer> lengthList = Crossword.convertToWord(c.pickBestName()).getSecond();
+            String lengthDescr = "";
+            if (lengthList.size() > 1)
+                lengthDescr += Integer.toString(lengthList.size()) + " words: ";
+
+            for (Integer i : lengthList) {
+                lengthDescr += Util.pluralize(i, "letter") + ", ";
+            }
+            lengthDescr = lengthDescr.substring(0, lengthDescr.length() - 2); //subtract the extra comma.
+        }
+
+			ClueInfo ci = new ClueInfo();
+			ci.lastSeenDate = lastSeenDate;
+			ci.nMessages = contactToThreadIds.get(c).size();;
+			ci.nThreads = contactToThreadIds.get(c).size();
+
+			//TODO: we are doing default initialisation of evaluators by setting it to null below, it is more appropriate to consider it as an argument for this method
+			if(clue!=null)
+				ci.clues = new Clue[]{clue};
+
+			if(ci.clues == null || ci.clues.length == 0 || clue==null){
+				JSPHelper.log.warn("Did not find any clue for: "+fullAnswer);
+			}
+			else{
+				//is the times value of the clue important?
+				questions.add(new MemoryQuestion(this,fullAnswer,clue, 1, lengthDescr));
+				nvalidclues++;
+				//makes sure that the clue with the same statement is not generated again
+				tabooCluesSet.add(clue.clue);
+			}
+			clueInfos[interval].add(ci);
+		}
+		log.info("Found valid clues for "+nvalidclues+" answers");
+		JSPHelper.log.info("Found valid clues for "+nvalidclues+" answers");
+
+		log.info("Top candidates are:");
+		for (MemoryQuestion mq: questions)
+			log.info (mq.correctAnswer + " times=" + mq.stats.nMessagesWithAnswer);
+
+		// sort q's by clue score
+		Collections.sort(questions);
+
+		log.info("Based on clue score, top answers:");
+		for (MemoryQuestion mq: questions)
+			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
+
+		// now we have up to 2*N questions, sorted by cluescore.
+		// drop ones that are prefix/suffix of another, and cap to N
+		int prev_size = questions.size();
+
+		int new_size = questions.size();
+
+		log.info ("#questions before prefix-suffix elim: " + prev_size + " after: " + new_size);
+
+		int count = 0;
+		for (MemoryQuestion mq: questions) {
+			mq.setQuestionNum(count++);
+		}
+
+		// log the questions as well, just in case we don't get to the final point due to user fatigue or crashes
+		logStats("questions.final");
+	}
+
 	private static void assignTypes(Collection<MemoryQuestion> questions, Map<String, NameInfo> nameMap) throws IOException
 	{
 		// assign categories. we have to assemble all the terms we want to look up together for efficient lookup..

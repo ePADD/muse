@@ -18,7 +18,8 @@ body {
 		}	
 		
 .boxorange {
-		background: #00A3CC;
+		background: #faf6e3;
+		color: black;
 		-moz-border-radius: 5px;
 		-webkit-border-radius: 5px;
 		-khtml-border-radius: 5px;
@@ -79,11 +80,11 @@ input[type="button"]{
 }
 					
 input[type="button"]:hover{
-	background: #33aa33;
+	background: #a70e13;
 	cursor: pointer;
 }
 input[type="button"]:active{
-	background: #33aa33;
+	background: #a70e13;
 }
 .title{
 	color:#ffffff;

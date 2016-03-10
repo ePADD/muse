@@ -1,0 +1,14 @@
+@font-face {
+  font-family: 'Allura';
+  font-weight: 400;
+  font-style: normal;
+  src: url('/muse/fonts/Allura-regular/Allura-regular.eot');
+  src: url('/muse/fonts/Allura-regular/Allura-regular.eot?#iefix') format('embedded-opentype'),
+       local('Allura'),
+       local('Allura-regular'),
+       url('/muse/fonts/Allura-regular/Allura-regular.woff2') format('woff2'),
+       url('/muse/fonts/Allura-regular/Allura-regular.woff') format('woff'),
+       url('/muse/fonts/Allura-regular/Allura-regular.ttf') format('truetype'),
+       url('/muse/fonts/Allura-regular/Allura-regular.svg#Allura') format('svg');
+}
+
