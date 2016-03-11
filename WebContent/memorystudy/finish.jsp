@@ -37,8 +37,9 @@ You can contact stanfordmemorystudy@gmail.com in case you have any questions. Th
 <% } %>
 
 	<p>
-	If you know other people who may be eligible for this study and are interested, please refer them to http://cell.ashoka.edu.in.
-	<p>
+	If you know other people who may be eligible for this study and are interested, please refer them to http://cell.ashoka.edu.in. To hear about scientific publications resulting from this study, please contact us at cell@ashoka.edu.in
+
+    <p>
 
 	If you logged in with a Google account, please go to <a target="_blank" href="https://security.google.com/settings/security">this page</a> and revoke Oauth access for Muse under "Connected applications and sites" -&gt; "Review permissions".
 	If you used a Yahoo account, nothing further needs to be done.
@@ -48,10 +49,11 @@ You can contact stanfordmemorystudy@gmail.com in case you have any questions. Th
 	and your comments will be very useful to us. Please also indicate if you would like to participate in future studies.
     <p>
 
-	<a href="http://goo.gl/forms/DXZxkx7LnY">Click here</a> to send us feedback.
-
+	Please fill the feedback form below.
     <p>
-        To hear about scientific publications resulting from this study, please contact us at cell@ashoka.edu.in
+
+    <iframe src="https://docs.google.com/forms/d/1F4TsPMbAGUrumw-zgSEdr-g1FZn6NS2jCCmJzhhIZ4E/viewform?embedded=true" width="760" height="500" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
+
 
 </div>
 <br>
