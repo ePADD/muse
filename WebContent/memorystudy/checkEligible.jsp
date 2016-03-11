@@ -17,12 +17,6 @@ if (ageint < 18) {
 
 // yes/no questions
 
-String inus_response = (String) request.getParameter("residenceinus");
-if (!"yes".equalsIgnoreCase(inus_response)) {
-	redirect = false;
-	message = "Unfortunately, the scope of our study is currently limited to those living within the United States.\n";
-}
-
 String lang_response = (String) request.getParameter("emaillang");
 if (!"yes".equalsIgnoreCase(lang_response)) {
 	redirect = false;
@@ -45,7 +39,8 @@ session.setAttribute("gender", gender);
 String education = (String) request.getParameter("education");
 session.setAttribute("education", education);
 String profession = (String) request.getParameter("profession");
-profession = profession.replaceAll("\\s", "_");
+if (profession != null)
+	profession = profession.replaceAll("\\s", "_");
 session.setAttribute("profession", profession);
 String ethnicity = (String) request.getParameter("ethnicity");
 session.setAttribute("ethnicity", ethnicity);
@@ -53,13 +48,18 @@ session.setAttribute("ethnicity", ethnicity);
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="css/memoryjsp.css" type="text/css" />
-<link rel="icon" href="images/stanford-favicon.gif">
+	<link rel="icon" href="../images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="css/memory.css"/>
 <title>Not Eligible</title>
 </head>
 <body>
 <div class="box">
-<h1 class="title">Sorry, you're not eligible</h1>
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+
+
+	<h1>Sorry, you're not eligible.</h1>
 	<br>
 	<%= message %>
 	<p class="bold">Please go back to the  <a href="eligibilitypage.html">eligibility page</a>.</p>

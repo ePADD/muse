@@ -49,7 +49,8 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 		int certainty = -1;
 		int memoryType = -1;
-		public Date recency = null;
+		public Date guessedDate = null;
+		public boolean onlyMonthAndYearGuessed = false;
 
 		// stats computed when answer is wrong
 		public boolean letterCountCorrect; // (only populated if the answer is wrong)
@@ -106,16 +107,18 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
      * @param hintused - indicating if the hint is used
      * @param certainty - A rating on how certain the user is about the answer
      * @param memoryType - A rating on how well the user can recall the context
-     * @param recency - The user's guess on when the particular sentence is compiled*/
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date recency) {
+     * @param guessedDate - The user's guess on when the particular sentence is compiled
+	 * */
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean onlyMonthAndYearGuessed) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
 		
 		this.stats.userAnswerCorrect = isUserAnswerCorrect();
 		this.stats.certainty = certainty;
 		this.stats.memoryType = memoryType;
-		this.stats.recency = recency;
+		this.stats.guessedDate = guessedDate;
 		this.stats.hintused = hintused;
+		this.stats.onlyMonthAndYearGuessed = onlyMonthAndYearGuessed;
 		this.stats.millis = millis;
 
 		boolean userAnswerPartOfAnyAddressBookName = study.archive.addressBook.isStringPartOfAnyAddressBookName(userAnswer);

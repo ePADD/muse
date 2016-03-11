@@ -71,10 +71,16 @@
 		long millis = (long) HTMLUtils.getIntParam(request, "millis", -1);
 		int memory = HTMLUtils.getIntParam(request, "memory", -1);
 		Date recency = null;
+        boolean onlyMonthAndYearGuessed = false;
         if(!"on".equals(request.getParameter("noTime"))) {
             Calendar cal = new GregorianCalendar();
             try {
-                cal.set(Integer.parseInt(request.getParameter("timeYear")), Integer.parseInt(request.getParameter("timeMonth")) - 1, Integer.parseInt(request.getParameter("timeDate")));
+                int dd = Integer.parseInt(request.getParameter("timeDate"));
+                if (dd == -1) {
+                    dd = 15; // just pick a midpoint
+                    onlyMonthAndYearGuessed = true;
+                }
+                cal.set(Integer.parseInt(request.getParameter("timeYear")), Integer.parseInt(request.getParameter("timeMonth")) - 1, dd);
             } catch (Exception e) {
                 Util.print_exception(e, JSPHelper.log);
             }
@@ -102,7 +108,7 @@
             }
         }
 		
-		currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency);
+		currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency, onlyMonthAndYearGuessed);
 		currentStudy.iterateQuestion();
 		boolean finished = currentStudy.checkForFinish();
 		if (finished){
@@ -119,11 +125,11 @@
 <html>
 <meta charset="utf-8">
 <head>
-<script src="../js/jquery/jquery.js"></script>
-<script src="../js/muse.js"></script>
-<link rel="stylesheet" href="css/tester.css" />
-    <link rel="icon" href="images/ashoka-favicon.gif">
+    <script src="../js/jquery/jquery.js"></script>
+    <script src="../js/muse.js"></script>
     <link href="../css/fonts/font-awesome/css/font-awesome-4.3.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/memory.css" />
+    <link rel="icon" href="images/ashoka-favicon.gif">
 
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Research Study on Memory</title>
@@ -149,7 +155,7 @@
 			<p>
 			<div id="hint-question" class="question" style="display: none">
 				<%
-                    q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()) + "</p>";
+                    q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest().replaceAll(" ", "&nbsp;")) + "</p>";
 				    out.println(q);
                 %>
 			</div>
@@ -162,7 +168,7 @@
             <div style="margin-left: 5%">
                 <div>
                 <i class="fa fa-caret-right"></i> Type here:
-                <input spellcheck="false" style="border:solid 2px #082041; background: #082041"  type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
+                <input spellcheck="false" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
                 <span id="answerLength">
                     [<%
                         out.print(questiontodisplay.lengthDescr);

@@ -55,13 +55,12 @@ if(request.getLocalPort() == 8043) {
   "http://www.w3.org/TR/html4/loose.dtd">
 <html lang="en">
 <head>
-
-<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
-<link rel="stylesheet" href="memorystudy/css/screen.css" type="text/css" />
-<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+	<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+	<title>Screening</title>
 	<link rel="icon" href="images/ashoka-favicon.gif">
-<jsp:include page="css/css.jsp"/>
-<title>Screening</title>
+
+	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
+	<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css" />
 <script type="text/javascript" src="js/jquery/jquery.js"></script>
 <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
 <script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>

@@ -3,13 +3,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="css/tester.css"/>
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<title>Timed out</title>
-<link rel="icon" href="images/stanford-favicon.gif">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<link rel="icon" href="images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="css/memory.css"/>
+	<link rel="stylesheet" href="../css/fonts.css"/>
+	<title>CELL error</title>
 </head>
 <body>
 <div class="box" style="padding:50px">
+
 	We're sorry, the test has timed out or another error has occurred.<br/>
 	Please go back, retry, and contact us at cell@ashoka.edu.in if you still have trouble.
 

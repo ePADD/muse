@@ -3,10 +3,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<link rel="stylesheet" href="css/tester.css" type="text/css" />
-<link rel="icon" href="images/stanford-favicon.gif">
-<title>Example Result</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="icon" href="images/ashoka-favicon.gif">
+    <title>Example Result</title>
+    <link rel="stylesheet" href="css/memory.css"/>
 </head>
 <body>
 <div class="box">

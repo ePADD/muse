@@ -9,7 +9,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<link rel="icon" href="images/stanford-favicon.gif">
+<link rel="icon" href="../images/ashoka-favicon.gif">
 <title>Stats Page</title>
 <style>
 td { 

@@ -812,9 +812,9 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** Takes in user response and whether a hint was used. Evaluates whether answer was correct, assigns points, and logs information about the question response. */
-	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date recency) {
+	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean onlyMonthAndYearGuessed) {
 		MemoryQuestion mq = questions.get(listLocation);
-		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, recency);
+		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, guessedDate, onlyMonthAndYearGuessed);
 	}
 	
 	/*checks whether the test is done. if it is, it outputs the final log info and does time calculations*/

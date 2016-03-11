@@ -5,11 +5,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Study Complete</title>
-<link rel="stylesheet" href="css/memory.css" type="text/css" />
-	<link rel="stylesheet" href="css/tester.css" type="text/css" />
-<link rel="icon" href="images/ashoka-favicon.gif">
+    <meta charset="UTF-8">
+    <title>Study Complete</title>
+    <link rel="stylesheet" href="css/memory.css" type="text/css" />
+    <link rel="icon" href="images/ashoka-favicon.gif">
 </head>
 <body>
 <div class ="box">

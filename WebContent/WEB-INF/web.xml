@@ -228,15 +228,6 @@
     </servlet-mapping>
 
 	<servlet>
-		<servlet-name>answers</servlet-name>
-		<jsp-file>/memorystudy/answers.jsp</jsp-file>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>answers</servlet-name>
-		<url-pattern>/memorystudy/answers</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
 		<servlet-name>examplehandler</servlet-name>
 		<jsp-file>/memorystudy/examplehandler.jsp</jsp-file>
   	</servlet>

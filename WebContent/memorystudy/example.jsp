@@ -6,16 +6,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<script src="../js/jquery/jquery.js"></script>
-<script src="../js/muse.js"></script>
-
-<link href="intro.js-0.5.0/example/assets/css/demo.css" rel="stylesheet">
-<link href="intro.js-0.5.0/introjs.css" rel="stylesheet">
-<link rel="stylesheet" href="css/tester.css"/>
-<link rel="icon" href="images/ashoka-favicon.gif">
+    <meta charset="utf-8">
+    <script src="../js/jquery/jquery.js"></script>
+    <script src="../js/muse.js"></script>
     <link href="../css/fonts/font-awesome/css/font-awesome.css" rel="stylesheet">
     <link href="../css/fonts/font-awesome/css/font-awesome-4.3.min.css" rel="stylesheet">
+
+    <link href="intro.js-0.5.0/example/assets/css/demo.css" rel="stylesheet">
+    <link href="intro.js-0.5.0/introjs.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/memory.css"/>
+    <link rel="icon" href="images/ashoka-favicon.gif">
 
     <title>Example</title>
 <script>
@@ -169,9 +170,9 @@ $(function() {
             </div>
     </div>
 
-    <div data-step="9" data-intro="Once you've answered all parts of the question, click on SUBMIT. If you do not wish to attempt this question at all, you can click GIVE UP at any point and move on to the next question">
-        <button class="submitButton" style="margin-left: 20%" type="submit" value="Submit">Submit</button>
-        <button class="submitButton" style="margin-left: 20%" type="submit" value="GiveUp">Give up</button>
+    <div data-step="9" data-intro="Once you've answered all parts of the question, click on the Submit button. If you do not wish to attempt this question at all, you can click the Give up button at any point and move on to the next question">
+        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
+        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Give up</button>
     </div>
 		<script>
 		function replacehint(){

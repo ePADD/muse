@@ -10,8 +10,8 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<link rel="icon" href="images/stanford-favicon.gif">
-<link rel="stylesheet" href="css/tester.css"/>
+<link rel="icon" href="images/ashoka-favicon.gif">
+<link rel="stylesheet" href="css/memory.css"/>
 <title>Answers Page</title>
 </head>
 <body>
@@ -54,8 +54,8 @@ You are welcome to save or print a copy of this page for your records.
 			userAnswer = "";
 
 		String guessedDate;
-		if (mq.stats.recency !=null)
-			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat("dd MMMM yyyy").format(mq.stats.recency) + ")";
+		if (mq.stats.guessedDate != null)
+			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat(mq.stats.onlyMonthAndYearGuessed ? "dd MMMM yyyy" : "MMMM yyyy").format(mq.stats.guessedDate) + ")";
 		else
 			guessedDate = ("(Your guess: no idea)");
 		correctAnswer = Util.canonicalizeSpaces(correctAnswer);

@@ -1,54 +1,9 @@
 html, body, h1, div, fieldset, legend, ol, li {
 	margin: 0;
 	padding: 0;
-	}
-
-body {
-	background-color: #082041; /*#faf6e3;*/
-	color: #ffffff;
-	font-family: "Futura", "Trebuchet MS", sans-serif;
-	font-size: 13px;
-	padding: 20px;
-	}
-
-	h1 {
-		font-size: 28px;
-		margin-bottom: 20px;
-		}	
-		
-.boxorange {
-		background: #faf6e3;
-		color: black;
-		-moz-border-radius: 5px;
-		-webkit-border-radius: 5px;
-		-khtml-border-radius: 5px;
-		margin-left:auto;
-		margin-right:auto;
-		border-radius: 5px;
-		counter-reset: fieldsets;
-		padding: 20px;
-		width: 50%;
-		border: solid 2px rgba(255,255,255,0.3);
-	position:relative;
 }
 
-.styled-select select {
-   padding: 5px 0px 5px 5px;
-   }
-   
-   .styled-select {
-     display:inline;
-   }
-   /*
-  .styled-select {
-   width: 240px;
-   height: 48px;
-   overflow: hidden;
-   background: url(../images/select_box_arrow.jpg) no-repeat right #ddd;
-   border: 1px solid #ccc;
-   }
-   */
-   
+/*
 .textarea {
 	background: #ffffff;
 	border: none;
@@ -61,36 +16,8 @@ body {
 	padding: 5px;
 	width: 200px;
 }
-input[type="button"]{
-				background: #484848;
-				border: none;
-				-moz-border-radius: 8px;
-				-webkit-border-radius: 8px;
-				-khtml-border-radius: 8px;
-				border-radius: 8px;
-				color: #ffffff;
-				display: block;
-				font: 18px Georgia, "Times New Roman", Times, serif;
-				letter-spacing: 1px;
-				margin: auto;
-				padding: 7px 25px;
-				text-shadow: 0 1px 1px #000000;
-				text-transdiv: uppercase;	
-}
-					
-input[type="button"]:hover{
-	background: #a70e13;
-	cursor: pointer;
-}
-input[type="button"]:active{
-	background: #a70e13;
-}
-.title{
-	color:#ffffff;
-	text-align:center;
-	font-family: "Myriad Pro", Courier, Arial, sans-serif;
-	font-variant: small-caps;
-}
+*/
+
 
 /** ashoka colors:
 red: RGB: #a70e13

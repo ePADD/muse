@@ -284,7 +284,7 @@ public class ArchiveCluer extends Cluer {
                     Set<String> nameTokens = new LinkedHashSet<>(Util.tokenize(name.toLowerCase()));
                     candidateClueTokens.retainAll(nameTokens);
 
-					// we'll exclude  single letter initials in someone's name, they can be present as words in the candidate clue
+					// we'll exclude single letter initials in someone's name, they can be present as words in the candidate clue
 					candidateClueTokens = candidateClueTokens.stream().filter(t -> t.length() > 1).collect(Collectors.toSet());
 
 					if (candidateClueTokens.size() > 0) // there is a give away in the clue - at least one word of the name is directly present in it

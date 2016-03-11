@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="css/memoryjsp.css" type="text/css" />
 <script src="../js/jquery/jquery.js"></script>
 <script src="../js/muse.js"></script>
-<link rel="icon" href="images/stanford-favicon.gif">
+<link rel="icon" href="images/ashoka-favicon.gif">
 <title>Finished Signup!</title>
 </head>
 <body>

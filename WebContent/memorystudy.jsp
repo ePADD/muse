@@ -43,13 +43,12 @@ if (!found) {
 %>
 	<html>
 	<head>
-		<link rel="stylesheet" href="memorystudy/css/screen.css" type="text/css"/>
 		<link rel="icon" href="images/ashoka-favicon.gif">
-		<jsp:include page="css/css.jsp"/>
+		<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css"/>
 		<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 	</head>
 	<body>
-		<div class="boxorange">
+		<div class="box">
 			Sorry, your code was not found. Please go back to the <a href ="/muse/memorystudy/loginlanding.html">code submission page</a>.
 		</div>
 	</body>
@@ -94,8 +93,7 @@ if(request.getLocalPort() == 8043) {
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
-	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
-	<jsp:include page="css/css.jsp"/>
+	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/memory.css">
 	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 
 	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
@@ -251,10 +249,11 @@ String dateRange = request.getParameter("dateRange");
 if (dateRange == null)
 	dateRange = edu.stanford.muse.email.Filter.getDateRangeForLast1Year();
 %>
-<div class="boxorange" style="font-size:11pt;position:relative;">
+<div class="box" style="font-size:11pt;position:relative;">
 	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="images/ashoka-logo.png"/>
 	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
 	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+	<br/>
 
 	This step will generate questions for you and can take 5 to 15 minutes, depending on your volume of email.
 You can do other things while you wait, but please do not close this browser window.
