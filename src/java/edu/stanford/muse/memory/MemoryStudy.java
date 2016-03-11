@@ -541,12 +541,11 @@ public class MemoryStudy implements Serializable{
         evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f, 7.0f, 7.0f}));
         evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
         evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f, -20.0f}));
-//		evals.add(new ClueEvaluator.EmailDocumentEvaluator(new float[]{-0.5f, 5.0f}));
-        float[] params = new float[]{0.0f, 0.0f, 10.0f, 10.0f};
+        float[] params = new float[]{5.0f, 0.0f, 10.0f, 0.0f};
         List<String[]> lists = new ArrayList<>();
         lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
         lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
-        lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder".split("\\s*,\\s*"));
+        lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider, decide, dislike, doubt, dream, dream up, expect, fail, fall for, fancy, fathom, feature, feel, find, foresee, forget, forgive, gather, get the idea, get the picture, grasp, hate, have a hunch, have faith in, have no doubt, hypothesize, ignore, image, imagine, infer, invent, judge, keep the faith, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for, ponder, predict, presume, put heads together, rack brains, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose, suspect, swear by, take at one's word, take for granted, trust, understand, vision, visualize, wonder".split("\\s*,\\s*"));
         lists.add("he,she,i,me,you".split("\\s*,\\s*"));
         evals.add(new ClueEvaluator.ListEvaluator(params, lists));
         return evals;

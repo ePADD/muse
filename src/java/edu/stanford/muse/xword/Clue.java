@@ -31,8 +31,7 @@ public class Clue implements Serializable, Comparable<Clue> {
 		public String answerCategory = "none"; // category if name recognized from wikipedia (experimental)
 		boolean containsNonSpecificWords; // starts with non-specific words like this, that, however
 		boolean nameNotInClue; // answer not recognized as a name in the clue (though its present as a name)
-		boolean containsBadName; // contains own or other poor names
-		
+
 		// stats about the clue sentence
 		int namesInClue = -1; // #names in clue. original content only
 		int nSmileys = -1;
@@ -59,6 +58,7 @@ public class Clue implements Serializable, Comparable<Clue> {
 		float sentenceNumBoost; // boost for sentences earlier in the message
 		float docSentimentScore; // overall sentiment score of message
 		float linesBoost; // boost due to # newlines in the sentence. too many newlines => low score because its lists or some abnormal sentence structure
+		float contactScore; // score due to communication pattern with a contact (for person name test only)
 
 		float namesScore; // score due to other names being present in the sentence
 		float exclamationScore; // score boost due to exclamations 
@@ -68,15 +68,7 @@ public class Clue implements Serializable, Comparable<Clue> {
         float sigWordScore;
         float refWordScore;
         float pronounScore;
-        float noisyThreadScore;
-        float timeAnswerScore;
         float questionMarkScore;
-        //boost score for when the recipients is above a certain threshold
-        float recipientScore;
-        //boost score related to number of concversations between two people in a certain interval
-        float nMessageScore;
-        //time difference between first and last mentions of either answer/corr
-        float timeDiff;
         //Reflective words found in the clue
         String refWord = "";
         //first and last mentions of the answer

@@ -27,11 +27,6 @@ import java.util.regex.Pattern;
  */
 public class ClueEvaluator {
     public static Log log = LogFactory.getLog(ClueEvaluator.class);
-    public static List<ClueEvaluator> getDefaultEvaluators(){
-        List<ClueEvaluator> evals;
-        evals = Arrays.asList(new LengthEvaluator(), new EmotionEvaluator(), new NamesEvaluator(), new ListEvaluator(),new EmailDocumentEvaluator());
-        return evals;
-    }
 
     public double computeScore(double score, Clue clue, String answer,  NERModel nerModel, Archive archive){
         return score;
@@ -377,74 +372,6 @@ public class ClueEvaluator {
                 else clue.clueStats.pronounScore = b;
             }
             return score + boost;
-        }
-    }
-
-    /**
-     * Evaluates clue based on the email message the clue is fetched from*/
-    public static class EmailDocumentEvaluator extends ClueEvaluator {
-        float[] params;
-
-        /**
-         * requires params to weigh these features
-         * <ol>
-         *     <li>clues for every other month mentioned score: [this parameter]*frequency of the answer*Number of months between the last mention and the latest</li>
-         *     <li>penalising thread length: score+[this parameter]*(number of sent mails in the thread/thread size)</li>
-         * </ol>
-         * default: [-1.0, 5.0]
-         */
-        public EmailDocumentEvaluator(float[] params) {
-            this();
-            if (params == null || params.length != 2) {
-                log.error("Wrong/improper initialisation of params in " + EmailDocumentEvaluator.class + "!! Required " + 2 + " params");
-            } else {
-                this.params = params;
-            }
-        }
-
-        public EmailDocumentEvaluator(){
-            params = new float[]{-1.0f,5.0f};
-        }
-
-        @Override
-        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
-            if(archive!=null) {
-                //String s = clue.getFullSentenceOriginal();
-                EmailDocument ed = clue.d;
-                Indexer.QueryOptions qo = new Indexer.QueryOptions();
-                qo.setSortBy(Indexer.SortBy.CHRONOLOGICAL_ORDER);
-                String term = "\"" + answer + "\"";
-                log.info("Searching for: " + term);
-                Collection<Document> docs = new ArrayList<>();
-                docs = archive.docsForQuery(term, qo);
-
-                if (docs.size() == 0)
-                    log.error("Something is not right! Did not find: " + answer + " in the index!!");
-                else if (docs.size() == 1) {
-                    log.info("Only one doc with the mention of " + answer);
-                    clue.clueStats.timeAnswerScore = 0;
-                } else if (docs.size() >= 2) {
-                    Date fd = ((EmailDocument) docs.iterator().next()).getDate();
-                    Date ld = fd;
-                    Iterator it = docs.iterator();
-                    while (it.hasNext())
-                        ld = ((EmailDocument) it.next()).getDate();
-
-                    Calendar fc = Calendar.getInstance(), lc = Calendar.getInstance();
-                    fc.setTime(fd);
-                    lc.setTime(ld);
-
-                    //float timeScore = params[0] * docs.size() * (lc.getTime().lc.get(Calendar.MONTH) - fc.get(Calendar.MONTH) + 12 * (lc.get(Calendar.YEAR) - fc.get(Calendar.YEAR)));
-                    double timeDiff = (lc.getTime().getTime() - fc.getTime().getTime()) / (3600.0 * 1000 * 24 * 30);
-                    float timeScore = params[0] * docs.size() * (float) timeDiff;
-                    clue.clueStats.firstMention = fc.getTime();
-                    clue.clueStats.lastMention = lc.getTime();
-                    clue.clueStats.timeAnswerScore = timeScore;
-                    clue.clueStats.timeDiff = (float) timeDiff;
-                    score += timeScore;
-                }
-            }
-            return score;
         }
     }
 

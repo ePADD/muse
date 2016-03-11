@@ -45,10 +45,12 @@ if (!found) {
 	<head>
 		<link rel="stylesheet" href="memorystudy/css/screen.css" type="text/css"/>
 		<link rel="icon" href="images/ashoka-favicon.gif">
+		<jsp:include page="css/css.jsp"/>
+		<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 	</head>
 	<body>
-		<div class="box">
-		Your code was not found. Please go back to the <a href ="/muse/memorystudy/loginlanding.html">code submission page</a>.
+		<div class="boxorange">
+			Sorry, your code was not found. Please go back to the <a href ="/muse/memorystudy/loginlanding.html">code submission page</a>.
 		</div>
 	</body>
 	</html>
@@ -252,7 +254,8 @@ if (dateRange == null)
 <div class="boxorange" style="font-size:11pt;position:relative;">
 	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="images/ashoka-logo.png"/>
 	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
-<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+
 	This step will generate questions for you and can take 5 to 15 minutes, depending on your volume of email.
 You can do other things while you wait, but please do not close this browser window.
 <div class="login-account">
@@ -284,7 +287,7 @@ You can do other things while you wait, but please do not close this browser win
 Dates <input size="30" id="dateRange" name="dateRange" value="<%=dateRange%>"/>
 </span>
 <span style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>">
-#Questions per Interval <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="4"/>
+#Questions per interval <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="4"/>
 </span>
 </td>
 </tr>

@@ -32,7 +32,7 @@ $(function() {
 
 <div class="box">
     <img title="Ashoka University" src="../images/ashoka-logo.png" style="width:50px"/>
-        <span style="float: right;font-size: 30px;color: white;transform:rotate(30deg);background-color:red;position:relative;top:20px;left:10px">
+        <span style="float: right;font-size: 30px;color: white;transform:rotate(30deg);background-color:#a70e13;padding:5px;position:relative;top:20px;left:10px">
             Example
         </span>
 <br/>

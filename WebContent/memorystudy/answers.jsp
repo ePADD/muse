@@ -30,7 +30,11 @@
 			nCorrect++;
 %>
 <div class="box">
-<p>
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+
+	<p>
 Here are your questions and the correct answers. You got <%=nCorrect%> out of <%=study.getQuestions().size()%> correct.
 You are welcome to save or print a copy of this page for your records.
 <p>

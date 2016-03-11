@@ -27,7 +27,7 @@
     <%}
     else {
     %>
-        Looks like you got that wrong. You entered "<%=useranswer%>", but the correct answer was "<%=correctanswer%>".
+        Looks like you got that wrong. You entered "<%=useranswer%>", but the correct answer was Humpty Dumpty.
     <%}
 
     %>

@@ -25,13 +25,17 @@ if (nWrongAnswers == 0) {
 </head>
 <body>
 <div class="box">
-<p>
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+
+	<p>
 	Almost done! We would now like some more information on the answers that the computer has marked as incorrect.
 	It is possible that your answer is really correct. For example, you may have used a nickname, or only the first or last name, or made a typo.
 	In such cases, please choose the option &quot;My answer is essentially correct&quot;.
 </p>
 
-<form action = "answers.jsp?details=1" method="post">
+<form action = "answers?details=1" method="post">
 
 <%
 int idx = 0;

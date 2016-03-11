@@ -16,6 +16,7 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /** cluer that generates sentences from an archive */
 public class ArchiveCluer extends Cluer {
@@ -178,6 +179,9 @@ public class ArchiveCluer extends Cluer {
         String name = c.pickBestName();
         // messages for c
 		List<EmailDocument> messagesWithContact = new ArrayList<>((Set) IndexUtils.selectDocsByContact(archive.addressBook,(Collection)archive.getAllDocs(),c));
+        Collections.sort (messagesWithContact);
+
+		float contactScore = computeContactScore(c, messagesWithContact, startDate);
 
 		log.info("Messages with contact: " + name + " is #" + messagesWithContact.size());
 
@@ -219,11 +223,14 @@ public class ArchiveCluer extends Cluer {
 				float docSentimentScore = p.getFirst();
 				Map<String, Integer> sentimentMap = p.getSecond();
 
+				// scoring for this email message
+				List<DatedDocument> messagesInThread = (List) archive.docsWithThreadId(message.threadID);
+
 				// check the # of names in this doc, drastic penalty in doc score if
 				// there are a lot of names in it (typically a complete news article)
 				List<String> namesInMessage = archive.getNamesForDocId(message.getUniqueId(), Indexer.QueryType.ORIGINAL);
-				if (namesInMessage.size() > 10)
-					docSentimentScore /= namesInMessage.size();
+
+				float emailScore = messagesInThread.size() * 5.0f + docSentimentScore;
 
 				int subjectLength = (message.description != null ? message.description.length() : 0);
 				// now process sentences within the doc
@@ -239,9 +246,7 @@ public class ArchiveCluer extends Cluer {
 				if (sentences.size() < numSentences)
 					continue;
 
-				List<Clue> clueSet = new ArrayList<>();
-
-				outer:
+				nextSentence:
 				for (int i = 0; i < sentences.size(); i++)
 				{
 					if (i < numSentences-1) // e.g. if nSentences = 3, we can start building candidate clues at i = 2
@@ -252,7 +257,7 @@ public class ArchiveCluer extends Cluer {
 					for (int j = i - numSentences+1; j <= i; j++) {
 						// check if any of the sentences is < MIN_SENTENCE_LENGTH, if so, the clue is invalid, so just break out with an empty string
 						if (sentences.get(j).length() < MIN_SENTENCE_LENGTH || !sentenceIsValidAsClue(sentences.get(j).toLowerCase(), numSentences)) {
-							continue outer;
+							continue nextSentence;
 						}
 						candidateClue += sentences.get(j) + " ";
 					}
@@ -261,16 +266,29 @@ public class ArchiveCluer extends Cluer {
 					candidateClue = candidateClue.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
 
 					// 2 newlines are normal, but more is bad...it tends to be a signature or list... or code.... doesn't make for a good clue.
+					/*
 					float linesBoost = 1.0f;
 					for (int j = 0; j < numSentences; j++) {
 						int nLines = new StringTokenizer(sentences.get(i-j), "\n").countTokens();
 						if (nLines > numSentences)
 							linesBoost += (float) -Math.pow(5.0f, nLines - numSentences); // steep penalty if it spans more than numSentence physical lines
 					}
+					*/
 
 					candidateClue = candidateClue.trim().replaceAll("\n", " ");
 					candidateClue = Util.canonicalizeSpaces(candidateClue);
 					String lowerCaseSentence = candidateClue.toLowerCase();
+
+                    // check if any overlapping words between candidateClue and name
+                    Set<String> candidateClueTokens = new LinkedHashSet<>(Util.tokenize(candidateClue.toLowerCase()));
+                    Set<String> nameTokens = new LinkedHashSet<>(Util.tokenize(name.toLowerCase()));
+                    candidateClueTokens.retainAll(nameTokens);
+
+					// we'll exclude  single letter initials in someone's name, they can be present as words in the candidate clue
+					candidateClueTokens = candidateClueTokens.stream().filter(t -> t.length() > 1).collect(Collectors.toSet());
+
+					if (candidateClueTokens.size() > 0) // there is a give away in the clue - at least one word of the name is directly present in it
+                        continue nextSentence;
 
 					int MAX_CLUE_CHARS = 200 * numSentences;
 
@@ -284,27 +302,25 @@ public class ArchiveCluer extends Cluer {
 					Clue clue = new Clue(candidateClue, candidateClue, lowerCaseSentence, "" /* hint */, null /* url */, null /* ellipsis message */, message);
 
 					float clueScore = scoreClueByEvalRules(clue, name, evaluationRules, nerModel, archive);
-					clueScore += linesBoost;
 
-					// add in the score for message factors
-					clueScore += docSentimentScore;
+					// grand total: score for this clue + score for message + score for contact
+					float finalScore = clueScore + emailScore + contactScore;
+					clue.clueStats.finalScore = finalScore;
 
-					clue.clueStats.finalScore = clueScore;
-					log.info("clue score for " + c + " is " + clueScore + " (docscore: " + docSentimentScore + ") for sentence# " + i + " in doc #" + docCount + ":" + clue + " lines boost = " + linesBoost);
+					log.info("final score of clue for " + name + " is " + clue.clueStats.finalScore + " (clueScore = " + clueScore + ", emailScore = " + emailScore + ", contactScore = " + contactScore +") for sentence# " + i + " in doc #" + docCount + ":" + clue);
 
-					if (clueScore > bestScore)
+					if (finalScore > bestScore)
 					{
 						log.info ("Prev. clue: New high!");
 						bestClue = clue;
 						bestClueMessage = message;
-						bestScore = clueScore;
+						bestScore = finalScore;
 					}
-					scoredClues.put(clue, clueScore);
+					scoredClues.put(clue, finalScore);
 
 					// the below should ideally be updated only inside the above if
 
 					// update all the stats now
-					clue.clueStats.linesBoost = linesBoost;
 					clue.clueStats.docSentimentScore = docSentimentScore;
 					clue.clueStats.docSentiments = sentimentMap;
 
@@ -316,7 +332,6 @@ public class ArchiveCluer extends Cluer {
 
                     clue.clueStats.subjectLength = subjectLength;
 
-					List<DatedDocument> messagesInThread = (List) archive.docsWithThreadId(message.threadID);
 					clue.clueStats.nMessagesInThread = messagesInThread.size();
 					if (messagesInThread.size() > 0)
 					{
@@ -336,7 +351,6 @@ public class ArchiveCluer extends Cluer {
 					//	JSPHelper.log.info ("CLUELOG-1 " + p1.getFirst() + "answer,clue");
 					//	JSPHelper.log.info ("CLUELOG-2 " + p1.getSecond() + "," + answer + "," + clue.clue.replaceAll(",", " "));
 //					}
-					clueSet.add(clue);
 				}
 
 				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
@@ -386,6 +400,31 @@ public class ArchiveCluer extends Cluer {
 			}
 		}
         return bestClue;
+	}
+
+	/** score for this contact based on communication pattern */
+	public float computeContactScore(Contact c, Collection<EmailDocument> messagesWithContact, Date intervalStart) {
+		float outsideThisIntervalScore = 0.0f; // this will be -ve and penalize contacts outside the preferred interval
+		int numMessagesInThisInterval = 0;
+
+		for (EmailDocument message: messagesWithContact) {
+			if (message.date.before(intervalStart)) {
+				outsideThisIntervalScore -= ((intervalStart.getTime() - message.date.getTime())/MemoryStudy.INTERVAL_MILLIS);
+			} else {
+				numMessagesInThisInterval++;
+			}
+		}
+
+		float inThisIntervalScore = 0.0f;
+
+		if (numMessagesInThisInterval > 5)
+			inThisIntervalScore = numMessagesInThisInterval * 20;
+		else if (numMessagesInThisInterval > 10)
+			inThisIntervalScore = numMessagesInThisInterval * 40;
+		else
+			inThisIntervalScore = numMessagesInThisInterval * 60;
+
+		return inThisIntervalScore + outsideThisIntervalScore;
 	}
 
     /**
@@ -458,7 +497,7 @@ public class ArchiveCluer extends Cluer {
         List<Document> docsWithAnswer = new ArrayList<>(docs);
 		// note: docsWithAnswer is not sorted by time
 		int nDocsWithAnswer = docsWithAnswer.size();
-        log.info("Docs with answer: "+answer+" and within the window: ["+startDate+", "+endDate+"] is #"+nDocsWithAnswer);
+        log.info("Docs with answer: " + answer + " and within the window: ["+startDate+", "+endDate+"] is #" + nDocsWithAnswer);
 
 		// compute #threads in the docsWithAnswer set
 		Set<Long> set = new LinkedHashSet<Long>();
@@ -474,7 +513,6 @@ public class ArchiveCluer extends Cluer {
 		Clue bestClue = null; 
 		Document bestClueDoc = null;
         //set of clues formed around best clue, but different sentence choice for clue sentence
-        List<Clue> bestCtxClues = new ArrayList<>();
         Map<Clue, Float> scoredClues = new LinkedHashMap<>();
 
         float bestScore = -Float.MAX_VALUE;
@@ -695,13 +733,11 @@ public class ArchiveCluer extends Cluer {
 					//	JSPHelper.log.info ("CLUELOG-1 " + p1.getFirst() + "answer,clue");
 					//	JSPHelper.log.info ("CLUELOG-2 " + p1.getSecond() + "," + answer + "," + clue.clue.replaceAll(",", " "));
 //					}
-				    clueSet.add(clue);
                 }
 				
 				// update sentencesInMessage at the end of the message, because we know it only at the end of the message
 				if (bestClueDoc == ed) {
                     bestClue.clueStats.sentencesInMessage = sentences.size();
-                    bestCtxClues = clueSet;
                 }
 			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
 			
