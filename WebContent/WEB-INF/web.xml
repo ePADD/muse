@@ -210,15 +210,6 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>info</servlet-name>
-        <jsp-file>/memorystudy/info.html</jsp-file>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>info</servlet-name>
-        <url-pattern>/memorystudy/info</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
         <servlet-name>privacy</servlet-name>
         <jsp-file>/memorystudy/privacy.html</jsp-file>
     </servlet>

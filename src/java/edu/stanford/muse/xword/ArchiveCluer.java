@@ -154,25 +154,6 @@ public class ArchiveCluer extends Cluer {
         FILL_IN_THE_BLANK, GUESS_CORRESPONDENT;
     };
 
-	private static List<ClueEvaluator> getDefaultEvals()
-	{
-		List<ClueEvaluator> evals = new ArrayList<>();
-		//default tuned params
-		evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f, -20.0f, 0f}));
-		evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f, 7.0f, 7.0f}));
-		evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
-		evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f, -20.0f}));
-//		evals.add(new ClueEvaluator.EmailDocumentEvaluator(new float[]{-0.5f, 5.0f}));
-		float[] params = new float[]{0.0f, 0.0f, 10.0f, 10.0f};
-		List<String[]> lists = new ArrayList<>();
-		lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
-		lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
-		lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder".split("\\s*,\\s*"));
-		lists.add("he,she,i,me,you".split("\\s*,\\s*"));
-		evals.add(new ClueEvaluator.ListEvaluator(params, lists));
-		return evals;
-
-	}
 
 	/**
 	 * <ol>
@@ -187,12 +168,11 @@ public class ArchiveCluer extends Cluer {
 	 * @param nerModel - clue evaluators depend on the model to recognise names and for evaluation
 	 * @param startDate @param endDate - Marks the beginning and end of the time interval
 	 * @param numSentences - Number of sentences in the clue
-	 * @param maxClues - maximum number of high scoring clues returned
 	 * */
 	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evaluationRules, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		if (evaluationRules == null || evaluationRules.size()==0) {
-			evaluationRules = getDefaultEvals();
+			evaluationRules = MemoryStudy.getDefaultEvals();
 		}
 
         String name = c.pickBestName();
@@ -274,7 +254,7 @@ public class ArchiveCluer extends Cluer {
 						if (sentences.get(j).length() < MIN_SENTENCE_LENGTH || !sentenceIsValidAsClue(sentences.get(j).toLowerCase(), numSentences)) {
 							continue outer;
 						}
-						candidateClue += sentences.get(j);
+						candidateClue += sentences.get(j) + " ";
 					}
 
 					//String oos = originalSentence;
@@ -301,8 +281,7 @@ public class ArchiveCluer extends Cluer {
 
 					// now score the sentence
 					nValidClueCandidates++;
-					Clue clue = new Clue(lowerCaseSentence, candidateClue, lowerCaseSentence, "" /* hint */, null /* url */, null /* ellipsis message */, message);
-
+					Clue clue = new Clue(candidateClue, candidateClue, lowerCaseSentence, "" /* hint */, null /* url */, null /* ellipsis message */, message);
 
 					float clueScore = scoreClueByEvalRules(clue, name, evaluationRules, nerModel, archive);
 					clueScore += linesBoost;
@@ -451,7 +430,7 @@ public class ArchiveCluer extends Cluer {
         }
 
 		if (evals == null || evals.size()==0) {
-			evals = getDefaultEvals();
+			evals = MemoryStudy.getDefaultEvals();
 		}
 
 		boolean answerPartOfAnyAddressBookName = archive.addressBook.isStringPartOfAnyAddressBookName(answer);

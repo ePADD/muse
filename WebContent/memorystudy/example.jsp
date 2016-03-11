@@ -31,9 +31,14 @@ $(function() {
 <p>
 
 <div class="box">
-    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
-    <span style="float: right;font-size: 30px;color: #a70e13;">
-        Example</span>
+    <img title="Ashoka University" src="../images/ashoka-logo.png" style="width:50px"/>
+        <span style="float: right;font-size: 30px;color: white;transform:rotate(30deg);background-color:red;position:relative;top:20px;left:10px">
+            Example
+        </span>
+<br/>
+    <br/>
+    <br/>
+
     <div style="clear:both"></div>
 
 <br/>
@@ -42,7 +47,7 @@ $(function() {
 		<div id="containerdiv" >
             <div id = "question" class="question">
             <span data-step = "1" data-intro = "You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
-            1. I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
+            I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
             <p>
             Email recipient name: _ _ _ _ _ _ &nbsp;&nbsp; _ _ _ _ _ _</span>
             </div>
@@ -50,17 +55,17 @@ $(function() {
 		<p/>
 
             <div style="margin-left: 5%">
-                <i class="fa fa-caret-right"></i> Type here:<br/>
-                <input autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured out yet, the correct answer is 'Humpty Dumpty'." type="text" size="40" name="answer">
-                <span class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer. Sometimes the answer may be 2 words. This description will turn green when the number of letters you have entered in the answer box is correct.">
+                <i class="fa fa-caret-right"></i> Type here:
+                <input spellcheck="false" autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured it out yet, the correct answer in this example is 'Humpty Dumpty'." type="text" size="40" name="answer">
+                <span class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer. This description will turn green when the number of letters you have entered in the answer box is correct.">
                     [2 words: 6 letters, 6 letters<span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
                 </span>
 
                 </p>
-                <span data-step="5" data-intro="If you don't remember the name for some reason, choose one of these options and the initial letters of the name will be provided as a hint. Try to recall the name using this hint.">
+                <span data-step="5" data-intro="If you can't remember the answer, choose one of the options below and the initial letters of each word in the answer will be provided as a hint. Try to recall the name using this hint.">
                     Or choose one of the following:
                 </span><br/>
-                <span data-step="6" name="fail" data-intro="When you can't recall the name, but you feel that it is about to come to you, then you are in a tip-of-the-tongue state. For example, you might know whom you sent this email to and feel you know who the person is, but cannot recall their name right now. It may feel like the name is ready to pop into your mind at any moment. If this happens, choose this option.">
+                <span data-step="6" name="fail" data-intro="When you can't recall the answer, but you feel that it is about to come to you, then you are in a tip-of-the-tongue state. For example, you might know whom you sent this email to and feel you know who the person is, but cannot recall their name right now. It may feel like the name is ready to pop into your mind at any moment. If this happens, choose this option.">
                     <input id="fTip" name="fail" type="radio" onclick="$('#tipRate').toggle()"/>I remember the person and their name is on the tip of my tongue. Give me a hint.
                 </span><br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
@@ -181,16 +186,11 @@ $(function() {
 		function handle_submit(event) {
             var $target = $(event.target);
             var button_text = $target.text(); // text on the button that was pressed
-            if ($("#answer").val() !== '' || button_text == 'Give up') {
-                if ('humptydumpty' !== $('#answer').val().toLowerCase()) {
+            if (($("#answer").val() !== '' && 'humptydumpty' !== $('#answer').val().toLowerCase().replaceAll(" ", ""))
+                || (button_text == 'Give up')) {
                     alert("Uh, oh. The correct answer is Humpty Dumpty.");
                     return false;
                 }
-            } /* else if (!$("#fComplete")[0].checked && !$("#fContext")[0].checked && !($("#fTip")[0].checked && $("#tipRate").val() !== '') && !($("#unfair")[0].checked && $("#unfairReason").val() !== '')) {
-                alert("Please enter the answer or answer why you forgot.");
-                return false;
-            }
-*/
             /*
             if ($('#memory').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
                 alert("Please answer all the questions.");

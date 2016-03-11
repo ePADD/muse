@@ -28,7 +28,6 @@ hr {
 .box{
 	position: absolute;
 	left:20%;
-	top:20%;
 	width: 60%;
 	height: auto;
 	display: block;
@@ -55,10 +54,10 @@ hr {
 input[type="button"]{
 				background: #faf6e3; /* #484848; */
 				border: none;
-				-moz-border-radius: 10px;
-				-webkit-border-radius: 10px;
-				-khtml-border-radius: 10px;
-				border-radius: 10px;
+				-moz-border-radius: 5px;
+				-webkit-border-radius: 5px;
+				-khtml-border-radius: 5px;
+				border-radius: 5px;
 				color: #ffffff;
 				display: inline;
 				font: 18px Georgia, "Times New Roman", Times, serif;

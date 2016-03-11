@@ -100,14 +100,14 @@
                     JSPHelper.log.info("STUDYSTATS-2: " + p1.getSecond() + "," + p2.getSecond() + "," + p3.getSecond());
 
                     Collection<EmailDocument> allDocs = (Collection<EmailDocument>) session.getAttribute("emailDocs");
-                    int numQ = HTMLUtils.getIntParam(request, "n", 4); //should be 4 by default
+                    int numQPerInterval = HTMLUtils.getIntParam(request, "n", 4); //should be 4 by default
 
-                    currentStudy.generatePersonNameQuestions(archive, nerModel, allDocs, lex, numQ);
+                    currentStudy.generatePersonNameQuestions(archive, nerModel, allDocs, lex, numQPerInterval);
                     resultPage = "memorystudy/welcome";
-                    JSPHelper.log.info("Generated #"+currentStudy.getQuestions().size()+" questions");
+                    JSPHelper.log.info("Generated #" + currentStudy.getQuestions().size() + " questions");
                     Map<String,NameInfo>names = NameTypes.computeNameMap(archive, allDocs);
                     JSPHelper.log.info("NameTypes: "+names.size()+"\n"+names);
-                    boolean not_enough_questions = currentStudy.checkQuestionListSize(numQ);
+                    boolean not_enough_questions = currentStudy.checkQuestionListSize(numQPerInterval);
                     if (not_enough_questions) {
                         JSPHelper.log.info ("Not enough questions!");
                         resultPage = "/muse/memorystudy/notenoughquestions.html";

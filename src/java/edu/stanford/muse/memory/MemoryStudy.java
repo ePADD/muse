@@ -20,6 +20,7 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.DictUtils;
+import edu.stanford.muse.xword.ClueEvaluator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -532,16 +533,35 @@ public class MemoryStudy implements Serializable{
         return intervals;
     }
 
-	/** Generates person names tests from the given archive. @throws IOException */
+    public static List<ClueEvaluator> getDefaultEvals()
+    {
+        List<ClueEvaluator> evals = new ArrayList<>();
+        //default tuned params
+        evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f, -20.0f, 0f}));
+        evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f, 7.0f, 7.0f}));
+        evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
+        evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f, -20.0f}));
+//		evals.add(new ClueEvaluator.EmailDocumentEvaluator(new float[]{-0.5f, 5.0f}));
+        float[] params = new float[]{0.0f, 0.0f, 10.0f, 10.0f};
+        List<String[]> lists = new ArrayList<>();
+        lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
+        lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
+        lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider,  decide,  dislike, doubt, dream, dream up,  expect, fail, fall for, fancy , fathom, feature , feel, find, foresee , forget, forgive, gather, get, get the idea, get the picture, grasp, guess, hate, have a hunch, have faith in, have no doubt, hold, hypothesize, ignore, image , imagine, infer, invent, judge, keep the faith, know, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for , ponder, predict, presume, put, put heads together, rack brains, read, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose , suspect , swear by, take ,  take at one's word, take for granted, think, trust, understand, vision , visualize , wonder".split("\\s*,\\s*"));
+        lists.add("he,she,i,me,you".split("\\s*,\\s*"));
+        evals.add(new ClueEvaluator.ListEvaluator(params, lists));
+        return evals;
+    }
+
+    /** Generates person names tests from the given archive. @throws IOException */
 	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int cluesPerInterval) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
 		this.archive = archive;
-		if (allDocs == null)
-			allDocs = (Collection) archive.getAllDocs();
 		questions = new ArrayList<>();
 		ArchiveCluer cluer = new ArchiveCluer(null, archive, nerModel, null, lex);
 
 		tabooCluesSet = new LinkedHashSet<>();
 		archive.assignThreadIds();
+
+        List<ClueEvaluator> evaluators = getDefaultEvals();
 
 		List<Document> docs = archive.getAllDocs();
 		Multimap<Contact, EmailDocument> contactToMessages = LinkedHashMultimap.create();
@@ -653,17 +673,23 @@ public class MemoryStudy implements Serializable{
                         continue outer;
                 }
 
-                Clue clue = cluer.createPersonNameClue(c, null, nerModel, intervalStart, intervalEnd, nSent, archive);
-                clueToContact.put(clue, c);
+                Clue clue = cluer.createPersonNameClue(c, evaluators, nerModel, intervalStart, intervalEnd, nSent, archive);
+                if (clue != null)
+                    clueToContact.put(clue, c);
             }
 
             List<Clue> clueList = new ArrayList(clueToContact.keySet());
             Collections.sort (clueList);
-
             List<Clue> selectedClues = new ArrayList<>();
             for (int i = 0; i < cluesPerInterval && i < clueList.size(); i++) {
                 selectedClues.add(clueList.get(i));
             }
+
+            log.info ("For interval " + interval + " selected " + selectedClues.size() + " contacts out of " + clueList.size() + " possible candidates.");
+            for (Clue c: clueList)
+                log.info ("For candidate contact " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c );
+            for (Clue c: selectedClues)
+                log.info ("For selected contact " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c);
 
             for (Clue selectedClue: selectedClues) {
                 Contact c = clueToContact.get(selectedClue);

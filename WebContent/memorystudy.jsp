@@ -5,7 +5,7 @@
 <%
 //browser check
 String ua = request.getHeader("User-Agent");
-if (ua != null) 
+if (ua != null)
 {
 	ua = ua.toLowerCase();
 	if (ua.indexOf("android")  >= 0 || ua.indexOf("iphone")  >= 0 || ua.indexOf("ipad")  >= 0 || ua.indexOf("ipod") >= 0)
@@ -29,7 +29,7 @@ session.setAttribute("mode", "memorytest");
 	String code = (String) request.getParameter("code");
 	if (code != null)
 		code = code.trim();
-	
+
 MemoryStudy.UserStats user;
 if (request.getParameter("options") != null) {
 	session.setAttribute("debug", "true");
@@ -43,7 +43,7 @@ if (!found) {
 %>
 	<html>
 	<head>
-		<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css"/>
+		<link rel="stylesheet" href="memorystudy/css/screen.css" type="text/css"/>
 		<link rel="icon" href="images/ashoka-favicon.gif">
 	</head>
 	<body>
@@ -53,7 +53,7 @@ if (!found) {
 	</body>
 	</html>
 	<%
-	return;	
+	return;
 }
 
 user.IPaddress = request.getRemoteAddr().toString();
@@ -85,7 +85,7 @@ if(request.getLocalPort() == 8043) {
         }
     }
     else {
-		googleClientId = "1072171428245.apps.googleusercontent.com"; // this is for local host "1058011743827-t8e0fjt1btmujjesoaamgequ5utf4g77.apps.googleusercontent.com";	
+		googleClientId = "1072171428245.apps.googleusercontent.com"; // this is for local host "1058011743827-t8e0fjt1btmujjesoaamgequ5utf4g77.apps.googleusercontent.com";
 	}
 }
 %>
@@ -93,11 +93,12 @@ if(request.getLocalPort() == 8043) {
 <html lang="en">
 <head>
 	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
+	<jsp:include page="css/css.jsp"/>
+	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
+
 	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 	<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
 	<link rel="icon" href="images/ashoka-favicon.gif">
-	<jsp:include page="css/css.jsp"/>
-	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
 
 	<script type="text/javascript" src="js/jquery/jquery.js"></script>
 	<script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
@@ -148,12 +149,12 @@ if(request.getLocalPort() == 8043) {
 
 <title>CELL Login</title>
 </head>
-<!-- 
+<!--
 <body style="background-color: #FFBB56">
  -->
 <%@include file="div_status.jsp"%>
- 
-<body class="graded"> 
+
+<body class="graded">
 
 <%
 session.setMaxInactiveInterval(-1);
@@ -174,14 +175,14 @@ $(document).ready(function() {
 function accountTypeChanged(e)
 {
 	// warning: we are not properly escaping special chars in account names if they have double/single quotes etc.
-	
+
 	// DOM structure: there is a series of .login-accounts, each containing [one or more .login-fields and perhaps a .account-add icon]
 
 	$('.login-account').each(function(i, val) { $(val).data("idx", i);}); // set a idx value for each a/c
 
 	var $account = $(e.target).closest('.login-account');
 	var idx = $account.data("idx"); // this accounts idx is idx;
-	
+
 	var type = $('select', $account).val();
 	$('.login-fields', $account).remove(); // wipe out existing fields
 	$('.account-add', $account).remove(); // wipe out existing plus if any
@@ -191,8 +192,8 @@ function accountTypeChanged(e)
 		// server needed only for explicit imap/pop types
 		var $server = $('<input class="input-field" type="text" placeholder="server" name="server' + idx + '"id="server' + idx + '" size="20"/><br/>');
 		$login_fields.append($server);
-	}	
-	
+	}
+
 	if ("gmail" == type) {
 		var $message = $('<span id="message' + idx + '" style="font-style: italic">Ensure popups are enabled for Oauth</span>');
 		var $login = $('<input class="input-field" type="hidden" placeholder="email" name="loginName' + idx + '"id="loginName' + idx + '" />');
@@ -208,8 +209,8 @@ function accountTypeChanged(e)
 		var $password = $('<input class="input-field password" type="password" placeholder="password" name="password' + idx + '"id="password' + idx + '" size="20"/>');
 		var $server = $('<input style="display: none" class="input-field" type="text" placeholder="server" name="server' + idx + '"id="server' + idx + '" size="20"/>');
 		$login_fields.append($login).append($password).append($server);
-		var $message = $('<div id="message' + idx + '" style="font-style: italic">Will identify email server automatically</div>');	
-		$login_fields.append($message);		
+		var $message = $('<div id="message' + idx + '" style="font-style: italic">Will identify email server automatically</div>');
+		$login_fields.append($message);
 	}
 	else if ("yahoo" == type || "live" == type || "stanford" == type || 'imap' == type || 'pop' == type)
 	{
@@ -218,7 +219,7 @@ function accountTypeChanged(e)
 		var $spinner = $('<img id="spinner' + idx + '" src="images/spinner-white.gif" width="15" style="margin-left:10px;visibility:hidden"><br/>');
 		$login_fields.append($login).append($password).append($spinner);
 		if ('live' == type) {
-			var $message = $('<div id="message' + idx + '" style="font-style: italic">Only Inbox is accessible for Hotmail <br/>(<a href="help.jsp#hotmail">More</a>)</div>');	
+			var $message = $('<div id="message' + idx + '" style="font-style: italic">Only Inbox is accessible for Hotmail <br/>(<a href="help.jsp#hotmail">More</a>)</div>');
 			$login_fields.append($message);
 		}
 	}
@@ -227,7 +228,7 @@ function accountTypeChanged(e)
 		var $dirs = $('<input class="input-field" type="text" placeholder="path to folder with mbox files" name="mboxDir' + idx + '"id="mboxDir' + idx + '" size="20"/><br/>');
 		$login_fields.append($dirs);
 	}
-	$account.append($login_fields);	
+	$account.append($login_fields);
 }
 
 </script>
@@ -256,7 +257,7 @@ if (dateRange == null)
 You can do other things while you wait, but please do not close this browser window.
 <div class="login-account">
 <div class="styled-select">
-<select style="font-size:11pt" class="accountType" name="accountType0" id="accountType0">
+<select style="font-size:13px" class="accountType" name="accountType0" id="accountType0">
 	<option value="none">Email account type</option>
 	<option value="gmail">Gmail or Google apps</option>
 	<option value="yahoo">Yahoo</option>
@@ -271,7 +272,7 @@ You can do other things while you wait, but please do not close this browser win
 <br/>
 </div><!-- login-account -->
 <br/>
-	
+
 <table>
 <tr> <!--  last line of the table with the stuff other than login boxes -->
 <td>
@@ -281,10 +282,10 @@ You can do other things while you wait, but please do not close this browser win
 </div> <!-- sent-only -->
 <span style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>">
 Dates <input size="30" id="dateRange" name="dateRange" value="<%=dateRange%>"/>
-</span> 
+</span>
 <span style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>">
 #Questions per Interval <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="4"/>
-</span> 
+</span>
 </td>
 </tr>
 </table>
@@ -295,7 +296,7 @@ Dates <input size="30" id="dateRange" name="dateRange" value="<%=dateRange%>"/>
 <input type="hidden" name="simple" value="true"/>
 <br/>
 <script>
-function go_button() { 
+function go_button() {
 	var email = $('#loginName0').val();
 	var expected_email = '<%=newStudy.stats.emailid%>';
 	if (expected_email != 'unk' && email != expected_email) {

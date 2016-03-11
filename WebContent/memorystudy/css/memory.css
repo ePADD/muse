@@ -2,11 +2,13 @@ body{
 	font-family:"Trebuchet MS", sans-serif;
 	font-size :14pt;
 }
+
 h1{
 	font-size :28px;
 	margin-bottom: 20px;
 }
 p.bold{font-weight:bold;}
+
 body.consent{
     font-family: 'Raleway', "Futura", "Trebuchet MS", sans-serif;
 }
@@ -38,13 +40,15 @@ hr {
 	background: #ffffff;
 	text-align: left;
 }
-.title{
+
+.title {
 	color:#ffffff;
 	/*position:absolute;*/
 	text-align:center;
 	font-family: "Myriad Pro", Courier, Arial, sans-serif;
 	font-variant: small-caps;
 }
-.center{
+
+.center {
 	text-align:center;
 }

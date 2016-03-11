@@ -526,7 +526,9 @@ public class EmailUtils {
 		String lowerCaseName = name.toLowerCase();
 		for (String bannedString : DictUtils.bannedStringsInPeopleNames)
 			if (lowerCaseName.indexOf(bannedString) >= 0) {
-				log.info ("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
+				if (log.isDebugEnabled()) {
+					log.debug("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
+				}
 				return null;
 			}
 

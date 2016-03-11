@@ -10,24 +10,27 @@
 </head>
 <body>
 <div class="box">
-    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
+    <img title="Ashoka University" src="../images/ashoka-logo.png" width="50px" height="50px"/>
     <div style="clear:both"></div>
 
     <br/>
     <br/>
 
     <%
-String correctanswer = "Humpty";
-String useranswer = request.getParameter("answer");
-if (useranswer.toLowerCase().equals(correctanswer.toLowerCase())){
-%>
-Awesome! You got that right!
-<%}
-else{
-%>
-Looks like you got that wrong. You entered "<%=useranswer%>", but the correct answer was "<%=correctanswer%>".
-<%}
-%>
+    String correctanswer = "humptydumpty";
+    String useranswer = request.getParameter("answer");
+    if (useranswer != null)
+        useranswer = useranswer.replaceAll(" ", "");
+    if ("humptydumpty".equalsIgnoreCase(useranswer)){
+    %>
+        Awesome! You got that right!
+    <%}
+    else {
+    %>
+        Looks like you got that wrong. You entered "<%=useranswer%>", but the correct answer was "<%=correctanswer%>".
+    <%}
+
+    %>
 <p>
 Now let's start the real study. Please take care of any other activities first, and ensure that you have an uninterrupted 45 to 60 minutes to complete the study. 
 Please answer the questions from memory only; do NOT refer to your email, ask anyone, or use any other aids for help. Try your best to recall the answer, but do 

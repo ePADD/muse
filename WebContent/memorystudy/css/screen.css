@@ -4,7 +4,6 @@ html, body, h1, div, fieldset, legend, ol, li {
 	}
 
 body {
-/*	background-image: url('../images/tweed_muse.png'); */
 	background-color: #082041; /*#faf6e3;*/
 	color: #ffffff;
 	font-family: "Futura", "Trebuchet MS", sans-serif;
@@ -33,12 +32,11 @@ body {
 }
 
 .styled-select select {
-   padding: 5px, 0px, 5px, 5px;
+   padding: 5px 0px 5px 5px;
    }
    
    .styled-select {
      display:inline;
-   	font-size: 12pt;
    }
    /*
   .styled-select {

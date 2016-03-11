@@ -11,10 +11,6 @@
 <%@ page import="java.text.DateFormat" %>
 <%
 
-	Integer numQ = (Integer) session.getAttribute("numQuestions");
-	if (numQ == null)
-		numQ = HTMLUtils.getIntParam(request, "n", 40); //should be 40 by default
-
     Archive archive = null;
     String escapePassword = request.getParameter("escape");
     if (escapePassword != null && escapePassword.equals(System.getProperty ("escape.password"))) {
@@ -51,7 +47,12 @@
 			// create a new study from the current archive, this is for debug only
 			MemoryStudy.UserStats us = new MemoryStudy.UserStats("<unk>", "<unk>", "<unk>", "<unk>", "<unk>", "<unk>", "<unk>", request.getRemoteAddr().toString(), request.getHeader("User-Agent"));
 			currentStudy = new MemoryStudy(us);
-			currentStudy.generatePersonNameQuestions(archive, nerModel, (Collection<EmailDocument>) session.getAttribute("emailDocs"), lex, numQ);
+
+            Integer numQ = (Integer) session.getAttribute("numQuestions");
+            if (numQ == null)
+                numQ = HTMLUtils.getIntParam(request, "n", 1);
+
+            currentStudy.generatePersonNameQuestions(archive, nerModel, (Collection<EmailDocument>) session.getAttribute("emailDocs"), lex, numQ);
 			session.setAttribute("study", currentStudy);
 		}
 		currentStudy.recordStartTime();
@@ -72,22 +73,29 @@
 		Date recency = null;
         if(!"on".equals(request.getParameter("noTime"))) {
             Calendar cal = new GregorianCalendar();
-            cal.set(Integer.parseInt(request.getParameter("timeYear")), Integer.parseInt(request.getParameter("timeMonth"))-1, Integer.parseInt(request.getParameter("timeDate")));
+            try {
+                cal.set(Integer.parseInt(request.getParameter("timeYear")), Integer.parseInt(request.getParameter("timeMonth")) - 1, Integer.parseInt(request.getParameter("timeDate")));
+            } catch (Exception e) {
+                Util.print_exception(e, JSPHelper.log);
+            }
             recency = cal.getTime();
         }
         MemoryQuestion.RecallType recallType = null;
         Object recallObject = null;
-        if(request.getParameter("fail")!=null){
-            Integer failType = Integer.parseInt(request.getParameter("fail"));
-            if(failType!=null){
+        if (request.getParameter("fail")!=null){
+            Integer failType = null;
+            try {
+                failType = Integer.parseInt(request.getParameter("fail"));
+            } catch (Exception e) { Util.print_exception(e, JSPHelper.log); }
+
+            if (failType != null){
                 if(failType==0)
                     recallType = MemoryQuestion.RecallType.Nothing;
                 else if(failType==1)
                     recallType = MemoryQuestion.RecallType.Context;
                 else if(failType==2){
                     recallType = MemoryQuestion.RecallType.TipOfTongue;
-                    recallObject = Integer.parseInt(request.getParameter("tipScore"));
-                }else {
+                } else {
                     recallType = MemoryQuestion.RecallType.UnfairQuestion;
                     recallObject = request.getParameter("unfairReason");
                 }
@@ -122,17 +130,19 @@
 </head>
 <body>
 	<div class="box">
-        <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
-        Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>
+        <img title="Ashoka University" src="../images/ashoka-logo.png" style="width:50px"/>
+        <span style="float: right;font-size: 30px;color: black;">
+            Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %>
+        </span>
+
     	<div style="clear:both"></div>
-		<br />
+
 		<p>
-		<form id="testinput" name="testinput" action="question"
-			method="post">
+		<form id="testinput" name="testinput" action="question" method="post">
 
 			<div id="nohint-question" class="question">
 				<%
-                    String q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithNoHintForCorrespondentTest()) + "</p>";
+                    String q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithNoHintForCorrespondentTest()).replaceAll(" ", "&nbsp;") + "</p>";
                     out.println (q);
                 %>
 			</div>
@@ -144,124 +154,96 @@
                 %>
 			</div>
 
-            <datalist id="steplist">
-                <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-                <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
-            </datalist>
-
-                <input type="hidden" name="hintUsed" id="hintUsed" value="false">
-                <input type="hidden" name="millis" id="millis" value="-1">
-                <input type="hidden" name="answerBeforeHint" id="answerBeforeHint" value="-1">
-                <br/>
+            <input type="hidden" name="hintUsed" id="hintUsed" value="false">
+            <input type="hidden" name="millis" id="millis" value="-1">
+            <input type="hidden" name="answerBeforeHint" id="answerBeforeHint" value="-1">
+            <br/>
 
             <div style="margin-left: 5%">
-                <i class="fa fa-caret-right"></i> Type here:<br/>
-                <input style="border:solid 2px #082041; background: #082041"  type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
+                <div>
+                <i class="fa fa-caret-right"></i> Type here:
+                <input spellcheck="false" style="border:solid 2px #082041; background: #082041"  type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
                 <span id="answerLength">
                     [<%
                         out.print(questiontodisplay.lengthDescr);
                         //Should also be able to handle Dileep A. D
                         int correctAnswerLengthWithoutSpaces = questiontodisplay.correctAnswer.replaceAll("\\W", "").length();
                     %>
-                    <span id="nLettersCheck" style="color:green; display:none"> ✔</span>
+                    <span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
                 </span>
-                <br/>
+                <p>
                 <span>Or choose one of the following:</span><br/>
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
                 <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
-                    <!--
-                    <span id="tipRate" style="margin-left:3%;display:none">
-                        <br>
-                        <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp;<br>
-                            <span style="margin-left:3%">1&nbsp; - I have no idea &nbsp;&nbsp;</span>&nbsp
-                            <span style="margin-left:3%">10 - It's close!</span><br>
-                            <span style="position:relative;left:30px">1</span><span style="position:relative;left:140px">5</span><span style="position:relative;left:280px">10</span><br>
-                            <input style="padding-left:10px" type="range" min=1 max=10 name="tipScore" id="tipScore" value="5" step="1" data-step="steplist"/>
-                        </span>
-                        -->
-                        <br>
-                <br>
-                <!--
-                <input id="unfair" name="fail" type="radio" value=3 onclick='$("#unfairReason").toggle()'/> Unfair question?
-                <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason" name="unfairReason"/>
-                -->
+                </div>
 
-			<script type="text/javascript">
-				var correctAnswerLengthWithoutSpaces = <%=correctAnswerLengthWithoutSpaces%>;
-			</script>
+                <script type="text/javascript">
+                    var correctAnswerLengthWithoutSpaces = <%=correctAnswerLengthWithoutSpaces%>;
+                </script>
 
-        <!--
-        <div>On a scale of 1 to 10, how confident are you about your answer?
-            <br>
-            10 - I am Certain<br>
-            5&nbsp  - I am not sure<br>
-            1&nbsp  - I have no Idea<br>
-            <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
-            <input name="certainty" id="certainty" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
-        </div>
-        <br/>
-        -->
+                <div class="vividness">
+                    <p>
+                        <i class="fa fa-caret-right"></i> How vividly do you remember writing this email?
+                    <br>
+                    (1: no idea; 5: fair idea; 10:strong memory)<br/>
+                    <div style="line-height:0.5em">
+                    <span style="font-size: small; position:relative;left:0px">1</span>
+                    <span style="font-size: small; position:relative;left:120px">5</span>
+                    <span style="font-size: small; position:absolute;left:340px">10</span><br>
+                    <!--For tick marks-->
+                    <datalist id="steplist">
+                        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                        <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+                    </datalist>
 
-        <br/>
+                    <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
+                    <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">5</output>
+                    <script>
+                        function outputUpdate(v) {
+                            document.querySelector('#memory-amount').value = v;
+                        }
+                    </script>
+                </div> <!-- .vividness -->
 
-        <div>
-            <p>
-                <i class="fa fa-caret-right"></i> How vividly do you remember writing this email?
-            <br>
-            (1: no idea; 5: fair idea; 10:strong memory)<br/>
-            <div style="line-height:0.5em">
-            <span style="font-size: small; position:relative;left:0px">1</span>
-            <span style="font-size: small; position:relative;left:120px">5</span>
-            <span style="font-size: small; position:absolute;left:300px">10</span><br>
+                <br/>
 
-                <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
-                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">5</output>
-        </div>
-        </div>
-        </div>
+                <div class="when">
+                    <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
+                    <br/>
+                    <span id="time">
+                    <select style="margin-left:10%" name="timeDate" id="timeDate">
+                        <option value="-1"></option>
+                        <%
+                            for(int d=1;d<=31;d++){
+                        %><option value="<%=d%>"><%=d%></option><%
+                        }
+                    %>
+                    </select>
 
-        <br/>
-        <script>
-            function outputUpdate(v) {
-                document.querySelector('#memory-amount').value = v;
-            }
-        </script>
-        <div>
-            <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
-
-        </div>
-        <div>
-		    <span id="time">
-                <select style="margin-left:10%" name="timeDate" id="timeDate">
-                    <option value="-1"></option>
-                    <%
-                        for(int d=1;d<=31;d++){
-                    %><option value="<%=d%>"><%=d%></option><%
-                    }
-                %>
-                </select>
-                <select name="timeMonth" id="timeMonth">
-                    <option value="-1"></option>
-                    <%
-                        Calendar cal = new GregorianCalendar();
-                        DateFormat df = new SimpleDateFormat("MMM");
-                        for(int m=1;m<=12;m++){
-                            cal.set(Calendar.MONTH, m-1);
-                    %><option value="<%=m%>"><%=df.format(cal.getTime())%></option><%
-                    }
-                %>
-                </select>
-                <select name="timeYear" id="timeYear">
-                    <option value="-1"></option>
-                    <option value="2015">2015</option>
-                    <option value="2016">2016</option>
-                </select>
-                <br>
-                <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
-            </span><br>
-            <input  type="checkbox" style="margin-left:10%" id="timeInfo" name="noTime"> I have no idea<br>
-        </div>
+                    <select name="timeMonth" id="timeMonth">
+                        <option value="-1"></option>
+                        <%
+                            Calendar cal = new GregorianCalendar();
+                            DateFormat df = new SimpleDateFormat("MMM");
+                            for(int m=1;m<=12;m++){
+                                cal.set(Calendar.MONTH, m-1);
+                        %><option value="<%=m%>"><%=df.format(cal.getTime())%></option><%
+                        }
+                    %>
+                    </select>
+                    <select name="timeYear" id="timeYear">
+                        <option value="-1"></option>
+                        <option value="2015">2015</option>
+                        <option value="2016">2016</option>
+                    </select>
+                    <br>
+                    <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
+                    </span>
+                    <br>
+                    <input  type="checkbox" style="margin-left:10%" id="timeInfo" name="noTime"> I have no idea<br>
+                </div> <!-- .when -->
+            </div>
 
     <p/>
         <input type="hidden" name="submitType" value="submit"/> <!-- will be submit or giveup -->
