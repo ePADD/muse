@@ -281,8 +281,12 @@ public class ArchiveCluer extends Cluer {
 
                     // check if any overlapping words between candidateClue and name. be careful to tokenize only the alphabetical chars,
                     // because we want to match the clue "Hi John, How are you" with the name "John", ignoring the comma after John.
+                    // include all tokens in all names of the contact (not just the best name)
+                    Set<String> nameTokens = new LinkedHashSet<>();
+                    for (String n: c.names) {
+                        nameTokens.addAll(Util.tokenizeAlphaChars(n.toLowerCase()));
+                    }
                     Set<String> candidateClueTokens = new LinkedHashSet<>(Util.tokenizeAlphaChars(candidateClue.toLowerCase()));
-                    Set<String> nameTokens = new LinkedHashSet<>(Util.tokenizeAlphaChars(name.toLowerCase()));
                     candidateClueTokens.retainAll(nameTokens);
 
 					// we'll exclude single letter initials in someone's name, they can be present as words in the candidate clue
