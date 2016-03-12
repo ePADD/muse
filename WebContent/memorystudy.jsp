@@ -95,6 +95,7 @@ if(request.getLocalPort() == 8043) {
 <head>
 	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/memory.css">
 	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
+	<jsp:include page="css/css.jsp"/> <!-- required for styling status_div -->
 
 	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 	<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
