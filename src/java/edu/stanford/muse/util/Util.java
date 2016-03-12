@@ -881,6 +881,36 @@ public class Util
 		return result;
 	}
 
+	public static List<String> tokenizeAlphaChars(String s)
+	{
+		List<String> result = new ArrayList<String>();
+		if (Util.nullOrEmpty(s))
+			return result;
+
+		int startIdx = -1;
+		char[] chars = s.toCharArray();
+		boolean inWord = false;
+		for (int i = 0; i < chars.length; i++)
+		{
+			boolean isAlphabetic = Character.isAlphabetic(chars[i]);
+
+			if (isAlphabetic && !inWord) {
+				inWord = true;
+				startIdx = i;
+			}
+			// if alphabetic and inWord, nothing to be done
+			if (!isAlphabetic && inWord) {
+				result.add(s.substring(startIdx, i)); // i will not be included
+			}
+
+			inWord = isAlphabetic;
+		}
+		if (inWord)
+			result.add(s.substring(startIdx));
+
+		return result;
+	}
+
 	public static Collection<String> breakIntoParas(String input) throws IOException
 	{
 		List<String> paras = new ArrayList<String>();
@@ -3004,10 +3034,22 @@ public class Util
         }
     }
 
+	public static void testTokenizeAlphaChars() {
+		String[] tests = new String[]{"12abc xyz", "abc", "abc xyz12", "Dr. Prof. Doolittle"};
+		for (String s : tests)
+		{
+			System.out.println ("--\n" + s);
+			List<String> result = Util.tokenizeAlphaChars(s);
+			for (String r: result)
+				System.out.println (r);
+		}
+	}
+
     public static void main(String[] args){
 //            testEllipsizeKeepingExtension();
 //            testGetExtension();
 //            System.out.println("Tests passed ok");
+		testTokenizeAlphaChars();
     }
 
 }

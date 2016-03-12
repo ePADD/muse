@@ -279,9 +279,10 @@ public class ArchiveCluer extends Cluer {
 					candidateClue = Util.canonicalizeSpaces(candidateClue);
 					String lowerCaseSentence = candidateClue.toLowerCase();
 
-                    // check if any overlapping words between candidateClue and name
-                    Set<String> candidateClueTokens = new LinkedHashSet<>(Util.tokenize(candidateClue.toLowerCase()));
-                    Set<String> nameTokens = new LinkedHashSet<>(Util.tokenize(name.toLowerCase()));
+                    // check if any overlapping words between candidateClue and name. be careful to tokenize only the alphabetical chars,
+                    // because we want to match the clue "Hi John, How are you" with the name "John", ignoring the comma after John.
+                    Set<String> candidateClueTokens = new LinkedHashSet<>(Util.tokenizeAlphaChars(candidateClue.toLowerCase()));
+                    Set<String> nameTokens = new LinkedHashSet<>(Util.tokenizeAlphaChars(name.toLowerCase()));
                     candidateClueTokens.retainAll(nameTokens);
 
 					// we'll exclude single letter initials in someone's name, they can be present as words in the candidate clue
@@ -357,7 +358,9 @@ public class ArchiveCluer extends Cluer {
 				if (bestClueMessage == message) {
 					bestClue.clueStats.sentencesInMessage = sentences.size();
 				}
-			} catch (Exception e) { Util.print_exception("Error trying to generate clues", e, log); }
+			} catch (Exception e) {
+                Util.print_exception("Error trying to generate clues", e, log);
+            }
 
 			docCount++;
 		}
