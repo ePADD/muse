@@ -25,7 +25,7 @@ $(function() {
 });
 </script>
 </head>
-<body>
+<div>
 
 <script type="text/javascript" src="intro.js-0.5.0/intro.js"></script>
 
@@ -46,11 +46,17 @@ $(function() {
 <div class="container2">
 <form id="testinput" name = "testinput" action = "examplehandler" method="post">
 		<div id="containerdiv" >
-            <div id = "question" class="question">
             <span data-step = "1" data-intro = "You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
-            I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
-            <p>
-            Email recipient name: _ _ _ _ _ _ &nbsp;&nbsp; _ _ _ _ _ _</span>
+                <div id="nohint-question" class="question">
+                    I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
+                    <p>     Email recipient name: _ _ _ _ _ _ &nbsp;&nbsp; _ _ _ _ _ _</p>
+                </div>
+                <div id="hint-question" class="question" style="display: none">
+                    I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
+                    <p>     Email recipient name: H _ _ _ _ _ &nbsp;&nbsp; D _ _ _ _ _</p>
+                </div>
+
+            </span> </p>
             </div>
 		</div>
 		<p/>
@@ -67,7 +73,7 @@ $(function() {
                     Or choose one of the following:
                 </span><br/>
                 <span data-step="6" name="fail" data-intro="When you can't recall the answer, but you feel that it is about to come to you, then you are in a tip-of-the-tongue state. For example, you might know whom you sent this email to and feel you know who the person is, but cannot recall their name right now. It may feel like the name is ready to pop into your mind at any moment. If this happens, choose this option.">
-                    <input id="fTip" name="fail" type="radio" onclick="$('#tipRate').toggle()"/>I remember the person and their name is on the tip of my tongue. Give me a hint.
+                    <input id="fTip" name="fail" type="radio" onclick="show_hint()"/>I remember the person and their name is on the tip of my tongue. Give me a hint.
                 </span><br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
                 <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely. Give me a hint<br>
@@ -175,7 +181,17 @@ $(function() {
         <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Give up</button>
     </div>
 		<script>
-		function replacehint(){
+            function show_hint() {
+                // copy answer to save the answer before the hint was typed
+                $('#answerBeforeHint').val($('#answer').val());
+                $('#nohint-question').hide();
+                $('#hint-question').show(); // copy it over
+                // remove hint button once its been shown
+                $('#hint-button').fadeOut();
+                $('#hintUsed').val('true');
+            }
+
+            function replacehint(){
 			var hint = "H _ _ _ _ _";
 			var spacetoreplace = "_ _ _ _ _ _"
 			var text = $('#question').html();

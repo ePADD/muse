@@ -183,7 +183,8 @@ public class ArchiveCluer extends Cluer {
 
 		float contactScore = computeContactScore(c, messagesWithContact, startDate);
 
-		log.info("Messages with contact: " + name + " is #" + messagesWithContact.size());
+        log.info("Trying to generate clue for " + name + " (full contact info: " + c + ")");
+		log.info("A total of " + Util.pluralize(messagesWithContact.size(), "message") + " were sent to " + name);
 
         // find valid docs -- those sent only to c, and within the specified time window
 		List<EmailDocument> validMessages = new ArrayList<>();
@@ -195,7 +196,7 @@ public class ArchiveCluer extends Cluer {
                         validMessages.add(ed);
                 }
             }
-            log.info("Messages with contact: " + name + " and within the window: [" + startDate + ", " + endDate + "] is " + validMessages.size());
+            log.info (Util.pluralize(validMessages.size(), "message") + " sent (only) to " + name + " within the interval: [" + startDate + ", " + endDate + "]");
         }
 
         Set<Long> threadIds = new LinkedHashSet<>();
@@ -215,7 +216,9 @@ public class ArchiveCluer extends Cluer {
 		int nValidClueCandidates = 0;
 		for (EmailDocument message: validMessages)
 		{
-			try {
+            log.info ("Looking for clues in message: " + message);
+
+            try {
 				if (filteredIds != null && !filteredIds.contains(message.getUniqueId()))
 					continue; // not in filter docs, so can't use this doc
 
@@ -243,8 +246,12 @@ public class ArchiveCluer extends Cluer {
 				while (st.hasMoreSentences())
 					sentences.add(st.nextSentence(true));
 
-				if (sentences.size() < numSentences)
-					continue;
+                log.info ("Message has " + Util.pluralize(sentences.size(), "sentence"));
+
+                if (sentences.size() < numSentences) {
+                    log.info ("Message has too few sentences");
+                    continue;
+                }
 
 				nextSentence:
 				for (int i = 0; i < sentences.size(); i++)
@@ -312,11 +319,10 @@ public class ArchiveCluer extends Cluer {
 					float finalScore = clueScore + emailScore + contactScore;
 					clue.clueStats.finalScore = finalScore;
 
-					log.info("final score of clue for " + name + " is " + clue.clueStats.finalScore + " (clueScore = " + clueScore + ", emailScore = " + emailScore + ", contactScore = " + contactScore +") for sentence# " + i + " in doc #" + docCount + ":" + clue);
 
 					if (finalScore > bestScore)
 					{
-						log.info ("Prev. clue: New high!");
+                        log.info("New best clue for " + name + " is " + clue.clueStats.finalScore + " (clueScore = " + clueScore + ", emailScore = " + emailScore + ", contactScore = " + contactScore +") for sentence# " + i + " in doc #" + docCount + ":" + clue);
 						bestClue = clue;
 						bestClueMessage = message;
 						bestScore = finalScore;
@@ -371,7 +377,9 @@ public class ArchiveCluer extends Cluer {
 
 		if (bestClue != null)
 		{
-			bestClue.clueStats.nValidClueCandidates = nValidClueCandidates; // # of clues considered seriously, i.e. given a score
+            log.info("Final best question for " + name + " is score: " + bestClue.clueStats.finalScore + ": clue:"  + bestClue);
+
+            bestClue.clueStats.nValidClueCandidates = nValidClueCandidates; // # of clues considered seriously, i.e. given a score
 
 			int daysSinceFirstMention, daysSinceLastMention;
 			if (messagesWithContact.size() > 0)

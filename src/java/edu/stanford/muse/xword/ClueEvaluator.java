@@ -178,12 +178,11 @@ public class ClueEvaluator {
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
             double CUTOFF = 0.001;
-            log.info("Identifying names in the content");
 
             Map<Short, Map<String,Double>> eMap = edu.stanford.muse.ner.NER.getEntities(clue.d, true, archive);
             Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = edu.stanford.muse.ner.NER.getEntitiesInDoc(sOrig,eMap);
             Map<Short, Map<String,Double>> map = mapAndOffsets.first;
-            log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig+"["+map+"]");
+//            log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig+"["+map+"]");
             for (short x : map.keySet()) {
                 for(String e: map.get(x).keySet())
                     if(map.get(x).get(e)>CUTOFF)

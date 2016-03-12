@@ -253,8 +253,8 @@
 
     <p/>
         <input type="hidden" name="submitType" value="submit"/> <!-- will be submit or giveup -->
-        <button class="submitButton" style="margin-left: 20%" type="submit" value="Submit">Submit</button>
-        <button class="submitButton" style="margin-left: 20%" type="submit" value="GiveUp">Give up</button>
+        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
+        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Give up</button>
 
         <script>
 				function show_hint() {

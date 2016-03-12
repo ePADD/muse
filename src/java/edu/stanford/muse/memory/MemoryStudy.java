@@ -498,8 +498,9 @@ public class MemoryStudy implements Serializable{
 		logStats("questions.final");
 	}
 
-    // Compute date intervals
-    private static List<Pair<Date, Date>>  computeDateIntervals(Date earliestDate, Date latestDate) {
+    // Compute date intervals, working backwards from latestDate, until earliestDate is covered
+    // most recent interval is interval 0.
+    private static List<Pair<Date, Date>> computeDateIntervals(Date earliestDate, Date latestDate) {
         int DAYS_PER_INTERVAL = 30;
         List<Pair<Date, Date>> intervals = new ArrayList<Pair<Date, Date>>();
         {
@@ -516,6 +517,7 @@ public class MemoryStudy implements Serializable{
                 cal.set(Calendar.SECOND, 59);
                 Date endDate = cal.getTime();
 
+                // scroll back by DAYS_PER_INTERVAL days
                 cal.add(Calendar.DATE, (1 - DAYS_PER_INTERVAL)); // 1- because we want from 0:00 of first date to 23:59 of last date
                 cal.set(Calendar.HOUR_OF_DAY, 0);
                 cal.set(Calendar.MINUTE, 0);
@@ -552,7 +554,7 @@ public class MemoryStudy implements Serializable{
     }
 
     /** Generates person names tests from the given archive. @throws IOException */
-	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int cluesPerInterval) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int numClues) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
 		this.archive = archive;
 		questions = new ArrayList<>();
 		ArchiveCluer cluer = new ArchiveCluer(null, archive, nerModel, null, lex);
@@ -581,8 +583,9 @@ public class MemoryStudy implements Serializable{
             if (latestDate == null || ed.date.after(latestDate))
                 latestDate = ed.date;
         }
-        JSPHelper.log.info ("In " + docs.size() + " messages, earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate)
+        JSPHelper.log.info ("===================\nStarting to generate person names memory questions from " + docs.size() + " messages with " + numClues + " questions" + ", earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate)
                         + " latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+
 
         // compute contactToLatestDate that contact has been seen on
         for (Document doc : docs) {
@@ -603,12 +606,16 @@ public class MemoryStudy implements Serializable{
 		log.info("We are considering " + contactToLatestDate.size() + " contacts");
 
         Date currentDate = new Date();
-        List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, currentDate); // should latestDate be today's date instead?
-        JSPHelper.log.info ("done computing intervals, #time intervals: " + intervals.size());
+        List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, currentDate); // go back from current date
+        // intervals[0] is the most recent.
+        JSPHelper.log.info ("done computing " + intervals.size() + " intervals");
         for (Pair<Date, Date> p: intervals)
             JSPHelper.log.info ("Interval: " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()));
 
-		// initialize clueInfos to empty lists
+        int cluesPerInterval = (numClues > 0 && intervals.size() > 0) ? (numClues + intervals.size() - 1) / intervals.size() : 0;
+        JSPHelper.log.info ("Will try to generate " + Util.pluralize(cluesPerInterval, "questions") + " per interval");
+
+        // initialize clueInfos to empty lists
 		List<ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
 		for (int i = 0; i < intervals.size(); i++) {
 			clueInfos[i] = new ArrayList<>();
@@ -647,18 +654,21 @@ public class MemoryStudy implements Serializable{
         }
 
         log.info ("Interval information (interval 0 is the most recent):");
-        for (int interval: intervalToContacts.keySet()) {
+        for (int interval = 0; interval < intervals.size(); interval++) {
             Collection<Contact> contacts = intervalToContacts.get(interval);
             int nContactsForThisInterval = (contacts == null) ? 0 : contacts.size();
-            log.info ("In interval " + interval + " there are " + Util.pluralize (nContactsForThisInterval, "candidate contact"));
+            log.info ("In interval " + interval + " there are " + Util.pluralize (nContactsForThisInterval, "candidate contact") + " who were last seen in this interval");
         }
 
-        for (int interval: intervalToContacts.keySet()) {
+        for (int interval = 0; interval < intervals.size(); interval++) {
             Date intervalStart = intervals.get(interval).getFirst();
             Date intervalEnd = intervals.get(interval).getSecond();
             Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(interval);
+            if (candidateContactsForThisInterval == null)
+                log.info ("Skipping interval " + interval + " because there are no contacts");
 
             Map<Clue, Contact> clueToContact = new LinkedHashMap<>();
+            log.info ("=======\nGenerating questions for interval " + interval);
 
             outer:
             for (Contact c: candidateContactsForThisInterval) {
@@ -686,9 +696,9 @@ public class MemoryStudy implements Serializable{
 
             log.info ("For interval " + interval + " selected " + selectedClues.size() + " contacts out of " + clueList.size() + " possible candidates.");
             for (Clue c: clueList)
-                log.info ("For candidate contact " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c );
+                log.info ("Clue candidate for " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c );
             for (Clue c: selectedClues)
-                log.info ("For selected contact " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c);
+                log.info ("Selected clue: " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c);
 
             for (Clue selectedClue: selectedClues) {
                 Contact c = clueToContact.get(selectedClue);

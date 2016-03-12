@@ -98,7 +98,7 @@ form#testinput button {
 }
 					
 form#testinput button:hover {
-					background: ##33aa33;
+					background: #33aa33;
 					cursor: pointer;
 }
 form#testinput button:active{
