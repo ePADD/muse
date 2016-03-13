@@ -26,3 +26,17 @@
        url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.svg#DancingScript') format('svg');
 }
 
+@font-face {
+  font-family: 'Open Sans';
+  font-weight: 400;
+  font-style: normal;
+  src: url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.eot');
+  src: url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.eot?#iefix') format('embedded-opentype'),
+       local('Open Sans'),
+       local('Open-Sans-regular'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.woff2') format('woff2'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.woff') format('woff'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.ttf') format('truetype'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.svg#OpenSans') format('svg');
+}
+

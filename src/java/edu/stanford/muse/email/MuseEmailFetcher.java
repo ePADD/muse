@@ -543,7 +543,7 @@ public class MuseEmailFetcher {
 
 		// create a new address book	
 		if (session != null)
-			session.setAttribute("statusProvider", new StaticStatusProvider("Resolving aliases..."));
+			session.setAttribute("statusProvider", new StaticStatusProvider("Building address book..."));
 		AddressBook addressBook = EmailDocument.buildAddressBook(allEmailDocs, archive.ownerEmailAddrs, archive.ownerNames);
 		log.info ("Address book stats: " + addressBook.getStats());
 		if (session != null)

@@ -4,28 +4,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Full Informed Consent Form</title>
-<link rel="stylesheet" href="css/consentform.css" type="text/css" />
-<link rel="icon" href="../images/ashoka-favicon.gif">
+	<meta charset="UTF-8">
+	<title>CELL Consent Form</title>
+	<link rel="stylesheet" href="css/memory.css" type="text/css" />
+	<link rel="stylesheet" href="../css/fonts.css" type="text/css"/>
+	<link rel="icon" href="../images/ashoka-favicon.gif">
 </head>
 <body>
-<h1 class="title">Consent Form</h1>
-<form id ="eligibility" action="consenthandler.jsp" method="post">
+<div class="box">
+	<jsp:include page="header.jspf"/>
+	<h2 class="title">Consent Form</h2>
+
+	<form id ="eligibility" action="consenthandler.jsp" method="post">
 
 <fieldset>
 <legend>What is Consent?</legend>
-<ol><li>
 This consent form below will explain important information. Please read it carefully. If you want to participate in the study you must agree to what is in this form.
-</li></ol>
 
 </fieldset>
+<br/>
 
 <fieldset>
 <legend>Consent Form Text</legend>
-<ol>
-<li>
-<p class = "bold">ASHOKA UNIVERSITY-Research Information Sheet</p><br>
+<p class = "bold">ASHOKA UNIVERSITY: Research Information Sheet</p><br>
 Protocol Director: Sudheendra Hangal<br>
 Protocol Title: Computerized Assessment of Cognition<br>
 <p class = "bold">DESCRIPTION:</p>  You are invited to participate in a research study on email archives and whether they can be applied to study memory and other mental processes.  Participants will provide their email information to a secure computer server. Our program will automatically analyze your email and evaluate whether you could reasonably participate in the study.  For example if you rarely use email or do not speak English then our study may not find useful information and we may ask you not to participate.  If you pass our screening then the program will generate questions for you, and record your answers.
@@ -47,13 +48,11 @@ There is no benefit to the individual participant.  We cannot and do not guarant
 <p class = "bold">Questions:</p>  If you have any questions, concerns or complaints about this research, its procedures, risks and benefits, contact the Protocol Director, Sudheendra Hangal at (650) 725-3720.
 <br>
 <p class = "bold">Independent Contact:</p> If you are not satisfied with how this study is being conducted, or if you have any concerns, complaints, or general questions about the research or your rights as a participant, please contact the Ashoka Institutional Review Board (IRB) at irb@ashoka.edu.in. You can also write to: The Ashoka IRB, Ashoka University, Haryana, India 131028.
-<br>
+<p>
 Please print a copy of this page for your records.
-<br>
+<p>
 By consenting you are agreeing that you are 18 years of age or over and willing to perform this research.
 If you agree to participate in this research, please complete the survey that follows.
-</li>
-</ol>
 </fieldset>
 <fieldset>
 <legend>Consent Agreement</legend>
@@ -68,6 +67,7 @@ If you agree to participate in this research, please complete the survey that fo
 			</tr>
 		</table>
 	</fieldset>
+	<br/>
 	<fieldset>
 		<button type="submit">Continue</button>
 	</fieldset>	

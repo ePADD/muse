@@ -7,15 +7,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Study Complete</title>
+    <link rel="stylesheet" href="../css/fonts.css" type="text/css" />
     <link rel="stylesheet" href="css/memory.css" type="text/css" />
     <link rel="icon" href="images/ashoka-favicon.gif">
 </head>
 <body>
 <div class ="box">
-	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
-	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
-	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
-
+    <jsp:include page="header.jspf"/>
 	<%
 	Archive archive = (Archive) session.getAttribute("archive");
 	if (archive != null) {
@@ -40,7 +38,7 @@ You can contact stanfordmemorystudy@gmail.com in case you have any questions. Th
 
     <p>
 
-	If you logged in with a Google account, please go to <a target="_blank" href="https://security.google.com/settings/security">this page</a> and revoke Oauth access for Muse under "Connected applications and sites" -&gt; "Review permissions".
+	If you logged in with a Google account, please go to <a target="_blank" href="https://security.google.com/settings/security">this page</a> and revoke Oauth access for Muse under "Connected apps and sites" -&gt; "Review permissions".
 	If you used a Yahoo account, nothing further needs to be done.
 
 	<p>
@@ -51,7 +49,7 @@ You can contact stanfordmemorystudy@gmail.com in case you have any questions. Th
 	Please fill the feedback form below.
     <p>
 
-    <iframe src="https://docs.google.com/forms/d/1F4TsPMbAGUrumw-zgSEdr-g1FZn6NS2jCCmJzhhIZ4E/viewform?embedded=true" width="760" height="500" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
+    <iframe src="https://docs.google.com/forms/d/1F4TsPMbAGUrumw-zgSEdr-g1FZn6NS2jCCmJzhhIZ4E/viewform?embedded=true" width="600" height="600" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
 
 
 </div>

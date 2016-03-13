@@ -181,7 +181,7 @@
 	  	<servlet-name>screenpass</servlet-name>
 	    <url-pattern>/memorystudy/screenpass</url-pattern>
 	</servlet-mapping>
-  		
+
   	<servlet>
 		<servlet-name>question</servlet-name>
 		<jsp-file>/memorystudy/question.jsp</jsp-file>
@@ -193,7 +193,7 @@
 
   	<servlet>
 		<servlet-name>welcome</servlet-name>
-		<jsp-file>/memorystudy/welcome.html</jsp-file>
+		<jsp-file>/memorystudy/welcome.jsp</jsp-file>
   	</servlet>
   	<servlet-mapping>
 	  	<servlet-name>welcome</servlet-name>
@@ -253,8 +253,18 @@
 	  	<servlet-name>answerCheck</servlet-name>
 	    <url-pattern>/memorystudy/answerCheck</url-pattern>
 	</servlet-mapping>
-  	
-  	<servlet>
+
+	<servlet>
+		<servlet-name>eligibility</servlet-name>
+		<jsp-file>/memorystudy/eligibility.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>eligibility</servlet-name>
+		<url-pattern>/memorystudy/eligibility</url-pattern>
+	</servlet-mapping>
+
+
+	<servlet>
 		<servlet-name>checkEligible</servlet-name>
 		<jsp-file>/memorystudy/checkEligible.jsp</jsp-file>
   	</servlet>
@@ -264,15 +274,24 @@
 	</servlet-mapping>
 	
   	 <servlet>
-		<servlet-name>consentForm</servlet-name>
+		<servlet-name>consentform</servlet-name>
 		<jsp-file>/memorystudy/consentform.jsp</jsp-file>
   	</servlet>
   	<servlet-mapping>
-	  	<servlet-name>consentForm</servlet-name>
-	    <url-pattern>/memorystudy/consentForm</url-pattern>
+	  	<servlet-name>consentform</servlet-name>
+	    <url-pattern>/memorystudy/consentform</url-pattern>
 	</servlet-mapping>
- 
-  	 <servlet>
+
+	<servlet>
+		<servlet-name>reject-consent</servlet-name>
+		<jsp-file>/memorystudy/reject-consent.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>reject-consent</servlet-name>
+		<url-pattern>/memorystudy/reject-consent</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
 		<servlet-name>finish</servlet-name>
 		<jsp-file>/memorystudy/finish.jsp</jsp-file>
   	</servlet>

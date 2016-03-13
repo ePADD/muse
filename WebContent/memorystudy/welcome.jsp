@@ -12,13 +12,14 @@
 </head>
 <body>
 <div class="box">
+    <jsp:include page="header.jspf"/>
     <img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
     <h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
     <hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
 
     <div style="clear:both"></div>
 <br/>
-    YOUR QUESTIONS ARE READY!
+    <h2 class="title">YOUR QUESTIONS ARE READY!</h2>
     <p>
         You will now be asked to recall names of people you have emailed in the last one year based on a snippet of an email you wrote to them. If you know the answer, type it in the space provided. If you have trouble remembering the name, we'll ask you why, and provide a hint.
         We'll also ask other questions about your memory for the email.

@@ -3035,7 +3035,7 @@ public class Util
     }
 
 	public static void testTokenizeAlphaChars() {
-		String[] tests = new String[]{"12abc xyz", "abc", "abc xyz12", "Dr. Prof. Doolittle"};
+		String[] tests = new String[]{"12abc xyz", "abc", "abc xyz12", "Dr. Prof. Doolit"};
 		for (String s : tests)
 		{
 			System.out.println ("--\n" + s);

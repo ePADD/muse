@@ -404,74 +404,56 @@ public class JSPHelper {
 		archive.close();
 		archive.openForRead();
 
-        String modelFile = SequenceModel.modelFileName;
-        NERModel nerModel = (SequenceModel)session.getAttribute("ner");
-        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
-        try {
-            if (System.getProperty("muse.dummy.ner") != null) {
-				log.info("Using dummy NER model, all CIC patterns will be treated as valid entities");
-				nerModel = new DummyNERModel();
-			} else {
-				log.info("Loading NER sequence model from: " + modelFile + " ...");
-				nerModel = SequenceModel.loadModel(modelFile);
+		// only do all this if we are download message text.
+		if (downloadMessageText) {
+			String modelFile = SequenceModel.modelFileName;
+			NERModel nerModel = (SequenceModel) session.getAttribute("ner");
+			session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: " + modelFile + "..."));
+			try {
+				if (System.getProperty("muse.dummy.ner") != null) {
+					log.info("Using dummy NER model, all CIC patterns will be treated as valid entities");
+					nerModel = new DummyNERModel();
+				} else {
+					log.info("Loading NER sequence model from: " + modelFile + " ...");
+					nerModel = SequenceModel.loadModel(modelFile);
+				}
+			} catch (IOException e) {
+				Util.print_exception("Could not load the sequence model from: " + modelFile, e, log);
 			}
-        } catch (IOException e) {
-            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
-        }
-        if (nerModel == null) {
-            log.error("Could not load NER model from: "+modelFile);
-        }
-        else {
-            NER ner = new NER(archive, nerModel);
-            session.setAttribute("statusProvider", ner);
-            ner.recognizeArchive();
-            archive.processingMetadata.entityCounts = ner.stats.counts;
-			log.info(ner.stats);
-        }
-        archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
-        log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+			if (nerModel == null) {
+				log.error("Could not load NER model from: " + modelFile);
+			} else {
+				NER ner = new NER(archive, nerModel);
+				session.setAttribute("statusProvider", ner);
+				ner.recognizeArchive();
+				archive.processingMetadata.entityCounts = ner.stats.counts;
+				log.info(ner.stats);
+			}
+			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+			log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
-//
-//		try {
-//			//train an epadd ner ; recognise the entities and dd it to the index
-//			NER ner = new NER(archive);
-//			session.setAttribute("statusProvider", ner);
-//			log.info("Base dir: " + getBaseDir(m, request));
-//            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
-//            if("memorytest".equals(mode)) {
-//                log.info("Setting dump model to false for NER");
-//                ner.recognizeArchive(false);
-//            }else
-//                ner.recognizeArchive(true);
-
-//		}
-//		//trying to be extra defensive during indexing.
-//		catch (Exception e) {
-//			e.printStackTrace();
-//			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
-//		}
-
-        //Is there a reliable and more proper way of checking the mode it is running in?
-        String logF = System.getProperty("muse.log");
-        if(logF == null || logF.endsWith("epadd.log")) {
-            //one final step of building entity feature index to build context for every entity
-            try {
-                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-                session.setAttribute("statusProvider", assignauthorities);
-                assignauthorities.initialize(archive);
-                if (!assignauthorities.isCancelled())
-                    request.getSession().setAttribute("authorities", assignauthorities);
-                else
-                    assignauthorities = null;
-                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
-                if (!success) {
-                    log.warn("Could not build context features for entities");
-                } else
-                    log.info("Successfully built context features for entities");
-            } catch (Exception e) {
-                log.warn("Exception while building context features", e);
-            }
-        }
+			//Is there a reliable and more proper way of checking the mode it is running in?
+			String logF = System.getProperty("muse.log");
+			if (logF == null || logF.endsWith("epadd.log")) {
+				//one final step of building entity feature index to build context for every entity
+				try {
+					InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+					session.setAttribute("statusProvider", assignauthorities);
+					assignauthorities.initialize(archive);
+					if (!assignauthorities.isCancelled())
+						request.getSession().setAttribute("authorities", assignauthorities);
+					else
+						assignauthorities = null;
+					boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+					if (!success) {
+						log.warn("Could not build context features for entities");
+					} else
+						log.info("Successfully built context features for entities");
+				} catch (Exception e) {
+					log.warn("Exception while building context features", e);
+				}
+			}
+		}
 		// add the new stores
 	}
 

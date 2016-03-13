@@ -11,15 +11,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="css/memoryjsp.css" type="text/css" />
-<script src="../js/jquery/jquery.js"></script>
-<script src="../js/muse.js"></script>
-<link rel="icon" href="images/ashoka-favicon.gif">
-<title>Finished Signup!</title>
+	<title>Finished Signup!</title>
+	<link rel="icon" href="images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="css/memory.css" type="text/css" />
+	<script src="../js/jquery/jquery.js"></script>
+	<script src="../js/muse.js"></script>
 </head>
 <body>
-<h1 class="title">Screening Pass</h1>
 <div class="box">
+	<h2 class="title">Screening Pass</h2>
 <!-- Generate code, append to link. Output with a thank you message. -->
 <%
 	String passkey = "";

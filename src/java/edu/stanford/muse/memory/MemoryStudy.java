@@ -160,8 +160,11 @@ public class MemoryStudy implements Serializable{
 	
 	synchronized public static boolean anyCodesAvailable() throws IOException, GeneralSecurityException, ClassNotFoundException
 	{
-		List<UserStats> users = readUsersFile();
-		return (users.size() < codes.size());
+        try {
+            List<UserStats> users = readUsersFile();
+            return (users.size() < codes.size());
+        } catch (Exception e) { Util.print_exception(e, log);}
+        return false;
 	}
 	
 	// add the new user to the encrypted users file which has the detailed stats for all users	

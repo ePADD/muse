@@ -8,21 +8,25 @@ html, body, h1, div, fieldset, legend, ol, li {
 body {
 	background-color: #082041; /*#faf6e3;*/
 	color: #ffffff;
-	font-family: "Futura", "Trebuchet MS", sans-serif;
-	font-size: 13px;
+	font-family: "Open Sans", "Trebuchet MS", sans-serif;
+	font-size: 16px;
 	padding: 20px;
-}
-
-.title {
-	text-align:center;
-	font-family: "Myriad Pro", Courier, Arial, sans-serif;
-	font-variant: small-caps;
 }
 
 h1 {
 	font-size :28px;
 	margin-bottom: 20px;
 }
+
+h2.title {
+	font-weight:normal;
+	font-size:24px;
+	text-align:center;
+	text-transform: none;
+	font-family: inherit;
+	color:black;
+}
+
 p.bold{font-weight:bold;}
 
 hr {
@@ -32,22 +36,8 @@ hr {
   height: 2px;
 }
 
-.title {
-	/*position:absolute;*/
-	text-align:center;
-	font-family: "Myriad Pro", Courier, Arial, sans-serif;
-	font-variant: small-caps;
-}
-
 .center {
 	text-align:center;
-}
-
-body{
-	font-family:"Trebuchet MS", sans-serif;
-	/*background-image: url('../images/tweed_muse.png');*/
-	background-color: #082041; /* #faf6e3 /* grey */;
-	font-size: 16px;
 }
 
 p.bold{font-weight:bold;}
@@ -167,88 +157,6 @@ input[type="text"]:focus{
 	box-shadow:inset 0 1px 1px rgba(0,0,0,0.075),0 0 8px rgba(82,168,236,0.6)
 }
 
-/*
-button {
-	border: none;
-	-moz-border-radius: 10px;
-	-webkit-border-radius: 10px;
-	-khtml-border-radius: 10px;
-	border-radius: 10px;
-	color: #ffffff;
-	display: inline;
-	font: 18px Georgia, "Times New Roman", Times, serif;
-	letter-spacing: 1px;
-	padding: 7px 25px;
-	text-shadow: 0 1px 1px #000000;
-	text-transform: uppercase;
-}
-*/
-
-button:hover {
-	background: #a70e13; /* #33aa33; /* #63AF96; */
-	cursor: pointer;
-}
-
-.title {
-	text-align:center;
-	font-family: "Myriad Pro", Courier, Arial, sans-serif;
-	font-variant: small-caps;
-}
-.smaller{
-	font-size: 1em;
-}
-
-.questiontext{
-	font: 18px "Futura", "Trebuchet MS", sans-serif;
-}
-
-.answer { color: royalblue;}
-.question:before, .question:after
-{
-	z-index: -1;
-	position: absolute;
-	content: "";
-	bottom: 15px;
-	left: 10px;
-	width: 50%;
-	top: 80%;
-	max-width:300px;
-	background: #777;
-	-webkit-box-shadow: 0 10px 10px #777;
-	-moz-box-shadow: 0 15px 10px #777;
-	box-shadow: 0 10px 10px #777;
-	-webkit-transform: rotate(-3deg);
-	-moz-transform: rotate(-3deg);
-	-o-transform: rotate(-3deg);
-	-ms-transform: rotate(-3deg);
-	transform: rotate(-3deg);
-}
-
-.question:after
-{
-	-webkit-transform: rotate(3deg);
-	-moz-transform: rotate(3deg);
-	-o-transform: rotate(3deg);
-	-ms-transform: rotate(3deg);
-	transform: rotate(3deg);
-	right: 10px;
-	left: auto;
-}
-
-
-.question{
-	position:relative;
-	-webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
-	-moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
-	box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
-	padding:30px;
-	/* border: 1px dashed #000; */
-	color: royalblue;
-	background-color: #eee;
-	margin:auto;
-	width:90%;
-}
-
 input[type=range] {
 	/*removes default webkit styles*/
 	-webkit-appearance: none;
@@ -307,6 +215,69 @@ input[type=range]::-moz-range-thumb {
 input[type=range]:-moz-focusring{
 	outline: none;
 }
+
+button:hover {
+	background: #a70e13; /* #33aa33; /* #63AF96; */
+	cursor: pointer;
+}
+
+.smaller{
+	font-size: 1em;
+}
+
+.questiontext{
+	font-size: 18px;
+}
+
+.answer { color: royalblue;}
+
+.question:before, .question:after
+{
+	z-index: -1;
+	position: absolute;
+	content: "";
+	bottom: 15px;
+	left: 10px;
+	width: 50%;
+	top: 80%;
+	max-width:300px;
+	background: #777;
+	-webkit-box-shadow: 0 10px 10px #777;
+	-moz-box-shadow: 0 15px 10px #777;
+	box-shadow: 0 10px 10px #777;
+	-webkit-transform: rotate(-3deg);
+	-moz-transform: rotate(-3deg);
+	-o-transform: rotate(-3deg);
+	-ms-transform: rotate(-3deg);
+	transform: rotate(-3deg);
+}
+
+.question:after
+{
+	-webkit-transform: rotate(3deg);
+	-moz-transform: rotate(3deg);
+	-o-transform: rotate(3deg);
+	-ms-transform: rotate(3deg);
+	transform: rotate(3deg);
+	right: 10px;
+	left: auto;
+}
+
+
+.question{
+	position:relative;
+	-webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+	-moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+	box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+	padding:30px;
+	/* border: 1px dashed #000; */
+	color: royalblue;
+	background-color: #eee;
+	margin:auto;
+	width:90%;
+}
+
+
 
 fieldset { border: none;}
 ol { list-style-type: square;}

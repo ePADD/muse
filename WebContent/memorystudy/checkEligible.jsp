@@ -48,21 +48,20 @@ session.setAttribute("ethnicity", ethnicity);
 <!DOCTYPE html>
 <html>
 <head>
+	<title>Results of eligibility check</title>
 	<link rel="icon" href="../images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="../css/fonts.css"/>
 	<link rel="stylesheet" href="css/memory.css"/>
 <title>Not Eligible</title>
 </head>
 <body>
 <div class="box">
-	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
-	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
-	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+<jsp:include page="header.jspf"/>
 
-
-	<h1>Sorry, you're not eligible.</h1>
+	<h2 class="title">Sorry, you're not eligible.</h2>
 	<br>
 	<%= message %>
-	<p class="bold">Please go back to the  <a href="eligibilitypage.html">eligibility page</a>.</p>
+	Please go back to the  <a href="eligibility">eligibility page</a>.
 	<br>
 </div>
 </body>

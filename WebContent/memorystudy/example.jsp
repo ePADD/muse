@@ -15,6 +15,7 @@
     <link href="intro.js-0.5.0/example/assets/css/demo.css" rel="stylesheet">
     <link href="intro.js-0.5.0/introjs.css" rel="stylesheet">
 
+    <link rel="stylesheet" href="../css/fonts.css"/>
     <link rel="stylesheet" href="css/memory.css"/>
     <link rel="icon" href="images/ashoka-favicon.gif">
 
@@ -36,7 +37,7 @@ $(function() {
         <span style="float: right;font-size: 30px;color: white;transform:rotate(30deg);background-color:#a70e13;padding:5px;position:relative;top:20px;left:10px">
             Example
         </span>
-<br/>
+    <br/>
     <br/>
     <br/>
 
