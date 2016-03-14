@@ -432,12 +432,12 @@ public class ArchiveCluer extends Cluer {
 
 		float inThisIntervalScore = 0.0f;
 
-		if (numMessagesInThisInterval > 5)
-			inThisIntervalScore = numMessagesInThisInterval * 20;
-		else if (numMessagesInThisInterval > 10)
-			inThisIntervalScore = numMessagesInThisInterval * 40;
-		else
+		if (numMessagesInThisInterval > 10)
 			inThisIntervalScore = numMessagesInThisInterval * 60;
+		else if (numMessagesInThisInterval > 5)
+			inThisIntervalScore = numMessagesInThisInterval * 40;
+		else if (numMessagesInThisInterval > 1) // strongly penalize one-off correspondents, they get no boost
+			inThisIntervalScore = numMessagesInThisInterval * 20;
 
 		return inThisIntervalScore + outsideThisIntervalScore;
 	}
@@ -851,7 +851,7 @@ public class ArchiveCluer extends Cluer {
 
 		double score = 0;
         for(ClueEvaluator eval: evals)
-            score = eval.computeScore(score, clue, answer, nerModel, archive);
+            score += eval.computeScore(clue, answer, nerModel, archive);
 
         //log.info ("score = " + score + " namesScore = " + namesScore + " exclamationScore = " + exclamationScore + " smileyScore = " + smileyScore + " lengthBoost = " + lengthBoost);
         // log.info("Score: "+score+" "+clue.clueStats);

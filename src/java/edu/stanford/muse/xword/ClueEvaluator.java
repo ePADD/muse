@@ -25,12 +25,9 @@ import java.util.regex.Pattern;
  * Note: Though the classes are called ClueEvaluators, they actually evaluate: Answer + Clue
  * for example: if an NER Model can recognise a answer as entity in clue or if the answer has been mentioned after a long period
  */
-public class ClueEvaluator {
-    public static Log log = LogFactory.getLog(ClueEvaluator.class);
-
-    public double computeScore(double score, Clue clue, String answer,  NERModel nerModel, Archive archive){
-        return score;
-    }
+    abstract public class ClueEvaluator {
+        public static Log log = LogFactory.getLog(ClueEvaluator.class);
+        abstract public double computeScore(Clue clue, String answer,  NERModel nerModel, Archive archive);
 
     public static class LengthEvaluator extends ClueEvaluator{
         float[] params;
@@ -55,7 +52,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive){
+        public double computeScore(Clue clue, String answer, NERModel nerModel, Archive archive){
             String s = clue.getFullSentenceOriginal();
             // clue gets points the closer it is to the preferred clue length
             // lengthBoost is really a penalty (its -ve)
@@ -68,7 +65,7 @@ public class ClueEvaluator {
                 lengthBoost = params[2];
 
             clue.clueStats.lengthBoost = lengthBoost;
-            return score+lengthBoost;
+            return lengthBoost;
         }
     }
 
@@ -89,7 +86,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
+        public double computeScore(Clue clue, String answer, NERModel nerModel, Archive archive) {
             //TODO: considers two exclamations and question marks as the same, is that OK?
             String s = clue.getFullSentenceOriginal().toLowerCase();
             // prefer exclamations, highly memorable
@@ -105,50 +102,12 @@ public class ClueEvaluator {
                 if (s.indexOf(smiley) >= 0) {
                     nSmileys++;
                 }
-            float smileyScore = params[1] * nSmileys;
+            float smileyScore = params[2] * nSmileys;
 
             clue.clueStats.nSmileys = nSmileys;
             clue.clueStats.smileyScore = smileyScore;
             //the original code for some reason adds one to the score, just retaining that here.
-            return score + 1.0f + exclamationScore + questionScore + smileyScore;
-        }
-    }
-
-    /**
-     * Penalises any dirty words in the clue
-     * */
-
-    /**
-     * Penalises the existence of any non-specific words
-     * */
-    public static class SpecificityEvaluator extends ClueEvaluator {
-        float[] params;
-
-        /**
-         * Required param to penalise sentences starting with non-specific words such as <i>this, that, however</i>
-         * default: -10.0f
-         */
-        public SpecificityEvaluator(float[] params) {
-            this();
-            if (params == null || params.length != 1) {
-                log.error("Wrong initialisation of params in " + SpecificityEvaluator.class + "!! Required 1 param");
-            } else {
-                this.params = params;
-            }
-        }
-
-        public SpecificityEvaluator(){
-            this.params = new float[]{-10.0f};
-        }
-
-        @Override
-        public double computeScore(double score, Clue clue, String answer, NERModel nerMode, Archive archivel) {
-            String s = clue.getFullSentenceOriginal().toLowerCase();
-            if (s.startsWith("this") || s.startsWith("that") || s.startsWith("however")) {
-                clue.clueStats.containsNonSpecificWords = true;
-                score += params[0]; // non-specific, depends on context
-            }
-            return score;
+            return exclamationScore + questionScore + smileyScore;
         }
     }
 
@@ -169,11 +128,11 @@ public class ClueEvaluator {
         }
 
         public NamesEvaluator(){
-            this.params = new float[]{2.0f, -20.0f};
+            this.params = new float[]{10.0f};
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
+        public double computeScore(Clue clue, String answer, NERModel nerModel, Archive archive) {
             String sOrig = clue.getFullSentenceOriginal();
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
             List<String> names = new ArrayList<>();
@@ -190,7 +149,6 @@ public class ClueEvaluator {
             }
 
             float namesScore = params[0]*names.size();
-            score += namesScore;
 
             boolean found = false;
             for (String name : names) { //check that NER detects same name in text as the name of the answer (eg. removes instances where NER returns "San Jose" from clue, but answer is "San")
@@ -199,16 +157,12 @@ public class ClueEvaluator {
                     break;
                 }
             }
-            if (!found) {
-                score += params[1];
-                clue.clueStats.nameNotInClue = true;
-            }
 
             clue.clueStats.namesInClue = names.size();
             clue.clueStats.clueLength = clue.getFullSentenceOriginal().length();
 
             clue.clueStats.namesScore = namesScore;
-            return score;
+            return namesScore;
         }
     }
 
@@ -330,7 +284,7 @@ public class ClueEvaluator {
         }
 
         @Override
-        public double computeScore(double score, Clue clue, String answer, NERModel nerModel, Archive archive) {
+        public double computeScore(Clue clue, String answer, NERModel nerModel, Archive archive) {
             String s = clue.getFullSentenceOriginal().toLowerCase();
             float boost = 0;
             for(int i=0;i<params.length;i++) {
@@ -370,7 +324,7 @@ public class ClueEvaluator {
                 else if (i==2) clue.clueStats.refWordScore = b;
                 else clue.clueStats.pronounScore = b;
             }
-            return score + boost;
+            return boost;
         }
     }
 

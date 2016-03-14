@@ -164,12 +164,6 @@
         for(int i=0;i<pS.length;i++)
             params[i] = Float.parseFloat(pS[i]);
 
-        params = new float[1];
-        pS = request.getParameter("ns1").split("[,\\s]+");
-        for(int i=0;i<pS.length;i++)
-            params[i] = Float.parseFloat(pS[i]);
-        evals.add(new ClueEvaluator.SpecificityEvaluator(params));
-
         params = new float[2];
         pS = request.getParameter("na1").split("[,\\s]+");
         for(int i=0;i<pS.length;i++)

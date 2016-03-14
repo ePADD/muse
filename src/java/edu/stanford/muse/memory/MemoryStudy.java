@@ -543,10 +543,9 @@ public class MemoryStudy implements Serializable{
         List<ClueEvaluator> evals = new ArrayList<>();
         //default tuned params
         evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f, -20.0f, 0f}));
-        evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{5.0f, 7.0f, 7.0f}));
-        evals.add(new ClueEvaluator.SpecificityEvaluator(new float[]{-10.0f}));
-        evals.add(new ClueEvaluator.NamesEvaluator(new float[]{5.0f, -20.0f}));
-        float[] params = new float[]{5.0f, 0.0f, 10.0f, 0.0f};
+        evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{20.0f,10.0f,20.0f}));
+        evals.add(new ClueEvaluator.NamesEvaluator(new float[]{10.0f}));
+        float[] params = new float[]{10.0f, 0.0f, 10.0f, 0.0f};
         List<String[]> lists = new ArrayList<>();
         lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
         lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));

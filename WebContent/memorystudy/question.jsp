@@ -155,7 +155,7 @@
 			<p>
 			<div id="hint-question" class="question" style="display: none">
 				<%
-                    q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest().replaceAll(" ", "&nbsp;")) + "</p>";
+                    q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()).replaceAll(" ", "&nbsp;") + "</p>";
 				    out.println(q);
                 %>
 			</div>
