@@ -30,7 +30,7 @@ if (!"yes".equalsIgnoreCase(access_response)) {
 }
 
 if (redirect) {
-	response.sendRedirect("/muse/memorystudy/consentForm");
+	response.sendRedirect("/muse/memorystudy/consentform");
 	return;
 }
 

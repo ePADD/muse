@@ -8,10 +8,11 @@ html, body, h1, div, fieldset, legend, ol, li {
 body {
 	background-color: #082041; /*#faf6e3;*/
 	color: #ffffff;
-	font-family: "Open Sans", "Trebuchet MS", sans-serif;
 	font-size: 16px;
 	padding: 20px;
+	font-family: "Open Sans", "Trebuchet MS", sans-serif;
 }
+
 
 h1 {
 	font-size :28px;
@@ -295,3 +296,5 @@ output { color: white; background-color: black; padding: 5px;}
 }
 
 .introjs-tooltiptext { color: black; }
+
+.progress_bar { background-color: #a70e13;}

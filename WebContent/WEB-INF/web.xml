@@ -274,11 +274,11 @@
 	</servlet-mapping>
 	
   	 <servlet>
-		<servlet-name>consentform</servlet-name>
+		<servlet-name>consent-form</servlet-name>
 		<jsp-file>/memorystudy/consentform.jsp</jsp-file>
   	</servlet>
   	<servlet-mapping>
-	  	<servlet-name>consentform</servlet-name>
+	  	<servlet-name>consent-form</servlet-name>
 	    <url-pattern>/memorystudy/consentform</url-pattern>
 	</servlet-mapping>
 

@@ -93,13 +93,13 @@ if(request.getLocalPort() == 8043) {
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
-	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/memory.css">
-	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
-	<jsp:include page="css/css.jsp"/> <!-- required for styling status_div -->
-
-	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 	<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
 	<link rel="icon" href="images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="css/fonts.css" type="text/css"/>
+	<jsp:include page="css/css.jsp"/> <!-- required for styling status_div -->
+	<link rel = "stylesheet" type ="text/css" href="memorystudy/css/memory.css">
+
+	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 
 	<script type="text/javascript" src="js/jquery/jquery.js"></script>
 	<script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>

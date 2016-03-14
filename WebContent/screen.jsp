@@ -78,8 +78,8 @@ String googleClientId = null;
 
 	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 	<link rel="stylesheet" href="css/fonts.css" type="text/css" />
-	<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css" />
 	<jsp:include page="css/css.jsp"/> <!-- required for styling status_div -->
+	<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css" />
 
 	<script type="text/javascript" src="js/jquery/jquery.js"></script>
 <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>

@@ -13,12 +13,15 @@
 <head>
 	<title>Finished Signup!</title>
 	<link rel="icon" href="images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="../css/fonts.css" type="text/css" />
+
 	<link rel="stylesheet" href="css/memory.css" type="text/css" />
 	<script src="../js/jquery/jquery.js"></script>
 	<script src="../js/muse.js"></script>
 </head>
 <body>
 <div class="box">
+	<jsp:include page="header.jspf"/>
 	<h2 class="title">Screening Pass</h2>
 <!-- Generate code, append to link. Output with a thank you message. -->
 <%
@@ -37,6 +40,7 @@ try {
 	passkey = MemoryStudy.addUserAndIssueCode(stats);
 } catch (NoMoreCodesException e) {
 	out.println ("Sorry, but no more codes are available.");
+	return;
 } catch (Exception e) {
 	out.println ("Sorry, but we are unable to issue any more codes right now. Please try again later.");
 	JSPHelper.log.warn ("NOC SEVERE WARNING: codes file update failed!!!!");

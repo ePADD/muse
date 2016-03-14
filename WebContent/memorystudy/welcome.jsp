@@ -13,9 +13,6 @@
 <body>
 <div class="box">
     <jsp:include page="header.jspf"/>
-    <img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
-    <h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
-    <hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
 
     <div style="clear:both"></div>
 <br/>
@@ -29,7 +26,7 @@
         Please click on next to continue.
     </p>
     <div style="text-align:center">
-        <a style="text-decoration:none" href="example"><button>Next</button></b></a>
+        <a style="text-decoration:none" href="example"><button>Next</button></a>
     </div>
 
 </div>

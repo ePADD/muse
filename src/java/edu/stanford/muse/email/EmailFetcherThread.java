@@ -1397,7 +1397,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                         } else {
                             // this is for memory test screening mode.
                             // we create a dummy archive without any real contents
-                            for (int i = 0; i < nMessages; i++) {
+                            for (int i = 0; i < nMessages && i < messages.length; i++) {
                                 String unique_id_as_string = Long.toString(i);
 
                                 // well, we already converted to emaildoc above during removeMessagesAlreadyInArchive
@@ -1407,7 +1407,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                             }
                         }
                     } catch (Exception e) {
-                        log.error("Exception trying to fetch messages, results will be incomplete! " + e + "\n" + Util.stackTrace(e));
+						Util.print_exception("Exception trying to fetch messages, results will be incomplete! ", e, log);
                     }
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");

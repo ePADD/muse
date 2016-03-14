@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <title>CELL eligibility</title>
-	<link rel="stylesheet" href="css/memory.css"/>
 	<link rel="stylesheet" href="../css/fonts.css" type="text/css"/>
+	<link rel="stylesheet" href="css/memory.css"/>
 	<link rel="icon" href="../images/ashoka-favicon.gif">
 </head>
 <body>
