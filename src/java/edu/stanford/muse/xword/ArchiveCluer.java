@@ -278,14 +278,12 @@ public class ArchiveCluer extends Cluer {
 					candidateClue = candidateClue.replaceAll("\r", "\n"); // weird DOS type stuff has \r's sometimes
 
 					// 2 newlines are normal, but more is bad...it tends to be a signature or list... or code.... doesn't make for a good clue.
-					/*
 					float linesBoost = 1.0f;
 					for (int j = 0; j < numSentences; j++) {
 						int nLines = new StringTokenizer(sentences.get(i-j), "\n").countTokens();
 						if (nLines > numSentences)
 							linesBoost += (float) -Math.pow(5.0f, nLines - numSentences); // steep penalty if it spans more than numSentence physical lines
 					}
-					*/
 
 					candidateClue = candidateClue.trim().replaceAll("\n", " ");
 					candidateClue = Util.canonicalizeSpaces(candidateClue);
@@ -319,6 +317,7 @@ public class ArchiveCluer extends Cluer {
 					Clue clue = new Clue(candidateClue, candidateClue, lowerCaseSentence, "" /* hint */, null /* url */, null /* ellipsis message */, message);
 
 					float clueScore = scoreClueByEvalRules(clue, name, evaluationRules, nerModel, archive);
+					clueScore += linesBoost;
 
 					// grand total: score for this clue + score for message + score for contact
 					float finalScore = clueScore + emailScore + contactScore;
