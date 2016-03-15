@@ -1,18 +1,21 @@
-<%@ page import="java.io.File" %>
-<%@ page import="java.io.IOException" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
-<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
-<%@ page import="java.io.FileWriter" %>
-<%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.util.*" %>
-<%@ page import="java.util.regex.Pattern" %>
-<%@ page import="java.util.regex.Matcher" %>
-<%@ page import="opennlp.tools.util.featuregen.FeatureGeneratorUtil" %>
 <%@ page import="edu.stanford.muse.index.EmailDocument" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.util.NLPUtils" %>
+<%@ page import="edu.stanford.muse.util.Pair" %>
+<%@ page import="edu.stanford.muse.util.Triple" %>
+<%@ page import="edu.stanford.muse.util.Util" %>
+<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
+<%@ page import="opennlp.tools.util.featuregen.FeatureGeneratorUtil" %>
 <%@ page import="org.json.JSONArray" %>
+<%@ page import="java.io.File" %>
+<%@ page import="java.io.FileWriter" %>
+<%@ page import="java.io.IOException" %>
+<%@ page import="java.util.*" %>
+<%@ page import="java.util.regex.Matcher" %>
+<%@ page import="java.util.regex.Pattern" %>
 <%--<%@ page import="edu.stanford.nlp.ling.CoreLabel" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ie.crf.CRFClassifier" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ie.AbstractSequenceClassifier" %>--%>
@@ -292,7 +295,7 @@
     }
 
     try {
-            nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
+            SequenceModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
     } catch (Exception e) {
             e.printStackTrace();
     }

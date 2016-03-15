@@ -21,8 +21,6 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -297,7 +295,7 @@ public class Archive implements Serializable {
      * */
     public void setBaseDir(String dir) {
         baseDir = dir;
-        ((BlobStore) blobStore).setDir(dir + File.separator + BLOBS_SUBDIR);
+        blobStore.setDir(dir + File.separator + BLOBS_SUBDIR);
     }
 
     /**
@@ -570,7 +568,7 @@ public class Archive implements Serializable {
         // outgoing,
         // so the ownAddrs can be just a null string
         if (addressBook == null)
-            addressBook = new AddressBook((String[]) null, (String[]) null);
+            addressBook = new AddressBook(new String[0], new String[0]);
         log.info("Setting up address book for " + docs.size() + " messages (indexing driver)");
         for (Document d : docs)
             if (d instanceof EmailDocument)
@@ -597,6 +595,7 @@ public class Archive implements Serializable {
                 if ((dd.date.after(start) && dd.date.before(end)) || dd.date.equals(start) || dd.date.equals(end))
                     result.add(dd);
             } catch (Exception e) {
+                Util.print_exception(e, log);
             }
         }
         return result;
@@ -926,9 +925,7 @@ public class Archive implements Serializable {
                                 "Consider re-indexing with the latest version for a proper export.");
                     return false;
                 }
-                if(!retainedDocIds.contains(docId))
-                    return false;
-                return true;
+                return retainedDocIds.contains(docId);
             }
         };
         if (exportInPublicMode) {
@@ -952,7 +949,7 @@ public class Archive implements Serializable {
                         blobsToKeep.addAll(((EmailDocument) d).attachments);
             String blobsDir = out_dir + File.separatorChar + BLOBS_SUBDIR;
             new File(blobsDir).mkdirs();
-            BlobStore newBlobStore = ((BlobStore) blobStore).createCopy(blobsDir, blobsToKeep);
+            BlobStore newBlobStore = blobStore.createCopy(blobsDir, blobsToKeep);
             log.info("Completed exporting blobs, newBlobStore in dir: " + blobsDir + " is: " + newBlobStore);
             // switch to the new blob store (important -- the urls and indexes in the new blob store are different from the old one! */
             blobStore = newBlobStore;
@@ -1306,8 +1303,7 @@ public class Archive implements Serializable {
         if (ModeConfig.isPublicMode())
             setGroupAssigner(null);
 
-        if (indexer != null)
-            log.info(indexer.computeStats());
+        log.info(indexer.computeStats());
 
         indexer.setBaseDir(baseDir);
         openForRead();
@@ -1338,7 +1334,7 @@ public class Archive implements Serializable {
         this.processingMetadata.merge(other.processingMetadata);
     }
 
-    private static Map<String, Lexicon> createLexiconMap(String baseDir) throws FileNotFoundException, IOException {
+    private static Map<String, Lexicon> createLexiconMap(String baseDir) throws IOException {
         String lexDir = baseDir + File.separatorChar + LEXICONS_SUBDIR;
         Map<String, Lexicon> map = new LinkedHashMap<String, Lexicon>();
         File lexDirFile = new File(lexDir);

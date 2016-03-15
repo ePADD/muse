@@ -6,7 +6,10 @@ import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.featuregen.*;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureGenerator;
+import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
+import edu.stanford.muse.ner.model.DummyNERModel;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SVMModel;
 import edu.stanford.muse.ner.model.SequenceModel;
@@ -249,8 +252,7 @@ public class NER implements StatusProvider {
 
     public NERModel loadModel() throws IOException{
         String MODEL_DIR = archive.baseDir + File.separator + Config.MODELS_FOLDER;
-        SVMModel model = SVMModel.loadModel(new File(MODEL_DIR + File.separator + SVMModel.modelFileName));
-        return model;
+		return SVMModel.loadModel(new File(MODEL_DIR + File.separator + SVMModel.modelFileName));
     }
 
     public static NERModel trainArchiveIndependentModel(Object params){
@@ -268,8 +270,7 @@ public class NER implements StatusProvider {
                 FeatureDictionary.aTypes.get(FeatureDictionary.PLACE),
                 FeatureDictionary.aTypes.get(FeatureDictionary.ORGANISATION)
         );
-        NERModel model = trainer.trainArchiveIndependent(dbpedia, types, fgs, tokenizer, params);
-        return model;
+		return trainer.trainArchiveIndependent(dbpedia, types, fgs, tokenizer, params);
     }
 
     public NERModel trainModel(boolean dumpModel) {
@@ -303,8 +304,7 @@ public class NER implements StatusProvider {
             }
         };
         statusProvider = (SVMModelTrainer)trainer;
-        NERModel nerModel = trainer.train(archiveContent, dbpedia, addressbook,types, aTypes, fgs, tokenizer, tparams);
-        return nerModel;
+		return trainer.train(archiveContent, dbpedia, addressbook,types, aTypes, fgs, tokenizer, tparams);
     }
 
     /**
@@ -396,7 +396,11 @@ public class NER implements StatusProvider {
 			String content = archive.getContents(ldoc, false);
             String title = archive.getTitle(ldoc);
 			//original content is substring of content;
-			if(di == 0) {status = "Loading DBpedia into memory..."; EmailUtils.readDBpedia();}
+			if (di == 0 && !(nerModel instanceof DummyNERModel)) { // no need to load dbpedia for dummy model
+				status = "Loading DBpedia into memory...";
+				EmailUtils.readDBpedia();
+			}
+
             Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = nerModel.find(content);
             Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsetsTitle = nerModel.find(title);
 			recTime += System.currentTimeMillis() - st;
@@ -498,7 +502,7 @@ public class NER implements StatusProvider {
 		Collections.sort(offsets, new Comparator<Triple<String, Integer, Integer>>() {
 			@Override
 			public int compare(Triple<String, Integer, Integer> t1, Triple<String, Integer, Integer> t2) {
-				if (t1.getSecond() != t2.getSecond())
+				if (!t1.getSecond().equals(t2.getSecond()))
                     return t1.getSecond()-t2.getSecond();
                 else
                     return t2.getThird()-t1.getThird();

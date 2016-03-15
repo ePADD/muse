@@ -5,7 +5,6 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
-
 import edu.stanford.muse.util.Util;
 import libsvm.svm_parameter;
 import org.apache.commons.logging.Log;
@@ -740,7 +739,7 @@ public class FeatureDictionary implements Serializable {
             return;
         for (String dim : wfeatures.keySet()) {
             if (!lfeatures.containsKey(dim))
-                lfeatures.put(dim, new LinkedHashMap<String, Map<Short, Pair<Double, Double>>>());
+                lfeatures.put(dim, new LinkedHashMap<>());
             Map<String, Map<Short, Pair<Double, Double>>> hm = lfeatures.get(dim);
             if (wfeatures.get(dim) != null)
                 for (String val : wfeatures.get(dim)) {
@@ -752,8 +751,7 @@ public class FeatureDictionary implements Serializable {
                     }
                     Pair<Double, Double> p = hm.get(val).get(iType);
                     Short eType = codeType(type);
-                    //System.err.println("Type info: "+eType+", "+iType+", "+type);
-                    if(eType == iType)
+                    if (eType.equals(iType))
                         p.first++;
                     p.second++;
                     hm.get(val).put(iType, p);

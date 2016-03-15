@@ -2,7 +2,10 @@ package edu.stanford.muse.ie;
 
 import com.google.gson.Gson;
 import edu.stanford.muse.email.Contact;
-import edu.stanford.muse.index.*;
+import edu.stanford.muse.index.Archive;
+import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.index.IndexUtils;
+import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.DictUtils;
@@ -96,9 +99,7 @@ public class Entity extends EntityFeature {
 
 	public static boolean isDictionaryWord(String word) {
 		word = word.toLowerCase();
-		if (DictUtils.fullDictWords.contains(word) && !sws.contains(word))
-			return true;
-		return false;
+		return DictUtils.fullDictWords.contains(word) && !sws.contains(word);
 	}
 
 	//checks if an entity is good enough to score over it.
@@ -594,7 +595,7 @@ public class Entity extends EntityFeature {
 			archive.assignThreadIds();
             Tokenizer tokenizer = new CICTokenizer();
 			for (EmailDocument ed : docs) {
-				if (di % 1 == 0) {
+				if (di % 100 == 0) {
 					System.err.println("Done analysing documents: " + di + " of: " + docs.size());
 				}
 				di++;
@@ -724,7 +725,7 @@ public class Entity extends EntityFeature {
 			html += "<script src='utils.js'></script>";
 			html += "<body data-total='" + temp.size() + "'>";
 			for (int i = 0; i < 1000; i++) {
-				int idx = (int) randnum.nextInt(temp.size());
+				int idx = randnum.nextInt(temp.size());
 				int rank = idx + 1;
 				Pair<Entity, Double> p = temp.get(idx);
 				Entity e = p.first;

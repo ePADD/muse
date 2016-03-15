@@ -261,8 +261,7 @@ public class Filter implements Serializable {
 		String dateRange = request.get("dateRange");
 		String sentOnly = request.get("sentOnly");
 		String filterPersonOrEmail = request.get("filterPersonOrEmail");
-		Filter filter = new Filter(filterPersonOrEmail, (sentOnly != null), dateRange, keywords);
-		return filter;
+		return new Filter(filterPersonOrEmail, (sentOnly != null), dateRange, keywords);
 	}
 	
 	public boolean isActive()

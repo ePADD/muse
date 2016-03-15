@@ -1,10 +1,11 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="edu.stanford.muse.memory.*"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
-<%@page language="java" import="edu.stanford.muse.webapp.*"%>
+<%@page language="java" import="edu.stanford.muse.email.CalendarUtil"%>
+<%@page language="java" import="edu.stanford.muse.memory.MemoryQuestion"%>
+<%@page language="java" import="edu.stanford.muse.memory.MemoryStudy"%>
+<%@page language="java" import="edu.stanford.muse.util.Util"%>
+<%@page language="java" import="edu.stanford.muse.webapp.HTMLUtils"%>
+<%@ page import="java.util.Date" %>
 
 <!DOCTYPE html>
 <html>

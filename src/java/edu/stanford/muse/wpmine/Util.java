@@ -20,52 +20,14 @@ package edu.stanford.muse.wpmine;
 
 // warning: do not introduce package dependencies other than java.* classes in this collection of utils
 // utils that are specific to other libs should go in their own utils file
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.io.Serializable;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
-import java.io.Writer;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.IllegalFormatConversionException;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 
@@ -1494,12 +1456,9 @@ public static class MyFilenameFilter implements FilenameFilter {
 	public boolean accept (File dir, String name)
 	{
 //		String path = (dir.getAbsolutePath() + File.separator + name);
-		String path = name;
-		if (prefix != null && !path.startsWith(prefix))
+		if (prefix != null && !name.startsWith(prefix))
 			return false;
-		if (suffix != null && !path.endsWith(suffix))
-			return false;
-		return true;
+		return !(suffix != null && !name.endsWith(suffix));
 	}
 }
 
@@ -2116,7 +2075,7 @@ public static void writeObjectToFile(String filename, Serializable s) throws IOE
 	oos.close();
 }
 
-public static Serializable readObjectFromFile(String filename) throws FileNotFoundException, IOException, ClassNotFoundException
+public static Serializable readObjectFromFile(String filename) throws IOException, ClassNotFoundException
 {
 	ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename));
 	Serializable s = (Serializable) ois.readObject();

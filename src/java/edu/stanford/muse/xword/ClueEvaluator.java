@@ -1,21 +1,16 @@
 package edu.stanford.muse.xword;
 
 import com.google.common.collect.Sets;
-import edu.stanford.muse.email.Contact;
-import edu.stanford.muse.index.*;
+import edu.stanford.muse.index.Archive;
+import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.tartarus.snowball.SnowballProgram;
-import org.tartarus.snowball.ext.PorterStemmer;
 
-import javax.mail.Address;
-import java.io.File;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -204,22 +199,18 @@ import java.util.regex.Pattern;
 
         public ListEvaluator() {
             lists = Arrays.asList(
-                    (Set<String>)Sets.newHashSet("from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name"),
-                    (Set<String>)Sets.newHashSet("flight", "travel", "city", "town", "visit", "arrive", "arriving", "land", "landing", "reach", "reaching", "train", "road", "bus", "college", "theatre", "restaurant", "book", "film", "movie", "play", "song", "writer", "artist", "author", "singer", "actor", "school")
+                    Sets.newHashSet("from", "to", "in", "at", "as", "by", "inside", "like", "of", "towards", "toward", "via", "such as", "called", "named", "name"),
+                    Sets.newHashSet("flight", "travel", "city", "town", "visit", "arrive", "arriving", "land", "landing", "reach", "reaching", "train", "road", "bus", "college", "theatre", "restaurant", "book", "film", "movie", "play", "song", "writer", "artist", "author", "singer", "actor", "school")
             );
             this.params = new float[]{10.0f, 5.0f};
         }
 
         /**This is not a proper test, sort of a hackaround*/
         static boolean isPrep(Set<String> list){
-            if(list.contains("from") && list.contains("to"))
-                return true;
-            return false;
+            return list.contains("from") && list.contains("to");
         }
         static boolean isReflective(Set<String> list){
-            if(list.contains("absorb")&&list.contains("accept"))
-                return true;
-            return false;
+            return list.contains("absorb") && list.contains("accept");
         }
 
         static String[] getNeighbours(String next, String tgtWord){

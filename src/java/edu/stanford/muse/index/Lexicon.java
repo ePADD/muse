@@ -18,10 +18,8 @@ package edu.stanford.muse.index;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.queryparser.classic.ParseException;
 
 import java.io.*;
-import java.security.GeneralSecurityException;
 import java.util.*;
 
 /** a lexicon is a list of words, for several languages */
@@ -291,7 +289,7 @@ public class Lexicon implements Serializable {
 		return filename.replaceAll("\\.[^\\.]+\\" + LEXICON_SUFFIX, "");
 	}
 
-	public Lexicon (String dir, String name) throws FileNotFoundException, IOException
+	public Lexicon (String dir, String name) throws IOException
 	{
 		name = sanitizeLexiconName(name);
 		this.name = name;
@@ -485,7 +483,7 @@ public class Lexicon implements Serializable {
 	/** updates the map for a given language 
 	 * @throws IOException 
 	 * @throws FileNotFoundException */
-	public boolean update(String language, Map<String, String> map) throws FileNotFoundException, IOException
+	public boolean update(String language, Map<String, String> map) throws IOException
 	{
 		language = language.toLowerCase();
 		Lexicon1Lang langLex = languageToLexicon.get(language);
@@ -554,7 +552,7 @@ public class Lexicon implements Serializable {
 		return result;
 	}
 
-	public static void main(String args[]) throws FileNotFoundException, IOException
+	public static void main(String args[]) throws IOException
 	{
 		Lexicon lex = new Lexicon("/tmp", "default");
 		System.out.println(lex);

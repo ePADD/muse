@@ -181,22 +181,27 @@ public class ArchiveCluer extends Cluer {
 		List<EmailDocument> messagesWithContact = new ArrayList<>((Set) IndexUtils.selectDocsByContact(archive.addressBook,(Collection)archive.getAllDocs(),c));
         Collections.sort (messagesWithContact);
 
-		float contactScore = computeContactScore(c, messagesWithContact, startDate);
+		float contactScore = computeContactScore(c, messagesWithContact, startDate, endDate);
 
         log.info("Trying to generate clue for " + name + " (full contact info: " + c + ")");
 		log.info("A total of " + Util.pluralize(messagesWithContact.size(), "message") + " were sent to " + name);
+		log.info("Contact score for " + name + " = " + contactScore);
 
-        // find valid docs -- those sent only to c, and within the specified time window
+        // find valid docs -- those sent only to c, and in the specified interval
 		List<EmailDocument> validMessages = new ArrayList<>();
+		// total messages involving c (and perhaps others) in the specified interval
+		List<EmailDocument> totalMessagesToC = new ArrayList<>();
         {
             for (EmailDocument ed : messagesWithContact) {
                 if (startDate.before(ed.date) && endDate.after(ed.date)) {
+					totalMessagesToC.add(ed);
                     Collection<Contact> contacts = ed.getParticipatingContactsExceptOwn(archive.addressBook);
                     if (contacts.size() == 1)
                         validMessages.add(ed);
                 }
             }
-            log.info (Util.pluralize(validMessages.size(), "message") + " sent (only) to " + name + " within the interval: [" + startDate + ", " + endDate + "]");
+			log.info (Util.pluralize(totalMessagesToC.size(), "message") + " sent in all to " + name + " within the interval: [" + startDate + ", " + endDate + "]");
+			log.info (Util.pluralize(validMessages.size(), "message") + " sent *only* to " + name + " within the interval: [" + startDate + ", " + endDate + "]");
         }
 
         Set<Long> threadIds = new LinkedHashSet<>();
@@ -418,28 +423,31 @@ public class ArchiveCluer extends Cluer {
 	}
 
 	/** score for this contact based on communication pattern */
-	public float computeContactScore(Contact c, Collection<EmailDocument> messagesWithContact, Date intervalStart) {
+	private static float computeContactScore(Contact c, Collection<EmailDocument> messagesWithContact, Date intervalStart, Date intervalEnd) {
 		float outsideThisIntervalScore = 0.0f; // this will be -ve and penalize contacts outside the preferred interval
-		int numMessagesInThisInterval = 0;
+		int messagesInThisInterval = 0;
 
 		for (EmailDocument message: messagesWithContact) {
 			if (message.date.before(intervalStart)) {
-				outsideThisIntervalScore -= ((intervalStart.getTime() - message.date.getTime())/MemoryStudy.INTERVAL_MILLIS);
+				outsideThisIntervalScore += ((intervalStart.getTime() - message.date.getTime())/MemoryStudy.INTERVAL_MILLIS); // don't add 1 here -- let us start penalizing from one additional interval backwards.
+			} else if (message.date.before(intervalEnd)) {
+				// it must be in "this interval"
+				messagesInThisInterval++;
 			} else {
-				numMessagesInThisInterval++;
+				log.warn ("Scoring a contact: seeing a message outside interval");
 			}
 		}
 
 		float inThisIntervalScore = 0.0f;
 
-		if (numMessagesInThisInterval > 10)
-			inThisIntervalScore = numMessagesInThisInterval * 60;
-		else if (numMessagesInThisInterval > 5)
-			inThisIntervalScore = numMessagesInThisInterval * 40;
-		else if (numMessagesInThisInterval > 1) // strongly penalize one-off correspondents, they get no boost
-			inThisIntervalScore = numMessagesInThisInterval * 20;
+		if (messagesInThisInterval > 10)
+			inThisIntervalScore = messagesInThisInterval * 20;
+		else if (messagesInThisInterval > 5)
+			inThisIntervalScore = messagesInThisInterval * 15;
+		else if (messagesInThisInterval > 1) // strongly penalize one-off correspondents, they get no boost. But if they're messaged more than once, give them at least a 10X reward
+			inThisIntervalScore = messagesInThisInterval * 10;
 
-		return inThisIntervalScore + outsideThisIntervalScore;
+		return inThisIntervalScore - outsideThisIntervalScore;
 	}
 
     /**

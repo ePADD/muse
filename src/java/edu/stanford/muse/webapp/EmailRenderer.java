@@ -1,11 +1,5 @@
 package edu.stanford.muse.webapp;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
@@ -15,6 +9,11 @@ import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
+import java.io.IOException;
+import java.util.*;
 
 /** This class has util methods to display an email message in an html page */
 
@@ -119,7 +118,7 @@ public class EmailRenderer {
 
 					if (!Util.nullOrEmpty(comment) && (d instanceof EmailDocument))
 					{
-						String messageId = ((EmailDocument) d).getUniqueId();
+						String messageId = d.getUniqueId();
 						html.append(" messageID=\"" + messageId + "\"");
 					}
 
@@ -199,7 +198,8 @@ public class EmailRenderer {
                 else
                     thisAddrStr = ("<a href=\"" + url + "\">" + Util.escapeHTML(str) + "</a>");
 
-                outputLineLength += str.length();
+				if (str != null)
+	                outputLineLength += str.length();
 			}
 			else
 			{
@@ -472,7 +472,7 @@ public class EmailRenderer {
 		// <pre> to escape special chars if any in the subject. max 70 chars in
 		// one line, otherwise spill to next line
 		result.append("<td align=\"left\"><b>");
-		x = ed.formatStringForMaxCharsPerLine(x, 70).toString();
+		x = DatedDocument.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
         List<String> cpeople = archive.getEntitiesInDoc(ed, NER.EPER_TITLE, true);

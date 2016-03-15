@@ -16,21 +16,12 @@
 package edu.stanford.muse.util;
 
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.regex.Pattern;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import java.io.*;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class ThunderbirdUtils {
     static Log log = LogFactory.getLog(ThunderbirdUtils.class);
@@ -439,8 +430,7 @@ public class ThunderbirdUtils {
 	/* guess from the user agent what the thunderbird root dir is going to be */
 		public static String getThunderbirdProfileDir()
 		{
-			String homeDir = System.getProperty("user.home");
-			String tbirdDir = homeDir;
+			String tbirdDir = System.getProperty("user.home");
 			boolean isMac = false;
 			boolean isWindowsXP = false;
 			boolean isWindowsVistaOr7 = false;

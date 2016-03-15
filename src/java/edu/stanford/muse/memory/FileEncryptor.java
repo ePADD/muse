@@ -1,17 +1,15 @@
 package edu.stanford.muse.memory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Arrays;
+import edu.stanford.muse.wpmine.Util;
+
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.PBEParameterSpec;
+import java.io.*;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
 
 public class FileEncryptor {
 
@@ -32,7 +30,7 @@ public class FileEncryptor {
     //Arbitrarily selected 8-byte salt sequence:
     private static final byte[] salt = {
         (byte) 0x43, (byte) 0x76, (byte) 0x95, (byte) 0xc7,
-        (byte) 0x5b, (byte) 0xd7, (byte) 0x45, (byte) 0x17 
+        (byte) 0x5b, (byte) 0xd7, (byte) 0x45, (byte) 0x17
     };
 
     public static Cipher makeCipher(String pass, Boolean decryptMode) throws GeneralSecurityException{
@@ -59,12 +57,11 @@ public class FileEncryptor {
     }
 
 
-    /**Encrypts one file to a second file using a key derived from a passphrase:**/
-    public static void encryptFile(String fileName, String pass)
-                                throws IOException, GeneralSecurityException{
+    /** Encrypts one file to a second file using a key derived from a passphrase: **/
+    public static void encryptFile(String fileName, String pass) throws IOException, GeneralSecurityException{
         byte[] decData;
         byte[] encData;
-        File inFile = new File(fileName + ".decrypted.txt");
+        String inFile = fileName + ".decrypted.txt";
         //Generate the cipher using pass:
         Cipher cipher = FileEncryptor.makeCipher(pass, true);
 
@@ -73,26 +70,20 @@ public class FileEncryptor {
 
         int blockSize = 8;
         //Figure out how many bytes are padded
-        int paddedCount = blockSize - ((int)inFile.length()  % blockSize );
+        int paddedCount = blockSize - (inFile.length() % blockSize );
 
         //Figure out full size including padding
-        int padded = (int)inFile.length() + paddedCount;
+        int padded = inFile.length() + paddedCount;
 
-        decData = new byte[padded];
-
-
-        inStream.read(decData);
-
-        inStream.close();
+        decData = Util.getBytesFromFile(inFile);
 
         //Write out padding bytes as per PKCS5 algorithm
-        for( int i = (int)inFile.length(); i < padded; ++i ) {
+        for(int i = inFile.length(); i < padded; ++i ) {
             decData[i] = (byte)paddedCount;
         }
 
         //Encrypt the file data:
         encData = cipher.doFinal(decData);
-
 
         //Write the encrypted data to a new file:
         FileOutputStream outStream = new FileOutputStream(new File(fileName + ".encrypted"));
@@ -106,16 +97,13 @@ public class FileEncryptor {
                             throws GeneralSecurityException, IOException{
         byte[] encData;
         byte[] decData;
-        File inFile = new File(fileName+ ".encrypted");
+        String inFile = fileName+ ".encrypted";
 
         //Generate the cipher using pass:
         Cipher cipher = FileEncryptor.makeCipher(pass, false);
 
         //Read in the file:
-        FileInputStream inStream = new FileInputStream(inFile );
-        encData = new byte[(int)inFile.length()];
-        inStream.read(encData);
-        inStream.close();
+        encData = Util.getBytesFromFile(inFile);
         //Decrypt the file data:
         decData = cipher.doFinal(encData);
 
@@ -142,7 +130,7 @@ public class FileEncryptor {
         try {
             File keyFile = new File("C:\\keyfile.txt");
             FileWriter keyStream = new FileWriter(keyFile);
-            String encodedKey = "\n" + "Encoded version of key:  " + key.getEncoded().toString();
+            String encodedKey = "\n" + "Encoded version of key:  " + key.getEncoded();
             keyStream.write(key.toString());
             keyStream.write(encodedKey);
             keyStream.close();

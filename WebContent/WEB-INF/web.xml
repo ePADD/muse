@@ -192,12 +192,12 @@
 	</servlet-mapping>
 
   	<servlet>
-		<servlet-name>welcome</servlet-name>
-		<jsp-file>/memorystudy/welcome.jsp</jsp-file>
+		<servlet-name>ready</servlet-name>
+		<jsp-file>/memorystudy/ready.jsp</jsp-file>
   	</servlet>
   	<servlet-mapping>
-	  	<servlet-name>welcome</servlet-name>
-	    <url-pattern>/memorystudy/welcome</url-pattern>
+	  	<servlet-name>ready</servlet-name>
+	    <url-pattern>/memorystudy/ready</url-pattern>
 	</servlet-mapping>
 
     <servlet>
@@ -211,7 +211,7 @@
 
     <servlet>
         <servlet-name>privacy</servlet-name>
-        <jsp-file>/memorystudy/privacy.html</jsp-file>
+        <jsp-file>/memorystudy/privacy.jsp</jsp-file>
     </servlet>
     <servlet-mapping>
         <servlet-name>privacy</servlet-name>
@@ -274,12 +274,21 @@
 	</servlet-mapping>
 	
   	 <servlet>
-		<servlet-name>consent-form</servlet-name>
+		<servlet-name>consentform</servlet-name>
 		<jsp-file>/memorystudy/consentform.jsp</jsp-file>
   	</servlet>
   	<servlet-mapping>
-	  	<servlet-name>consent-form</servlet-name>
+	  	<servlet-name>consentform</servlet-name>
 	    <url-pattern>/memorystudy/consentform</url-pattern>
+	</servlet-mapping>
+
+	<servlet>
+		<servlet-name>welcome</servlet-name>
+		<jsp-file>/memorystudy/welcome.jsp</jsp-file>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>welcome</servlet-name>
+		<url-pattern>/memorystudy/welcome</url-pattern>
 	</servlet-mapping>
 
 	<servlet>

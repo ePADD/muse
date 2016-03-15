@@ -1,16 +1,16 @@
 package edu.stanford.muse.util;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** utility class to help keep track of the time */
 public class TimeKeeper {
     public static Log log = LogFactory.getLog(TimeKeeper.class);
 
-	private static int MAX = 100;
+	private static final int MAX = 100;
 	
 	// Thread local variable containing each thread's ID
      private static final ThreadLocal<List<Long>> times = new ThreadLocal<List<Long>>() {

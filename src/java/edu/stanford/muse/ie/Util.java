@@ -304,9 +304,7 @@ public class Util {
 				return false;
 		}
 
-		if (inDict)
-			return false;
-		return true;
+		return !inDict;
 	}
 
 	public static List<String> filterEntities(Collection<String> entities, String type) {

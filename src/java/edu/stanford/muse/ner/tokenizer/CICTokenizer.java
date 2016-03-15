@@ -1,10 +1,8 @@
 package edu.stanford.muse.ner.tokenizer;
 
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.NLPUtils;
-import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
@@ -34,7 +32,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 	static String[] stopWords =  new String[]{"and", "for","a","the","to","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do"};
-	static List<String> estuff = Arrays.asList(new String[]{"Email","To","From","Date","Subject"});
+	static List<String> estuff = Arrays.asList("Email","To","From","Date","Subject");
     private static final long serialVersionUID = 1L;
 
     static {
@@ -130,6 +128,9 @@ public class CICTokenizer implements Tokenizer, Serializable {
         //System.err.println("After replacing: "+content);
 
 		Span[] sentenceSpans = NLPUtils.tokeniseSentenceAsSpan(content);
+        if (sentenceSpans == null)
+            return matches;
+
         for (Span sentenceSpan : sentenceSpans) {
           	int sentenceStartOffset = sentenceSpan.getStart();
 			String sent = sentenceSpan.getCoveredText(content).toString();

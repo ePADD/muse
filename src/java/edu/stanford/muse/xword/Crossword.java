@@ -15,26 +15,6 @@
 */
 package edu.stanford.muse.xword;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.store.LockObtainFailedException;
-
 import edu.stanford.muse.exceptions.ReadContentsException;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ie.NameInfoMemory;
@@ -44,6 +24,15 @@ import edu.stanford.muse.index.Lexicon;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.store.LockObtainFailedException;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 /** terminology: word is a canonicalized word, without spaces that is used for placing letters in the grid. token is a single token within such a word.
  * term/answer is the actual answer (which could be a phrase). typically all of these are canonicalized to lower case, multiple spaces removed, etc.
@@ -327,7 +316,7 @@ public class Crossword implements Serializable {
 	 * @throws IOException 
 	 * @throws LockObtainFailedException 
 	 * @throws CorruptIndexException */
-	public void generateGrid(boolean doSymmetric) throws UnplaceableException, CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException 
+	public void generateGrid(boolean doSymmetric) throws UnplaceableException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
 	{
 		if (!placeAll)
 			assignTypesAndResortCandidates();
@@ -652,7 +641,7 @@ public class Crossword implements Serializable {
 			for (char c: col)
 				if (c != STOP && c != EMPTY)
 					count++;
-		int pct_filled = (w == 0 || h == 0) ? 0 : (int) (100 * count)/(w*h);		
+		int pct_filled = (w == 0 || h == 0) ? 0 : 100 * count /(w*h);
 //		return count + "/" + (w*h) + " boxes filled (" + pct_filled + "%)";
 		
 		int sum = 0, nIntersectingBoxes = 0;
@@ -809,7 +798,7 @@ public class Crossword implements Serializable {
 	/** create xword of the given size from possibleAnswers (in decreasing order of preference), with clues drawn from the filtered ids.
 	 * if max/minWordLens are -1, the default is used (3, 12). Otherwise, words between min and max word lens (both inclusive) are placed. 
 	 * @throws UnplaceableException */
-	public static Crossword createCrossword(List<Pair<String, Integer>> possibleAnswersAndWeight, int w, int h, Archive archive, Lexicon lex, Set<String> filteredIds, Set<String> inputTabooWords, boolean doSymmetric, Map<String, Clue> fixedClues, int minWordLen, int maxWordLen, int timeoutMillis) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, UnplaceableException
+	public static Crossword createCrossword(List<Pair<String, Integer>> possibleAnswersAndWeight, int w, int h, Archive archive, Lexicon lex, Set<String> filteredIds, Set<String> inputTabooWords, boolean doSymmetric, Map<String, Clue> fixedClues, int minWordLen, int maxWordLen, int timeoutMillis) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, UnplaceableException
 	{		
 		int nMessages = ((archive != null) ? archive.getAllDocs().size() : 0);
 		if (filteredIds != null)

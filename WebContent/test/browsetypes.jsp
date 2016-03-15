@@ -1,14 +1,16 @@
-<%@ page import="edu.stanford.muse.util.Pair" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
-<%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
-<%@ page import="java.io.*" %>
-<%@ page import="edu.stanford.muse.util.Triple" %>
-<%@ page import="edu.stanford.muse.util.Util" %>
-<%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
-<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
+<%@ page import="edu.stanford.muse.util.Pair" %>
+<%@ page import="edu.stanford.muse.util.Triple" %>
+<%@ page import="edu.stanford.muse.util.Util" %>
+<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
+<%@ page import="java.io.File" %>
+<%@ page import="java.io.FileWriter" %>
+<%@ page import="java.io.IOException" %>
+<%@ page import="java.util.*" %>
 <%
     class Some{
         public Map<String,Double> find (String content, Short type, SequenceModel model){
@@ -54,9 +56,9 @@
         session.setAttribute("ner", nerModel);
     }
 
-    if (nerModel.fdw == null) {
+    if (SequenceModel.fdw == null) {
         try {
-            nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+            SequenceModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.util.*;
 
 public class Temp {
 	public static void main(String[] args) {
@@ -144,7 +143,7 @@ public class Temp {
 			content = content.replaceAll("^>+.*", "");
 			content = content.replaceAll("\\n\\n", ". ");
 			content = content.replaceAll("\\n", " ");
-			content.replaceAll(">+", "");
+			content= content.replaceAll(">+", "");
 			String[] sents = sentenceDetector.sentDetect(content);
 			//	 	 	if(l++>1000)
 			//	 	 		break;

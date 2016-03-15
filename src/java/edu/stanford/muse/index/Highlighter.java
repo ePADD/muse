@@ -1,9 +1,6 @@
 package edu.stanford.muse.index;
 
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -13,7 +10,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.LowerCaseFilter;
-import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -444,7 +440,6 @@ public class Highlighter {
 		for (int j = 0; j < elts.size(); j++) {
 			Element elt = elts.get(j);
 			String entity = elt.text();
-			int prev_j = j;
 			int span_j = j;
 
 			String best_e = null;
@@ -550,7 +545,7 @@ public class Highlighter {
                     }
 				}
 
-				for (int k = prev_j; k <= span_j; k++) {
+				for (int k = j; k <= span_j; k++) {
 					elt = elts.get(k);
                     //don't annotate nested tags
                     if(elt.parent().tag().getName().toLowerCase().equals("span")) {

@@ -57,9 +57,9 @@ public class Config {
 		WORD_FEATURES		= props.getProperty("WORD_FEATURES", "WordFeatures.ser");
 
 		// set the int features
-		try { MAX_ENTITY_FEATURES = Integer.parseInt(props.getProperty("MAX_ENTITY_FEATURES")); } catch (Exception e) { }
-		try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(props.getProperty("MAX_TRY_TO_RESOLVE_NAMES")); } catch (Exception e) { }
-		try { MAX_DOCS_PER_QUERY = Integer.parseInt(props.getProperty("MAX_DOCS_PER_QUERY")); } catch (Exception e) { }
+		try { MAX_ENTITY_FEATURES = Integer.parseInt(props.getProperty("MAX_ENTITY_FEATURES")); } catch (Exception e) { Util.print_exception(e, log); }
+		try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(props.getProperty("MAX_TRY_TO_RESOLVE_NAMES")); } catch (Exception e) { Util.print_exception(e, log); }
+		try { MAX_DOCS_PER_QUERY = Integer.parseInt(props.getProperty("MAX_DOCS_PER_QUERY")); } catch (Exception e) { Util.print_exception(e, log); }
 
 		String s = props.getProperty("OPENNLP_NER");
 		if (!Util.nullOrEmpty(s))

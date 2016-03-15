@@ -12,13 +12,11 @@
 </head>
 <body>
 <div class="box">
-    <img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
-    <h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
-    <hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
-    <div style="text-align:center"><b>WE CARE ABOUT YOUR PRIVACY</b></div>
+    <jsp:include page="header.jspf"/>
+    <div style="text-align:center"><b>We care about your privacy</b></div>
     <p>
         At every step of this memory test, we will make sure that we protect your personal information using encryption.
-        Whereas you will see information from your own email, the information we save from the study would include only individual sentences which form the questions asked and the answers provided.
+        Whereas you will see information from your own email, the information we save from the study will include only the questions asked and the answers provided.
         This information is necessary for our research. Entire email messages will not be stored – they will be permanently deleted as soon as the test is complete.
     </p>
     <p>
@@ -28,9 +26,6 @@
     <p>
         We hope you choose to participate and find this memory test interesting! Click on continue to begin the test.
     </p>
-    <div style="text-align: center;">
-        <a href="question" style="color:black;"><button>Continue</button></a>
-    </div>
     <p>
         If you do not want to participate in this study, please close this tab.
     </p>

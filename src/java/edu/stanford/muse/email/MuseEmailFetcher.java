@@ -50,8 +50,7 @@ public class MuseEmailFetcher {
     public static Log log = LogFactory.getLog(MuseEmailFetcher.class);
 
     private transient List<MTEmailFetcher> fetchers;
-    private transient MTEmailFetcher aggregatingFetcher;
-    public transient List<EmailStore> emailStores = new ArrayList<>();
+	public transient List<EmailStore> emailStores = new ArrayList<>();
 	
 	/////////////////////////// account setup stuff
 	
@@ -443,7 +442,7 @@ public class MuseEmailFetcher {
      * @throws NoDefaultFolderException 
      * */
 	public void fetchAndIndexEmails(Archive archive, String[] selectedFolders, boolean useDefaultFolders, FetchConfig fetchConfig, HttpSession session)
-				throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException
+				throws MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException
 	{
 		setupFetchers(-1);
 		
@@ -468,7 +467,7 @@ public class MuseEmailFetcher {
 	    
 	    // one fetcher will aggregate everything
 		FetchStats stats = new FetchStats();
-        aggregatingFetcher = null;
+		MTEmailFetcher aggregatingFetcher = null;
 
 		// a fetcher is one source, like an account or a top-level mbox dir. A fetcher could include multiple folders.
 		long startTimeMillis = System.currentTimeMillis();

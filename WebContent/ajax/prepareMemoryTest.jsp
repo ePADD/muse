@@ -1,13 +1,13 @@
 <%@page language="java" contentType="text/javascript; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="org.json.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
-<%@page language="java" import="edu.stanford.muse.index.*"%>
-<%@page language="java" import="edu.stanford.muse.exceptions.*"%>
-<%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.memory.*"%><%@ page import="edu.stanford.muse.ie.NameTypes"%><%@ page import="edu.stanford.muse.ie.NameInfo"%><%@ page import="edu.stanford.muse.ner.model.NERModel"%>
+<%@page language="java" import="edu.stanford.muse.email.EmailStore"%>
+<%@page language="java" import="edu.stanford.muse.email.MuseEmailFetcher"%>
+<%@page language="java" import="edu.stanford.muse.email.StaticStatusProvider"%>
+<%@page language="java" import="edu.stanford.muse.exceptions.CancelledException"%>
+<%@page language="java" import="edu.stanford.muse.ie.NameInfo"%>
+<%@page language="java" import="edu.stanford.muse.ie.NameTypes"%>
+<%@page language="java" import="edu.stanford.muse.index.Archive"%>
+<%@page language="java" import="edu.stanford.muse.index.EmailDocument"%><%@ page import="edu.stanford.muse.index.Lexicon"%><%@ page import="edu.stanford.muse.memory.MemoryStudy"%><%@ page import="edu.stanford.muse.ner.model.NERModel"%><%@ page import="edu.stanford.muse.util.EmailUtils"%><%@ page import="edu.stanford.muse.util.Pair"%><%@ page import="edu.stanford.muse.util.Util"%><%@ page import="edu.stanford.muse.webapp.HTMLUtils"%><%@ page import="edu.stanford.muse.webapp.JSPHelper"%><%@ page import="edu.stanford.muse.webapp.SimpleSessions"%><%@ page import="org.json.JSONObject"%><%@ page import="java.util.Collection"%><%@ page import="java.util.Map"%>
         <%
             // this JSP is like doFetchAndIndex. it sets up the archive in prep. for the memory test.
 
@@ -103,7 +103,7 @@
                     int numQPerInterval = HTMLUtils.getIntParam(request, "n", 4); //should be 4 by default
 
                     currentStudy.generatePersonNameQuestions(archive, nerModel, allDocs, lex, numQPerInterval);
-                    resultPage = "memorystudy/welcome";
+                    resultPage = "memorystudy/ready";
                     JSPHelper.log.info("Generated #" + currentStudy.getQuestions().size() + " questions");
                     Map<String,NameInfo>names = NameTypes.computeNameMap(archive, allDocs);
                     JSPHelper.log.info("NameTypes: "+names.size()+"\n"+names);

@@ -1,17 +1,16 @@
 package edu.stanford.muse.ie;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
+import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.Util;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 
-import edu.stanford.muse.util.EmailUtils;
-import edu.stanford.muse.util.Util;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class FASTGeographic extends FASTRecord {
 	Set<String>				relatedIds;
@@ -74,13 +73,11 @@ public class FASTGeographic extends FASTRecord {
 				this.longitude = fg.longitude;
 			} else {
 				System.err.println("What? geoId: " + geoId + ", object is not geographic.");
-				return;
 			}
 		}
 		// No hook found to fill the gap.
 		else {
 			System.err.println("geoId: " + geoId + " for: " + id + " not found.");
-			return;
 		}
 	}
 

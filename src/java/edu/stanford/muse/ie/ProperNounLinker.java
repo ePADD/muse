@@ -2,16 +2,13 @@ package edu.stanford.muse.ie;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -135,9 +132,7 @@ public class ProperNounLinker {
             return false;
 
 
-        if(Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2))
-            return true;
-        return false;
+        return Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2);
     }
 
     static String flipComma(String str) {

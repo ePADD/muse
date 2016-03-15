@@ -1,9 +1,9 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java"%>
 <%@page language="java" import="edu.stanford.muse.slant.*"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="java.net.*"%>
-<%@page language="java" import="java.io.*"%>
-<%@page language="java" import="org.apache.log4j.*"%>
+<%@page language="java" import="java.io.BufferedReader"%>
+<%@page language="java" import="java.io.File"%>
+<%@page language="java" import="java.io.FileReader"%>
+<%@page language="java" %>
 <%@include file="getArchive.jspf" %>
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -193,9 +193,7 @@ fieldset.search {
 	width: 300px;
 }
 
-';
-//
-new rules for css hover 
+/*  new rules for css hover */
 .classic {
 	padding: 0.8em 1em;
 }

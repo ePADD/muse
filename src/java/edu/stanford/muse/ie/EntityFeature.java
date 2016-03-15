@@ -1,12 +1,18 @@
 package edu.stanford.muse.ie;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.*;
-
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import edu.stanford.muse.Config;
+import edu.stanford.muse.email.StatusProvider;
+import edu.stanford.muse.index.Archive;
+import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.index.IndexUtils;
+import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.util.JSONUtils;
+import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.webapp.JSPHelper;
+import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -19,29 +25,15 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.*;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.RegexpQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import edu.stanford.muse.Config;
-import edu.stanford.muse.email.StatusProvider;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.util.JSONUtils;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.webapp.SimpleSessions;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * Data structure to represent features of an entity mention in archive
@@ -296,8 +288,10 @@ public class EntityFeature implements StatusProvider, Serializable {
 	public void clean(Archive archive) {
 		String iDir = getFeaturesDir(archive);
 		File f = new File(iDir);
-		if (f.exists())
-			f.delete();
+		if (f.exists()) {
+			if (!f.delete())
+				log.warn ("Warning, delete failed: " + f.getAbsolutePath());
+		}
 	}
 
 	/**
@@ -367,10 +361,7 @@ public class EntityFeature implements StatusProvider, Serializable {
 	public static boolean indexExists(Archive archive) {
 		String iDir = getFeaturesDir(archive);
 		File f = new File(iDir);
-		if (f.exists())
-			return true;
-		else
-			return false;
+		return f.exists();
 	}
 
 	public boolean checkIndex(Archive archive) {

@@ -14617,8 +14617,7 @@ var Font = (function FontClosure() {
           offset: offset,
           data: data
         };
-      };
-
+      }
       function readOpenTypeHeader(ttf) {
         return {
           version: arrayToString(ttf.getBytes(4)),
@@ -14627,8 +14626,7 @@ var Font = (function FontClosure() {
           entrySelector: int16(ttf.getBytes(2)),
           rangeShift: int16(ttf.getBytes(2))
         };
-      };
-
+      }
       function createGlyphNameMap(glyphs, ids, properties) {
         var glyphNames = properties.glyphNames;
         if (!glyphNames) {
@@ -14822,8 +14820,7 @@ var Font = (function FontClosure() {
           }
         }
         error('Unsupported cmap table format');
-      };
-
+      }
       function sanitizeMetrics(font, header, metrics, numGlyphs) {
         if (!header && !metrics)
           return;
@@ -14855,8 +14852,7 @@ var Font = (function FontClosure() {
             entries += '\x00\x00';
           metrics.data = stringToArray(entries);
         }
-      };
-
+      }
       function sanitizeGlyph(source, sourceStart, sourceEnd, dest, destStart) {
         if (sourceEnd - sourceStart <= 12) {
           // glyph with data less than 12 is invalid one
@@ -28391,14 +28387,14 @@ var JpegImage = (function jpegImage() {
     63
   ]);
 
-  var dctCos1  =  4017   // cos(pi/16)
-  var dctSin1  =   799   // sin(pi/16)
-  var dctCos3  =  3406   // cos(3*pi/16)
-  var dctSin3  =  2276   // sin(3*pi/16)
-  var dctCos6  =  1567   // cos(6*pi/16)
-  var dctSin6  =  3784   // sin(6*pi/16)
-  var dctSqrt2 =  5793   // sqrt(2)
-  var dctSqrt1d2 = 2896  // sqrt(2) / 2
+  var dctCos1  =  4017;   // cos(pi/16)
+  var dctSin1  =   799;   // sin(pi/16)
+  var dctCos3  =  3406;   // cos(3*pi/16)
+  var dctSin3  =  2276;   // sin(3*pi/16)
+  var dctCos6  =  1567;   // cos(6*pi/16)
+  var dctSin6  =  3784;   // sin(6*pi/16)
+  var dctSqrt2 =  5793;   // sqrt(2)
+  var dctSqrt1d2 = 2896;  // sqrt(2) / 2
 
   function constructor() {
   }

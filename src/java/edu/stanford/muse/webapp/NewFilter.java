@@ -15,16 +15,14 @@
 */
 package edu.stanford.muse.webapp;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-
+import edu.stanford.muse.util.DetailedFacetItem;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.util.DetailedFacetItem;
-import edu.stanford.muse.util.Util;
+import javax.servlet.http.HttpServletRequest;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** called NewFilter only because we have an old class called Filter, that is mostly not used */
 public class NewFilter {
@@ -38,7 +36,7 @@ public class NewFilter {
 		NewFilter f = new NewFilter();
 		// copy over the request params into the filter's map
 		for (Object p: request.getParameterMap().keySet())
-			f.map.put ((String) p, (String[]) request.getParameterValues((String) p));
+			f.map.put ((String) p, request.getParameterValues((String) p));
 		return f;
 	}
 

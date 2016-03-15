@@ -1,41 +1,32 @@
 package edu.stanford.muse.memory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
-import java.util.*;
-
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.exceptions.ReadContentsException;
+import edu.stanford.muse.ie.NameInfo;
+import edu.stanford.muse.ie.NameTypes;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
-import edu.stanford.muse.util.DictUtils;
-import edu.stanford.muse.xword.ClueEvaluator;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import edu.stanford.muse.ie.NameInfo;
-import edu.stanford.muse.ie.NameTypes;
 import edu.stanford.muse.util.CryptoUtils;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.xword.ArchiveCluer;
 import edu.stanford.muse.xword.Clue;
+import edu.stanford.muse.xword.ClueEvaluator;
 import edu.stanford.muse.xword.Crossword;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.queryparser.classic.ParseException;
 
 import javax.mail.Address;
+import java.io.*;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 public class MemoryStudy implements Serializable{
 
@@ -121,7 +112,7 @@ public class MemoryStudy implements Serializable{
             if (clue == null && cclue == null)
                 return displayEntity.compareTo(c2.displayEntity); // just some order, as long as it is consistent
 
-            if (clue != null && cclue.clue != null)
+            if (cclue.clue != null)
                 return (clue.clueStats.finalScore > cclue.clueStats.finalScore) ? -1 : (cclue.clueStats.finalScore > clue.clueStats.finalScore ? 1 : 0);
             return 0;
         }
@@ -207,8 +198,7 @@ public class MemoryStudy implements Serializable{
 		byte[] b = CryptoUtils.readEncryptedBytes(USERS_FILE);
 		ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(b));
 		ois.close();
-		List<MemoryStudy.UserStats> users = (List<MemoryStudy.UserStats>) ois.readObject();		
-		return users;
+        return (List<UserStats>) ois.readObject();
 	}
 	
 	/** lookup doesn't have to be synchronized 
@@ -448,9 +438,9 @@ public class MemoryStudy implements Serializable{
             lengthDescr = lengthDescr.substring(0, lengthDescr.length()-2); //subtract the extra comma.
 
             ClueInfo ci = new ClueInfo();
-            ci.link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";;
+            ci.link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";
             ci.lastSeenDate = lastSeenDate;
-            ci.nMessages = entityToMessages.get(ce).size();;
+            ci.nMessages = entityToMessages.get(ce).size();
             ci.nThreads = entityToThreads.get(ce).size();
 
             //TODO: we are doing default initialisation of evaluators by setting it to null below, it is more appropriate to consider it as an argument for this method
@@ -617,12 +607,6 @@ public class MemoryStudy implements Serializable{
         int cluesPerInterval = (numClues > 0 && intervals.size() > 0) ? (numClues + intervals.size() - 1) / intervals.size() : 0;
         JSPHelper.log.info ("Will try to generate " + Util.pluralize(cluesPerInterval, "questions") + " per interval");
 
-        // initialize clueInfos to empty lists
-		List<ClueInfo> clueInfos[] = new ArrayList[intervals.size()];
-		for (int i = 0; i < intervals.size(); i++) {
-			clueInfos[i] = new ArrayList<>();
-		}
-
         Multimap<Integer, Contact> intervalToContacts = LinkedHashMultimap.create();
 
         //nSent is the number of sentences allowed in a clue text
@@ -666,8 +650,10 @@ public class MemoryStudy implements Serializable{
             Date intervalStart = intervals.get(interval).getFirst();
             Date intervalEnd = intervals.get(interval).getSecond();
             Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(interval);
-            if (candidateContactsForThisInterval == null)
-                log.info ("Skipping interval " + interval + " because there are no contacts");
+            if (candidateContactsForThisInterval == null) {
+                log.info("Skipping interval " + interval + " because there are no contacts");
+                continue;
+            }
 
             Map<Clue, Contact> clueToContact = new LinkedHashMap<>();
             log.info ("=======\nGenerating questions for interval " + interval);
@@ -718,7 +704,7 @@ public class MemoryStudy implements Serializable{
 
                 ClueInfo ci = new ClueInfo();
                 ci.lastSeenDate = contactToLatestDate.get(c);
-                ci.nMessages = contactToThreadIds.get(c).size();;
+                ci.nMessages = contactToThreadIds.get(c).size();
                 ci.nThreads = contactToThreadIds.get(c).size();
 
 				questions.add(new MemoryQuestion(this,name,selectedClue, 1, lengthDescr));
@@ -774,10 +760,7 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	public boolean checkQuestionListSize(int N){
-		if (questions.size() < N)
-			return true;
-		else
-			return false;
+        return questions.size() < N;
 	}
 	
 	/* Drops terms that contain other terms (prefixes, suffixes, etc.) and trims the questionlist to the target size.*/
@@ -896,7 +879,7 @@ public class MemoryStudy implements Serializable{
 		new File(RESULTS_DIR).mkdirs();
 		String file = RESULTS_DIR + File.separator + filename; 
 		try { CryptoUtils.writeEncryptedBytes(statsLog.toString().getBytes("UTF-8"), file); } 
-		catch (UnsupportedEncodingException e) { }
+		catch (UnsupportedEncodingException e) { Util.print_exception(e, log); }
 		catch (Exception e) { Util.print_exception("NOC ERROR: encryption failed!", e, log); }
 		log.info (statsLog);	
 	}

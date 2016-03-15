@@ -16,23 +16,6 @@
 package edu.stanford.muse.groups;
 
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.json.JSONException;
-
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.graph.GroupsGraph;
@@ -40,6 +23,11 @@ import edu.stanford.muse.graph.Node;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.json.JSONException;
+
+import java.util.*;
 
 /** main class for grouping algorithm. Top level entry-points are the findGroups* methods.
  * call getStatus() to read status while the algorithm is running, and cancel() to cancel it.
@@ -498,7 +486,7 @@ public class Grouper<T extends Comparable<? super T>> implements StatusProvider
 				else if (currentMove.type == Move.Type.DOMINATE)
 					newGroup = new SimilarGroup<T>(currentMove.n1.payload);
 				else if (currentMove.type == Move.Type.INTERSECT)
-					newGroup = (SimilarGroup<T>) n1.payload.intersect(n2.payload);
+					newGroup = n1.payload.intersect(n2.payload);
 
 				// update graph and moves
 				// verifyAllMoves(allMoves, nodeToBestMoves);
@@ -685,7 +673,7 @@ public class Grouper<T extends Comparable<? super T>> implements StatusProvider
 		{
 			// this is a different group from n1 and n2
 			// check if group already exists, if it does, just add the new value to its existing value
-			updatedNode = (Node<SimilarGroup<T>>) graph.removeGroup(newGroup); // note important to remove
+			updatedNode = graph.removeGroup(newGroup); // note important to remove
 			if (updatedNode != null) {
 				updatedNode.value += newGroupValue;
 			}

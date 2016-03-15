@@ -2,7 +2,6 @@ package edu.stanford.muse.memory;
 
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.xword.Clue;
 import org.apache.commons.logging.Log;
@@ -10,7 +9,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
 import java.util.Date;
-import java.util.Set;
 
 public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Serializable {
 	private static final long serialVersionUID = 1L;
@@ -26,9 +24,9 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 	public String userAnswerBeforeHint, userAnswer;
 	public UserAnswerStats stats;
-    public static enum RecallType{
-        Nothing,Context,TipOfTongue,UnfairQuestion;
-    }
+    public enum RecallType{
+        Nothing,Context,TipOfTongue,UnfairQuestion
+	}
 	
 	static public class UserAnswerStats implements java.io.Serializable {
         //comment by @vihari: Why are some fields marked public and others not? I don't see a pattern or a need for that.
@@ -127,7 +125,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		
 		stats.letterCountCorrect = (cAnswer.length() == correctAnswer.length());
 
-		if (userAnswer==null || userAnswer.equals("") || !isUserAnswerCorrect()) {
+		if (userAnswer.equals("") || !isUserAnswerCorrect()) {
 			// do further lookups on user answer if its wrong
 			try {
 				Archive archive = study.archive;

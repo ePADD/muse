@@ -51,6 +51,8 @@ public class SimpleSessions {
 				log.info("loading key: " + key);
 				try {
 					Object value = ois.readObject();
+					if (value == null)
+						break;
 					result.put(key, value);
 				} catch (InvalidClassException ice)
 				{
@@ -71,6 +73,7 @@ public class SimpleSessions {
 			try {
 				ois.close();
 			} catch (Exception e) {
+				Util.print_exception(e, log);
 			}
 
 		// need to set up sentiments explicitly -- now no need since lexicon is part of the session
@@ -91,7 +94,7 @@ public class SimpleSessions {
 	}
 
 	/** saves the archive in the current session to the cachedir */
-	public static boolean saveArchive(HttpSession session) throws FileNotFoundException, IOException
+	public static boolean saveArchive(HttpSession session) throws IOException
 	{
 		Archive archive = (Archive) session.getAttribute("archive");
 		// String baseDir = (String) session.getAttribute("cacheDir");
@@ -117,12 +120,13 @@ public class SimpleSessions {
 				if (ois != null)
 					ois.close();
 			} catch (Exception e1) {
+				Util.print_exception("Unable to read processing metadata", e1, log);
 			}
 		}
 	}
 
 	/** saves the archive in the current session to the cachedir. note: no blobs saved. */
-	public static boolean saveArchive(String baseDir, String name, Archive archive) throws FileNotFoundException, IOException
+	public static boolean saveArchive(String baseDir, String name, Archive archive) throws IOException
 	{
 		String dir = baseDir + File.separatorChar + Archive.SESSIONS_SUBDIR;
 		new File(dir).mkdirs(); // just to be safe
@@ -230,7 +234,7 @@ public class SimpleSessions {
 	 * It may NOT be fine if  multiple people are operating on their different copies of an archive loaded from the same place. Don't see a use-case for this right now.
 	 * if you don't like that, tough luck.
 	 * return the archive, or null if it doesn't exist. */
-	public static Archive readArchiveIfPresent(String baseDir) throws CorruptIndexException, LockObtainFailedException, IOException
+	public static Archive readArchiveIfPresent(String baseDir) throws IOException
 	{
 		String archiveFile = baseDir + File.separator + Archive.SESSIONS_SUBDIR + File.separator + "default" + Sessions.SESSION_SUFFIX;
 		if (!new File(archiveFile).exists()) {
@@ -281,7 +285,7 @@ public class SimpleSessions {
 	 * reads from default dir (usually ~/.muse/user) and sets up cachedir,
 	 * archive vars.
 	 */
-	public static Archive prepareAndLoadDefaultArchive(HttpServletRequest request) throws CorruptIndexException, LockObtainFailedException, IOException
+	public static Archive prepareAndLoadDefaultArchive(HttpServletRequest request) throws IOException
 	{
 		HttpSession session = request.getSession();
 

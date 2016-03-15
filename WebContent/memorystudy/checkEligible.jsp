@@ -1,7 +1,7 @@
 <%@page language="java" contentType="text/html; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.webapp.*"%>
+<%@page language="java" import="edu.stanford.muse.webapp.HTMLUtils"%>
+<%@page language="java" %>
 <%
 boolean redirect = true;
 String message = ""; // set if no redirect
@@ -30,7 +30,7 @@ if (!"yes".equalsIgnoreCase(access_response)) {
 }
 
 if (redirect) {
-	response.sendRedirect("/muse/memorystudy/consentform");
+	response.sendRedirect("../screen");
 	return;
 }
 

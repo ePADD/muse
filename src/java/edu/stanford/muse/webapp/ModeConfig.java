@@ -24,7 +24,7 @@ public class ModeConfig
 	// server_mode: not currently used in epadd
 	public enum Mode {
 		SERVER_MODE, APPRAISAL, PROCESSING, DELIVERY, DISCOVERY
-	};
+	}
 
 	// TODO: probably need more dimensions. e.g., read-only vs. read-write, full
 	// archive vs. restricted archive, server-hosted vs desktop
@@ -56,4 +56,4 @@ public class ModeConfig
 	{
 		return isPublicMode() || isServerMode();
 	}
-};
+}

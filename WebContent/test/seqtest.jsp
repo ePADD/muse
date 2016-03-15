@@ -1,14 +1,13 @@
-<%@ page import="java.io.File" %>
-<%@ page import="java.io.IOException" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
-<%@ page import="java.io.FileWriter" %>
-<%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.util.Util" %>
-<%@ page import="edu.stanford.muse.util.Pair" %>
 <%@ page import="edu.stanford.muse.ner.dictionary.EnglishDictionary" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.util.Pair" %>
 <%@ page import="edu.stanford.muse.util.Triple" %>
-<%@ page import="edu.stanford.muse.util.EmailUtils" %>
+<%@ page import="edu.stanford.muse.util.Util" %>
+<%@ page import="java.io.File" %>
+<%@ page import="java.io.FileWriter" %>
+<%@ page import="java.io.IOException" %>
+<%@ page import="java.util.*" %>
 <%
     class Some{
         public double getLikelihoodWithOther(String token){
@@ -383,7 +382,7 @@
     }
 
     try {
-        nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+        SequenceModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
     } catch (Exception e) {
         e.printStackTrace();
     }

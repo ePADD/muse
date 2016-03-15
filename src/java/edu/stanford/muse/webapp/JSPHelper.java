@@ -219,9 +219,8 @@ public class JSPHelper {
 		String userKey = (String) getSessionAttribute(session, "userKey");
 		ServletContext application = session.getServletContext();
 		String documentRootPath = application.getRealPath("/").toString();
-		String rootDir = documentRootPath + File.separatorChar + userKey;
 
-		return rootDir;
+		return documentRootPath + File.separatorChar + userKey;
 	}
 
 	/**
@@ -348,7 +347,7 @@ public class JSPHelper {
 	 * @throws Exception
 	 */
 	public static void fetchAndIndexEmails(Archive archive, MuseEmailFetcher m, HttpServletRequest request, HttpSession session, boolean downloadMessageText, boolean downloadAttachments, boolean useDefaultFolders)
-			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError
+			throws MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError
 	{
 		// first thing, set up a static status so user doesn't see a stale status message
 		session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));
@@ -420,6 +419,7 @@ public class JSPHelper {
 			} catch (IOException e) {
 				Util.print_exception("Could not load the sequence model from: " + modelFile, e, log);
 			}
+
 			if (nerModel == null) {
 				log.error("Could not load NER model from: " + modelFile);
 			} else {
@@ -428,29 +428,29 @@ public class JSPHelper {
 				ner.recognizeArchive();
 				archive.processingMetadata.entityCounts = ner.stats.counts;
 				log.info(ner.stats);
-			}
-			archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
-			log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+				archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+				log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
-			//Is there a reliable and more proper way of checking the mode it is running in?
-			String logF = System.getProperty("muse.log");
-			if (logF == null || logF.endsWith("epadd.log")) {
-				//one final step of building entity feature index to build context for every entity
-				try {
-					InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-					session.setAttribute("statusProvider", assignauthorities);
-					assignauthorities.initialize(archive);
-					if (!assignauthorities.isCancelled())
-						request.getSession().setAttribute("authorities", assignauthorities);
-					else
-						assignauthorities = null;
-					boolean success = assignauthorities.checkFeaturesIndex(archive, true);
-					if (!success) {
-						log.warn("Could not build context features for entities");
-					} else
-						log.info("Successfully built context features for entities");
-				} catch (Exception e) {
-					log.warn("Exception while building context features", e);
+				//Is there a reliable and more proper way of checking the mode it is running in?
+				String logF = System.getProperty("muse.log");
+				if (logF == null || logF.endsWith("epadd.log")) {
+					//one final step of building entity feature index to build context for every entity
+					try {
+						InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+						session.setAttribute("statusProvider", assignauthorities);
+						assignauthorities.initialize(archive);
+						if (!assignauthorities.isCancelled())
+							request.getSession().setAttribute("authorities", assignauthorities);
+						else
+							assignauthorities = null;
+						boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+						if (!success) {
+							log.warn("Could not build context features for entities");
+						} else
+							log.info("Successfully built context features for entities");
+					} catch (Exception e) {
+						log.warn("Exception while building context features", e);
+					}
 				}
 			}
 		}
@@ -574,7 +574,7 @@ public class JSPHelper {
 
 		String link = request.getRequestURL() + "?";
 
-		Map<String, String[]> rpMap = (Map<String, String[]>) request.getParameterMap();
+		Map<String, String[]> rpMap = request.getParameterMap();
 		if (rpMap.size() > 0)
 			sb.append(" params: ");
 		for (Object o : rpMap.keySet())
@@ -587,7 +587,7 @@ public class JSPHelper {
 				continue;
 			}
 
-			String[] vals = (String[]) rpMap.get(str1);
+			String[] vals = rpMap.get(str1);
 			if (vals.length == 1)
 				sb.append(Util.ellipsize(vals[0], 100));
 			else
@@ -717,7 +717,7 @@ public class JSPHelper {
 		if (addressBook == null) {
 			return new Pair<String, String>(s, "browse?person=" + s);
 		} else {
-			Contact contact = addressBook.lookupByEmail(((InternetAddress) a).getAddress());
+			Contact contact = addressBook.lookupByEmail(a.getAddress());
 			return new Pair<String, String>(s, "browse?contact=" + addressBook.getContactId(contact));
 		}
 	}

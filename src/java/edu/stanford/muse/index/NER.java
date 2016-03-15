@@ -27,7 +27,6 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
-import opennlp.tools.util.InvalidFormatException;
 import opennlp.tools.util.Span;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -570,7 +569,6 @@ public class NER {
 		}
 		assert (termFreqMap.isEmpty());
 
-		List<Pair<String, Float>> list = Util.sortMapByValue(orgTermFreqMap);
 		/*
 		 * for(Pair<String,Float> entity: list){
 		 * if(!namesAdded.contains(entity.getFirst())){
@@ -586,7 +584,7 @@ public class NER {
 		 */
 		//	for (Pair<String, Integer> p: list)
 		//		log.info (p.getFirst() + " (" + p.getSecond() + " occurrence(s))");
-		return list;
+		return Util.sortMapByValue(orgTermFreqMap);
 	}
 
 	// classifier.classifyToCharacterOffsets() is compute intensive
@@ -687,7 +685,7 @@ public class NER {
 
 	static int	count	= 0, hitCount = 0;
 
-	public static void printSentencesWithWords(String text, Set<String> wordsToSearch) throws InvalidFormatException, IOException
+	public static void printSentencesWithWords(String text, Set<String> wordsToSearch) throws IOException
 	{
 		//		InputStream SentStream = Config.getResourceAsStream("models/en-sent.bin");
 		//		SentenceModel model = sFinder; // new SentenceModel(SentStream);
@@ -789,7 +787,7 @@ public class NER {
 			//Random randnum = new Random();
 			Indexer li = archive.indexer;
 			for (String dId : dIds) {
-				Document doc = (Document) archive.docForId(dId);
+				Document doc = archive.docForId(dId);
 				org.apache.lucene.document.Document ldoc = li.getDoc(doc);
 				System.err.println(ldoc.getBinaryValue("names_offsets"));
 				//System.err.println(ldoc.get("body_redacted"));

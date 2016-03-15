@@ -94,7 +94,6 @@ import java.util.*;
         model.dictionary = dictionary;
         model.tokenizer = tokenizer;
         model.fgs = fgs;
-        Map<String, String> hits = externalGazz;
         for (int iti = 0; iti < types.size(); iti++) {
             Short iType = types.get(iti);
             log.info("Training for type: " + iType);
@@ -104,9 +103,9 @@ import java.util.*;
             int hi = 0;
             Random rand = new Random();
             double ratio = 0, r1 = 0, r2 = 0;
-            for (String h : hits.keySet()) {
+            for (String h : externalGazz.keySet()) {
                 int label = -1;
-                String type = hits.get(h);
+                String type = externalGazz.get(h);
                 if ("notype".equals(type) || FeatureDictionary.ignoreTypes.contains(type))
                     continue;
 
@@ -119,9 +118,9 @@ import java.util.*;
             }
             ratio = r1/r2;
             log.info("Found "+r1+" of type: "+iType+" and "+r2+" other");
-            for (String h : hits.keySet()) {
+            for (String h : externalGazz.keySet()) {
                 int label = -1;
-                String type = hits.get(h);
+                String type = externalGazz.get(h);
                 //dont add to training
                 //if the name is a junk work and has not type, then dont train on it
                 if ("notype".equals(type) || FeatureDictionary.ignoreTypes.contains(type))
@@ -140,7 +139,7 @@ import java.util.*;
                     fvs.add(new Triple<String, FeatureVector, Integer>(h, dictionary.getVector(h, iType), label));
                 }
                 if(hi++%10000 == 0){
-                    log.info("Done ("+hi+"/"+hits.size()+")");
+                    log.info("Done ("+hi+"/"+ externalGazz.size()+")");
                 }
             }
             log.info("Wrote external #" + externalGazz.size());
@@ -177,6 +176,7 @@ import java.util.*;
                         fw1.write(fv.third + " " + fv.second.toVector() + "\n");
                         fw2.write(fv.first + "  " + fv.third + " " + fv.second + "\n");
                     } catch (Exception e) {
+                        Util.print_exception(e, log);
                     }
                 }
                 max_dim = Math.max(max_dim, fv.second.NUM_DIM);
@@ -205,7 +205,7 @@ import java.util.*;
                 try {
                     fw1.close();
                     fw2.close();
-                } catch (Exception e) {}
+                } catch (Exception e) { Util.print_exception(e, log);}
             }
             log.info("Wrote training file to : " + new File(CACHE_DIR + File.separator + iType + ".train").getAbsolutePath());
             status = "Done learning for type: " + iType;
@@ -307,8 +307,7 @@ import java.util.*;
                 log.info("Analysed " + di + "/" + ds + " to find known instances");
             pctComplete = 10 + ((double)i/ds)*30;
         }
-        for (int iti = 0; iti < types.size(); iti++) {
-            Short iType = types.get(iti);
+        for (Short iType : types) {
             {
                 String type = "";
                 if (iType == 0)
@@ -352,7 +351,7 @@ import java.util.*;
 
             //try to equalize number of vectors of each class.
             int x = 0;
-            int hi=0, total = hits.size();
+            int hi = 0, total = hits.size();
             log.info("Adding some dummy names to balance the address book");
             for (String h : hits.keySet()) {
                 if (x > numC)
@@ -374,9 +373,7 @@ import java.util.*;
                 boolean nonName = false;
                 //works for only person names
                 if (num == tokens.length) {
-                    nonName = true;
-                    if (maxp > 0.3)
-                        nonName = false;
+                    nonName = maxp <= 0.3;
                 }
 
                 if (maxp < 0.2 && maxp > 0)
@@ -387,7 +384,7 @@ import java.util.*;
                     x++;
                 }
                 hi++;
-                pctComplete += ((double)hi/total)*20;
+                pctComplete += ((double) hi / total) * 20;
             }
             log.info("Wrote external #" + numExternal + ", internal #" + numC + ", to balance: " + x);
 
@@ -422,6 +419,7 @@ import java.util.*;
                         fw1.write(fv.third + " " + fv.second.toVector() + "\n");
                         fw2.write(fv.first + "  " + fv.third + " " + fv.second + "\n");
                     } catch (Exception e) {
+                        Util.print_exception(e, log);
                     }
                 }
                 max_dim = Math.max(max_dim, fv.second.NUM_DIM);
@@ -447,12 +445,14 @@ import java.util.*;
                 try {
                     fw1.close();
                     fw2.close();
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    Util.print_exception(e, log);
+                }
             }
             log.info("Wrote training file to : " + new File(CACHE_DIR + File.separator + iType + ".train").getAbsolutePath());
             status = "Done learning for type: " + iType;
             model.models.put(iType, svmModel);
-            pctComplete = 40 + (iType+1)*20;
+            pctComplete = 40 + (iType + 1) * 20;
         }
         time += System.currentTimeMillis() - st;
         st = System.currentTimeMillis();

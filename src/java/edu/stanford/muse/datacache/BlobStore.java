@@ -328,7 +328,7 @@ public class BlobStore implements Serializable {
         Util.copy_stream_to_file(is, dir + File.separatorChar + full_filename(primary_data, filename));
     }
 
-    public InputStream getInputStream(Blob b) throws FileNotFoundException, IOException {
+    public InputStream getInputStream(Blob b) throws IOException {
         URL u = urlMap.get(b);
         if (u == null)
             return new FileInputStream(dir + File.separatorChar + full_filename(b));

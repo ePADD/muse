@@ -16,7 +16,7 @@
 package edu.stanford.muse.email;
 
 public interface StatusProvider extends java.io.Serializable { // no particular reason to make it serializable, but why not...
-	public String getStatusMessage();
-	public void cancel();
-	public boolean isCancelled();
+	String getStatusMessage();
+	void cancel();
+	boolean isCancelled();
 }

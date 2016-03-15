@@ -16,22 +16,6 @@
 package edu.stanford.muse.index;
 
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.mail.internet.InternetAddress;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.Group;
@@ -42,6 +26,12 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import javax.mail.internet.InternetAddress;
+import java.io.Serializable;
+import java.util.*;
 
 /* should probably move this to groups package. 
  * move it the next time we are going to break existing session files. */
@@ -291,7 +281,7 @@ public class GroupAssigner implements Serializable {
 	/** assigns weights to colors based on similarity and returns a color -> weight map*/
 	public int getBestColorForAddress(InternetAddress a)
 	{
-		Contact c = addressBook.lookupByEmail( ((InternetAddress) a).getAddress());
+		Contact c = addressBook.lookupByEmail( a.getAddress());
 		if (c == null)
 			return -1;
 		Map<Integer, Float> map = getAssignedColorWeights(c);

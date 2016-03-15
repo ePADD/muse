@@ -4,9 +4,9 @@ import edu.stanford.muse.Config;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
 import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
@@ -47,7 +47,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
-        this.tokenizer = tokenizer;
+        SequenceModel.tokenizer = tokenizer;
     }
 
     public SequenceModel() {
@@ -313,7 +313,7 @@ public class SequenceModel implements NERModel, Serializable {
         double sorg = 0;
         Short ct = lookup(phrase);
         String dbpediaType = dbpedia.get(phrase.toLowerCase());
-        if(dbpediaType!=null && ct==type){
+        if(dbpediaType!=null && ct.equals(type)){
             if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
                 return 1;
             else if (phrase.contains(" "))
@@ -458,7 +458,7 @@ public class SequenceModel implements NERModel, Serializable {
                 e.printStackTrace();
             }
         }
-        return bs*((bt==type)?1:-1);
+        return bs*((bt.equals(type))?1:-1);
     }
 
     public Pair<String,Double> scoreSubstrs(String phrase, Short type) {
@@ -738,8 +738,7 @@ public class SequenceModel implements NERModel, Serializable {
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
-        FeatureDictionary dictionary = new FeatureDictionary(train, fgs);
-        nerModel.dictionary = dictionary;
+        nerModel.dictionary = new FeatureDictionary(train, fgs);
         nerModel.dictionary.EM(train);
         try {
             String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;

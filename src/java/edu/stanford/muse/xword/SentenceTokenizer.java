@@ -15,14 +15,14 @@
 */
 package edu.stanford.muse.xword;
 
+import edu.stanford.muse.util.Util;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import edu.stanford.muse.util.Util;
 
 /** A simple rule-based sentence delimiter. 
  * See http://nlp.stanford.edu/software/tokenizer.shtml for a possible alternative, however, I don't think
@@ -98,10 +98,8 @@ public class SentenceTokenizer {
 		// note: the original text should already be in lowercase
 		// a profile showed that this toLowerCase() is extremely expensive
 		String prefix = lowerCaseText.substring(0, i); // .toLowerCase();
-		if (c == '.' && (prefix.endsWith( "mr") || prefix.endsWith("mrs") || prefix.endsWith("prof") || prefix.endsWith("dr") || prefix.endsWith(" ms") || prefix.endsWith(" st")))
-			return false;
-		
-		return true;
+		return !(c == '.' && (prefix.endsWith("mr") || prefix.endsWith("mrs") || prefix.endsWith("prof") || prefix.endsWith("dr") || prefix.endsWith(" ms") || prefix.endsWith(" st")));
+
 	}
 	
 	private int skipOverNonSentenceStartChars(int i)

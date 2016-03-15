@@ -27,8 +27,6 @@
 
 package edu.stanford.muse.util;
 
-import edu.stanford.muse.memory.MemoryQuestion;
-import edu.stanford.muse.xword.Clue;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 
@@ -218,6 +216,7 @@ public class Util
 			try {
 				Thread.sleep(sleepMillis);
 			} catch (Exception e) {
+				Util.print_exception(e);
 			}
 	}
 
@@ -1220,8 +1219,7 @@ public class Util
 		GregorianCalendar c = new GregorianCalendar();
 		c.setTime(start);
 		int startMonth = c.get(Calendar.MONTH);
-		int startYear = c.get(Calendar.YEAR);
-		int year = startYear;
+		int year = c.get(Calendar.YEAR);
 		int month = startMonth;
 
 		intervals.add(start);
@@ -1409,8 +1407,7 @@ public class Util
 		if (start > end)
 			return "";
 
-		String strippedStr = s.substring(start, end + 1);
-		return strippedStr;
+		return s.substring(start, end + 1);
 	}
 
 	// strips brackets from (...) and [...] if there are any
@@ -1673,12 +1670,9 @@ public class Util
 		public boolean accept(File dir, String name)
 		{
 			// String path = (dir.getAbsolutePath() + File.separator + name);
-			String path = name;
-			if (prefix != null && !path.startsWith(prefix))
+			if (prefix != null && !name.startsWith(prefix))
 				return false;
-			if (suffix != null && !path.endsWith(suffix))
-				return false;
-			return true;
+			return !(suffix != null && !name.endsWith(suffix));
 		}
 	}
 
@@ -1711,7 +1705,7 @@ public class Util
 	}
 
 	/** cleans up files in directory with the given suffix */
-	public static void deleteAllFilesWithSuffix(String dir, String suffix, Log log) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static void deleteAllFilesWithSuffix(String dir, String suffix, Log log) throws IOException, ClassNotFoundException
 	{
 		if (dir == null)
 			return;
@@ -2547,7 +2541,7 @@ public class Util
 		oos.close();
 	}
 
-	public static Serializable readObjectFromFile(String filename) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static Serializable readObjectFromFile(String filename) throws IOException, ClassNotFoundException
 	{
 		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename));
 		Serializable s = (Serializable) ois.readObject();
