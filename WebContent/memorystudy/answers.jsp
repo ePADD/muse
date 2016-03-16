@@ -10,9 +10,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<link rel="icon" href="images/ashoka-favicon.gif">
-<link rel="stylesheet" href="css/memory.css"/>
+	<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+	<link rel="icon" href="images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="../css/fonts.css"/>
+	<link rel="stylesheet" href="css/memory.css"/>
 <title>Answers Page</title>
 </head>
 <body>

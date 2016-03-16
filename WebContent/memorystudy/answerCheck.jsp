@@ -19,7 +19,8 @@ if (nWrongAnswers == 0) {
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link rel="icon" href="../images/ashoka-favicon.gif">
-<link rel="stylesheet" href="css/memory.css"/>
+	<link rel="stylesheet" href="../css/fonts.css"/>
+	<link rel="stylesheet" href="css/memory.css"/>
 <script src="../js/jquery/jquery.js"></script>
 <title>Check answers</title>
 </head>
