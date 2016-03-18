@@ -185,6 +185,12 @@ public class ArchiveCluer extends Cluer {
 
         log.info("Trying to generate clue for " + name + " (full contact info: " + c + ")");
 		log.info("A total of " + Util.pluralize(messagesWithContact.size(), "message") + " were sent to " + name);
+
+		if (messagesWithContact.size() <= 1) {
+			log.info("Dropping " + name + " because of <= 1 message");
+			return null;
+		}
+
 		log.info("Contact score for " + name + " = " + contactScore);
 
         // find valid docs -- those sent only to c, and in the specified interval
@@ -322,7 +328,9 @@ public class ArchiveCluer extends Cluer {
 					// grand total: score for this clue + score for message + score for contact
 					float finalScore = clueScore + emailScore + contactScore;
 					clue.clueStats.finalScore = finalScore;
-
+					clue.clueStats.contactScore = contactScore;
+					clue.clueStats.clueScore = clueScore;
+					clue.clueStats.emailScore = emailScore;
 
 					if (finalScore > bestScore)
 					{

@@ -49,6 +49,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		int memoryType = -1;
 		public Date guessedDate = null;
 		public boolean onlyMonthAndYearGuessed = false;
+		public boolean userGaveUp = false;
 
 		// stats computed when answer is wrong
 		public boolean letterCountCorrect; // (only populated if the answer is wrong)
@@ -107,7 +108,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
      * @param memoryType - A rating on how well the user can recall the context
      * @param guessedDate - The user's guess on when the particular sentence is compiled
 	 * */
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean onlyMonthAndYearGuessed) {
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean onlyMonthAndYearGuessed, boolean userGaveUp) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
 		
@@ -117,6 +118,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		this.stats.guessedDate = guessedDate;
 		this.stats.hintused = hintused;
 		this.stats.onlyMonthAndYearGuessed = onlyMonthAndYearGuessed;
+		this.stats.userGaveUp = userGaveUp;
 		this.stats.millis = millis;
 
 		boolean userAnswerPartOfAnyAddressBookName = study.archive.addressBook.isStringPartOfAnyAddressBookName(userAnswer);

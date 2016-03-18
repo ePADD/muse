@@ -91,6 +91,8 @@
             }
             recency = cal.getTime();
         }
+
+        boolean userGaveUp = "Give up".equals(request.getParameter("submitType"));
         MemoryQuestion.RecallType recallType = null;
         Object recallObject = null;
         if (request.getParameter("fail") != null) {
@@ -115,7 +117,7 @@
             }
         }
 
-        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency, onlyMonthAndYearGuessed);
+        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency, onlyMonthAndYearGuessed, userGaveUp);
         currentStudy.iterateQuestion();
         boolean finished = currentStudy.checkForFinish();
         if (finished) {
@@ -328,7 +330,7 @@
                         return false;
                     }
                     else {
-                        var answer = $('#answer').val();
+                        $('#userGaveUp').val(1);
                         var any_hint_taken = $('#fTip').is(':checked') || $('#fContext').is(':checked') || $('#fComplete').is(':checked');
                         if (answer.length == 0 && !any_hint_taken) {
                             alert("Try to use one of the hint options before clicking submit.");
@@ -344,7 +346,6 @@
                 $('#millis').val(elapsed_time);
 
                 // set up the submitType hidden field to track whether the give up button was pressed or submit
-                LOG(button_text);
                 $('input[name="submitType"]').val(button_text);
 
                 return true; // this will proceed with the form submit

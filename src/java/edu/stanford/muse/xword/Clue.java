@@ -1,17 +1,15 @@
 package edu.stanford.muse.xword;
 
+import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.Util;
+
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
-import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.util.EmailUtils;
-import edu.stanford.muse.util.Util;
 
 /* a committed clue, including how its displayed, any url's, any metadata about the clue etc */
 public class Clue implements Serializable, Comparable<Clue> {
@@ -54,7 +52,7 @@ public class Clue implements Serializable, Comparable<Clue> {
 		Map<String, Integer> docSentiments;
 		
 		// scoring stuff
-		public float finalScore;
+		public float finalScore, emailScore, clueScore;
 		float sentenceNumBoost; // boost for sentences earlier in the message
 		float docSentimentScore; // overall sentiment score of message
 		float linesBoost; // boost due to # newlines in the sentence. too many newlines => low score because its lists or some abnormal sentence structure
