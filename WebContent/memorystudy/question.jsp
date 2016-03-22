@@ -203,9 +203,9 @@
                 <br>
                 (1: no idea; 5: fair idea; 10:strong memory)<br/>
             <div style="line-height:0.5em">
-                <span style="font-size: small; position:relative;left:0px">1</span>
-                <span style="font-size: small; position:relative;left:120px">5</span>
-                <span style="font-size: small; position:absolute;left:340px">10</span><br>
+                <span style="font-size: small; position:relative;left:0px">0</span>
+                <span style="font-size: small; position:relative;left:135px">5</span>
+                <span style="font-size: small; position:absolute;left:350px">10</span><br>
                 <!--For tick marks-->
                 <datalist id="steplist">
                     <option>1</option>
@@ -306,7 +306,7 @@
                         event.stopPropagation();
                         return false;
                     } else if ($('#memory').val() == 0) {
-                        alert("Please select how vividly you remember the conversation.");
+                        alert("You did not answer the question about how vividly you remember the conversation. Please select a number between 1 and 10.");
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
