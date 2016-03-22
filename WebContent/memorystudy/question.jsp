@@ -55,7 +55,7 @@
 
             Integer numQ = (Integer) session.getAttribute("numQuestions");
             if (numQ == null)
-                numQ = HTMLUtils.getIntParam(request, "n", 1);
+                numQ = HTMLUtils.getIntParam(request, "n", 36);
 
             currentStudy.generatePersonNameQuestions(archive, nerModel, (Collection<EmailDocument>) session.getAttribute("emailDocs"), lex, numQ);
             session.setAttribute("study", currentStudy);
@@ -199,7 +199,7 @@
 
         <div class="vividness">
             <p>
-                <i class="fa fa-caret-right"></i> How vividly do you remember writing this email?
+                <i class="fa fa-caret-right"></i> How vividly do you remember this specific conversation?
                 <br>
                 (1: no idea; 5: fair idea; 10:strong memory)<br/>
             <div style="line-height:0.5em">
@@ -220,8 +220,8 @@
                     <option>10</option>
                 </datalist>
 
-                <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
-                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">5</output>
+                <input name="memory" id="memory" type="range" min="0" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
+                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">0</output>
                 <script>
                     function outputUpdate(v) {
                         document.querySelector('#memory-amount').value = v;
@@ -297,29 +297,6 @@
             function handle_submit(event) {
                 var $target = $(event.target);
                 var button_text = $target.text(); // text on the button that was pressed
-                //ensure answer or the reason is filled
-                /*
-                 if ($("#answer").val()=='' && !$("#fComplete")[0].checked && !$("#fContext")[0].checked && !$("#unfair")[0].checked) {
-                 alert("Please enter the answer or answer why you forgot.");
-                 event.preventDefault();
-                 event.stopPropagation();
-                 return false;
-                 } */
-                /* else if($("#fTip")[0].checked && $("#tipScore").val() !== ''){
-                 var tVal = parseInt($("#tipScore").val());
-                 if(isNaN(tVal) || tVal<1 || tVal>10){
-                 alert('Please enter a number in the range 1 to 10 for "how close you are to having the name pop into mind"');
-                 event.preventDefault();
-                 event.stopPropagation();
-                 return false;
-                 }
-
-                 } else if($("#unfair")[0].checked && $("#unfairReason").val() == ''){
-                 alert("Please enter a reason why you think the question is unfair.")
-                 event.preventDefault();
-                 event.stopPropagation();
-                 return false;
-                 } */
 
                 //ensure questions are filled out
                 if (button_text != 'Give up') {
@@ -328,16 +305,21 @@
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
+                    } else if ($('#memory').val() == 0) {
+                        alert("Please select how vividly you remember the conversation.");
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
                     }
-                    else {
-                        $('#userGaveUp').val(1);
-                        var any_hint_taken = $('#fTip').is(':checked') || $('#fContext').is(':checked') || $('#fComplete').is(':checked');
-                        if (answer.length == 0 && !any_hint_taken) {
-                            alert("Try to use one of the hint options before clicking submit.");
-                            event.preventDefault();
-                            event.stopPropagation();
-                            return false;
-                        }
+                }
+                else {
+                    $('#userGaveUp').val(1);
+                    var any_hint_taken = $('#fTip').is(':checked') || $('#fContext').is(':checked') || $('#fComplete').is(':checked');
+                    if (answer.length == 0 && !any_hint_taken) {
+                        alert("Try to use one of the hint options before giving up.");
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
                     }
                 }
 

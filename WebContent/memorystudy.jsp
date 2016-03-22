@@ -67,7 +67,7 @@
         session.setAttribute("answers", "true");
     }
 
-    int numQ = HTMLUtils.getIntParam(request, "n", 40);
+    int numQ = HTMLUtils.getIntParam(request, "n", 36);
     session.setAttribute("numQuestions", numQ);
 
     session.setAttribute("mode", "memorytest");
@@ -283,7 +283,7 @@
 Dates <input size="30" id="dateRange" name="dateRange" value="<%=dateRange%>"/>
 </span>
 <span style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>">
-Total Questions <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="4"/>
+Total Questions <input style="display:<%=(request.getParameter("options") != null) ? "inline":"none"%>" id="n" name="n" value="36"/>
 </span>
                 </td>
             </tr>

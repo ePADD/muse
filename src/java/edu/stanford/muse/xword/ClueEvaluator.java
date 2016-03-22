@@ -115,7 +115,7 @@ import java.util.regex.Pattern;
          */
         public NamesEvaluator(float[] params) {
             this();
-            if (params == null || params.length != 2) {
+            if (params == null || params.length != 1) {
                 log.error("Wrong initialisation of params in " + NamesEvaluator.class + "!! Required 2 param");
             } else {
                 this.params = params;
