@@ -57,7 +57,7 @@ You are welcome to save or print a copy of this page for your records.
 
 		String guessedDate;
 		if (mq.stats.guessedDate != null)
-			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat(mq.stats.onlyMonthAndYearGuessed ? "dd MMMM yyyy" : "MMMM yyyy").format(mq.stats.guessedDate) + ")";
+			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat("MMMM yyyy").format(mq.stats.guessedDate) + ")";
 		else
 			guessedDate = ("(Your guess: no idea)");
 		correctAnswer = Util.canonicalizeSpaces(correctAnswer);
