@@ -122,6 +122,7 @@
             } catch (Exception e) {
                 JSPHelper.log.warn("Exception fetching/indexing emails");
                 Util.print_exception(e, JSPHelper.log);
+                Util.print_exception(e, JSPHelper.log);
                 errorMessage = "An error occured while accessing the messages";
                 // we'll leave archive in this
             }

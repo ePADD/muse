@@ -127,10 +127,10 @@
                         request.execute(function (resp) {
                             $('#loginName' + idx).attr('value', resp.email);
                             $('#message' + idx).html(resp.email);
+                            $('#password' + idx).attr('value', 'xoauth' + token.access_token); // this field is already hidden
+                            $('#password' + idx).append('<div style="font-size:small"><i>' + resp.email + '</i></div>');
                         });
                     });
-                    $('#password' + idx).attr('value', 'xoauth' + token.access_token); // this field is already hidden
-                    $('#password' + idx).append('<div style="font-size:small"><i>' + resp.email + '</i></div>');
                 } else {
                     $('#message' + idx).html('No authorization');
                     $('#password' + idx).attr('value', '');

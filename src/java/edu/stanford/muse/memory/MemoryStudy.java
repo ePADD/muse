@@ -10,15 +10,9 @@ import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
-import edu.stanford.muse.util.CryptoUtils;
-import edu.stanford.muse.util.DictUtils;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
+import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.JSPHelper;
-import edu.stanford.muse.xword.ArchiveCluer;
-import edu.stanford.muse.xword.Clue;
-import edu.stanford.muse.xword.ClueEvaluator;
-import edu.stanford.muse.xword.Crossword;
+import edu.stanford.muse.xword.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -581,6 +575,28 @@ public class MemoryStudy implements Serializable{
                         + " latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
 
 
+        Set<Integer> tabooSentenceHashes = new LinkedHashSet<>();
+
+        // create hashes of all sentences seen at least twice (case insensitive, lower cased)
+        {
+            Set<Integer> hashesSeen = new LinkedHashSet<>();
+            for (Document d : docs) {
+                String contents = archive.getContents(d, true);
+                String cleanedContents = EmailUtils.cleanupEmailMessage(contents);
+                cleanedContents = cleanedContents.toLowerCase();
+                SentenceTokenizer st = new SentenceTokenizer(cleanedContents);
+                while (st.hasMoreSentences()) {
+                    String sentence = st.nextSentence();
+                    int hashCode = sentence.hashCode();
+                    if (hashesSeen.contains(hashCode)) {
+                        tabooSentenceHashes.add(hashCode);
+                        log.info ("Marking sentence as taboo: " + sentence);
+                    } else
+                        hashesSeen.add(hashCode);
+                }
+            }
+        }
+
         // compute contactToLatestDate that contact has been seen on
         for (Document doc : docs) {
             EmailDocument ed = (EmailDocument) doc;
@@ -672,7 +688,7 @@ public class MemoryStudy implements Serializable{
                         continue outer;
                 }
 
-                Clue clue = cluer.createPersonNameClue(c, evaluators, nerModel, intervalStart, intervalEnd, nSent, archive);
+                Clue clue = cluer.createPersonNameClue(c, evaluators, nerModel, intervalStart, intervalEnd, nSent, archive, tabooSentenceHashes);
                 if (clue != null)
                     clueToContact.put(clue, c);
             }
@@ -809,9 +825,9 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** Takes in user response and whether a hint was used. Evaluates whether answer was correct, assigns points, and logs information about the question response. */
-	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean onlyMonthAndYearGuessed, boolean userGaveUp) {
+	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
 		MemoryQuestion mq = questions.get(listLocation);
-		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, guessedDate, onlyMonthAndYearGuessed, userGaveUp);
+		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, guessedDate, userGaveUp);
 	}
 	
 	/*checks whether the test is done. if it is, it outputs the final log info and does time calculations*/

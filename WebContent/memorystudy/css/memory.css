@@ -61,6 +61,7 @@ hr {
 
 .box {
 	position: absolute;
+	min-width:900px;
 	color: black;
 	background-color: #faf6e3;
 	width: 60%;
@@ -161,13 +162,13 @@ input[type="text"]:focus{
 input[type=range] {
 	/*removes default webkit styles*/
 	-webkit-appearance: none;
-	width: 300px;
+	width: 350px;
 	height:20px;
 	position: relative;
 	background-color: transparent;
 }
 input[type=range]::-webkit-slider-runnable-track {
-	width: 300px;
+	width: 350px;
 	height: 3px;
 	background: black;
 	border: none;
@@ -190,7 +191,7 @@ input[type=range]:focus::-webkit-slider-runnable-track {
 }
 
 input[type=range]::-moz-range-track {
-	width: 300px;
+	width: 350px;
 	height: 3px;
 	background: black;
 	border: none;

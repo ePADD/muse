@@ -28,7 +28,7 @@
 	String newline = "<br>";
 	int nCorrect = 0;
 	for (MemoryQuestion mq : study.getQuestions())
-		if (mq.isUserAnswerCorrect()) 
+		if (mq.isUserAnswerCorrect() || mq.stats.wrongAnswerReason == 2) // 2 is fixed! see answerCheck.jsp
 			nCorrect++;
 %>
 <div class="box">

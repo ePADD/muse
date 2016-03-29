@@ -65,9 +65,12 @@ $(function() {
             <div style="margin-left: 5%">
                 <i class="fa fa-caret-right"></i> Type here:
                 <input spellcheck="false" autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured it out yet, the correct answer in this example is 'Humpty Dumpty'." type="text" size="40" name="answer">
-                <span class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer. This description will turn green when the number of letters you have entered in the answer box is correct.">
+                <span class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer.">
                     [2 words: 6 letters, 6 letters<span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
                 </span>
+            <button style="margin-left:10%;display:inline;" type="button" id="hint-button">Hint</button>
+
+
 
                 </p>
                 <span data-step="5" data-intro="If you can't remember the answer, choose one of the options below and the initial letters of each word in the answer will be provided as a hint. Try to recall the name using this hint.">
@@ -110,17 +113,19 @@ $(function() {
 
             <div data-step = "7" data-intro = "On a scale of 1 to 10, rate how strongly you remember writing this email by dragging the slider to the left or right.">
                 <p>
-                    <i class="fa fa-caret-right"></i> How vividly do you remember writing this email?
+                    <i class="fa fa-caret-right"></i> How vividly do you remember this specific conversation?
                 <br>
                 (1: no idea; 5: fair idea; 10:strong memory)
                 <p>
+                <br/>
 
                 <div style="position:relative;line-height:0.5em">
-                    <span style="font-size: small; position:relative;left:0px">1</span>
-                    <span style="font-size: small; position:relative;left:120px">5</span>
-                    <span style="font-size: small; position:absolute;left:300px">10</span><br>
-                    <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
-                    <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">5</output>
+                <div style="font-size: small; position:relative;left:-33px; top:-30px;max-width:85px;max-height:94px;transform:rotate(270deg);">Not set</div>
+                <span style="font-size: small; position:relative;left:40px">1</span>
+                <span style="font-size: small; position:relative;left:162px">5</span>
+                <span style="font-size: small; position:absolute;left:350px">10</span><br>
+                <input name="memory" id="memory" type="range" min="0" max="10" step="1" value="0" list="steplist" oninput="outputUpdate(value)"/>
+                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">Not set</output>
                 </div>
             </div>
 
@@ -128,7 +133,7 @@ $(function() {
 
             <script>
                 function outputUpdate(v) {
-                    document.querySelector('#memory-amount').value = v;
+                    document.querySelector('#memory-amount').value = (v > 0) ? v : "Not set";
                 }
             </script>
 
@@ -137,14 +142,6 @@ $(function() {
                 <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
                 <div>
                 <span id="time">
-                    <select style="margin-left:10%" name="timeDate" id="timeDate">
-                    <option value="-1"></option>
-                    <%
-                        for(int d=1;d<=31;d++){
-                            %><option value="<%=d%>"><%=d%></option><%
-                        }
-                    %>
-                    </select>
                     <select name="timeMonth" id="timeMonth">
                         <option value="-1"></option>
                         <%
@@ -158,13 +155,14 @@ $(function() {
                     </select>
                     <select name="timeYear" id="timeYear">
                         <option value="-1"></option>
-                        <option value="2015">2015</option>
-                        <option value="2016">2016</option>
+                        <% int currentYear = new GregorianCalendar().get(Calendar.YEAR); %>
+                        <option value="<%=currentYear-1%>"><%=currentYear-1%></option>
+                        <option value="<%=currentYear%>"><%=currentYear%></option>
                     </select>
                     <br>
-                    <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
+                    <span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
                 </span><br>
-                <input type="checkbox" style="margin-left:10%" id="timeInfo"> I have no idea<br>
+                <input type="checkbox" id="timeInfo"> I have no idea<br>
 		    </div>
 
         <!--For tick marks-->
@@ -200,8 +198,11 @@ $(function() {
 			$('#question').html(text);
 			return false;
 		}
-		
-		function handle_submit(event) {
+
+        $('#hint-button').click(show_hint);
+
+
+            function handle_submit(event) {
             var $target = $(event.target);
             var button_text = $target.text(); // text on the button that was pressed
             if (($("#answer").val() !== '' && 'humptydumpty' !== $('#answer').val().toLowerCase().replaceAll(" ", ""))
@@ -221,7 +222,9 @@ $(function() {
 
         $('.submitButton').click(handle_submit);
 
+        /*
         $('#answer').keyup(function() {
+
 			var correctAnswerLengthWithoutSpaces = 'humptydumpty'.length;
 			// check # of letters in answer
 			var val = $('#answer').val();
@@ -236,6 +239,7 @@ $(function() {
                 $('#nLettersCheck').hide();
             }
 		});
+		*/
         $('#answer').focus();
 
         </script>

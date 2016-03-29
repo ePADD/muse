@@ -80,11 +80,7 @@
         if (!"on".equals(request.getParameter("noTime"))) {
             Calendar cal = new GregorianCalendar();
             try {
-                int dd = Integer.parseInt(request.getParameter("timeDate"));
-                if (dd == -1) {
-                    dd = 15; // just pick a midpoint
-                    onlyMonthAndYearGuessed = true;
-                }
+                int dd = HTMLUtils.getIntParam(request, "timeDate", 15);
                 cal.set(Integer.parseInt(request.getParameter("timeYear")), Integer.parseInt(request.getParameter("timeMonth")) - 1, dd);
             } catch (Exception e) {
                 Util.print_exception(e, JSPHelper.log);
@@ -117,7 +113,7 @@
             }
         }
 
-        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency, onlyMonthAndYearGuessed, userGaveUp);
+        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency, userGaveUp);
         currentStudy.iterateQuestion();
         boolean finished = currentStudy.checkForFinish();
         if (finished) {
@@ -177,7 +173,7 @@
     <div style="margin-left: 5%">
         <div>
             <i class="fa fa-caret-right"></i> Type here:
-            <input spellcheck="false" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
+            <input spellcheck="false" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off"/>
                 <span id="answerLength">
                     [<%
                     out.print(questiontodisplay.lengthDescr);
@@ -186,6 +182,9 @@
                 %>
                     <span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
                 </span>
+
+            <button style="margin-left:10%;display:inline;" type="button" id="hint-button">Hint</button>
+
             <p>
                 <span>Or choose one of the following:</span><br/>
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
@@ -203,9 +202,8 @@
                 <br>
                 (1: no idea; 5: fair idea; 10:strong memory)<br/>
             <div style="line-height:0.5em">
-                <span style="font-size: small; position:relative;left:0px">0</span>
-                <span style="font-size: small; position:relative;left:135px">5</span>
-                <span style="font-size: small; position:absolute;left:350px">10</span><br>
+            <br/>
+            <br/>
                 <!--For tick marks-->
                 <datalist id="steplist">
                     <option>1</option>
@@ -220,11 +218,17 @@
                     <option>10</option>
                 </datalist>
 
-                <input name="memory" id="memory" type="range" min="0" max="10" step="1" value="5" list="steplist" oninput="outputUpdate(value)"/>
-                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">0</output>
+            <div style="position:relative;line-height:0.5em">
+                <div style="font-size: small; position:relative;left:-33px; top:-30px;max-width:85px;max-height:94px;transform:rotate(270deg);">Not set</div>
+                <span style="font-size: small; position:relative;left:40px">1</span>
+                <span style="font-size: small; position:relative;left:162px">5</span>
+                <span style="font-size: small; position:absolute;left:350px">10</span><br>
+                <input name="memory" id="memory" type="range" min="0" max="10" step="1" value="0" list="steplist" oninput="outputUpdate(value)"/>
+                <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">Not set</output>
+            </div>
                 <script>
                     function outputUpdate(v) {
-                        document.querySelector('#memory-amount').value = v;
+                        document.querySelector('#memory-amount').value = (v > 0) ? v : "Not set";
                     }
                 </script>
             </div> <!-- .vividness -->
@@ -234,19 +238,6 @@
             <div class="when">
                 <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
                 <br/>
-                    <span id="time">
-                    <select style="margin-left:10%" name="timeDate" id="timeDate">
-                        <option value="-1"></option>
-                        <%
-                            for (int d = 1; d <= 31; d++) {
-                        %>
-                        <option value="<%=d%>"><%=d%>
-                        </option>
-                        <%
-                            }
-                        %>
-                    </select>
-
                     <select name="timeMonth" id="timeMonth">
                         <option value="-1"></option>
                         <%
@@ -263,14 +254,14 @@
                     </select>
                     <select name="timeYear" id="timeYear">
                         <option value="-1"></option>
-                        <option value="2015">2015</option>
-                        <option value="2016">2016</option>
+                        <% int currentYear = new GregorianCalendar().get(Calendar.YEAR); %>
+                        <option value="<%=currentYear-1%>"><%=currentYear-1%></option>
+                        <option value="<%=currentYear%>"><%=currentYear%></option>
                     </select>
                     <br>
                     <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
-                    </span>
                 <br>
-                <input type="checkbox" style="margin-left:10%" id="timeInfo" name="noTime"> I have no idea<br>
+                <input type="checkbox" id="timeInfo" name="noTime"> I have no idea<br>
             </div> <!-- .when -->
         </div>
 
@@ -293,6 +284,8 @@
             $(function () {
                 $("#hint-button").delay(15000).fadeIn();
             });
+
+            $('#hint-button').click(show_hint);
 
             function handle_submit(event) {
                 var $target = $(event.target);
@@ -338,6 +331,7 @@
             var start_time;
             $(document).ready(function () {
                 start_time = new Date().getTime();
+                /* disabling feedback on #letters
                 $('#answer').keyup(function () {
                     // check # of letters in answer
                     var val = $('#answer').val();
@@ -351,6 +345,7 @@
                         $('#nLettersCheck').hide();
                     }
                 });
+                */
             });
 
             $('#answer').focus();

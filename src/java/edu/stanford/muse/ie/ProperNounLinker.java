@@ -59,6 +59,7 @@ public class ProperNounLinker {
             for (String st : subToks) {
                 String ct = EnglishDictionary.getSingular(st.toLowerCase());
                 bows.add(ct);
+
             }
         }
         return bows;

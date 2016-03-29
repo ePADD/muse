@@ -162,8 +162,8 @@ public class SentenceTokenizer {
 		text = text.replaceAll("\nTo:", "."); // treat all these subject: lines as a sentence.
 		text = text.replaceAll("\nCc:", "."); // treat all these subject: lines as a sentence.
 		text = text.replaceAll("\nBcc:", "."); // treat all these subject: lines as a sentence.
-		text = text.replaceAll("\n\n", "."); // treat double newlines as a delimiter
-		text = text.replaceAll(":\n", "."); // useful for things like: Message from XYZ: or XYZ wrote: to avoid pulling those lines into the sentence
+		text = text.replaceAll("\n\n", ".\n\n"); // treat double newlines as a delimiter
+		text = text.replaceAll(":\n", ".\n\n"); // useful for things like: Message from XYZ: or XYZ wrote: to avoid pulling those lines into the sentence
 		int idx = text.indexOf("\nContent-Type: text/html;"); 
 		
 		if (idx >= 0)
@@ -266,6 +266,18 @@ public class SentenceTokenizer {
 		
 		st = new SentenceTokenizer("I have an ibook, but I don't think I can use it to project since I'm not carrying the external VGA");
 		Util.ASSERT (st.countSentences() == 1);
+
+		SentenceTokenizer st1 = new SentenceTokenizer("\n" +
+				"Sanjna Sudan\n" +
+				"\n" +
+				"Deputy Manager, Communications & Media Relations\n" +
+				"\n" +
+				"Fellow- Young India Fellowship, 2014-15");
+		System.out.println(st1.countSentences());
+		System.out.println(st1.nextSentence());
+		System.out.println(st1.nextSentence());
+		System.out.println(st1.nextSentence());
+
 		System.out.println ("All tests passed!"); 
 	}
 }

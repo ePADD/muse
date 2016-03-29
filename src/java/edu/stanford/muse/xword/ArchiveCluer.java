@@ -169,8 +169,9 @@ public class ArchiveCluer extends Cluer {
 	 * @param nerModel - clue evaluators depend on the model to recognise names and for evaluation
 	 * @param startDate @param endDate - Marks the beginning and end of the time interval
 	 * @param numSentences - Number of sentences in the clue
+	 * @param tabooSentenceHashes - if a sentence's lower case form has a hash in this set, it will not be considered
 	 * */
-	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evaluationRules, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
+	public Clue createPersonNameClue(Contact c, List<ClueEvaluator> evaluationRules, NERModel nerModel, Date startDate, Date endDate, int numSentences, Archive archive, Set<Integer> tabooSentenceHashes) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException
 	{
 		if (evaluationRules == null || evaluationRules.size()==0) {
 			evaluationRules = MemoryStudy.getDefaultEvals();
@@ -274,10 +275,19 @@ public class ArchiveCluer extends Cluer {
 
 					for (int j = i - numSentences+1; j <= i; j++) {
 						// check if any of the sentences is < MIN_SENTENCE_LENGTH, if so, the clue is invalid, so just break out with an empty string
-						if (sentences.get(j).length() < MIN_SENTENCE_LENGTH || !sentenceIsValidAsClue(sentences.get(j).toLowerCase(), numSentences)) {
+						String sentence = sentences.get(j);
+						if (sentence.length() < MIN_SENTENCE_LENGTH || !sentenceIsValidAsClue(sentence.toLowerCase(), numSentences)) {
 							continue nextSentence;
 						}
-						candidateClue += sentences.get(j) + " ";
+
+						// taboo hash check
+						int hashCode = sentence.toLowerCase().hashCode();
+						if (tabooSentenceHashes.contains(hashCode)) {
+							log.info ("Dropping taboo duplicate sentence: " + sentence);
+							continue nextSentence;
+						}
+
+						candidateClue += sentence + " ";
 					}
 
 					//String oos = originalSentence;

@@ -90,13 +90,9 @@ public class Accounts {
 
 		if (server != null)
 			server = server.trim();
-		if (loginName == null) {
-			result.put("errorMessage", "Sorry, unknown account type: " + accountType);
-			result.put("status", 1);
-			return result;
-		}
 
-		loginName = loginName.trim();
+		if (loginName != null)
+			loginName = loginName.trim();
 
 		// for these ESPs, the user may have typed in the whole address or just his/her login name
 		if (accountType.equals("gmail") && loginName.indexOf("@") < 0)
