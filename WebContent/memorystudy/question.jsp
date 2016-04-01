@@ -89,31 +89,16 @@
         }
 
         boolean userGaveUp = "Give up".equals(request.getParameter("submitType"));
-        MemoryQuestion.RecallType recallType = null;
-        Object recallObject = null;
-        if (request.getParameter("fail") != null) {
-            Integer failType = null;
+        int recallType = -1;
+        if (request.getParameter("recall-type") != null) {
             try {
-                failType = Integer.parseInt(request.getParameter("fail"));
+                recallType = Integer.parseInt(request.getParameter("recall-type"));
             } catch (Exception e) {
                 Util.print_exception(e, JSPHelper.log);
             }
-
-            if (failType != null) {
-                if (failType == 0)
-                    recallType = MemoryQuestion.RecallType.Nothing;
-                else if (failType == 1)
-                    recallType = MemoryQuestion.RecallType.Context;
-                else if (failType == 2) {
-                    recallType = MemoryQuestion.RecallType.TipOfTongue;
-                } else {
-                    recallType = MemoryQuestion.RecallType.UnfairQuestion;
-                    recallObject = request.getParameter("unfairReason");
-                }
-            }
         }
 
-        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, recallObject, millis, hintUsed, certainty, memory, recency, userGaveUp);
+        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, millis, hintUsed, certainty, memory, recency, userGaveUp);
         currentStudy.iterateQuestion();
         boolean finished = currentStudy.checkForFinish();
         if (finished) {
@@ -174,22 +159,31 @@
         <div>
             <i class="fa fa-caret-right"></i> Type here:
             <input spellcheck="false" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off"/>
-                <span id="answerLength">
+            <div style="display:inline">
+                <button style="display:none; margin-left:50px;" type="button" id="hint-button">Hint</button>
+            </div>
+
+            <br/>
+            <span id="answerLength" style="margin-left:100px">
                     [<%
-                    out.print(questiontodisplay.lengthDescr);
-                    //Should also be able to handle Dileep A. D
-                    int correctAnswerLengthWithoutSpaces = questiontodisplay.correctAnswer.replaceAll("\\W", "").length();
-                %>
-                    <span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
+                out.print(questiontodisplay.lengthDescr + "]");
+                //Should also be able to handle Dileep A. D
+                int correctAnswerLengthWithoutSpaces = questiontodisplay.correctAnswer.replaceAll("\\W", "").length();
+            %>
                 </span>
 
-            <button style="margin-left:10%;display:inline;" type="button" id="hint-button">Hint</button>
-
             <p>
-                <span>Or choose one of the following:</span><br/>
+                Tell us about this recollection: <br/>
+                <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
+                <input name="recall-type" type="radio" value="2"/>The name was on the tip of my tongue<br/>
+                <input name="recall-type" type="radio" value="3"/>I remembered the person, but not the name<br/>
+                <input name="recall-type" type="radio" value="4"/>I remembered the surrounding events, but not the person<br/>
+                <input name="recall-type" type="radio" value="5"/>I forgot the email completely<br/>
+                <!--
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
                 <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
+                -->
         </div>
 
         <script type="text/javascript">
@@ -222,7 +216,7 @@
                 <div style="font-size: small; position:relative;left:-33px; top:-30px;max-width:85px;max-height:94px;transform:rotate(270deg);">Not set</div>
                 <span style="font-size: small; position:relative;left:40px">1</span>
                 <span style="font-size: small; position:relative;left:162px">5</span>
-                <span style="font-size: small; position:absolute;left:350px">10</span><br>
+                <span style="font-size: small; position:absolute;left:340px">10</span><br>
                 <input name="memory" id="memory" type="range" min="0" max="10" step="1" value="0" list="steplist" oninput="outputUpdate(value)"/>
                 <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">Not set</output>
             </div>
@@ -259,7 +253,7 @@
                         <option value="<%=currentYear%>"><%=currentYear%></option>
                     </select>
                     <br>
-                    <span style="margin-left:10%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
+                <span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
                 <br>
                 <input type="checkbox" id="timeInfo" name="noTime"> I have no idea<br>
             </div> <!-- .when -->
@@ -281,9 +275,9 @@
                 $('#hintUsed').val('true');
             }
 
-            $(function () {
-                $("#hint-button").delay(15000).fadeIn();
-            });
+            setTimeout(function () {
+                $("#hint-button").fadeIn().css('display', 'inline');
+            }, 15000);
 
             $('#hint-button').click(show_hint);
 

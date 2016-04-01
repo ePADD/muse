@@ -24,10 +24,6 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 	public String userAnswerBeforeHint, userAnswer;
 	public UserAnswerStats stats;
-    public enum RecallType{
-        Nothing,Context,TipOfTongue,UnfairQuestion
-	}
-	
 	static public class UserAnswerStats implements java.io.Serializable {
         //comment by @vihari: Why are some fields marked public and others not? I don't see a pattern or a need for that.
 		public String uid;
@@ -41,9 +37,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		// potentially add edit distance
 
         //Will be set only if the answer is wrong
-        public RecallType recallType;
-        //extra info. about the recall type
-        public Object recallExtra;
+		public int recallType;
 
 		int certainty = -1;
 		int memoryType = -1;
@@ -100,14 +94,13 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
      * @param userAnswer - The user answer when the submit button is clicked
      * @param userAnswerBeforeHint - The user answer before the hint is used
      * @param recallType - The reason why the answer cannot be recalled
-     * @param failReason - Depending on the type of failure to give answer, a further explanation or info. about the failure
      * @param millis - Time elapsed before the question is answered
      * @param hintused - indicating if the hint is used
      * @param certainty - A rating on how certain the user is about the answer
      * @param memoryType - A rating on how well the user can recall the context
      * @param guessedDate - The user's guess on when the particular sentence is compiled
 	 * */
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
 		
@@ -135,7 +128,6 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
                 this.stats.recallType = recallType;
-                this.stats.recallExtra = failReason;
             } catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }
 		} 
 	}

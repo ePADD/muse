@@ -541,6 +541,21 @@ public class MemoryStudy implements Serializable{
         return evals;
     }
 
+    /**
+     * given a sentence, returns a new version of it which is lowercased and strips everything except letters and digit from it
+     */
+    public static String canonicalizeSentence(String sentence) {
+        if (sentence == null)
+            return null;
+
+        StringBuilder sb = new StringBuilder();
+        for (char ch : sentence.toCharArray())
+            if (Character.isLetterOrDigit(ch)) {
+                sb.append(Character.toLowerCase(ch));
+            }
+        return sb.toString();
+    }
+
     /** Generates person names tests from the given archive. @throws IOException */
 	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int numClues) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
 		this.archive = archive;
@@ -583,10 +598,10 @@ public class MemoryStudy implements Serializable{
             for (Document d : docs) {
                 String contents = archive.getContents(d, true);
                 String cleanedContents = EmailUtils.cleanupEmailMessage(contents);
-                cleanedContents = cleanedContents.toLowerCase();
                 SentenceTokenizer st = new SentenceTokenizer(cleanedContents);
                 while (st.hasMoreSentences()) {
                     String sentence = st.nextSentence();
+                    sentence = canonicalizeSentence(sentence);
                     int hashCode = sentence.hashCode();
                     if (hashesSeen.contains(hashCode)) {
                         tabooSentenceHashes.add(hashCode);
@@ -825,10 +840,10 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** Takes in user response and whether a hint was used. Evaluates whether answer was correct, assigns points, and logs information about the question response. */
-	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
-		MemoryQuestion mq = questions.get(listLocation);
-		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, guessedDate, userGaveUp);
-	}
+    public void enterAnswer(String userAnswer, String userAnswerBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
+        MemoryQuestion mq = questions.get(listLocation);
+        mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, millis, hintused, certainty, memoryType, guessedDate, userGaveUp);
+    }
 	
 	/*checks whether the test is done. if it is, it outputs the final log info and does time calculations*/
 	public boolean checkForFinish(){

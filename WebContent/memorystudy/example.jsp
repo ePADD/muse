@@ -47,7 +47,7 @@ $(function() {
 <div class="container2">
 <form id="testinput" name = "testinput" action = "examplehandler" method="post">
 		<div id="containerdiv" >
-            <span data-step = "1" data-intro = "You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
+            <span data-step="1" data-intro="You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
                 <div id="nohint-question" class="question">
                     I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
                     <p>     Email recipient name: _ _ _ _ _ _ &nbsp;&nbsp; _ _ _ _ _ _</p>
@@ -64,54 +64,33 @@ $(function() {
 
             <div style="margin-left: 5%">
                 <i class="fa fa-caret-right"></i> Type here:
-                <input spellcheck="false" autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured it out yet, the correct answer in this example is 'Humpty Dumpty'." type="text" size="40" name="answer">
-                <span class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer.">
-                    [2 words: 6 letters, 6 letters<span id="nLettersCheck" style="color:green; display:none"> ✔</span>]
-                </span>
-            <button style="margin-left:10%;display:inline;" type="button" id="hint-button">Hint</button>
-
-
-
-                </p>
-                <span data-step="5" data-intro="If you can't remember the answer, choose one of the options below and the initial letters of each word in the answer will be provided as a hint. Try to recall the name using this hint.">
-                    Or choose one of the following:
-                </span><br/>
-                <span data-step="6" name="fail" data-intro="When you can't recall the answer, but you feel that it is about to come to you, then you are in a tip-of-the-tongue state. For example, you might know whom you sent this email to and feel you know who the person is, but cannot recall their name right now. It may feel like the name is ready to pop into your mind at any moment. If this happens, choose this option.">
-                    <input id="fTip" name="fail" type="radio" onclick="show_hint()"/>I remember the person and their name is on the tip of my tongue. Give me a hint.
-                </span><br/>
-                <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
-                <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely. Give me a hint<br>
-                    <!--
-                    <span id="tipRate" style="margin-left:3%;display:none">
-                        <br>
-                        <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp;<br>
-                            <span style="margin-left:3%">1&nbsp; - I have no idea &nbsp;&nbsp;</span>&nbsp
-                            <span style="margin-left:3%">10 - It's close!</span><br>
-                            <span style="position:relative;left:30px">1</span><span style="position:relative;left:140px">5</span><span style="position:relative;left:280px">10</span><br>
-                            <input style="padding-left:10px" type="range" min=1 max=10 name="tipScore" id="tipScore" value="5" step="1" data-step="steplist"/>
-                        </span>
-                        <br>
+                <input spellcheck="false" autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured it out yet, the correct answer in this example is 'Humpty Dumpty'." type="text" size="40" name="answer">
+                <button data-step="3" data-intro="If you can't remember the answer, this button will appear after 15 seconds. Click on it to reveal the initial letters of each word in the name and try to recall the name using this hint." style="margin-left:50px;display:inline-block;" type="button" id="hint-button">Hint</button>
+                <br/>
+                <div class="smaller">
+                    <span id="answerLength" data-step="2" data-intro="These are the number of words and letters in the answer.">
+                        [2 words: 6 letters, 6 letters]
                     </span>
-                    -->
-                </span>
-                <!--
-                <input id="unfair" name="fail" type="radio" onclick='$("#unfairReason").toggle()'/> Unfair question?
-                <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason"/>
-                -->
+                </div>
 
-            <!--
-            <div>On a scale of 1 to 10, how confident are you about your answer?
-                <br>
-                10 - I am Certain<br>
-                5&nbsp  - I am not sure<br>
-                1&nbsp  - I have no Idea<br>
-                <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
-                <input name="certainty" id="certainty" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
             </div>
-            -->
+<br/>
+
+<div data-step="5" data-intro="After attempting the answer with or without the hint, choose the option that best describes your recall for the name.">
+    Tell us about this recollection: <br/>
+    <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
+                <span data-step="6" data-intro=" If you couldn't recall the name right away, but you felt that it was about to pop into your mind at any moment, then you were in a tip-of-the-tongue state. For example, you might have known the person you sent the email to, but could not recall their name immediately and strongly felt that you knew it. It may also happen that you were able to recall the name after some seconds on your own, or by using the hint. If any of this happened, choose this option.">
+                    <input name="recall-type" type="radio" value="2"/>The name was on the tip of my tongue<br/>
+                </span>
+    <input name="recall-type" type="radio" value="3"/>I remembered the person, but not the name<br/>
+                <span data-step="7" data-intro="If you remembered the general context of the email, but not the person you sent it to, choose this option.">
+                    <input name="recall-type" type="radio" value="4"/>I remembered the surrounding events, but not the person<br/>
+                </span>
+    <input name="recall-type" type="radio" value="5"/>I forgot the email completely<br/>
+            </div>
 		    <br/>
 
-            <div data-step = "7" data-intro = "On a scale of 1 to 10, rate how strongly you remember writing this email by dragging the slider to the left or right.">
+<div data-step="8" data-intro="On a scale of 1 to 10, rate how strongly you remember writing this episode by dragging the slider to the left or right.">
                 <p>
                     <i class="fa fa-caret-right"></i> How vividly do you remember this specific conversation?
                 <br>
@@ -123,7 +102,7 @@ $(function() {
                 <div style="font-size: small; position:relative;left:-33px; top:-30px;max-width:85px;max-height:94px;transform:rotate(270deg);">Not set</div>
                 <span style="font-size: small; position:relative;left:40px">1</span>
                 <span style="font-size: small; position:relative;left:162px">5</span>
-                <span style="font-size: small; position:absolute;left:350px">10</span><br>
+                    <span style="font-size: small; position:absolute;left:340px">10</span><br>
                 <input name="memory" id="memory" type="range" min="0" max="10" step="1" value="0" list="steplist" oninput="outputUpdate(value)"/>
                 <output style="position:relative;left:40px;top:-10px;" for="memory" id="memory-amount">Not set</output>
                 </div>
@@ -137,7 +116,7 @@ $(function() {
                 }
             </script>
 
-            <div data-step = "8" data-intro = "Try to recall when you wrote the email. Entering the specific date is optional, but the month and year are required. If you cannot guess the time at all, choose &quot;I have no idea&quot;.">
+<div data-step="9" data-intro="Try to recall when you wrote the email. If you cannot guess the month and year at all, choose &quot;I have no idea&quot;.">
 
                 <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
                 <div>
@@ -172,10 +151,9 @@ $(function() {
         </datalist>
 			
 		<br/>
-            </div>
     </div>
 
-    <div data-step="9" data-intro="Once you've answered all parts of the question, click on the Submit button. If you do not wish to attempt this question at all, you can click the Give up button at any point and move on to the next question">
+<div data-step="10" data-intro="Once you've answered all parts of the question, click on the Submit button. If you do not wish to attempt this question at all, you can click the Give up button at any point and move on to the next question">
         <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
         <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Give up</button>
     </div>

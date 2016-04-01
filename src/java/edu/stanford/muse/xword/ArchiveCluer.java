@@ -281,7 +281,7 @@ public class ArchiveCluer extends Cluer {
 						}
 
 						// taboo hash check
-						int hashCode = sentence.toLowerCase().hashCode();
+						int hashCode = MemoryStudy.canonicalizeSentence(sentence).hashCode();
 						if (tabooSentenceHashes.contains(hashCode)) {
 							log.info ("Dropping taboo duplicate sentence: " + sentence);
 							continue nextSentence;
