@@ -80,13 +80,14 @@ $(function() {
     Tell us about this recollection: <br/>
     <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
                 <span data-step="6" data-intro=" If you couldn't recall the name right away, but you felt that it was about to pop into your mind at any moment, then you were in a tip-of-the-tongue state. For example, you might have known the person you sent the email to, but could not recall their name immediately and strongly felt that you knew it. It may also happen that you were able to recall the name after some seconds on your own, or by using the hint. If any of this happened, choose this option.">
-                    <input name="recall-type" type="radio" value="2"/>The name was on the tip of my tongue<br/>
+                    <input name="recall-type" type="radio" value="2"/>The name was at the tip of my tongue but I recalled it after a while<br/>
                 </span>
-    <input name="recall-type" type="radio" value="3"/>I remembered the person, but not the name<br/>
+    <input name="recall-type" type="radio" value="3"/>The name is still at the tip of my tongue<br/>
                 <span data-step="7" data-intro="If you remembered the general context of the email, but not the person you sent it to, choose this option.">
-                    <input name="recall-type" type="radio" value="4"/>I remembered the surrounding events, but not the person<br/>
+                    <input name="recall-type" type="radio" value="4"/>I remembered the person and events, but not the name<br/>
                 </span>
-    <input name="recall-type" type="radio" value="5"/>I forgot the email completely<br/>
+    <input name="recall-type" type="radio" value="5"/>I remembered the surrounding events, but not the person<br/>
+    <input name="recall-type" type="radio" value="6"/>I forgot the email completely<br/>
             </div>
 		    <br/>
 

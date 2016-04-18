@@ -175,10 +175,11 @@
             <p>
                 Tell us about this recollection: <br/>
                 <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
-                <input name="recall-type" type="radio" value="2"/>The name was on the tip of my tongue<br/>
-                <input name="recall-type" type="radio" value="3"/>I remembered the person, but not the name<br/>
-                <input name="recall-type" type="radio" value="4"/>I remembered the surrounding events, but not the person<br/>
-                <input name="recall-type" type="radio" value="5"/>I forgot the email completely<br/>
+                <input name="recall-type" type="radio" value="2"/>The name was at the tip of my tongue but I recalled it after a while<br/>
+                <input name="recall-type" type="radio" value="3"/>The name is still at the tip of my tongue<br/>
+                <input name="recall-type" type="radio" value="4"/>I remembered the person and events, but not the name<br/>
+                <input name="recall-type" type="radio" value="5"/>I remembered the surrounding events, but not the person<br/>
+                <input name="recall-type" type="radio" value="6"/>I forgot the email completely<br/>
                 <!--
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>

@@ -273,6 +273,8 @@ public class Filter implements Serializable {
 	 * if dates specified, sent or recd. date terms are used based on the incoming param. */
 	public SearchTerm convertToSearchTerm(boolean useReceivedDateTerms)
 	{
+		// FLAG DEBUG: end date = null
+		//endDate = null;
 		SearchTerm sentOnlyTerm = null;
 		if (sentMessagesOnly)
 		{
@@ -298,7 +300,7 @@ public class Filter implements Serializable {
 		
 		if (startDate != null)
 		{
-			SearchTerm startTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.GE, startDate) : new SentDateTerm(ComparisonTerm.GE, startDate);
+			SearchTerm startTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.GT, startDate) : new SentDateTerm(ComparisonTerm.GT, startDate);
 			if (result != null)
 				result = new AndTerm(result, startTerm);
 			else
@@ -307,7 +309,7 @@ public class Filter implements Serializable {
 		
 		if (endDate != null)
 		{
-			SearchTerm endTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.LE, endDate) : new SentDateTerm(ComparisonTerm.LE, endDate);
+			SearchTerm endTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.LT, endDate) : new SentDateTerm(ComparisonTerm.LT, endDate);
 			if (result != null)
 				result = new AndTerm(result, endTerm);
 			else
