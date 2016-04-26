@@ -37,7 +37,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		// potentially add edit distance
 
         //Will be set only if the answer is wrong
-		public int recallType;
+		public int recallType, recallTypeBeforeHint;
 
 		int certainty = -1;
 		int memoryType = -1;
@@ -100,10 +100,10 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
      * @param memoryType - A rating on how well the user can recall the context
      * @param guessedDate - The user's guess on when the particular sentence is compiled
 	 * */
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
-		
+		this.stats.recallTypeBeforeHint = recallTypeBeforeHint;
 		this.stats.userAnswerCorrect = isUserAnswerCorrect();
 		this.stats.certainty = certainty;
 		this.stats.memoryType = memoryType;
@@ -155,7 +155,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 			char ch = correctanswer.charAt(i);
 			// we can reveal the spaces in the answer, else it is very counter-intuitive.
 			if (showNextLetter) {
-				blanks += ch;
+				blanks += "<span class=\"hint-letter\">" + ch + "</span>";
 			} else {
 				blanks += (Character.isWhitespace(ch) ? " " : "_ ");
 			}

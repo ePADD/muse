@@ -88,6 +88,9 @@ hr {
 .hintwait{
 	display:none;
 }
+
+.hint-letter { color: red; }
+
 input[type="button"], button {
 	background: #484848;
 	border: none;

@@ -55,9 +55,10 @@ for (MemoryQuestion mq : study.getQuestions()) {
 			<option value="0">About this answer...</option>
 			<option value="1">I feel like I should have remembered this name</option>
 			<option value="2">My answer is essentially correct</option> <!-- don't change this! calculating # correct answers depends on this being #2 -->
-			<option value="3">I knew something associated with this person, but didn't know their name</option>
-			<option value="4">The clue was too vague -- I would never have been able to guess the answer</option>
-		</select>
+			<option value="3">I recognize the context, but not the person</option>
+			<option value="4">I have trouble remembering this name</option>
+			<option value="5">The sentences were very vague or generic</option>
+			</select>
 	<br/><hr/>
 <% } %>
 <br/>

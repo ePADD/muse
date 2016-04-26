@@ -47,28 +47,27 @@ $(function() {
 <div class="container2">
 <form id="testinput" name = "testinput" action = "examplehandler" method="post">
 		<div id="containerdiv" >
-            <span data-step="1" data-intro="You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
+            <div data-step="1" data-intro="You will see a sentence taken from your sent email (this one is just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
                 <div id="nohint-question" class="question">
                     I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
-                    <p>     Email recipient name: _ _ _ _ _ _ &nbsp;&nbsp; _ _ _ _ _ _</p>
+                    <p>     Email recipient name: <span data-step="5" data-intro="Upon answering the first question, the first letters in the name will be revealed here. If you were not able to recall the name earlier, you can use this hint to try again."> _ _ _ _ _ _ &nbsp;&nbsp; _ _ _ _ _ _</span> </p>
                 </div>
                 <div id="hint-question" class="question" style="display: none">
                     I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
-                    <p>     Email recipient name: H _ _ _ _ _ &nbsp;&nbsp; D _ _ _ _ _</p>
+                    <p>     Email recipient name: <span class="hint-letter">H</span> _ _ _ _ _ &nbsp;&nbsp; <span class="hint-letter">D</span> _ _ _ _ _ <span class="hint-letter">Hint active</span></p>
                 </div>
 
-            </span> </p>
+            </div> </p>
             </div>
 		</div>
 		<p/>
 
             <div style="margin-left: 5%">
                 <i class="fa fa-caret-right"></i> Type here:
-                <input spellcheck="false" autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured it out yet, the correct answer in this example is 'Humpty Dumpty'." type="text" size="40" name="answer">
-                <button data-step="3" data-intro="If you can't remember the answer, this button will appear after 15 seconds. Click on it to reveal the initial letters of each word in the name and try to recall the name using this hint." style="margin-left:50px;display:inline-block;" type="button" id="hint-button">Hint</button>
+                <input data-step="2" data-intro="Type in your answer in this box. If you remember only part of the name, or are unsure about the spelling, type what you know." spellcheck="false" autofocus autocomplete="off" class="answer" id="answer" style="border:solid 2px #082041; background: #082041" type="text" size="40" name="answer">
                 <br/>
                 <div class="smaller">
-                    <span id="answerLength" data-step="2" data-intro="These are the number of words and letters in the answer.">
+                    <span id="answerLength">
                         [2 words: 6 letters, 6 letters]
                     </span>
                 </div>
@@ -76,22 +75,18 @@ $(function() {
             </div>
 <br/>
 
-<div data-step="5" data-intro="After attempting the answer with or without the hint, choose the option that best describes your recall for the name.">
-    Tell us about this recollection: <br/>
-    <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
-                <span data-step="6" data-intro=" If you couldn't recall the name right away, but you felt that it was about to pop into your mind at any moment, then you were in a tip-of-the-tongue state. For example, you might have known the person you sent the email to, but could not recall their name immediately and strongly felt that you knew it. It may also happen that you were able to recall the name after some seconds on your own, or by using the hint. If any of this happened, choose this option.">
-                    <input name="recall-type" type="radio" value="2"/>The name was at the tip of my tongue but I recalled it after a while<br/>
-                </span>
-    <input name="recall-type" type="radio" value="3"/>The name is still at the tip of my tongue<br/>
-                <span data-step="7" data-intro="If you remembered the general context of the email, but not the person you sent it to, choose this option.">
-                    <input name="recall-type" type="radio" value="4"/>I remembered the person and events, but not the name<br/>
-                </span>
-    <input name="recall-type" type="radio" value="5"/>I remembered the surrounding events, but not the person<br/>
-    <input name="recall-type" type="radio" value="6"/>I forgot the email completely<br/>
+            <div data-step="3" data-intro="After attempting the answer, choose the option that best describes your recall process.">
+                Tell us about this recollection: <br/>
+
+                <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
+                <span><input name="recall-type" type="radio" value="2"/>I got the name after a while</span><br/>
+                <span data-step="4" data-intro="If you can't recall the name right now, but you strongly feel that it is about to pop into your mind at any moment, then you are in a tip-of-the-tongue state. If this happens, choose this option."><input name="recall-type" type="radio" value="3"/>The name is at the tip of my tongue!</span><br/>
+                <input name="recall-type" type="radio" value="4"/>I know the person, not the name<br/>
+                <span><input name="recall-type" type="radio" value="5"/>I don't know</span><br/>
             </div>
 		    <br/>
 
-<div data-step="8" data-intro="On a scale of 1 to 10, rate how strongly you remember writing this episode by dragging the slider to the left or right.">
+            <div>
                 <p>
                     <i class="fa fa-caret-right"></i> How vividly do you remember this specific conversation?
                 <br>
@@ -117,8 +112,7 @@ $(function() {
                 }
             </script>
 
-<div data-step="9" data-intro="Try to recall when you wrote the email. If you cannot guess the month and year at all, choose &quot;I have no idea&quot;.">
-
+            <div>
                 <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
                 <div>
                 <span id="time">
@@ -154,9 +148,9 @@ $(function() {
 		<br/>
     </div>
 
-<div data-step="10" data-intro="Once you've answered all parts of the question, click on the Submit button. If you do not wish to attempt this question at all, you can click the Give up button at any point and move on to the next question">
+<div data-step="6" data-intro="Once you've answered all parts of the question, click on the Submit button. You can also click the Skip button at any point and move on to the next question. For now, type 'Humpty Dumpty' in the answer box and click on Submit to start.">
         <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
-        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Give up</button>
+        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Skip</button>
     </div>
 		<script>
             function show_hint() {
@@ -185,7 +179,7 @@ $(function() {
             var $target = $(event.target);
             var button_text = $target.text(); // text on the button that was pressed
             if (($("#answer").val() !== '' && 'humptydumpty' !== $('#answer').val().toLowerCase().replaceAll(" ", ""))
-                || (button_text == 'Give up')) {
+                || (button_text == 'Skip')) {
                     alert("Uh, oh. The correct answer is Humpty Dumpty.");
                     return false;
                 }

@@ -108,6 +108,7 @@
 			<version>1.5</version>
 		</dependency>
 
+		<!--
         <dependency>
 	        <groupId>javax.mail</groupId>
 	        <artifactId>javax.mail-api</artifactId>
@@ -119,6 +120,13 @@
 	        <artifactId>javax.mail</artifactId>
 	        <version>1.5.5</version>
         </dependency>
+-->
+
+<dependency>
+	<groupId>javax.mail</groupId>
+	<artifactId>mail</artifactId>
+	<version>1.4.2</version>
+</dependency>
 
 		<dependency>
 			<groupId>net.sf.jtidy</groupId>

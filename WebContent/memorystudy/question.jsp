@@ -71,6 +71,7 @@
 
         // record response to previous q
         String userAnswerBeforeHint = request.getParameter("answerBeforeHint");
+
         boolean hintUsed = "true".equals(request.getParameter("hintUsed"));
         int certainty = HTMLUtils.getIntParam(request, "certainty", -1);
         long millis = (long) HTMLUtils.getIntParam(request, "millis", -1);
@@ -88,17 +89,18 @@
             recency = cal.getTime();
         }
 
-        boolean userGaveUp = "Give up".equals(request.getParameter("submitType"));
-        int recallType = -1;
+        boolean userGaveUp = "Skip".equals(request.getParameter("submitType"));
+        int recallType = -1, recallTypeBeforeHint = -1;
         if (request.getParameter("recall-type") != null) {
             try {
-                recallType = Integer.parseInt(request.getParameter("recall-type"));
+                recallType = HTMLUtils.getIntParam(request, "recall-type", -1);
+                recallTypeBeforeHint = HTMLUtils.getIntParam(request, "recallTypeBeforeHint", -1);
             } catch (Exception e) {
                 Util.print_exception(e, JSPHelper.log);
             }
         }
 
-        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallType, millis, hintUsed, certainty, memory, recency, userGaveUp);
+        currentStudy.enterAnswer(userAnswer, userAnswerBeforeHint, recallTypeBeforeHint, recallType, millis, hintUsed, certainty, memory, recency, userGaveUp);
         currentStudy.iterateQuestion();
         boolean finished = currentStudy.checkForFinish();
         if (finished) {
@@ -145,7 +147,7 @@
     <p>
     <div id="hint-question" class="question" style="display: none">
         <%
-            q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()).replaceAll(" ", "&nbsp;") + "</p>";
+            q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()).replaceAll(" ", "&nbsp;") + " <span class=\"hint-letter\">Hint active</span></p>";
             out.println(q);
         %>
     </div>
@@ -153,6 +155,8 @@
     <input type="hidden" name="hintUsed" id="hintUsed" value="false">
     <input type="hidden" name="millis" id="millis" value="-1">
     <input type="hidden" name="answerBeforeHint" id="answerBeforeHint" value="-1">
+    <input type="hidden" name="recallTypeBeforeHint" id="recallTypeBeforeHint" value="-1">
+
     <br/>
 
     <div style="margin-left: 5%">
@@ -176,8 +180,9 @@
                 Tell us about this recollection: <br/>
                 <input name="recall-type" type="radio" value="1"/>The name was easy to recall<br/>
                 <input name="recall-type" type="radio" value="2"/>I got the name after a while<br/>
-                <input name="recall-type" type="radio" value="3"/>The name is at the tip of my tongue<br/>
-                <input name="recall-type" type="radio" value="4"/>I don't know<br/>
+                <input name="recall-type" type="radio" value="3"/>The name is at the tip of my tongue!<br/>
+                <input name="recall-type" type="radio" value="4"/>I know the person, not the name<br/>
+                <input name="recall-type" type="radio" value="5"/>I don't know<br/>
                 <!--
                 <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
                 <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
@@ -261,11 +266,13 @@
         <p/>
         <input type="hidden" name="submitType" value="submit"/> <!-- will be submit or giveup -->
         <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
-        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Give up</button>
+        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Skip">Skip</button>
 
         <script>
             function show_hint() {
                 // copy answer to save the answer before the hint was typed
+                $('#recallTypeBeforeHint').val($('input[name="recall-type"]').val());
+
                 $('#answerBeforeHint').val($('#answer').val());
                 $('#nohint-question').hide();
                 $('#hint-question').show(); // copy it over
@@ -289,7 +296,7 @@
                 var button_text = $target.text(); // text on the button that was pressed
 
                 //ensure questions are filled out
-                if (button_text != 'Give up') {
+                if (button_text != 'Skip') {
                     if (!$("#timeInfo")[0].checked && ($('#timeYear').val() == -1 || $("#timeMonth").val() == -1)) {
                         alert("Please enter the month and the year.");
                         event.preventDefault();
@@ -297,6 +304,11 @@
                         return false;
                     } else if ($('#memory').val() == 0) {
                         alert("You did not answer the question about how vividly you remember the conversation. Please select a number between 1 and 10.");
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    } else if (!$('input[name="recall-type"]').val()) {
+                        alert('Please tell us about your recollection.');
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
@@ -317,7 +329,7 @@
                 var elapsed_time = new Date().getTime() - start_time;
                 $('#millis').val(elapsed_time);
 
-                // set up the submitType hidden field to track whether the give up button was pressed or submit
+                // set up the submitType hidden field to track whether the skip button was pressed or submit
                 $('input[name="submitType"]').val(button_text);
 
                 return true; // this will proceed with the form submit
