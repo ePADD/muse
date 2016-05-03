@@ -344,7 +344,7 @@ public class ArchiveCluer extends Cluer {
 
 					if (finalScore > bestScore)
 					{
-                        log.info("New best clue for " + name + " is " + clue.clueStats.finalScore + " (clueScore = " + clueScore + ", emailScore = " + emailScore + ", contactScore = " + contactScore +") for sentence# " + i + " in doc #" + docCount + ":" + clue);
+//                        log.info("New best clue for " + name + " is " + clue.clueStats.finalScore + " (clueScore = " + clueScore + ", emailScore = " + emailScore + ", contactScore = " + contactScore +") for sentence# " + i + " in doc #" + docCount + ":" + clue);
 						bestClue = clue;
 						bestClueMessage = message;
 						bestScore = finalScore;

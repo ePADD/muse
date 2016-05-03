@@ -14,26 +14,22 @@
    limitations under the License.
 */
 package edu.stanford.muse.email;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringTokenizer;
-
-import javax.mail.Session;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import com.sun.mail.iap.Argument;
 import com.sun.mail.iap.ProtocolException;
 import com.sun.mail.iap.Response;
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.protocol.IMAPProtocol;
 import com.sun.mail.imap.protocol.IMAPResponse;
-
-import edu.stanford.muse.util.ThunderbirdUtils;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
-/* version of imap prefetcher that only fetches text from the first <part> of imap messages */
+import javax.mail.Session;
+import java.util.ArrayList;
+import java.util.List;
+
+/* version of imap prefetcher that only fetches text fr
+om the first <part> of imap messages */
 public class TextOnlyImapPrefetcher extends ImapPrefetcher implements IMAPFolder.ProtocolCommand {
     static Log log = LogFactory.getLog(TextOnlyImapPrefetcher.class);
 

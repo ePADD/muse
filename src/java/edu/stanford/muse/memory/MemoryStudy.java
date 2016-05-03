@@ -464,19 +464,19 @@ public class MemoryStudy implements Serializable{
 		// sort q's by clue score
 		Collections.sort(questions);
 
-		log.info("Based on clue score, top answers:");
-		for (MemoryQuestion mq: questions)
-			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
+//		log.info("Based on clue score, top answers:");
+//		for (MemoryQuestion mq: questions)
+//			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
 
 		// now we have up to 2*N questions, sorted by cluescore.
 		// drop ones that are prefix/suffix of another, and cap to N
 		int prev_size = questions.size();
 
 		int new_size = questions.size();
-		
-		log.info ("#questions before prefix-suffix elim: " + prev_size + " after: " + new_size);
-		
-		int count = 0;
+
+        //	log.info ("#questions before prefix-suffix elim: " + prev_size + " after: " + new_size);
+
+        int count = 0;
 		for (MemoryQuestion mq: questions) {
 			mq.setQuestionNum(count++);
 		}
@@ -901,12 +901,13 @@ public class MemoryStudy implements Serializable{
 		statsLog.append("STUDYSTATS-2: " + studyStats.getSecond() + indexStats.getSecond() + addressBookStats.getSecond() + archiveStats.getSecond() + "\n");
 		int idx = 1;
 		for (MemoryQuestion mq : this.getQuestions()) {
-			Pair<String, String> p = Util.fieldsToCSV(mq.clue.clueStats, true);		
-			Pair<String, String> p1 = Util.fieldsToCSV(mq.stats, true);
+            Pair<String, String> p = Util.fieldsToCSV(mq.clue.clueStats, true);
+            Pair<String, String> p1 = Util.fieldsToCSV(mq.stats, true);
 			if (idx == 1)
 				statsLog.append("QUESTIONSTATS-header: " + p.getFirst()  + ',' + p1.getFirst() + "correct answer, user answer, user answer before hint, clue" + "\n");
-			statsLog.append("QUESTIONSTATS-2: " + p.getSecond()  + ',' + p1.getSecond() + mq.correctAnswer + "," + mq.userAnswer + "," + mq.userAnswerBeforeHint + "," + mq.clue.clue.replaceAll(",", " ") + "\n");
-			idx = idx + 1;
+//			statsLog.append("QUESTIONSTATS-2: " + p.getSecond()  + ',' + p1.getSecond() + mq.correctAnswer + "," + mq.userAnswer + "," + mq.userAnswerBeforeHint + "," + mq.clue.clue.replaceAll(",", " ") + "\n");
+            statsLog.append("QUESTIONSTATS-2: " + p.getSecond() + ',' + p1.getSecond() + mq.correctAnswer + "," + mq.userAnswer + "," + mq.userAnswerBeforeHint + "\n");
+            idx = idx + 1;
 		}
 		String RESULTS_DIR = System.getProperty("user.home") + File.separator + "results" + File.separator + this.stats.userid;
 		new File(RESULTS_DIR).mkdirs();
