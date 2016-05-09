@@ -76,18 +76,7 @@
         int certainty = HTMLUtils.getIntParam(request, "certainty", -1);
         long millis = (long) HTMLUtils.getIntParam(request, "millis", -1);
         int memory = HTMLUtils.getIntParam(request, "memory", -1);
-        Date recency = null;
-        boolean onlyMonthAndYearGuessed = false;
-        if (!"on".equals(request.getParameter("noTime"))) {
-            Calendar cal = new GregorianCalendar();
-            try {
-                int dd = HTMLUtils.getIntParam(request, "timeDate", 15);
-                cal.set(Integer.parseInt(request.getParameter("timeYear")), Integer.parseInt(request.getParameter("timeMonth")) - 1, dd);
-            } catch (Exception e) {
-                Util.print_exception(e, JSPHelper.log);
-            }
-            recency = cal.getTime();
-        }
+        int recency = HTMLUtils.getIntParam(request, "recency", -1);
 
         boolean userGaveUp = "Skip".equals(request.getParameter("submitType"));
         int recallType = -1, recallTypeBeforeHint = -1;
@@ -147,7 +136,7 @@
     <p>
     <div id="hint-question" class="question" style="display: none">
         <%
-            q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + Util.escapeHTML(questiontodisplay.getBlanksWithHintForCorrespondentTest()).replaceAll(" ", "&nbsp;") + " <span class=\"hint-letter\">Hint active</span></p>";
+            q = "<p>" + Util.escapeHTML(questiontodisplay.clue.clue) + "<p>Email recipient name: " + questiontodisplay.getBlanksWithHintForCorrespondentTest().replaceAll(" ", "&nbsp;") + " <span class=\"hint-letter\">Hint active</span></p>";
             out.println(q);
         %>
     </div>
@@ -236,30 +225,35 @@
             <div class="when">
                 <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
                 <br/>
-                    <select name="timeMonth" id="timeMonth">
-                        <option value="-1"></option>
-                        <%
-                            Calendar cal = new GregorianCalendar();
-                            DateFormat df = new SimpleDateFormat("MMM");
-                            for (int m = 1; m <= 12; m++) {
-                                cal.set(Calendar.MONTH, m - 1);
-                        %>
-                        <option value="<%=m%>"><%=df.format(cal.getTime())%>
-                        </option>
-                        <%
+                <select name="recency" id="recency">
+                    <option value="-2">Answer...</option>
+
+                    <%
+                        Date d = new Date();
+                        GregorianCalendar gc = new GregorianCalendar();
+                        gc.setTime(d);
+                        int month = gc.get(Calendar.MONTH);
+                        int year = gc.get(Calendar.YEAR);
+                        for (int i = 0; i <= MemoryStudy.N_INTERVALS; i++) {
+                            gc.set(year, month, 1);
+                            d = new java.util.Date(gc.getTimeInMillis());
+                            String option = new java.text.SimpleDateFormat("MMMM").format(d) + " " + year;
+                    %>
+                    <option value="<%=i%>"><%=option%>
+                    </option>
+                    <%
+                            month--;
+                            if (month < 0) {
+                                month = 11;
+                                year--;
                             }
-                        %>
-                    </select>
-                    <select name="timeYear" id="timeYear">
-                        <option value="-1"></option>
-                        <% int currentYear = new GregorianCalendar().get(Calendar.YEAR); %>
-                        <option value="<%=currentYear-1%>"><%=currentYear-1%></option>
-                        <option value="<%=currentYear%>"><%=currentYear%></option>
-                    </select>
-                    <br>
-                <span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
+                        }
+                    %>
+                    <option value="-1">I have no idea...</option>
+
+                </select>
+
                 <br>
-                <input type="checkbox" id="timeInfo" name="noTime"> I have no idea<br>
             </div> <!-- .when -->
         </div>
 
@@ -271,7 +265,9 @@
         <script>
             function show_hint() {
                 // copy answer to save the answer before the hint was typed
-                $('#recallTypeBeforeHint').val($('input[name="recall-type"]').val());
+                if ($('#nohint-question').is(':visible')) { /// only update this as long as nohint-q is visible
+                    $('#recallTypeBeforeHint').val($('input[name="recall-type"]:checked').val());
+                }
 
                 $('#answerBeforeHint').val($('#answer').val());
                 $('#nohint-question').hide();
@@ -297,17 +293,19 @@
 
                 //ensure questions are filled out
                 if (button_text != 'Skip') {
-                    if (!$("#timeInfo")[0].checked && ($('#timeYear').val() == -1 || $("#timeMonth").val() == -1)) {
-                        alert("Please enter the month and the year.");
+                    if ($("#recency").val() == -2) {
+                        alert("Please answer the question about when the sentence was written.");
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
-                    } else if ($('#memory').val() == 0) {
+                    }
+                    if ($('#memory').val() == 0) {
                         alert("You did not answer the question about how vividly you remember the conversation. Please select a number between 1 and 10.");
                         event.preventDefault();
                         event.stopPropagation();
                         return false;
-                    } else if (!$('input[name="recall-type"]').val()) {
+                    }
+                    if (!$('input[name="recall-type"]').is(':checked')) {
                         alert('Please tell us about your recollection.');
                         event.preventDefault();
                         event.stopPropagation();

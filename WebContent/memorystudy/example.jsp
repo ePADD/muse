@@ -1,8 +1,9 @@
 <%@page language="java" contentType="text/html; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="java.util.*"%>
-<%@ page import="java.text.DateFormat" %>
-<%@ page import="java.text.SimpleDateFormat" %>
+<%@page language="java" import="edu.stanford.muse.memory.MemoryStudy" %>
+<%@ page import="java.util.Calendar" %>
+<%@ page import="java.util.Date" %>
+<%@ page import="java.util.GregorianCalendar" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -58,8 +59,6 @@ $(function() {
                 </div>
 
             </div> </p>
-            </div>
-		</div>
 		<p/>
 
             <div style="margin-left: 5%">
@@ -112,32 +111,39 @@ $(function() {
                 }
             </script>
 
-            <div>
-                <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
-                <div>
-                <span id="time">
-                    <select name="timeMonth" id="timeMonth">
-                        <option value="-1"></option>
-                        <%
-                            Calendar cal = new GregorianCalendar();
-                            DateFormat df = new SimpleDateFormat("MMM");
-                            for(int m=1;m<=12;m++){
-                                cal.set(Calendar.MONTH, m-1);
-                                %><option value="<%=m%>"><%=df.format(cal.getTime())%></option><%
-                            }
-                        %>
-                    </select>
-                    <select name="timeYear" id="timeYear">
-                        <option value="-1"></option>
-                        <% int currentYear = new GregorianCalendar().get(Calendar.YEAR); %>
-                        <option value="<%=currentYear-1%>"><%=currentYear-1%></option>
-                        <option value="<%=currentYear%>"><%=currentYear%></option>
-                    </select>
-                    <br>
-                    <span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
-                </span><br>
-                <input type="checkbox" id="timeInfo"> I have no idea<br>
-		    </div>
+<div class="when">
+    <i class="fa fa-caret-right"></i> Approximately when do you think was this sentence written?
+    <br/>
+    <select name="recency" id="recency">
+        <option value="-2">Answer...</option>
+
+        <%
+            Date d = new Date();
+            GregorianCalendar gc = new GregorianCalendar();
+            gc.setTime(d);
+            int month = gc.get(Calendar.MONTH);
+            int year = gc.get(Calendar.YEAR);
+            for (int i = 0; i <= MemoryStudy.N_INTERVALS; i++) {
+                gc.set(year, month, 1);
+                d = new java.util.Date(gc.getTimeInMillis());
+                String option = new java.text.SimpleDateFormat("MMMM").format(d) + " " + year;
+        %>
+        <option value="<%=i%>"><%=option%>
+        </option>
+        <%
+                month--;
+                if (month < 0) {
+                    month = 11;
+                    year--;
+                }
+            }
+        %>
+        <option value="-1">I have no idea...</option>
+
+    </select>
+
+    <br>
+</div> <!-- .when -->
 
         <!--For tick marks-->
         <datalist id="steplist">
@@ -146,12 +152,11 @@ $(function() {
         </datalist>
 			
 		<br/>
-    </div>
 
 <div data-step="6" data-intro="Once you've answered all parts of the question, click on the Submit button. You can also click the Skip button at any point and move on to the next question. For now, type 'Humpty Dumpty' in the answer box and click on Submit to start.">
-        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
-        <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Skip</button>
-    </div>
+    <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="Submit">Submit</button>
+    <button class="submitButton" style="margin-left: 20%;display:inline;" type="submit" value="GiveUp">Skip</button>
+</div>
 		<script>
             function show_hint() {
                 // copy answer to save the answer before the hint was typed

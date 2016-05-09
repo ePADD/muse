@@ -125,7 +125,7 @@ public class MemoryStudy implements Serializable{
 	static {
 		// read all the codes at bootup -- the codes file is not encrypted and never changes
 		CODES_FILE = System.getProperty("user.home") + java.io.File.separator + "results" + java.io.File.separator + "codes.txt";
-		USERS_FILE = System.getProperty("user.home") + File.separator + "results" + File.separator + "users";
+        USERS_FILE = System.getProperty("user.home") + File.separator + "results" + File.separator + "users"; // remember to change cryptoutils if you change this
 
 		try {
 			// read the codes statically at startup
@@ -482,8 +482,8 @@ public class MemoryStudy implements Serializable{
 		}
 
 		// log the questions as well, just in case we don't get to the final point due to user fatigue or crashes
-		logStats("questions.final");
-	}
+        logStats("questions.final", false);
+    }
 
     // Compute date intervals, working backwards from latestDate, until earliestDate is covered
     // most recent interval is interval 0.
@@ -495,6 +495,9 @@ public class MemoryStudy implements Serializable{
             Date closingDate = latestDate;
 
             JSPHelper.log.info("closing = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(closingDate));
+            if (earliestDate == null || closingDate == null)
+                return intervals;
+
             while (earliestDate.before(closingDate)) {
                 Calendar cal = new GregorianCalendar();
                 cal.setTime(closingDate);
@@ -716,10 +719,10 @@ public class MemoryStudy implements Serializable{
             }
 
             log.info ("For interval " + interval + " selected " + selectedClues.size() + " contacts out of " + clueList.size() + " possible candidates.");
-            for (Clue c: clueList)
-                log.info ("Clue candidate for " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c );
-            for (Clue c: selectedClues)
-                log.info ("Selected clue: " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c);
+//            for (Clue c: clueList)
+            //               log.info ("Clue candidate for " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c );
+            //          for (Clue c: selectedClues)
+            //             log.info ("Selected clue: " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c);
 
             for (Clue selectedClue: selectedClues) {
                 Contact c = clueToContact.get(selectedClue);
@@ -751,9 +754,9 @@ public class MemoryStudy implements Serializable{
 		// sort q's by clue score
 		Collections.sort(questions);
 
-		log.info("Based on clue score, top answers:");
-		for (MemoryQuestion mq: questions)
-			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
+//		log.info("Based on clue score, top answers:");
+//		for (MemoryQuestion mq: questions)
+//			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
 
 		int count = 0;
 		for (MemoryQuestion mq: questions) {
@@ -761,8 +764,8 @@ public class MemoryStudy implements Serializable{
 		}
 
 		// log the questions as well, just in case we don't get to the final point due to user fatigue or crashes
-		logStats("questions.final");
-	}
+        logStats("questions.final", false);
+    }
 
 	private static void assignTypes(Collection<MemoryQuestion> questions, Map<String, NameInfo> nameMap) throws IOException
 	{
@@ -840,9 +843,9 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** Takes in user response and whether a hint was used. Evaluates whether answer was correct, assigns points, and logs information about the question response. */
-    public void enterAnswer(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
+    public void enterAnswer(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, int recency, boolean userGaveUp) {
         MemoryQuestion mq = questions.get(listLocation);
-        mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallTypeBeforeHint, recallType, millis, hintused, certainty, memoryType, guessedDate, userGaveUp);
+        mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallTypeBeforeHint, recallType, millis, hintused, certainty, memoryType, recency, userGaveUp);
     }
 	
 	/*checks whether the test is done. if it is, it outputs the final log info and does time calculations*/
@@ -889,8 +892,7 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** writes out csv stats as an encrypted file in RESULTS_DIR/<userid>/filename */
-	public void logStats(String filename)
-	{
+    public void logStats(String filename, boolean nullClues) {
         Indexer.IndexStats stats = archive.getIndexStats();
 		StringBuilder statsLog = new StringBuilder();
 		Pair<String, String> indexStats = Util.fieldsToCSV(stats, true);
@@ -901,6 +903,8 @@ public class MemoryStudy implements Serializable{
 		statsLog.append("STUDYSTATS-2: " + studyStats.getSecond() + indexStats.getSecond() + addressBookStats.getSecond() + archiveStats.getSecond() + "\n");
 		int idx = 1;
 		for (MemoryQuestion mq : this.getQuestions()) {
+            if (nullClues)
+                mq.clue.clue = null;
             Pair<String, String> p = Util.fieldsToCSV(mq.clue.clueStats, true);
             Pair<String, String> p1 = Util.fieldsToCSV(mq.stats, true);
 			if (idx == 1)

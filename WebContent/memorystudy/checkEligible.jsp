@@ -7,7 +7,6 @@ boolean redirect = true;
 String message = ""; // set if no redirect
 
 String age = (String) request.getParameter("age");
-session.setAttribute("age", age);
 
 int ageint = HTMLUtils.getIntParam(request, "age", -1);
 if (ageint < 18) {
@@ -29,21 +28,24 @@ if (!"yes".equalsIgnoreCase(access_response)) {
 	message = "Because our study requires an uninterrupted test, we cannot accept you into this study.\n";
 }
 
-if (redirect) {
-	response.sendRedirect("../screen");
-	return;
-}
 
-String gender = (String) request.getParameter("gender");
-session.setAttribute("gender", gender);
-String education = (String) request.getParameter("education");
-session.setAttribute("education", education);
-String profession = (String) request.getParameter("profession");
-if (profession != null)
-	profession = profession.replaceAll("\\s", "_");
-session.setAttribute("profession", profession);
-String ethnicity = (String) request.getParameter("ethnicity");
-session.setAttribute("ethnicity", ethnicity);
+	if (redirect) {
+		session.setAttribute("age", age);
+		String gender = (String) request.getParameter("gender");
+		session.setAttribute("gender", gender);
+		String education = (String) request.getParameter("education");
+		session.setAttribute("education", education);
+		String profession = (String) request.getParameter("profession");
+		if (profession != null)
+			profession = profession.replaceAll("\\s", "_");
+		session.setAttribute("profession", profession);
+		String ethnicity = (String) request.getParameter("ethnicity");
+		session.setAttribute("ethnicity", ethnicity);
+
+		response.sendRedirect("../screen");
+		return;
+	}
+
 %>
 <!DOCTYPE html>
 <html>

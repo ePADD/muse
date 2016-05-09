@@ -283,7 +283,7 @@ public class ArchiveCluer extends Cluer {
 						// taboo hash check
 						int hashCode = MemoryStudy.canonicalizeSentence(sentence).hashCode();
 						if (tabooSentenceHashes.contains(hashCode)) {
-							log.info ("Dropping taboo duplicate sentence: " + sentence);
+							log.info("Dropping taboo duplicate sentence: "); // + sentence);
 							continue nextSentence;
 						}
 
@@ -399,7 +399,7 @@ public class ArchiveCluer extends Cluer {
 
 		if (bestClue != null)
 		{
-            log.info("Final best question for " + name + " is score: " + bestClue.clueStats.finalScore + ": clue:"  + bestClue);
+//            log.info("Final best question for " + name + " is score: " + bestClue.clueStats.finalScore + ": clue:"  + bestClue);
 
             bestClue.clueStats.nValidClueCandidates = nValidClueCandidates; // # of clues considered seriously, i.e. given a score
 

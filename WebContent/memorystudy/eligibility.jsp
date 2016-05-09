@@ -12,7 +12,6 @@
 <div class="box">
 	<jsp:include page="header.jspf"/>
 		<h2 class="title">Eligibility Form</h2>
-<!-- This form is a variant of design by Inayaili de León, a web designer and blogger, writing a tutorial about HTML5 forms here: http://24ways.org/2009/have-a-field-day-with-html5-forms/-->
 <p>Please fill out the following form to check if you are eligible to participate in this study.</p>
 
 <form action="checkEligible" method = "get">

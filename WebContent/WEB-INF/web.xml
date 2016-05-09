@@ -20,6 +20,10 @@
 			<param-name>test-param</param-name>
 			<param-value>This parameter is for testing.</param-value>
 		</init-param>
+		<init-param>
+			<param-name>listings</param-name>
+			<param-value>false</param-value>    <!-- This setting enables/disables directory listings -->
+		</init-param>
 	</filter>
 
 	<filter-mapping>

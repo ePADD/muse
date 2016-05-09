@@ -8,7 +8,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
-import java.util.Date;
 
 public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Serializable {
 	private static final long serialVersionUID = 1L;
@@ -41,7 +40,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 		int certainty = -1;
 		int memoryType = -1;
-		public Date guessedDate = null;
+		public int recency = -1;
 		public boolean userGaveUp = false;
 
 		// stats computed when answer is wrong
@@ -98,16 +97,16 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
      * @param hintused - indicating if the hint is used
      * @param certainty - A rating on how certain the user is about the answer
      * @param memoryType - A rating on how well the user can recall the context
-     * @param guessedDate - The user's guess on when the particular sentence is compiled
+	 * @param recency - 0 to N (months), 0 being hte most recent
 	 * */
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, int recency, boolean userGaveUp) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
 		this.stats.recallTypeBeforeHint = recallTypeBeforeHint;
 		this.stats.userAnswerCorrect = isUserAnswerCorrect();
 		this.stats.certainty = certainty;
 		this.stats.memoryType = memoryType;
-		this.stats.guessedDate = guessedDate;
+		this.stats.recency = recency;
 		this.stats.hintused = hintused;
 		this.stats.userGaveUp = userGaveUp;
 		this.stats.millis = millis;
@@ -147,6 +146,9 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		return blanks;
 	}
 
+	/**
+	 * warning: no need to escape the string returned by this method
+	 */
 	public String getBlanksWithHintForCorrespondentTest() {
 		String correctanswer = this.correctAnswer;
 		String blanks = "";

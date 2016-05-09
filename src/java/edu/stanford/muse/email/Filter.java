@@ -88,12 +88,14 @@ public class Filter implements Serializable {
 		int dd = c.get(Calendar.DATE);
 		return String.format("%04d", yyyy) + String.format("%02d", mm) + String.format("%02d", dd);
 	}
-	
-	/** returns date range in the format accepted by filter, e.g., 20130709-20130710 */
+
+	/**
+	 * returns date range in the format accepted by filter, e.g., 20130709-20130710. Used only by memory study etc.
+	 */
 	public static String getDateRangeForLast1Year()
 	{
 		Date d = new Date();
-		Date d1 = new Date(d.getTime() - (365L * 24 * 60 * 60 * 1000));
+		Date d1 = new Date(d.getTime() - (30L * 12 * 24 * 60 * 60 * 1000));
 		return dateToString(d1) + "-" + dateToString(d);		
 	}
 	

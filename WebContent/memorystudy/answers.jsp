@@ -5,7 +5,9 @@
 <%@page language="java" import="edu.stanford.muse.memory.MemoryStudy"%>
 <%@page language="java" import="edu.stanford.muse.util.Util"%>
 <%@page language="java" import="edu.stanford.muse.webapp.HTMLUtils"%>
+<%@ page import="java.util.Calendar" %>
 <%@ page import="java.util.Date" %>
+<%@ page import="java.util.GregorianCalendar" %>
 
 <!DOCTYPE html>
 <html>
@@ -55,9 +57,24 @@ You are welcome to save or print a copy of this page for your records.
 		if (userAnswer == null)
 			userAnswer = "";
 
-		String guessedDate;
-		if (mq.stats.guessedDate != null)
-			guessedDate = "(Your guess:" + new java.text.SimpleDateFormat("MMMM yyyy").format(mq.stats.guessedDate) + ")";
+		String guessedDate = "";
+        if (mq.stats.recency >= 1 && mq.stats.recency <= 12) // recency goes from 1 to 12
+        {
+            Date d1 = new Date();
+            GregorianCalendar gc = new GregorianCalendar();
+            gc.setTime(d1);
+            int month = gc.get(Calendar.MONTH);
+            int year = gc.get(Calendar.YEAR);
+            month -= (mq.stats.recency-1); // -1 because for current month recency is 1
+            if (month < 0)
+            {
+                month += 12;
+                year--;
+            }
+            gc.set(year, month, 1);
+            d1 = new java.util.Date(gc.getTimeInMillis());
+            guessedDate = "(Your guess:" + new java.text.SimpleDateFormat("MMMM").format(d1) + " " + year + ")";
+        }
 		else
 			guessedDate = ("(Your guess: no idea)");
 		correctAnswer = Util.canonicalizeSpaces(correctAnswer);
@@ -76,8 +93,8 @@ You are welcome to save or print a copy of this page for your records.
 	%>
 	<br/><hr/>
 <% }
-	// VERY IMPORTANT: log the stats!
-	study.logStats("results.final");	
+	// VERY IMPORTANT: log the stats! null out the clue so it doesn't get nulled
+	study.logStats("results.final", true);
 %>
 <p>
 <div style="text-align:center">

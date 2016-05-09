@@ -27,7 +27,7 @@
         <fieldset>
             <legend>Consent Form</legend>
             <p class="bold">ASHOKA UNIVERSITY: Research Information Sheet</p><br>
-            Protocol Director: Sudheendra Hangal<br>
+            Protocol Director: Prof. Sudheendra Hangal<br>
             Protocol Title: Computerized Assessment of Cognition<br>
             <p class="bold">DESCRIPTION:</p> You are invited to participate in a research study on email archives and whether they can be applied to study memory and other mental processes. Participants will provide their email information to a secure computer server. Our program will automatically analyze your email and evaluate whether you could reasonably participate in the study. For example if you rarely use email or do not speak English then our study may not find useful information and we may ask you not to participate. If you pass our screening then the program will generate questions for you, and record your answers.
             <br>
