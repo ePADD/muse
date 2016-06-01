@@ -6,6 +6,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 
 import edu.stanford.muse.util.Util;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -455,12 +456,14 @@ public class FeatureDictionary implements Serializable {
     //patt -> Aa -> 34 100, pattern Aa occurred 34 times with positive classes of the 100 times overall.
     //mixtures of the BMM model
     public Map<String, MU> features = new LinkedHashMap<>();
+    //Keep the ref. to the gazette lists it is trained on so that we can lookup these when extracting entities.
+    public CaseInsensitiveMap<String,String> gazettes;
 
     public FeatureDictionary(){
         features = new LinkedHashMap<>();
     }
 
-    public FeatureDictionary(Map<String, String> gazettes, Map<String,Map<String,Float>> tokenPriors, int iter) {
+    public FeatureDictionary(CaseInsensitiveMap<String, String> gazettes, Map<String,Map<String,Float>> tokenPriors, int iter) {
         addGazz(gazettes, tokenPriors);
         EM(gazettes, iter);
     }
@@ -476,8 +479,8 @@ public class FeatureDictionary implements Serializable {
         );
     }
 
-    //initializes the mixtures
-    private FeatureDictionary addGazz(Map<String,String> gazettes, Map<String, Map<String,Float>> tokenPriors){
+    //initialize the mixtures
+    private FeatureDictionary addGazz(CaseInsensitiveMap<String,String> gazettes, Map<String, Map<String,Float>> tokenPriors){
         long start_time = System.currentTimeMillis();
         long timeToComputeFeatures = 0, tms;
         log.info("Analysing gazettes");
@@ -488,11 +491,11 @@ public class FeatureDictionary implements Serializable {
         printMemoryUsage();
         //The number of times a word appeared in a phrase of certain type
         Map<String, Map<Short,Integer>> words = new LinkedHashMap<>();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
         log.info("Done loading DBpedia");
         printMemoryUsage();
         Map<String, Integer> wordFreqs = new LinkedHashMap<>();
-        for (String str : gazettes.keySet()) {
+
+        for (String str: gazettes.keySet()) {
             tms = System.currentTimeMillis();
 
             String entityType = gazettes.get(str);
@@ -613,6 +616,8 @@ public class FeatureDictionary implements Serializable {
         }
         log.info("Considered: "+numConsidered+" mixtures and ignored "+numIgnored);
         log.info("Initialised alpha for " + initAlpha + "/" + ws + " entries.");
+
+        this.gazettes = gazettes;
         return this;
     }
 

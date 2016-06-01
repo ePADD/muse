@@ -27,8 +27,6 @@
 
 package edu.stanford.muse.util;
 
-import edu.stanford.muse.memory.MemoryQuestion;
-import edu.stanford.muse.xword.Clue;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 

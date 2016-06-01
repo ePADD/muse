@@ -15,13 +15,11 @@
  */
 package edu.stanford.muse.util;
 
-import com.sun.org.apache.xerces.internal.impl.xpath.regex.CaseInsensitiveMap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.QuotedPrintableCodec;
@@ -43,7 +41,7 @@ import java.util.regex.Pattern;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
-	public static Map<String, String>	dbpedia			= null;
+	public static org.apache.commons.collections4.map.CaseInsensitiveMap<String, String> dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
 	/** Returns the part before @ in an email address, e.g. hangal@gmail.com => hangal.
@@ -1395,12 +1393,12 @@ public class EmailUtils {
 		return sample;
 	}
 
-	public static Map<String, String> readDBpedia(double p, String typesFile) {
+	public static org.apache.commons.collections4.map.CaseInsensitiveMap<String, String> readDBpedia(double p, String typesFile) {
         if (dbpedia != null) {
             if(p==1)
                 return dbpedia;
             else
-                return sample(dbpedia, p);
+                return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(sample(dbpedia, p));
         }
         if(typesFile == null)
             typesFile = "instance_types_2014-04.en.txt.bz2";
@@ -1465,14 +1463,14 @@ public class EmailUtils {
 
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
-		return sample(dbpedia,p);
+		return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(sample(dbpedia,p));
 	}
 
-    public static Map<String,String> readDBpedia(double fraction) {
+    public static org.apache.commons.collections4.map.CaseInsensitiveMap<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);
     }
 
-	public static Map<String,String> readDBpedia(){
+	public static org.apache.commons.collections4.map.CaseInsensitiveMap<String,String> readDBpedia(){
 		return readDBpedia(1.0);
 	}
 

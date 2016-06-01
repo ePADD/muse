@@ -12,6 +12,7 @@ import edu.stanford.muse.util.*;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameSample;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -120,19 +121,18 @@ public class BMMModel implements NERModel, Serializable {
     }
 
     private String lookup(String phrase) {
-        Map<String, String> dbpedia = EmailUtils.readDBpedia();
 
         //if the phrase is from CIC Tokenizer, it won't start with an article
         //enough with the confusion between [New York Times, The New York Times], [Giant Magellan Telescope, The Giant Magellan Telescope]
         Set<String> vars = new LinkedHashSet<>();
         vars.add(phrase);
         vars.add("The "+phrase);
-        String dbpediaType;
+        String type;
         for(String var: vars) {
-            dbpediaType = dbpedia.get(var.toLowerCase());
-            if(dbpediaType!=null) {
-                //log.info("Found a match for: "+phrase+" -- "+dbpediaType);
-                return dbpediaType;
+            type = dictionary.gazettes.get(var.toLowerCase());
+            if(type!=null) {
+                log.debug("Found a match for: "+phrase+" -- "+type);
+                return type;
             }
         }
         return null;
@@ -490,7 +490,7 @@ public class BMMModel implements NERModel, Serializable {
             //only multi-word are considered
             boolean onlyMW = false;
             //use ignoreSegmentation=true only with onlyMW=true it is not tested otherwise
-            boolean ignoreSegmentation = true;
+            boolean ignoreSegmentation = false;
             NameSample sample = sampleStream.read();
             CICTokenizer tokenizer = new CICTokenizer();
             while (sample != null) {
@@ -690,14 +690,55 @@ public class BMMModel implements NERModel, Serializable {
      * With tokenPriors it is possible to set initial beliefs, for example "Nokia" is a popular company; the first key in the map should be a single word token, the second map is the types and its affiliation for various types (DBpedia ontology again)
      * iter param is the number of EM iterations, any value >5 is observed to have no effect on performance with DBpedia as training data
      *  */
-    public static BMMModel train(Map<String,String> trainData, Map<String,Map<String,Float>> tokenPriors, int iter){
+    public static BMMModel train(CaseInsensitiveMap<String,String> trainData, Map<String,Map<String,Float>> tokenPriors, int iter){
         BMMModel nerModel = new BMMModel();
         nerModel.dictionary = new FeatureDictionary(trainData, tokenPriors, iter);
         return nerModel;
     }
 
+    /**
+     * the resource is expected to be a plain text file.
+     * the lines in the resource should be two fields separated by ' ', the first field should be the title and following it should be the type of the title.
+     * The type of the resource should follow the style of DBpedia types in our generated instance file, see aTypes field in FeatureDictionary for more info.
+     * The spaces in the title, ie. the first entry should be replaced by '_'
+     */
+    private static Map<String,String> readEntityList(String resourcePath) {
+        Map<String,String> content = new LinkedHashMap<>();
+        BufferedReader br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(resourcePath)));
+        String line;
+        try {
+            while ((line = br.readLine()) != null){
+                line = line.trim();
+                String[] fs = line.split(" ");
+                String title = fs[0];
+                title = title.replaceAll("_"," ");
+                content.put(title, fs[1]);
+            }
+        } catch(IOException e){
+            log.warn("Could not open and read the resource from "+resourcePath, e);
+        }
+        log.info("Read "+content.size()+" entries from "+resourcePath);
+        log.debug("The top 10 entries");
+        int i=0;
+        for(Map.Entry<String,String> e: content.entrySet()) {
+            log.debug(e.getKey() + " -- " + e.getValue());
+            if(i++>=10)
+                break;
+        }
+        return content;
+    }
+
     private static BMMModel train(float alpha, int emIter){
-        Map<String,String> dbpedia = EmailUtils.readDBpedia();
+        CaseInsensitiveMap<String,String> tdata = EmailUtils.readDBpedia();
+        //also include CONLL lists
+        String resources[] = new String[]{"CONLL/lists/ePADD.ned.list.LOC","CONLL/lists/ePADD.ned.list.ORG","CONLL/lists/ePADD.ned.list.PER"};
+        for(String rsrc: resources) {
+            //DBpedia has a finer type, respect it.
+            Map<String,String> map = readEntityList(rsrc);
+            for(Map.Entry<String,String> e: map.entrySet())
+                    tdata.putIfAbsent(e.getKey(),e.getValue());
+        }
+
         //page lengths from wikipedia
         Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
         //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
@@ -707,40 +748,47 @@ public class BMMModel implements NERModel, Serializable {
             Map<String,Float> tmp =  new LinkedHashMap<>();
             Map<String,Integer> tpls = pageLens.get(tok);
             for(String page: tpls.keySet()) {
-                String type = dbpedia.get(page.toLowerCase());
+                String type = tdata.get(page.toLowerCase());
                 tmp.put(type, tpls.get(page)*alpha/1000f);
             }
-	    tokenPriors.put(tok, tmp);
+            tokenPriors.put(tok, tmp);
         }
-	log.info("Initialized "+tokenPriors.size()+" token priors.");
-        return train(dbpedia, tokenPriors, emIter);
+	    log.info("Initialized "+tokenPriors.size()+" token priors.");
+        return train(tdata, tokenPriors, emIter);
     }
 
     /**
      * Trains a BMMModel with default parameters*/
     public static void train() {
+        long st = System.currentTimeMillis();
         BMMModel model = train(0.2f, 5);
         try {
             model.writeModel(new File(Config.SETTINGS_DIR+File.separator+modelFileName));
         } catch(IOException e){
-            System.err.println("Unable to write model to disk");
+            log.warn("Unable to write model to disk");
             e.printStackTrace();
         }
+        long et = System.currentTimeMillis();
+        log.info("Trained and dumped model in "+((et-st)/1000)+"s");
     }
 
     public static void main(String[] args) {
 //        testParams();
-//        String modelFilePath = "experiment-full/ALPHA_0.2-Iter_9-SeqModel.ser";
-//        try {
-//            BMMModel model = BMMModel.loadModel(modelFilePath);
-////            test(model,true);
-//        }catch(IOException e){
-//            e.printStackTrace();
-//        }
-        train();
+        //train();
+        //String modelFilePath = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel.ser.gz";
+        String modelFilePath = "SeqModel.ser.gz";
+        try {
+            BMMModel model = BMMModel.loadModel(modelFilePath);
+            test(model,true);
+        }catch(IOException e) {
+            e.printStackTrace();
+        }
 //        Map<String,String> dbpedia = EmailUtils.readDBpedia();
 //        System.out.println(dbpedia.get("The New York Times"));
 //        System.out.println(dbpedia.get("the new York Times"));
 //        System.out.println(dbpedia.get("the new york times"));
+//        String resources[] = new String[]{"CONLL/lists/ePADD.ned.list.LOC","CONLL/lists/ePADD.ned.list.ORG","CONLL/lists/ePADD.ned.list.PER"};
+//        for(String rsrc: resources)
+//            readEntityList(rsrc);
     }
 }
