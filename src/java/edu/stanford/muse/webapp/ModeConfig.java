@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.webapp;
 
+/** mainly for epadd modes */
 public class ModeConfig
 {
 	public static Mode mode = Mode.APPRAISAL;

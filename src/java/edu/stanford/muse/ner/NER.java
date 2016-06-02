@@ -154,6 +154,7 @@ public class NER implements StatusProvider {
     }
 
     public static org.apache.lucene.document.Document updateDoc(org.apache.lucene.document.Document ldoc, Span[] chunks, boolean body, Archive archive){
+        //Span::parsablePrint prints the finest available type of the span, hence it is not required to store fine entities separately
         List<String> persons = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PERSON).map(Span::parsablePrint).collect(Collectors.toList());
         List<String> locs = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.PLACE).map(Span::parsablePrint).collect(Collectors.toList());
         List<String> orgs = Arrays.asList(chunks).stream().filter(c -> FeatureDictionary.getCoarseType(c.type) == FeatureDictionary.ORGANISATION).map(Span::parsablePrint).collect(Collectors.toList());
@@ -238,7 +239,7 @@ public class NER implements StatusProvider {
             st = System.currentTimeMillis();
 
             ldoc = updateDoc(ldoc, chunks, true, archive);
-            ldoc = updateDoc(ldoc, chunks, false, archive);
+            ldoc = updateDoc(ldoc, chunksTitle, false, archive);
             //log.info("Found: "+names.size()+" total names and "+names_original.size()+" in original");
 
             //TODO: Sometimes, updating can lead to deleted docs and keeping these deleted docs can bring down the search performance

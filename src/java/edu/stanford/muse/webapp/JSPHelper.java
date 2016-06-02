@@ -407,13 +407,15 @@ public class JSPHelper {
         String modelFile = BMMModel.modelFileName;
         NERModel nerModel = (BMMModel)session.getAttribute("ner");
         session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
-        log.info("Loading NER sequence model from: " + modelFile + " ...");
         try {
-            String mode = System.getProperty("muse.mode");
-            if (mode!=null && "memorystudy".equals(mode))
+            if (System.getProperty("muse.dummy.ner") != null) {
+		log.info("Using dummy NER model, all CIC patterns will be treated as valid entities");
                 nerModel = new DummyNERModel();
-            else
+	    }
+            else{
+		log.info("Loading NER sequence model from: " + modelFile + " ...");
                 nerModel = BMMModel.loadModel(modelFile);
+	    }
         } catch (IOException e) {
             Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
         }

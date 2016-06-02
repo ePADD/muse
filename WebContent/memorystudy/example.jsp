@@ -12,7 +12,7 @@
 <link href="intro.js-0.5.0/example/assets/css/demo.css" rel="stylesheet">
 <link href="intro.js-0.5.0/introjs.css" rel="stylesheet">
 <link rel="stylesheet" href="css/tester.css"/>
-<link rel="icon" href="images/stanford-favicon.gif">
+<link rel="icon" href="images/ashoka-favicon.gif">
 <title>Example</title>
 <script>
 $(function() {
@@ -27,42 +27,37 @@ $(function() {
 <script type="text/javascript" src="intro.js-0.5.0/intro.js"></script>
 
 <p>
-<div class="heading">
-    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
-    <span style="float: right;font-size: 30px;color: black;">
-            COGNITIVE EXPERIMENTS ON LIFE-LOGS (CELL)<br>Ashoka University
-        </span>
-</div>
+
 <div class="box">
-<hr style="color:red;background-color:red">
-<div style="width:100%;text-align:center;color:red">
-Example
-</div>
-<hr style="color:red;background-color:red">
+    <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/>
+    <span style="float: right;font-size: 30px;color: red;">
+        Example</span>
+    <div style="clear:both"></div>
+
 <br/>
 <div class="container2">
 <form id="testinput" name = "testinput" action = "examplehandler" method="post">
 		<div id="containerdiv" >
 		<div id = "question" class="question">
-		<span data-step = "1" data-intro = "You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about a name or entity that would fit in the empty slot. Remember, this will usually be a name, not an ordinary word.">
+		<span data-step = "1" data-intro = "You will see a sentence that was taken from your email (this one wasn't, it's just an example). Think about the person you sent this email to. Remember, the clue will be from an email to a single person, not a group.">
 		1. I've always wondered why you sat on a wall in the first place, especially if you are an egg. Anyway, get well soon. <br>
+        <p>
         Email recipient name: _ _ _ _ _ _</span>
 		</div>
 		</div>
 		<p/>
 
             <div style="margin-left: 20%">
-                <input class="answer" id="answer" style="padding:7px" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured out yet, the correct answer is 'Humpty'." type="text" size="40" name="answer" autofocus autocomplete = "off">
-                <button id ="hintbutton" onclick="return replacehint();" data-step="3" data-intro="If you're stuck, click this button to reveal the first letter of the answer. During the test, this button will only appear after about 15 seconds. Go ahead, click the button now and see the first letter of the answer reveal in the clue above." >
-                    Show hint
-                </button>
+                <input class="answer" id="answer" style="border:solid 2px blue; background: #7c7c7c" data-step="4" data-step="4" data-intro="Type in your answer in this box. The answer is not case sensitive, and spaces do not matter. If you haven't figured out yet, the correct answer is 'Humpty'." type="text" size="40" name="answer" autofocus autocomplete = "off">
                 <p style="margin-left:20%" class="smaller"><span id="answerLength" data-step = "2" data-intro="The number of words and letters in the answer. Sometimes the answer may be 2 words. This description will turn green when the number of letters you have entered in the answer box is correct.">[1 word: 6 characters]
                 </span></p>
                 <span data-step="5" data-intro="If you don't remember the name for some reason, choose the option that best applies to you">OR &nbsp;&nbsp; Answer why you forgot:<br></span>
-                <input id="fComplete" name="fail" type="radio"/>I forgot the email and events completely<br>
-                <input id="fContext" name="fail" type="radio"/>I remember the email/surrounding events but not the email recipient<br>
-                <span data-step="6" name="fail" data-intro="When you feel you know the answer to a question but you can't remember it at the moment and you feel the answer is about to pop into mind at any second, then you are in a tip-of-the-tongue state.  For example I might remember that I sent an email to the president and I know his name but I cannot recall his name right now. It feels like his name is ready to POP into mind at any second. If this happens, choose the tip-of-the-tongue option.">
-                    <input id="fTip" name="fail" type="radio" onclick="$('#tipRate').toggle()"/>I remember the person but their name is on the tip of my tongue
+                <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
+                <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
+                        <span data-step="6" name="fail" data-intro="When you feel you know the answer to a question but you can't remember it at the moment and you feel the answer is about to pop into mind at any second, then you are in a tip-of-the-tongue state.  For example I might remember that I sent an email to the president and I know his name but I cannot recall his name right now. It feels like his name is ready to POP into mind at any second. If this happens, choose the tip-of-the-tongue option.">
+                    <input id="fTip" name="fail" type="radio" onclick="$('#tipRate').toggle()"/>I remember the person and their name is on the tip of my tongue. Give me a hint.
+                            </span>
+                    <!--
                     <span id="tipRate" style="margin-left:3%;display:none">
                         <br>
                         <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp;<br>
@@ -73,14 +68,18 @@ Example
                         </span>
                         <br>
                     </span>
+                    -->
                 </span>
                 <br>
+                <!--
                 <input id="unfair" name="fail" type="radio" onclick='$("#unfairReason").toggle()'/> Unfair question?
                 <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason"/>
+                -->
             </div>
     <br>
 
         <div data-step = "7" data-intro="You'll be asked to provide some more information about your answer. Since this is just an example, pick any option for each of the questions. ">
+            <!--
             <div>On a scale of 1 to 10, how confident are you about your answer?
                 <br>
                 10 - I am Certain<br>
@@ -89,14 +88,13 @@ Example
                 <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
                 <input name="certainty" id="certainty" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
             </div>
+            -->
 		    <br/>
 
-            <div>How vividly do you remember writing this mail?
+            <div>How vividly do you remember writing this email?
                 <br>
-                10 - I clearly remember writing this mail<br>
-                6&nbsp - I remember the person<br>
-                4&nbsp  - I recall the general context<br>
-                1&nbsp  - I have no memory of the event<br>
+                (1: no idea; 5: fair idea; 10:strong memory)<br/>
+
                 <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
                 <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
             </div>
@@ -146,7 +144,8 @@ Example
         </datalist>
 			
 		<br/>
-		<button type="submit" onclick="return handle_submit()" value="Submit" style="margin-left:20%;" data-step="7" data-intro="This button will record your answer and continue to the next question.">Submit</button>
+		<button class="submitButton" style="margin-left: 20%" type="submit" value="Submit">Submit</button>
+        <button class="submitButton" style="margin-left: 20%" type="submit" value="GiveUp">Give up</button>
 
 		<script>
 		function replacehint(){
@@ -159,25 +158,31 @@ Example
 		}
 		
 		function handle_submit(event) {
-            if ($("#answer").val() !== '') {
+            var $target = $(event.target);
+            var button_text = $target.text(); // text on the button that was pressed
+            if ($("#answer").val() !== '' || button_text == 'Give up') {
                 if ('humpty' !== $('#answer').val().toLowerCase()) {
                     alert("Uh, oh. The correct answer is Humpty.");
                     return false;
                 }
-            } else if (!$("#fComplete")[0].checked && !$("#fContext")[0].checked && !($("#fTip")[0].checked && $("#tipRate").val() !== '') && !($("#unfair")[0].checked && $("#unfairReason").val() !== '')) {
+            } /* else if (!$("#fComplete")[0].checked && !$("#fContext")[0].checked && !($("#fTip")[0].checked && $("#tipRate").val() !== '') && !($("#unfair")[0].checked && $("#unfairReason").val() !== '')) {
                 alert("Please enter the answer or answer why you forgot.");
                 return false;
             }
-
-            if ($('#memory').val()=='' || $('#certainty').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1||$("#timeYear")==-1))) {
-                alert("Please answer all the three questions about your answer.");
+*/
+            /*
+            if ($('#memory').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
+                alert("Please answer all the questions.");
                 return false;
             }
+            */
 
 			return true;				
 		}
-		
-		$('#answer').keyup(function() {
+
+        $('.submitButton').click(handle_submit);
+
+        $('#answer').keyup(function() {
 			var correctAnswerLengthWithoutSpaces = 'humpty'.length;
 			// check # of letters in answer
 			var val = $('#answer').val();

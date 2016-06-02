@@ -114,13 +114,11 @@
 <script src="../js/jquery/jquery.js"></script>
 <script src="../js/muse.js"></script>
 <link rel="stylesheet" href="css/tester.css" />
-<link rel="icon" href="images/stanford-favicon.gif">
+    <link rel="icon" href="images/ashoka-favicon.gif">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Research Study on Memory</title>
 </head>
 <body>
-    <div class="heading">
-    </div>
 	<div class="box">
         <img title="Ashoka University" src="../images/ashoka-logo.png" width="100px" height="100px"/> <span style="float: right;font-size: 30px;color: black;">
         Question <%= currentStudy.getQuestionindex()%>/<%=currentStudy.getQuestions().size() %></span>
@@ -153,11 +151,8 @@
 				value="false"> <input type="hidden" name="millis"
 				id="millis" value="-1"> <input type="hidden"
 				name="answerBeforeHint" id="answerBeforeHint" value="-1">
-                <input type="text" size="40" id="answer" class="answer"
-				name="answer" autofocus autocomplete="off">
-                <span id="hint-button" style="display: none">
-                    <button id="hintbutton" type="button" onclick="show_hint(); return false;" style="">Show Hint</button>
-				<br /></span>
+                <br/>
+                <input style="border:solid 2px blue; background: #7c7c7c" type="text" size="40" id="answer" class="answer" name="answer" autofocus autocomplete="off">
 			    <p class="smaller">
                 <span id="answerLength">
                     [<%
@@ -169,10 +164,10 @@
                 </p>
 
                 <span>OR &nbsp;&nbsp; Answer why you forgot:<br></span>
-                <input id="fComplete" name="fail" value=0 type="radio"/>I forgot the email and events completely<br>
-                <input id="fContext" name="fail" value=1 type="radio"/>I remember the email/surrounding events but not the email recipient<br>
-                <span>
-                    <input id="fTip" name="fail" type="radio" value=2 onclick="$('#tipRate').toggle()"/>I remember the person but their name is on the tip of my tongue
+                <input id="fComplete" name="fail" value=0 type="radio" onclick="show_hint()"/>I forgot the email completely, give me a hint<br>
+                <input id="fContext" name="fail" value=1 type="radio" onclick="show_hint()"/>I remember the surrounding events but not the recipient. Give me a hint<br>
+                <input id="fTip" name="fail" type="radio" value=2 onclick="show_hint()"/>I remember the person, and their name is on the tip of my tongue. Give me a hint.</br/>
+                    <!--
                     <span id="tipRate" style="margin-left:3%;display:none">
                         <br>
                         <span style="margin-left:3%">On a scale of 1 to 10, rate how close you are to having the name pop into mind&nbsp;<br>
@@ -181,12 +176,13 @@
                             <span style="position:relative;left:30px">1</span><span style="position:relative;left:140px">5</span><span style="position:relative;left:280px">10</span><br>
                             <input style="padding-left:10px" type="range" min=1 max=10 name="tipScore" id="tipScore" value="5" step="1" data-step="steplist"/>
                         </span>
+                        -->
                         <br>
-                    </span>
-                </span>
                 <br>
+                <!--
                 <input id="unfair" name="fail" type="radio" value=3 onclick='$("#unfairReason").toggle()'/> Unfair question?
                 <input type="text" placeholder="Please elaborate" size="40" style="display:none" id="unfairReason" name="unfairReason"/>
+                -->
             </div>
 
 			<script type="text/javascript">
@@ -207,12 +203,9 @@
 
         <br/>
 
-        <div>How vividly do you remember writing this mail?
+        <div>How vividly do you remember writing this email?
             <br>
-            10 - I clearly remember writing this mail<br>
-            6&nbsp - I remember the person<br>
-            4&nbsp  - I recall the general context<br>
-            1&nbsp  - I have no memory of the event<br>
+            (1: no idea; 5: fair idea; 10:strong memory)<br/>
             <span style="position:absolute;left:30px">1</span><span style="position:absolute;left:150px">5</span><span style="position:absolute;left:300px">10</span><br>
             <input name="memory" id="memory" type="range" min="1" max="10" step="1" value="5" list="steplist"/>
         </div>
@@ -251,14 +244,15 @@
                 <br>
                 <span style="margin-left:20%">Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Month&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span>Year</span>
             </span><br>
-            <input type="checkbox" style="margin-left:20%" id="timeInfo" name="noTime" onclick='$("#time").toggle()'> I have no idea<br>
+            <input  type="checkbox" style="margin-left:20%" id="timeInfo" name="noTime" onclick='$("#time").toggle()'> I have no idea<br>
         </div>
 
     <p/>
-			<button onclick="return handle_submit()" style="margin-left: 20%"
-				type="submit" value="Submit">Submit</button>
+        <input type="hidden" name="submitType" value="submit"/> <!-- will be submit or giveup -->
+        <button class="submitButton" style="margin-left: 20%" type="submit" value="Submit">Submit</button>
+        <button class="submitButton" style="margin-left: 20%" type="submit" value="GiveUp">Give up</button>
 
-			<script>
+        <script>
 				function show_hint() {
 					// copy answer to save the answer before the hint was typed
 					$('#answerBeforeHint').val($('#answer').val());
@@ -274,27 +268,39 @@
 				});
 
 				function handle_submit(event) {
+                    var $target = $(event.target);
+                    var button_text = $target.text(); // text on the button that was pressed
                     //ensure answer or the reason is filled
-                    if ($("#answer").val()=='' && !$("#fComplete")[0].checked && !$("#fContext")[0].checked && !($("#fTip")[0].checked && $("#tipScore").val() !== '') && !$("#unfair")[0].checked) {
+                    /*
+                    if ($("#answer").val()=='' && !$("#fComplete")[0].checked && !$("#fContext")[0].checked && !$("#unfair")[0].checked) {
                         alert("Please enter the answer or answer why you forgot.");
+                        event.preventDefault();
+                        event.stopPropagation();
                         return false;
-                    } else if($("#fTip")[0].checked && $("#tipScore").val() !== ''){
+                    } */ /* else if($("#fTip")[0].checked && $("#tipScore").val() !== ''){
                         var tVal = parseInt($("#tipScore").val());
                         if(isNaN(tVal) || tVal<1 || tVal>10){
                             alert('Please enter a number in the range 1 to 10 for "how close you are to having the name pop into mind"');
+                            event.preventDefault();
+                            event.stopPropagation();
                             return false;
                         }
+
                     } else if($("#unfair")[0].checked && $("#unfairReason").val() == ''){
                         alert("Please enter a reason why you think the question is unfair.")
+                        event.preventDefault();
+                        event.stopPropagation();
                         return false;
-                    }
+                    } */
 
                     //ensure questions are filled out
-                    if ($('#memory').val()=='' || $('#certainty').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1||$("#timeYear")==-1))) {
-                        alert("Please answer all the three questions about your answer.");
+                    if ($('#memory').val()=='' || (!$("#timeInfo")[0].checked && ($('#timeYear').val()==-1||$("#timeMonth").val()==-1))) {
+                        alert("Please answer all the questions.");
+                        event.preventDefault();
+                        event.stopPropagation();
                         return false;
                     }
-                    else{
+                    else {
                         var mVal = parseInt($("#memory").val());
                         /*
                         var cVal = parseInt($("#certainty").val());
@@ -305,6 +311,8 @@
                         */
                         if(isNaN(mVal) || mVal<1 || mVal>10){
                             alert('Please enter a number in the range of 1 to 10 for "How vividly do you remember writing this mail?"');
+                            event.preventDefault();
+                            event.stopPropagation();
                             return false;
                         }
                     }
@@ -313,8 +321,15 @@
 					var elapsed_time = new Date().getTime() - start_time;
 					$('#millis').val(elapsed_time);
 
+                    // set up the submitType hidden field to track whether the give up button was pressed or submit
+                    LOG (button_text);
+                    $('input[name="submitType"]').val(button_text);
+
 					return true; // this will proceed with the form submit
 				}
+
+                $('.submitButton').click(handle_submit);
+
 				var start_time;
 				$(document).ready(function() {
 					start_time = new Date().getTime();

@@ -44,7 +44,7 @@ if (!found) {
 	<html>
 	<head>
 		<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css"/>
-		<link rel="icon" href="memorystudy/images/stanford-favicon.gif">
+		<link rel="icon" href="images/ashoka-favicon.gif">
 	</head>
 	<body>
 		<div class="box">
@@ -69,7 +69,7 @@ int numQ = HTMLUtils.getIntParam(request, "n", 40);
 session.setAttribute("numQuestions", new Integer(numQ));
 
 session.setAttribute("mode", "memorytest");
-
+System.setProperty ("muse.dummy.ner", "true");
 String googleClientId = null;
 if(request.getLocalPort() == 8043) {
 	googleClientId = "1072171428245-72o4t2f53c1ksrnefnh6amofj6d7h4op.apps.googleusercontent.com"; // Client ID for mem study
@@ -95,7 +95,7 @@ if(request.getLocalPort() == 8043) {
 <link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
 <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
 <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
-<link rel="icon" href="memorystudy/images/stanford-favicon.gif">
+	<link rel="icon" href="images/ashoka-favicon.gif">
 <jsp:include page="css/css.jsp"/>
 <script type="text/javascript" src="js/jquery/jquery.js"></script>
 <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
