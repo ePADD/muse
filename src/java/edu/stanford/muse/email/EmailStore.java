@@ -104,12 +104,11 @@ public abstract class EmailStore implements Serializable {
 	public EmailStore(String name, String emailAddress)
 	{
 		this.displayName = name;
+		// display name is often used in html pages for attributes and javascript, so its probably very bad to have " or '
 		displayName = displayName.replaceAll("\\\\", "/");
 		displayName = displayName.replaceAll("'", "");
 		
 		this.emailAddress = emailAddress;
-
-		// display name is often used in html pages for attributes and javascript, so its probably very bad to have " or '
 	}
 
 	public void setCacheDir(String dir)

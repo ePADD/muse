@@ -284,6 +284,8 @@ public class Archive implements Serializable {
     public List<String> allAccessions = new ArrayList<String>();
     public List<FetchStats> allStats = new ArrayList<FetchStats>(); // multiple stats because usually there is 1 per import
 
+    public String archiveTitle; // this is the name of this archive
+
 	/*
 	 * baseDir is used loosely... it may not be fully reliable, e.g. when the
 	 * archive moves.
@@ -343,8 +345,15 @@ public class Archive implements Serializable {
         return addressBook;
     }
 
-    public static Archive createArchive() {
-        return new Archive();
+    /** private constructor -- always use createArchive() instead */
+    private Archive() { }
+
+    public static Archive createArchive() { return createArchive (""); }
+
+    public static Archive createArchive(String title) {
+        Archive archive = new Archive();
+        archive.archiveTitle = title;
+        return archive;
     }
 
     public synchronized void openForRead() {

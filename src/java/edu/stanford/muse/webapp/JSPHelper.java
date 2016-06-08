@@ -46,6 +46,7 @@ import javax.servlet.http.HttpSession;
 import javax.xml.transform.TransformerException;
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /* import javax.servlet.jsp.JspWriter; */
 
@@ -902,8 +903,28 @@ public class JSPHelper {
 		String term = request.getParameter("term"); // search term
 		String[] contact_ids = request.getParameterValues("contact");
 		String[] persons = request.getParameterValues("person");
-		String[] attachments = request.getParameterValues("attachment");
-		String[] attachment_types = request.getParameterValues("attachment_type");
+		String[] attachments = request.getParameterValues("attachment"); // actual attachment name
+
+		String[] attachment_extensions = request.getParameterValues("attachment_extension");
+
+		{
+			// if attachment_types specified, parse them and add the values in them to attachment_extensions also
+			// types are higher level (video, audio, etc.) and map to more than 1 extension
+			String[] attachment_types = request.getParameterValues("attachment_type"); // will be something like ["pdf,doc", "ppt,pptx,key"]
+			if (!Util.nullOrEmpty(attachment_types)) {
+				// assemble all extensions in a list first
+				List<String> list = new ArrayList<>();
+				if (!Util.nullOrEmpty(attachment_extensions))
+					list.addAll(Arrays.asList(attachment_extensions));
+
+				for (String s : attachment_types)
+					list.addAll(Util.tokenize(s, ","));
+				// trim all spaces, then convert back to array
+				list = list.stream().map(s -> s.trim()).collect(Collectors.toList());
+				attachment_extensions = list.toArray(new String[list.size()]);
+			}
+		}
+
 		String datasetId = request.getParameter("datasetId");
 		String[] docIds = request.getParameterValues("docId");
 		String[] folders = request.getParameterValues("folder");
@@ -1154,10 +1175,10 @@ public class JSPHelper {
 			docsForAttachments = (Set<Document>) EmailUtils.getDocsForAttachments((Collection) allDocs, blobsForAttachments);
 		}
 
-		if (!Util.nullOrEmpty(attachment_types))
+		if (!Util.nullOrEmpty(attachment_extensions))
 		{
-			attachment_types = JSPHelper.convertRequestParamsToUTF8(attachment_types);
-			blobsForAttachmentTypes = IndexUtils.getBlobsForAttachmentTypes(allDocs, attachment_types);
+			attachment_extensions = JSPHelper.convertRequestParamsToUTF8(attachment_extensions);
+			blobsForAttachmentTypes = IndexUtils.getBlobsForAttachmentTypes(allDocs, attachment_extensions);
 			docsForAttachmentTypes = (Set<Document>) EmailUtils.getDocsForAttachments((Collection) allDocs, blobsForAttachmentTypes);
 		}
 

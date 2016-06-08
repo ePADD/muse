@@ -15,39 +15,25 @@
 */
 package edu.stanford.muse;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.log4j.PropertyConfigurator;
-
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.email.FetchConfig;
 import edu.stanford.muse.email.MuseEmailFetcher;
 import edu.stanford.muse.exceptions.CancelledException;
-import edu.stanford.muse.groups.Group;
-import edu.stanford.muse.groups.GroupHierarchy;
-import edu.stanford.muse.groups.GroupUtils;
-import edu.stanford.muse.groups.Grouper;
-import edu.stanford.muse.groups.SimilarGroup;
-import edu.stanford.muse.groups.SimilarGroupMethods;
+import edu.stanford.muse.groups.*;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.GroupAssigner;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
+import org.apache.commons.cli.*;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.PropertyConfigurator;
+
+import java.io.File;
+import java.util.*;
 
 /* Batch mode main! -- not Jetty main. Not tested, may not work. */
 public class Main {
@@ -136,7 +122,7 @@ public class Main {
 			if (dir == null)
 				dir = pwd;
 			String file = Util.baseName(f);
-			m.addMboxAccount(dir, false);
+			m.addMboxAccount("mbox", dir, false);
 			selectedFoldersList.add(dir + "^-^" + f);
 			if (sessionName == null)
 				sessionName = file; // assign first file as the session name

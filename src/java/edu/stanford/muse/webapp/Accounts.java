@@ -207,9 +207,10 @@ public class Accounts {
 		{
 			try {
 				String mboxDir = request.getParameter("mboxDir" + accountNum);
+				String emailSource = request.getParameter("emailSource" + accountNum);
 				// for non-std local folders dir, tbird prefs.js has a line like: user_pref("mail.server.server1.directory-rel", "[ProfD]../../../../../../tmp/tb");
 				log.info("adding mbox account: " + mboxDir);
-				errorMessage = m.addMboxAccount(mboxDir, accountType.equals("tbirdLocalFolders"));
+				errorMessage = m.addMboxAccount(emailSource, mboxDir, accountType.equals("tbirdLocalFolders"));
 				if (!Util.nullOrEmpty(errorMessage))
 				{
 					result.put("errorMessage", errorMessage);
@@ -238,6 +239,10 @@ public class Accounts {
 		String ownerName = request.getParameter("name");
 		if (!Util.nullOrEmpty(ownerName)) 
 			session.setAttribute("ownerName", ownerName);
+
+		String archiveTitle = request.getParameter("archiveTitle");
+		if (!Util.nullOrEmpty(archiveTitle))
+			session.setAttribute("archiveTitle", archiveTitle);
 
 		String alt = request.getParameter("alternateEmailAddrs");
 		if (Util.nullOrEmpty(alt))

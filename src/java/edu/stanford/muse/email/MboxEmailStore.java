@@ -37,6 +37,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	public static final Properties mstorProps;
 	private FolderCache folderCache;
 	private String rootPath;
+	private String accountKey;
 
 	static {
         //http://sourceforge.net/projects/mstor/files/mstor/0.9.13/
@@ -58,9 +59,10 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	// constructor for de-serialization
 	public MboxEmailStore() { }
 
-	public MboxEmailStore(String name, String path) throws IOException
+	public MboxEmailStore(String accountKey, String name, String path) throws IOException
 	{
 		super(name, "" /* no automatic email address for mbox files */);
+		this.accountKey = accountKey;
 		this.rootPath = new File(path).getCanonicalPath(); // get canonical because the incoming path may be convoluted, like <tbird profiledir>/../../... etc
 	}
 
@@ -210,7 +212,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	@Override
 	public String getAccountID()
 	{
-		return "mbox"; // always return mbox because the "folder" part of the cache file name will reflect the full path
+		return (Util.nullOrEmpty(accountKey) ? "mbox" : accountKey); // always return mbox because the "folder" part of the cache file name will reflect the full path
 	}
 
 	public static void main (String args[]) throws MessagingException, IOException

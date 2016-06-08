@@ -255,11 +255,11 @@ public class MuseEmailFetcher {
 	/** add mbox stores, given comma separated email directories. 
 	 * if localFolders, sets the display name of the store to "Local Folders" instead of the full path 
 	 * @throws MboxFolderNotReadableException */
-	public synchronized String addMboxAccount(String mailDirs, boolean localFolders) throws IOException, MboxFolderNotReadableException	    
+	public synchronized String addMboxAccount(String accountKey, String mailDirs, boolean localFolders) throws IOException, MboxFolderNotReadableException
 	{
 		if (Util.nullOrEmpty(mailDirs))
 			return null;
-		EmailStore emailStore = new MboxEmailStore(localFolders ? "Local Folders" : mailDirs, mailDirs);
+		EmailStore emailStore = new MboxEmailStore(accountKey, localFolders ? "Local Folders" : mailDirs, mailDirs);
 		return doConnect(emailStore);
 	}
 
@@ -611,7 +611,7 @@ public class MuseEmailFetcher {
 
 	public String toString()
 	{
-		return "Muse email fetcher with " + fetchers.size() + " fetcher(s)";
+		int nFetchers = Util.nullOrEmpty(fetchers) ? 0 : fetchers.size();
+		return "Muse email fetcher with " + nFetchers + " fetcher(s)";
 	}
-
 }

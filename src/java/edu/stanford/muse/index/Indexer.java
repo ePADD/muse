@@ -1848,15 +1848,15 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		Indexer li = new Indexer("/tmp", new IndexOptions());
 
 		// public EmailDocument(String id, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
-		EmailDocument ed = new EmailDocument("1", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
+		EmailDocument ed = new EmailDocument("1", "dummy", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
 		li.indexSubdoc(" ssn 123-45 6789 ", "name 1 is John Smith.  credit card # 1234 5678 9012 3456 ", ed, null);
-		ed = new EmailDocument("2", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
+		ed = new EmailDocument("2", "dummy", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
 		li.indexSubdoc(" ssn 123 45 6789", "name 1 is John Smith.  credit card not ending with a non-digit # 1234 5678 9012 345612 ", ed, null);
-		ed = new EmailDocument("3", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
+		ed = new EmailDocument("3", "dummy", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
 		li.indexSubdoc(" ssn 123 45 6789", "name 1 is John Smith.  credit card # 111234 5678 9012 3456 ", ed, null);
-		ed = new EmailDocument("4", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
+		ed = new EmailDocument("4", "dummy", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
 		li.indexSubdoc(" ssn 123 45 6789", "\nmy \nfirst \n book is \n something ", ed, null);
-        ed = new EmailDocument("5", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
+        ed = new EmailDocument("5", "dummy", "dummy", new Address[0], new Address[0], new Address[0], new Address[0], "", "", new Date());
         li.indexSubdoc("passport number k4190893", "\nmy \nfirst \n book is \n something ", ed, null);
 
         li.close();

@@ -15,13 +15,12 @@
 */
 package edu.stanford.muse.email;
 
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
 
 /* class to model a mailing list with some members */
 public class MailingList implements java.io.Serializable {
@@ -68,12 +67,12 @@ public class MailingList implements java.io.Serializable {
 			{
 				Contact c = ab.lookupByEmail(mailingList);
 				if (c != null)
-					c.mailingListState = SUPER_DEFINITE;
+					c.mailingListState |= SUPER_DEFINITE;
 			}
 	
 			if (sentToMailingLists.length == 1)
 			{
-				// definite list
+				// definite list, we make the assumption that all from addresses must belong to this mailing list
 				Contact c = ab.lookupByEmail(sentToMailingLists[0]);
 	
 				if (c != null)

@@ -49,7 +49,7 @@ public class EmailDocument extends DatedDocument implements Serializable
     public static final int SENT_MASK = 1;
     public static final int RECEIVED_MASK = 2;
 
-	public String folderName;
+	public String folderName, emailSource;
 	public Address[] to, from, cc, bcc;
 	
 	public String messageID;
@@ -65,7 +65,7 @@ public class EmailDocument extends DatedDocument implements Serializable
 	public EmailDocument(String id) { this.id = id; } /* prob. useful only for errors */
     public static Log log						= LogFactory.getLog(EmailDocument.class);
 
-	public EmailDocument(String id, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
+	public EmailDocument(String id, String emailSource, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
 	{
 		super(id, subject, date);
 		this.to = to;
@@ -76,6 +76,8 @@ public class EmailDocument extends DatedDocument implements Serializable
 //		this.url = url;
 		if (folderName != null)
 			this.folderName = InternTable.intern(folderName); // many messages will have the same foldername so better to intern
+		if (emailSource != null)
+			this.emailSource = emailSource;
 	}
 
 	public boolean hasError() { return errorString != null; }

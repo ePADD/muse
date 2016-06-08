@@ -164,6 +164,10 @@ public class EmailFetcherThread implements Runnable, Serializable {
         return fetchedFolderInfo.longName;
     }
 
+    protected String email_source() {
+        return fetchedFolderInfo.accountKey;
+    }
+
     public boolean mayHaveRunOutOfMemory() {
         return mayHaveRunOutOfMemory;
     }
@@ -325,7 +329,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
         }
 
         // take a deep breath. This object is going to live longer than most of us.
-        EmailDocument ed = new EmailDocument(id, folder_name(), to, cc, bcc, from, m.getSubject(), m.getMessageID(), c.getTime());
+        EmailDocument ed = new EmailDocument(id, email_source(), folder_name(), to, cc, bcc, from, m.getSubject(), m.getMessageID(), c.getTime());
 
         String[] headers = m.getHeader("List-Post");
         if (headers != null && headers.length > 0) {

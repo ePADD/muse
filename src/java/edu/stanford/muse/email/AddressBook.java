@@ -927,36 +927,6 @@ public class AddressBook implements Serializable {
         return stats;
     }
 
-    public String getStatsAsString() {
-        return getStatsAsString(true);
-    } // blur by default
-
-    // an older and slightly more elaborate version of get stats
-    public String getStatsAsString(boolean blur) {
-        // count how many with at least one sent
-        List<Contact> list = allContacts();
-        int nContacts = list.size();
-        int nNames = 0, nEmailAddrs = 0;
-        for (Contact ci : list) {
-            nNames += ci.names.size();
-            nEmailAddrs += ci.emails.size();
-        }
-
-        String result = list.size() + " people, "
-                + nEmailAddrs + " email addrs, (" + String.format("%.1f", ((float) nEmailAddrs) / nContacts) + "/contact), "
-                + nNames + " names, (" + String.format("%.1f", ((float) nNames) / nContacts) + "/contact)";
-
-        if (contactForSelf != null) {
-            result += " \n" + contactForSelf.emails.size() + " self emails: ";
-            for (String x : contactForSelf.emails)
-                result += (blur ? Util.blur(x) : x) + "|"; // "&bull; ";
-            result += "\n" + contactForSelf.names.size() + " self names: ";
-            for (String x : contactForSelf.names)
-                result += (blur ? Util.blur(x) : x) + "|"; // " &bull; ";
-        }
-
-        return result;
-    }
 
     public void resetCounts() {
         Set<Contact> allContacts = new LinkedHashSet<Contact>();
@@ -1042,9 +1012,7 @@ public class AddressBook implements Serializable {
             return null;
     }
 
-    /**
-     * masking stuff is used by epadd only
-     */
+    /** masking stuff is used by epadd only, to hide full email addrs in discovery mode */
     private static <V> Map<String, V> maskEmailDomain(Map<String, V> map, Map<String, String> maskingMap, Map<String, Integer> duplicationCount) {
         Map<String, V> result = new LinkedHashMap<String, V>();
         for (Map.Entry<String, V> e : map.entrySet()) {
@@ -1109,6 +1077,37 @@ public class AddressBook implements Serializable {
             return Util.maskEmailDomain(address);
         }
         return emailMaskingMap.get(address);
+    }
+
+    public String getStatsAsString() {
+        return getStatsAsString(true);
+    } // blur by default
+
+    // an older and slightly more elaborate version of get stats
+    public String getStatsAsString(boolean blur) {
+        // count how many with at least one sent
+        List<Contact> list = allContacts();
+        int nContacts = list.size();
+        int nNames = 0, nEmailAddrs = 0;
+        for (Contact ci : list) {
+            nNames += ci.names.size();
+            nEmailAddrs += ci.emails.size();
+        }
+
+        String result = list.size() + " people, "
+                + nEmailAddrs + " email addrs, (" + String.format("%.1f", ((float) nEmailAddrs) / nContacts) + "/contact), "
+                + nNames + " names, (" + String.format("%.1f", ((float) nNames) / nContacts) + "/contact)";
+
+        if (contactForSelf != null) {
+            result += " \n" + contactForSelf.emails.size() + " self emails: ";
+            for (String x : contactForSelf.emails)
+                result += (blur ? Util.blur(x) : x) + "|"; // "&bull; ";
+            result += "\n" + contactForSelf.names.size() + " self names: ";
+            for (String x : contactForSelf.names)
+                result += (blur ? Util.blur(x) : x) + "|"; // " &bull; ";
+        }
+
+        return result;
     }
 
     public String toString() {
