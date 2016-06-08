@@ -1,38 +1,37 @@
+<%@page language="java" contentType="text/html; charset=UTF-8"%>
 <!DOCTYPE html>
 <html dir="ltr" lang ="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="utf-8">
-<title>Consent Page</title>
-<link rel="stylesheet" href="css/consentform.css"/>
-<link rel="icon" href="images/stanford-favicon.gif">
+<title>CELL eligibility</title>
+	<link rel="stylesheet" href="../css/fonts.css" type="text/css"/>
+	<link rel="stylesheet" href="css/memory.css"/>
+	<link rel="icon" href="../images/ashoka-favicon.gif">
 </head>
 <body>
-<h1 class="title">Eligibility Form</h1>
+<div class="box">
+	<jsp:include page="header.jspf"/>
+		<h2 class="title">Eligibility Form</h2>
 <!-- This form is a variant of design by Inayaili de León, a web designer and blogger, writing a tutorial about HTML5 forms here: http://24ways.org/2009/have-a-field-day-with-html5-forms/-->
-<p class="center">Please fill out the following form to check if you are eligible to participate in this study.</p>
-<br>
-<form id="eligibility" action="checkEligible" method = "get">
+<p>Please fill out the following form to check if you are eligible to participate in this study.</p>
+
+<form action="checkEligible" method = "get">
 	<fieldset>
-	<legend>Your details</legend>
-		
+	<legend></legend>
 		<fieldset>
 		<legend>Gender:</legend>
-			<input type="radio" name="gender" value="male" required>
+			<input type="radio" id="gender" name="gender" value="male" required>
 			<label for="gender">Male</label>
 			<input type="radio" name="gender" value="female" required>
 			<label for="gender">Female</label>
 		
 		</fieldset>
+
 		<br>
-		<ol>
-			<li>
 				<legend>Age</legend>
 				<input type="text" name="age" id="age" name="age" required>
-			</li>
-		</ol>
-		
-		<ol>
-			<li>
+		<br/>
+		<br>
 			<legend>Please enter your level of education.</legend>
 				<select id="education" name="education" size="1">
 					<option value="">Choose an option</option>
@@ -43,18 +42,13 @@
 					<option value="masters">Master's Degree (M.S., M.B.A, etc.)</option>
 					<option value="phd">Doctorate Degree (Ph.D.,M.D., etc.)</option>
 				</select>
-			</li>
-		</ol>
-		
-		<ol>
-			<li>
+		<br/>
+		<br>
 				<legend>Profession</legend>
 				<input id="profession" name="profession" type="text" required>
-			</li>
-		</ol>
-		
-		<ol>
-			<li>
+		<br/>
+		<br>
+
 			<legend>Please select your ethnicity.</legend>
 				<select name="ethnicity" size="1">
 					<option value="">Choose an option</option>
@@ -68,41 +62,34 @@
 					<option value="nativeamerican">Native American or Alaskan Native</option>
 					<option value="other">Other</option>
 				</select>	
-			</li>
-		</ol>
-		
+		<br/>
+
 	</fieldset>
 	<fieldset>
-	<legend>Eligibility</legend>
-		
-		<fieldset>
-		<legend>Do you live within the United States?</legend>
-			<input type="radio" name="residenceinus" value="Yes" required>
-			<label for="residenceinus">Yes</label>
-			<input type="radio" name ="residenceinus" value="No" required>
-			<label for="residenceinus">No</label>			
-		</fieldset>
-	
+		<p></p>
+
 		<fieldset>
 		<legend>Is the majority of your email in English?</legend>
-			<input name="emaillang" type="radio" value="Yes">
+			<input id="emaillang" name="emaillang" type="radio" value="Yes">
 			<label for="emaillang">Yes</label>	
 			<input name ="emaillang" type="radio" value="No">
 			<label for="emaillang">No</label>		
-		</fieldset>	
-	
+		</fieldset>
+		<br/>
 		<fieldset>
 		<legend>Do you have reliable, uninterrupted Internet access for about an hour?</legend>
 			<input type="radio" name="access" value="Yes" required>
-			<label for="access">Yes</label>
+			<label id="access" for="access">Yes</label>
 			<input type="radio" name="access" value="No" required>
 			<label for="access">No</label>
 		</fieldset>
 		
-	</fieldset>	
-	<fieldset>
-		<button type="submit">Continue</button>
 	</fieldset>
+	<br/>
+	<div style="text-align:center">
+		<button type="submit">Continue</button>
+	</div>
 </form>
+</div>
 </body>
 </html>

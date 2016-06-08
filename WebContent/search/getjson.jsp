@@ -1,9 +1,9 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@page language="java" import="edu.stanford.muse.slant.*"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="java.net.*"%>
-<%@page language="java" import="java.io.*"%>
-<%@page language="java" import="org.apache.log4j.*"%>
+<%@page language="java" import="edu.stanford.muse.util.Util"%>
+<%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
+<%@page language="java" import="java.io.BufferedReader"%>
+<%@page language="java" import="java.io.FileReader"%>
+<%@ page import="java.io.IOException" %>
 
 <%
 String str="";
@@ -16,7 +16,7 @@ try {
 		   
 } 
 catch (IOException e) {
-			
+	Util.print_exception(e, JSPHelper.log);
 }
 		
 out.println (str);

@@ -16,21 +16,16 @@
 package edu.stanford.muse.index;
 
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+
+import java.io.Serializable;
+import java.util.*;
 
 public class LinkInfo implements Serializable {
 	// private static Log log = LogFactory.getLog(LinkInfo.class);
@@ -111,8 +106,7 @@ public static String linksToJson(List<LinkInfo> links)
 		obj.addProperty("times", map.get(url).size());
 		arr.add(obj);
 	}
-	String json = gson.toJson(arr);
 	// log.info ("json = " + json);
-	return json;
+	return gson.toJson(arr);
 }
 }

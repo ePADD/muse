@@ -1,16 +1,12 @@
 package edu.stanford.muse.ner.segmentation;
 
 import com.google.gson.Gson;
-import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureVector;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.util.DictUtils;
-import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.SimpleSessions;
 import libsvm.svm;
 import libsvm.svm_model;
 import libsvm.svm_node;
@@ -28,7 +24,6 @@ import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.util.*;
 /**
  * Created by viharipiratla on 22/05/15.
  *
@@ -39,7 +34,8 @@ public class WordSegmenter {
         public double[] coeffs;
         static String modelFileName = "segmentationModel.json";
         //for gson loading
-        public SegmentationModel(){};
+        public SegmentationModel(){}
+
         public SegmentationModel(double[] coeffs){
             this.coeffs = coeffs;
         }
@@ -202,19 +198,20 @@ public class WordSegmenter {
         public void test(SegmentationModel smodel){
             System.out.println("The trained model misses these");
             int missed = 0;
-            for(Pair<String,String> tinst: tdata) {
+            for (Pair<String,String> tinst: tdata) {
                 String phrase = tinst.getFirst();
                 String match = tinst.getSecond();
                 Pair<String,String> p = smodel.segment(phrase, this.wfs, this.svmModel);
                 String sp = p.first;
-                if(match!=null)
+                if (match!=null)
                     match =  match.replaceAll("^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.?|[Pp]rof\\.?)\\W+", "");
-                if(sp!=null)
+                if (sp!=null)
                     sp = sp.replaceAll("^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.?|[Pp]rof\\.?)\\W+", "");
-                if (!match.equals(sp)) {
-                    missed++;
-                    System.out.println("Segmented phrase: " + sp + " for " + phrase + ", expected: " + match);
-                }
+                if (match != null)
+                    if (!match.equals(sp)) {
+                        missed++;
+                        System.out.println("Segmented phrase: " + sp + " for " + phrase + ", expected: " + match);
+                    }
             }
             System.out.println("Missed: "+missed+" of "+tdata.size());
         }
@@ -355,7 +352,7 @@ public class WordSegmenter {
         int numGood = 0;
         SegmentationFunction sfunction = new SegmentationFunction(svmModel, wfs);
         List<String> markers = Arrays.asList("dear","hi","hello","mr","mrs","miss","sir","madam","dr.","prof");
-        String[] aTypes = wfs.aTypes.get(FeatureDictionary.PERSON);
+        String[] aTypes = FeatureDictionary.aTypes.get(FeatureDictionary.PERSON);
         //iterate over cicnames to find names that are super strings of names in gazettes
         for(String cicname: wfs.counts.keySet()){
             cicname = IndexUtils.stripExtraSpaces(cicname);

@@ -2,7 +2,6 @@ package edu.stanford.muse.memory;
 
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.xword.Clue;
 import org.apache.commons.logging.Log;
@@ -10,7 +9,6 @@ import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
 import java.util.Date;
-import java.util.Set;
 
 public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Serializable {
 	private static final long serialVersionUID = 1L;
@@ -26,10 +24,6 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 	public String userAnswerBeforeHint, userAnswer;
 	public UserAnswerStats stats;
-    public static enum RecallType{
-        Nothing,Context,TipOfTongue,UnfairQuestion;
-    }
-	
 	static public class UserAnswerStats implements java.io.Serializable {
         //comment by @vihari: Why are some fields marked public and others not? I don't see a pattern or a need for that.
 		public String uid;
@@ -43,18 +37,17 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		// potentially add edit distance
 
         //Will be set only if the answer is wrong
-        public RecallType recallType;
-        //extra info. about the recall type
-        public Object recallExtra;
+		public int recallType, recallTypeBeforeHint;
 
 		int certainty = -1;
 		int memoryType = -1;
-		public Date recency = null;
+		public Date guessedDate = null;
+		public boolean userGaveUp = false;
 
 		// stats computed when answer is wrong
 		public boolean letterCountCorrect; // (only populated if the answer is wrong)
 		public boolean userAnswerPartOfAnyAddressBookName; // (only populated if the answer is wrong)
-		int wrongAnswerReason = -1; // only populated if the answer is wrong
+		public int wrongAnswerReason = -1; // only populated if the answer is wrong
 		public int nMessagesWithUserAnswer = -1; // original content only
 		public int userAnswerAssociationWithCorrectAnswer = -1; // # messages in which the user answer and the correct answer appear together (only populated if the answer is wrong)
 		public String toString() { return Util.fieldsToString(this, true); }
@@ -101,21 +94,22 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
      * @param userAnswer - The user answer when the submit button is clicked
      * @param userAnswerBeforeHint - The user answer before the hint is used
      * @param recallType - The reason why the answer cannot be recalled
-     * @param failReason - Depending on the type of failure to give answer, a further explanation or info. about the failure
      * @param millis - Time elapsed before the question is answered
      * @param hintused - indicating if the hint is used
      * @param certainty - A rating on how certain the user is about the answer
      * @param memoryType - A rating on how well the user can recall the context
-     * @param recency - The user's guess on when the particular sentence is compiled*/
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object failReason, long millis, boolean hintused, int certainty, int memoryType, Date recency) {
+     * @param guessedDate - The user's guess on when the particular sentence is compiled
+	 * */
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
-		
+		this.stats.recallTypeBeforeHint = recallTypeBeforeHint;
 		this.stats.userAnswerCorrect = isUserAnswerCorrect();
 		this.stats.certainty = certainty;
 		this.stats.memoryType = memoryType;
-		this.stats.recency = recency;
+		this.stats.guessedDate = guessedDate;
 		this.stats.hintused = hintused;
+		this.stats.userGaveUp = userGaveUp;
 		this.stats.millis = millis;
 
 		boolean userAnswerPartOfAnyAddressBookName = study.archive.addressBook.isStringPartOfAnyAddressBookName(userAnswer);
@@ -124,7 +118,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		
 		stats.letterCountCorrect = (cAnswer.length() == correctAnswer.length());
 
-		if (userAnswer==null || userAnswer.equals("") || !isUserAnswerCorrect()) {
+		if (userAnswer.equals("") || !isUserAnswerCorrect()) {
 			// do further lookups on user answer if its wrong
 			try {
 				Archive archive = study.archive;
@@ -134,7 +128,6 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
                 this.stats.recallType = recallType;
-                this.stats.recallExtra = failReason;
             } catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }
 		} 
 	}
@@ -162,7 +155,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 			char ch = correctanswer.charAt(i);
 			// we can reveal the spaces in the answer, else it is very counter-intuitive.
 			if (showNextLetter) {
-				blanks += ch;
+				blanks += "<span class=\"hint-letter\">" + ch + "</span>";
 			} else {
 				blanks += (Character.isWhitespace(ch) ? " " : "_ ");
 			}

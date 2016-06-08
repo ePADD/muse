@@ -90,7 +90,8 @@ public class Accounts {
 
 		if (server != null)
 			server = server.trim();
-		if (loginName != null) 
+
+		if (loginName != null)
 			loginName = loginName.trim();
 
 		// for these ESPs, the user may have typed in the whole address or just his/her login name
@@ -115,7 +116,7 @@ public class Accounts {
 			
 			defaultFolder = "Sent";
 			
-			if(true) {
+			{
 				// ISPDB from Mozilla
 				imapDBLookupFailed = true;
 
@@ -234,7 +235,7 @@ public class Accounts {
 	{
 		HttpSession session = request.getSession();
 		
-		String ownerName = (String) request.getParameter("name");
+		String ownerName = request.getParameter("name");
 		if (!Util.nullOrEmpty(ownerName)) 
 			session.setAttribute("ownerName", ownerName);
 

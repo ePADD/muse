@@ -1,0 +1,42 @@
+@font-face {
+  font-family: 'Allura';
+  font-weight: 400;
+  font-style: normal;
+  src: url('/muse/fonts/Allura-regular/Allura-regular.eot');
+  src: url('/muse/fonts/Allura-regular/Allura-regular.eot?#iefix') format('embedded-opentype'),
+       local('Allura'),
+       local('Allura-regular'),
+       url('/muse/fonts/Allura-regular/Allura-regular.woff2') format('woff2'),
+       url('/muse/fonts/Allura-regular/Allura-regular.woff') format('woff'),
+       url('/muse/fonts/Allura-regular/Allura-regular.ttf') format('truetype'),
+       url('/muse/fonts/Allura-regular/Allura-regular.svg#Allura') format('svg');
+}
+
+@font-face {
+  font-family: 'Dancing Script';
+  font-weight: 400;
+  font-style: normal;
+  src: url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.eot');
+  src: url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.eot?#iefix') format('embedded-opentype'),
+       local('Dancing Script'),
+       local('Dancing-Script-regular'),
+       url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.woff2') format('woff2'),
+       url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.woff') format('woff'),
+       url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.ttf') format('truetype'),
+       url('/muse/fonts/Dancing-Script-regular/Dancing-Script-regular.svg#DancingScript') format('svg');
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-weight: 400;
+  font-style: normal;
+  src: url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.eot');
+  src: url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.eot?#iefix') format('embedded-opentype'),
+       local('Open Sans'),
+       local('Open-Sans-regular'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.woff2') format('woff2'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.woff') format('woff'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.ttf') format('truetype'),
+       url('/muse/fonts/Open-Sans-regular/Open-Sans-regular.svg#OpenSans') format('svg');
+}
+

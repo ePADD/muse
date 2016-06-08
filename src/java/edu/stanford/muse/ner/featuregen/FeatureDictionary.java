@@ -4,7 +4,6 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.model.BMMModel;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
-
 import edu.stanford.muse.util.Util;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.logging.Log;

@@ -16,37 +16,24 @@
 
 package edu.stanford.muse.lens;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import edu.stanford.muse.email.AddressBook;
+import edu.stanford.muse.email.Contact;
+import edu.stanford.muse.ie.NameInfo;
+import edu.stanford.muse.index.*;
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import edu.stanford.muse.email.AddressBook;
-import edu.stanford.muse.email.Contact;
-import edu.stanford.muse.ie.NameInfo;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.JSPHelper;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 public class Lens {
     public static Log log = LogFactory.getLog(JSPHelper.class);
@@ -302,7 +289,7 @@ public class Lens {
 		int N_TEASERS = 5;
 		for (int i = 0; i < finalDocList.size() && i < N_TEASERS; i++)
 		{
-			JSONObject message = ((EmailDocument) finalDocList.get(i)).toJSON(0);
+			JSONObject message = finalDocList.get(i).toJSON(0);
 			messages.put(i, message);
 		}
 		json.put("messages", messages);	

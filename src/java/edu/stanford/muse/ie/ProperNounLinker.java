@@ -15,7 +15,6 @@ import edu.stanford.muse.util.Pair;
 
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
-import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
@@ -84,6 +83,7 @@ public class ProperNounLinker {
             for (String st : subToks) {
                 String ct = EnglishDictionary.getSingular(st);
                 bows.add(ct);
+
             }
         }
         return bows;

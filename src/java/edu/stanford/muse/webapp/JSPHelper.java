@@ -219,9 +219,8 @@ public class JSPHelper {
 		String userKey = (String) getSessionAttribute(session, "userKey");
 		ServletContext application = session.getServletContext();
 		String documentRootPath = application.getRealPath("/").toString();
-		String rootDir = documentRootPath + File.separatorChar + userKey;
 
-		return rootDir;
+		return documentRootPath + File.separatorChar + userKey;
 	}
 
 	/**
@@ -348,94 +347,90 @@ public class JSPHelper {
 	 * @throws Exception
 	 */
 	public static void fetchAndIndexEmails(Archive archive, MuseEmailFetcher m, HttpServletRequest request, HttpSession session, boolean downloadMessageText, boolean downloadAttachments, boolean useDefaultFolders)
-			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError
-	{
-		// first thing, set up a static status so user doesn't see a stale status message
-		session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));
+			throws MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError {
+        // first thing, set up a static status so user doesn't see a stale status message
+        session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));
 
-		checkContainer(request);
-		String encoding = request.getCharacterEncoding();
-		log.info("request parameter encoding is " + encoding);
+        checkContainer(request);
+        String encoding = request.getCharacterEncoding();
+        log.info("request parameter encoding is " + encoding);
 
-		if (!downloadMessageText)
-			if ("true".equalsIgnoreCase(request.getParameter("downloadMessageText")))
-			{
-				downloadMessageText = true;
-				log.info("Downloading message text because advanced option was set");
-			}
+        if (!downloadMessageText)
+            if ("true".equalsIgnoreCase(request.getParameter("downloadMessageText"))) {
+                downloadMessageText = true;
+                log.info("Downloading message text because advanced option was set");
+            }
 
-		if (!downloadAttachments)
-			if ("true".equalsIgnoreCase(request.getParameter("downloadAttachments")))
-			{
-				downloadAttachments = true;
-				downloadMessageText = true; // because text is needed for attachment wall -- otherwise we can't break out from piclens to browsing messages associated with a particular thumbnail
-				log.info("Downloading attachments because advanced option was set");
-			}
+        if (!downloadAttachments)
+            if ("true".equalsIgnoreCase(request.getParameter("downloadAttachments"))) {
+                downloadAttachments = true;
+                downloadMessageText = true; // because text is needed for attachment wall -- otherwise we can't break out from piclens to browsing messages associated with a particular thumbnail
+                log.info("Downloading attachments because advanced option was set");
+            }
 
-		String[] allFolders = request.getParameterValues("folder");
-		if (allFolders != null)
-		{
-			// try to read folder strings, first checking for exceptions
-			try {
-				allFolders = JSPHelper.convertRequestParamsToUTF8(allFolders, true);
-			} catch (UnsupportedEncodingException e) {
-				// report exception and try to read whatever folders we can, ignoring the exception this time
-				log.warn("Unsupported encoding exception: " + e);
-				try {
-					allFolders = JSPHelper.convertRequestParamsToUTF8(allFolders, false);
-				} catch (UnsupportedEncodingException e1) {
-					log.warn("Should not reach here!" + e1);
-				}
-			}
-		}
-
-		Map<String, String> requestMap = convertRequestToMap(request);
-		Filter filter = Filter.parseFilter(requestMap);
-		// if required, forceEncoding can go into fetch config
-		//	String s = (String) session.getAttribute("forceEncoding");
-		FetchConfig fc = new FetchConfig();
-		fc.downloadMessages = downloadMessageText;
-		fc.downloadAttachments = downloadAttachments;
-		fc.filter = filter;
-
-		archive.setBaseDir(getBaseDir(m, request));
-		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
-		//make sure the archive is dumped at this point
-		archive.close();
-		archive.openForRead();
-
-        String modelFile = BMMModel.modelFileName;
-        NERModel nerModel = (BMMModel)session.getAttribute("ner");
-        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: "+modelFile+"..."));
-        try {
-            if (System.getProperty("muse.dummy.ner") != null) {
-		log.info("Using dummy NER model, all CIC patterns will be treated as valid entities");
-                nerModel = new DummyNERModel();
-	    }
-            else{
-		log.info("Loading NER sequence model from: " + modelFile + " ...");
-                nerModel = BMMModel.loadModel(modelFile);
-	    }
-        } catch (IOException e) {
-            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
-        }
-        if (nerModel == null) {
-            log.error("Could not load NER model from: "+modelFile);
-        }
-        else {
-            NER ner = new NER(archive, nerModel);
-            session.setAttribute("statusProvider", ner);
-            ner.recognizeArchive();
-            archive.processingMetadata.entityCounts = ner.stats.counts;
-			log.info(ner.stats);
-        }
-        archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
-        log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
-
-        //Is there a reliable and more proper way of checking the mode it is running in?
-        String logF = System.getProperty("muse.log");
-        if(logF == null || logF.endsWith("epadd.log")) {
+        String[] allFolders = request.getParameterValues("folder");
+        if (allFolders != null) {
+            // try to read folder strings, first checking for exceptions
             try {
+                allFolders = JSPHelper.convertRequestParamsToUTF8(allFolders, true);
+            } catch (UnsupportedEncodingException e) {
+                // report exception and try to read whatever folders we can, ignoring the exception this time
+                log.warn("Unsupported encoding exception: " + e);
+                try {
+                    allFolders = JSPHelper.convertRequestParamsToUTF8(allFolders, false);
+                } catch (UnsupportedEncodingException e1) {
+                    log.warn("Should not reach here!" + e1);
+                }
+            }
+        }
+
+        Map<String, String> requestMap = convertRequestToMap(request);
+        Filter filter = Filter.parseFilter(requestMap);
+        // if required, forceEncoding can go into fetch config
+        //	String s = (String) session.getAttribute("forceEncoding");
+        FetchConfig fc = new FetchConfig();
+        fc.downloadMessages = downloadMessageText;
+        fc.downloadAttachments = downloadAttachments;
+        fc.filter = filter;
+
+        archive.setBaseDir(getBaseDir(m, request));
+        m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
+        //make sure the archive is dumped at this point
+        archive.close();
+        archive.openForRead();
+
+        //perform entity IE related tasks only if the message text is available
+        if (downloadMessageText) {
+            String modelFile = BMMModel.modelFileName;
+            NERModel nerModel = (BMMModel) session.getAttribute("ner");
+            session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: " + modelFile + "..."));
+            try {
+                if (System.getProperty("muse.dummy.ner") != null) {
+                    log.info("Using dummy NER model, all CIC patterns will be treated as valid entities");
+                    nerModel = new DummyNERModel();
+                } else {
+                    log.info("Loading NER sequence model from: " + modelFile + " ...");
+                    nerModel = BMMModel.loadModel(modelFile);
+                }
+            } catch (IOException e) {
+                Util.print_exception("Could not load the sequence model from: " + modelFile, e, log);
+            }
+            if (nerModel == null) {
+                log.error("Could not load NER model from: " + modelFile);
+            } else {
+                NER ner = new NER(archive, nerModel);
+                session.setAttribute("statusProvider", ner);
+                ner.recognizeArchive();
+                archive.processingMetadata.entityCounts = ner.stats.counts;
+                log.info(ner.stats);
+            }
+            archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+            log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+
+            //Is there a reliable and more proper way of checking the mode it is running in?
+            String logF = System.getProperty("muse.log");
+            if (logF == null || logF.endsWith("epadd.log")) {
+                try {
 //                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
 //                session.setAttribute("statusProvider", assignauthorities);
 //                assignauthorities.initialize(archive);
@@ -448,12 +443,13 @@ public class JSPHelper {
 //                    log.warn("Could not build context features for entities");
 //                } else
 //                    log.info("Successfully built context features for entities");
-            } catch (Exception e) {
-                log.warn("Exception while building context features", e);
+                } catch (Exception e) {
+                    log.warn("Exception while building context features", e);
+                }
             }
         }
-		// add the new stores
-	}
+        // add the new stores
+    }
 
 	/*
 	 * creates a new blob store object from the given location (may already
@@ -572,7 +568,7 @@ public class JSPHelper {
 
 		String link = request.getRequestURL() + "?";
 
-		Map<String, String[]> rpMap = (Map<String, String[]>) request.getParameterMap();
+		Map<String, String[]> rpMap = request.getParameterMap();
 		if (rpMap.size() > 0)
 			sb.append(" params: ");
 		for (Object o : rpMap.keySet())
@@ -585,7 +581,7 @@ public class JSPHelper {
 				continue;
 			}
 
-			String[] vals = (String[]) rpMap.get(str1);
+			String[] vals = rpMap.get(str1);
 			if (vals.length == 1)
 				sb.append(Util.ellipsize(vals[0], 100));
 			else
@@ -715,7 +711,7 @@ public class JSPHelper {
 		if (addressBook == null) {
 			return new Pair<String, String>(s, "browse?person=" + s);
 		} else {
-			Contact contact = addressBook.lookupByEmail(((InternetAddress) a).getAddress());
+			Contact contact = addressBook.lookupByEmail(a.getAddress());
 			return new Pair<String, String>(s, "browse?contact=" + addressBook.getContactId(contact));
 		}
 	}

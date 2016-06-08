@@ -1,6 +1,9 @@
 package edu.stanford.muse.util;
-import java.util.*;
-import java.text.*;
+
+import java.text.MessageFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 public class Messages {
 
@@ -25,8 +28,7 @@ public class Messages {
 		formatter.setLocale(locale);
 
 		formatter.applyPattern(messages.getString(key));
-		String output = formatter.format(args);
-		return output;
+		return formatter.format(args);
 	}
 
 	static public void main(String[] args) {

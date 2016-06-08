@@ -122,8 +122,7 @@
 			
 			
 		});
-	};
-
+	}
 	/**
 	 * selectMenuitem
 	 * @param 
@@ -142,8 +141,7 @@
 		if(!isInNested)$this.parents("."+container.clz).roundrrwheel(index);
 		else $this.roundrrwheel(index);
 		cancelBubble(evt);
-	};
-	
+	}
 	/**
 	 * cancel event bubbling - x-browser friendly
 	 * @param
@@ -152,8 +150,7 @@
 	function cancelBubble(evt){
 		if(!$.support.opacity) window.event.cancelBubble = true;
 		else evt.stopPropagation();
-	};
-	
+	}
 	/**
 	 * All the MENU events to be bound to the radial menu
 	 */
@@ -270,11 +267,12 @@
 	
 	function updateRadius(opts, radius, factor){
 		return $.extend({},opts,{radius:(factor*radius)});
-	};
-	
-	// random int offset 
-	function rnd(i){return parseInt(Math.random()*i);};
-	
+	}
+	// random int offset
+
+	function rnd(i) {
+		return parseInt(Math.random() * i);
+	}
 	/**
 	 * getMenu 
 	 * @params
@@ -295,8 +293,7 @@
 				return $menu.find("."+$.roundrrwheel.container.itemClz);
 			}
 		};
-	};
-	
+	}
 	/**
 	 * switchItems
 	 * @params
@@ -314,8 +311,7 @@
 		if(remove>add) $remove.insertBefore(toAddto);
 		else $remove.insertAfter(toAddto);
 		animateWheel($m,posOffset, direction); // posOffset = 5:neat, 10:fireworksesque, 15:subtleish
-	};
-	
+	}
 	/**
 	 * buildMenuHTML - returns string instead of objects
 	 * 		for performance 
@@ -341,8 +337,7 @@
 			ret += "</div>";
 		});
 		return ret;
-	};
-	
+	}
 	/**
 	 * getCoords - returns coordinates for menuitems
 	 * 	@params
@@ -374,8 +369,7 @@
 	
 			
 		return {x: l, y: t}; // return the x,y coords
-	};
-	
+	}
 	/**
 	 * animateWheel - performs animation
 	 * @params
@@ -492,6 +486,5 @@
 			
 			
 		});
-	};
-	
+	}
 })(jQuery);

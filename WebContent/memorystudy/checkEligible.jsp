@@ -1,7 +1,7 @@
 <%@page language="java" contentType="text/html; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.webapp.*"%>
+<%@page language="java" import="edu.stanford.muse.webapp.HTMLUtils"%>
+<%@page language="java" %>
 <%
 boolean redirect = true;
 String message = ""; // set if no redirect
@@ -17,12 +17,6 @@ if (ageint < 18) {
 
 // yes/no questions
 
-String inus_response = (String) request.getParameter("residenceinus");
-if (!"yes".equalsIgnoreCase(inus_response)) {
-	redirect = false;
-	message = "Unfortunately, the scope of our study is currently limited to those living within the United States.\n";
-}
-
 String lang_response = (String) request.getParameter("emaillang");
 if (!"yes".equalsIgnoreCase(lang_response)) {
 	redirect = false;
@@ -36,7 +30,7 @@ if (!"yes".equalsIgnoreCase(access_response)) {
 }
 
 if (redirect) {
-	response.sendRedirect("/muse/memorystudy/consentForm");
+	response.sendRedirect("../screen");
 	return;
 }
 
@@ -45,7 +39,8 @@ session.setAttribute("gender", gender);
 String education = (String) request.getParameter("education");
 session.setAttribute("education", education);
 String profession = (String) request.getParameter("profession");
-profession = profession.replaceAll("\\s", "_");
+if (profession != null)
+	profession = profession.replaceAll("\\s", "_");
 session.setAttribute("profession", profession);
 String ethnicity = (String) request.getParameter("ethnicity");
 session.setAttribute("ethnicity", ethnicity);
@@ -53,16 +48,20 @@ session.setAttribute("ethnicity", ethnicity);
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="css/memoryjsp.css" type="text/css" />
-<link rel="icon" href="images/stanford-favicon.gif">
+	<title>Results of eligibility check</title>
+	<link rel="icon" href="../images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="../css/fonts.css"/>
+	<link rel="stylesheet" href="css/memory.css"/>
 <title>Not Eligible</title>
 </head>
 <body>
 <div class="box">
-<h1 class="title">Sorry, you're not eligible</h1>
+<jsp:include page="header.jspf"/>
+
+	<h2 class="title">Sorry, you're not eligible.</h2>
 	<br>
 	<%= message %>
-	<p class="bold">Please go back to the  <a href="eligibilitypage.html">eligibility page</a>.</p>
+	Please go back to the  <a href="eligibility">eligibility page</a>.
 	<br>
 </div>
 </body>

@@ -15,27 +15,21 @@
 */
 package edu.stanford.muse.index;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import edu.stanford.muse.util.Pair;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import edu.stanford.muse.util.Pair;
-
 /** this class for debugging (?) */
 public class IndexManager {
 
 	private String rootDir = "";
 
-	public void saveFullTextIndex(String datasetName, Archive driver) throws FileNotFoundException, IOException
+	public void saveFullTextIndex(String datasetName, Archive driver) throws IOException
 	{
 		String file = rootDir + File.separatorChar + datasetName + ".ft-index";
 		ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream(file)));

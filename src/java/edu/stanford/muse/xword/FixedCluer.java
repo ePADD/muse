@@ -1,18 +1,15 @@
 package edu.stanford.muse.xword;
 
+import edu.stanford.muse.exceptions.ReadContentsException;
+import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.store.LockObtainFailedException;
-
-import edu.stanford.muse.exceptions.ReadContentsException;
-import edu.stanford.muse.util.Util;
 
 /** simple cluer */
 public class FixedCluer extends Cluer {
@@ -46,7 +43,7 @@ public class FixedCluer extends Cluer {
 
 	/** returns clue for word, either from cache if available, or creates a new one if possible. returns null if no adequate clue is found */
 	@Override
-	public Clue bestClueFor (String word, Set<String> sentencesUsedAsClues) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
+	public Clue bestClueFor (String word, Set<String> sentencesUsedAsClues) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
 	{
 		String originalAnswer = this.c.getOriginalAnswer(word);
 		Clue c = null;		

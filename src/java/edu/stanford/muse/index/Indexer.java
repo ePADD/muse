@@ -40,9 +40,8 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.SingleInstanceLockFactory;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -75,11 +74,12 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 	/** these enums should move out of this class if Indexer is to be made protected because they are part of the API -sgh */
 	public enum QueryType {
-		FULL, ORIGINAL, CORRESPONDENTS, SUBJECT, REGEX, PRESET_REGEX, META;
-	};
+		FULL, ORIGINAL, CORRESPONDENTS, SUBJECT, REGEX, PRESET_REGEX, META
+	}
+
 	public enum SortBy{
-		RELEVANCE, CHRONOLOGICAL_ORDER, RECENT_FIRST;
-	};
+		RELEVANCE, CHRONOLOGICAL_ORDER, RECENT_FIRST
+	}
 
 	// weight given to email subject; 2 means subject is given 2x weight
     static final int			DEFAULT_SUBJECT_WEIGHT			= 2;
@@ -236,7 +236,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	protected Indexer() throws IOException {
-		this(null, (IndexOptions) null);
+		this(null, null);
 	}
 
 	protected Indexer(String baseDir, IndexOptions io) throws IOException {
@@ -259,7 +259,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	// (Adapted from http://www.flax.co.uk/blog/2011/06/24/how-to-remove-a-stored-field-in-lucene/)
 
 	// report on whether some of these fields exist in the given directory, and return result
-	private static boolean indexHasFields(Directory dir, String... fields) throws CorruptIndexException, IOException
+	private static boolean indexHasFields(Directory dir, String... fields) throws IOException
 	{
 		return true; // return true pending migration of IndexReader to DirectoryReader
 
@@ -349,7 +349,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/** returns whether indexAttachments succeeded */
-	private synchronized boolean indexAttachments(Collection<EmailDocument> docs, BlobStore blobStore) throws CorruptIndexException, LockObtainFailedException, IOException
+	private synchronized boolean indexAttachments(Collection<EmailDocument> docs, BlobStore blobStore) throws IOException
 	{
 		if (iwriter_blob == null) {
 			//if (directory_blob == null) directory_blob = initializeDirectory(directory_blob, INDEX_NAME_ATTACHMENTS); // should already be valid
@@ -673,13 +673,12 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
         //do not remove any stop words.
 		StandardAnalyzer standardAnalyzer = new StandardAnalyzer(LUCENE_VERSION, CharArraySet.EMPTY_SET);
-		PerFieldAnalyzerWrapper pfa = new PerFieldAnalyzerWrapper(standardAnalyzer, map);
 
-		return pfa;
+		return new PerFieldAnalyzerWrapper(standardAnalyzer, map);
 	}
 
 	// set create = false to append to existing index.
-	private IndexWriter openIndexWriter(Directory dir) throws CorruptIndexException, LockObtainFailedException, IOException
+	private IndexWriter openIndexWriter(Directory dir) throws IOException
 	{
 		//IndexWriterConfig config = new IndexWriterConfig(MUSE_LUCENE_VERSION, null);
 		//IndexWriter writer = new IndexWriter(dir, null, IndexWriter.MaxFieldLength.UNLIMITED);
@@ -1325,15 +1324,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		Collection<String> result = new ArrayList<String>();
 
 		//	String escaped_q = escapeRegex(q); // to mimic built-in regex support
-		String escaped_q = q;
 		//TODO: There should also be a general query type that takes any query with field param, i.e. without parser
 		Query query;
 		if (qt == QueryType.ORIGINAL)
-			query = parserOriginal.parse(escaped_q);
+			query = parserOriginal.parse(q);
 		else if (qt == QueryType.SUBJECT)
-			query = parserSubject.parse(escaped_q);
+			query = parserSubject.parse(q);
 		else if (qt == QueryType.CORRESPONDENTS)
-			query = parserCorrespondents.parse(escaped_q);
+			query = parserCorrespondents.parse(q);
 		else if (qt == QueryType.REGEX)
 		{
 			query = new BooleanQuery();
@@ -1360,9 +1358,9 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				log.warn("Preset queries is not initialised");
 			}
 		} else if (qt == QueryType.META) {
-            query = parserMeta.parse(escaped_q);
+            query = parserMeta.parse(q);
 		} else
-			query = parser.parse(escaped_q);
+			query = parser.parse(q);
 
 		//		query = convertRegex(query);
         long st = System.currentTimeMillis();
@@ -1546,7 +1544,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	// since we may need to rebuild the index in a new directory, the analyzer needs to have been initialized apriori
-	private synchronized Directory copyDirectoryExcludeFields(Directory dir, String out_basedir, String out_name, String... fields_to_be_removed) throws CorruptIndexException, IOException
+	private synchronized Directory copyDirectoryExcludeFields(Directory dir, String out_basedir, String out_name, String... fields_to_be_removed) throws IOException
 	{
 		IndexReader reader = DirectoryReader.open(dir); // IndexReader.open(dir, true); // read-only=true
 
@@ -1568,7 +1566,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	// since we may need to rebuild the index in a new directory, the analyzer needs to have been initialized apriori
-	private synchronized Directory copyDirectoryWithDocFilter(Directory dir, String out_basedir, String out_name, FilterFunctor filter_func) throws CorruptIndexException, IOException
+	private synchronized Directory copyDirectoryWithDocFilter(Directory dir, String out_basedir, String out_name, FilterFunctor filter_func) throws IOException
 	{
 		long startTime = System.currentTimeMillis();
 		IndexReader reader = DirectoryReader.open(dir); // IndexReader.open(dir, true); // read-only=true
@@ -1594,7 +1592,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return newDir;
 	}
 
-    private synchronized Directory removeFieldsFromDirectory(Directory dir, String... fields_to_be_removed) throws CorruptIndexException, IOException
+    private synchronized Directory removeFieldsFromDirectory(Directory dir, String... fields_to_be_removed) throws IOException
 	{
 		if (!indexHasFields(dir, fields_to_be_removed))
 			return dir;
@@ -1623,19 +1621,19 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	// since we may need to rebuild the index in a new directory, the analyzer needs to have been initialized apriori
-	private synchronized void removeFieldsFromDirectory(String... fields_to_be_removed) throws CorruptIndexException, IOException
+	private synchronized void removeFieldsFromDirectory(String... fields_to_be_removed) throws IOException
 	{
 		directory = removeFieldsFromDirectory(directory, fields_to_be_removed);
 		directory_blob = removeFieldsFromDirectory(directory_blob, fields_to_be_removed);
 	}
 
-	private synchronized void copyDirectoryExcludeFields(String out_dir, String... fields_to_be_removed) throws CorruptIndexException, IOException
+	private synchronized void copyDirectoryExcludeFields(String out_dir, String... fields_to_be_removed) throws IOException
 	{
 		directory = copyDirectoryExcludeFields(directory, out_dir, INDEX_NAME_EMAILS, fields_to_be_removed);
 		directory_blob = copyDirectoryExcludeFields(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, fields_to_be_removed);
 	}
 
-	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor emailFilter, FilterFunctor attachmentFilter) throws CorruptIndexException, IOException
+	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor emailFilter, FilterFunctor attachmentFilter) throws IOException
 	{
 		directory = copyDirectoryWithDocFilter(directory, out_dir, INDEX_NAME_EMAILS, emailFilter);
         //the docIds of the attachment docs are not the same as email docs, hence the same filter won't work.
@@ -1737,8 +1735,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			return null;
 		}
 
-		org.apache.lucene.document.Document rdoc = searcher.doc(sd[0].doc);
-		return rdoc;
+		return searcher.doc(sd[0].doc);
 	}
 
 	private org.apache.lucene.document.Document getLDocAttachment(String docId) throws IOException{

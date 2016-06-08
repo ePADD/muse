@@ -5,7 +5,7 @@ import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.featuregen.*;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.BMMModel;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;

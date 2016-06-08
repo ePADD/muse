@@ -15,29 +15,23 @@
 */
 package edu.stanford.muse.email;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-
-import javax.mail.AuthenticationFailedException;
-import javax.mail.Folder;
-import javax.mail.MessagingException;
-import javax.mail.NoSuchProviderException;
-import javax.mail.Session;
-import javax.mail.Store;
-
+import com.google.code.samples.oauth2.OAuth2SaslClientFactory;
+import com.sun.mail.util.MailSSLSocketFactory;
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
-
-
+import javax.mail.Folder;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Store;
 import java.security.GeneralSecurityException;
 import java.security.Provider;
 import java.security.Security;
-import com.google.code.samples.oauth2.OAuth2SaslClientFactory;
-import com.sun.mail.util.MailSSLSocketFactory;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 public class ImapPopEmailStore extends EmailStore {
 	private final static long serialVersionUID = 1L;
@@ -242,7 +236,7 @@ public class ImapPopEmailStore extends EmailStore {
 	}
 
 	//	connects to the store, returns it as well as stores it in this.store
-	public Store connect() throws AuthenticationFailedException, NoSuchProviderException, MessagingException
+	public Store connect() throws MessagingException
 	{
 		if (Util.nullOrEmpty(connectOptions.protocol)) // should be at least imap or pop
 			return null;

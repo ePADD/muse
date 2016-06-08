@@ -79,7 +79,7 @@ public class EmailRenderer {
 																// description
 			html.append("<div class=\"section\" name=\"" + description + "\">\n");
 
-			List<List<String>> clusterResult = new ArrayList<List<String>>();
+			List<List<String>> clusterResult = new ArrayList<>();
 
 			for (Document d : md.docs)
 			{
@@ -103,7 +103,7 @@ public class EmailRenderer {
 
 					if (!Util.nullOrEmpty(comment) && (d instanceof EmailDocument))
 					{
-						String messageId = ((EmailDocument) d).getUniqueId();
+						String messageId = d.getUniqueId();
 						html.append(" messageID=\"" + messageId + "\"");
 					}
 
@@ -187,7 +187,8 @@ public class EmailRenderer {
                 else
                     thisAddrStr = ("<a href=\"" + url + "\">" + Util.escapeHTML(str) + "</a>");
 
-                outputLineLength += str.length();
+				if (str != null)
+	                outputLineLength += str.length();
 			}
 			else
 			{
@@ -463,7 +464,7 @@ public class EmailRenderer {
 		// <pre> to escape special chars if any in the subject. max 70 chars in
 		// one line, otherwise spill to next line
 		result.append("<td align=\"left\"><b>");
-		x = ed.formatStringForMaxCharsPerLine(x, 70).toString();
+		x = DatedDocument.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
         List<String> cpeople = Arrays.asList(NER.getCoarseEntities(ed, FeatureDictionary.PERSON, false, archive)).stream().map(s->s.text).collect(Collectors.toList()),

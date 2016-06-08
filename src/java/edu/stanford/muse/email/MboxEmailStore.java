@@ -16,35 +16,14 @@
 package edu.stanford.muse.email;
 
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import javax.mail.AuthenticationFailedException;
-import javax.mail.Folder;
-import javax.mail.MessagingException;
-import javax.mail.NoSuchProviderException;
-import javax.mail.Session;
-import javax.mail.Store;
-import javax.mail.URLName;
-
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
+import javax.mail.*;
+import java.io.*;
+import java.util.*;
 
 /** email store in mbox format. caches message counts in folders.
  */
@@ -87,7 +66,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 
 	public String getRootPath() { return rootPath; }
 	
-	public Store connect() throws AuthenticationFailedException, NoSuchProviderException, MessagingException
+	public Store connect() throws MessagingException
 	{
 		// Get a Session object
 		// can customize javamail properties here if needed, see e.g. http://java.sun.com/products/javamail/javadocs/com/sun/mail/imap/package-summary.html
@@ -290,7 +269,6 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 			{
 				log.warn ("Error trying to read cache file: " + e);
 				e.printStackTrace(System.err);
-				return;
 			}
 		}
 

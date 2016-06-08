@@ -63,8 +63,8 @@
                     var auxFrame=new Array(4);
                     auxFrame[0]=ic_posX;
                     auxFrame[1]=ic_posY;
-                    auxFrame[2]=ic_imageSizes[ic_imageType][0]
-                    auxFrame[3]=ic_imageSizes[ic_imageType][1]
+                    auxFrame[2]=ic_imageSizes[ic_imageType][0];
+                    auxFrame[3]=ic_imageSizes[ic_imageType][1];
                     arrayFrames.push(auxFrame);
 
                     return 1;
@@ -106,8 +106,8 @@
                         var auxFrame=new Array(4);
                         auxFrame[0]=ic_posX;
                         auxFrame[1]=ic_posY;
-                        auxFrame[2]=ic_imageSizes[ic_imageType][0]
-                        auxFrame[3]=ic_imageSizes[ic_imageType][1]
+                        auxFrame[2]=ic_imageSizes[ic_imageType][0];
+                        auxFrame[3]=ic_imageSizes[ic_imageType][1];
                         arrayFrames.push(auxFrame);
 
                         return 1;
@@ -120,8 +120,7 @@
             // extend the default settings
             if ( options ) {
                 $.extend( settings, options );
-            };
-
+            }
             var $this=$(this);
             var ic_strSizes="";
             var ic_strCloud="";
@@ -132,12 +131,14 @@
             var ic_arrayImages;
             var ic_posX=0;
             var ic_posY=0;
-            var ic_arrayFrames=new Array();
+            var ic_arrayFrames=[];
             // these are the default sizes for the frames (width x height)
             var ic_imageSizes =[[50,50], [60,60], [70,70], [80,80], [90,90], [100,100], [120,120], [50,60], [70,50], [80,120], [50,100], [60,150], [150,80], [120,80], [100,60], [150,50], [50,150]];
 
             // change the target div to the required size
-            if ($this.css("position") != "absolute") { $this.css("position", "relative"); };
+            if ($this.css("position") != "absolute") {
+                $this.css("position", "relative");
+            }
             $this.height(settings.height);
             $this.width(settings.width);
             $this.css("overflow", "visible");
@@ -180,7 +181,7 @@
                                             'var ic_i'+ic_currentImage+'bgw='+ic_arrayImages[ic_currentImage].width+'; ' +
                                             'var ic_i'+ic_currentImage+'bgh='+ic_arrayImages[ic_currentImage].height+';\n';
                                                 
-                    ic_strCloud=ic_strCloud+'<div id="ic_i'+ic_currentImage+'" class="ci_imagen" '
+                    ic_strCloud=ic_strCloud+'<div id="ic_i'+ic_currentImage+'" class="ci_imagen" ';
                     
                     if (settings.link && ic_arrayImages[ic_currentImage].title) { ic_strCloud=ic_strCloud+' onclick="window.location=\''+ic_arrayImages[ic_currentImage].title+'\'" '; }
                     
@@ -194,7 +195,7 @@
             }
 
             // display the images
-            $this.html('<script>function difference(value1, value2) { value1=value1.replace("px", "");value2=value2.replace("px", "");value3=((value1/1+value2/1)+"px");return value3;};\n'+ic_strSizes+"</script>\n"+ic_strCloud);
+            $this.html('<script>function difference(value1, value2) { value1=value1.replace("px", "");value2=value2.replace("px", "");value3=((value1/1+value2/1)+"px");return value3;}\n'+ic_strSizes+"</script>\n"+ic_strCloud);
 
             $(".ci_imagen").mouseenter(function() {
                        

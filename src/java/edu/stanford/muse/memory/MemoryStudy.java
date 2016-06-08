@@ -16,20 +16,18 @@ import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.exceptions.ReadContentsException;
+import edu.stanford.muse.ie.NameInfo;
+import edu.stanford.muse.ie.NameTypes;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.*;
+import edu.stanford.muse.xword.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.ie.NameInfo;
-import edu.stanford.muse.ie.NameTypes;
 import edu.stanford.muse.webapp.JSPHelper;
-import edu.stanford.muse.xword.ArchiveCluer;
-import edu.stanford.muse.xword.Clue;
-import edu.stanford.muse.xword.Crossword;
 import org.apache.lucene.queryparser.classic.ParseException;
 
 import javax.mail.Address;
@@ -117,7 +115,7 @@ public class MemoryStudy implements Serializable{
             if (clue == null && cclue == null)
                 return displayEntity.compareTo(c2.displayEntity); // just some order, as long as it is consistent
 
-            if (clue != null && cclue.clue != null)
+            if (cclue.clue != null)
                 return (clue.clueStats.finalScore > cclue.clueStats.finalScore) ? -1 : (cclue.clueStats.finalScore > clue.clueStats.finalScore ? 1 : 0);
             return 0;
         }
@@ -156,8 +154,11 @@ public class MemoryStudy implements Serializable{
 	
 	synchronized public static boolean anyCodesAvailable() throws IOException, GeneralSecurityException, ClassNotFoundException
 	{
-		List<UserStats> users = readUsersFile();
-		return (users.size() < codes.size());
+        try {
+            List<UserStats> users = readUsersFile();
+            return (users.size() < codes.size());
+        } catch (Exception e) { Util.print_exception(e, log);}
+        return false;
 	}
 	
 	// add the new user to the encrypted users file which has the detailed stats for all users	
@@ -200,8 +201,7 @@ public class MemoryStudy implements Serializable{
 		byte[] b = CryptoUtils.readEncryptedBytes(USERS_FILE);
 		ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(b));
 		ois.close();
-		List<MemoryStudy.UserStats> users = (List<MemoryStudy.UserStats>) ois.readObject();		
-		return users;
+        return (List<UserStats>) ois.readObject();
 	}
 	
 	/** lookup doesn't have to be synchronized 
@@ -434,14 +434,14 @@ public class MemoryStudy implements Serializable{
                 lengthDescr += Integer.toString(lengthList.size()) + " words: ";
 
             for (Integer i :lengthList) {
-                lengthDescr += i + " characters, ";
+                lengthDescr += Util.pluralize(i, "letter") + ", ";
             }
             lengthDescr = lengthDescr.substring(0, lengthDescr.length()-2); //subtract the extra comma.
 
             ClueInfo ci = new ClueInfo();
-            ci.link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";;
+            ci.link = "../browse?term=\"" + fullAnswer + "\"&sort_by=recent&searchType=original";
             ci.lastSeenDate = lastSeenDate;
-            ci.nMessages = entityToMessages.get(ce).size();;
+            ci.nMessages = entityToMessages.get(ce).size();
             ci.nThreads = entityToThreads.get(ce).size();
 
             //TODO: we are doing default initialisation of evaluators by setting it to null below, it is more appropriate to consider it as an argument for this method
@@ -491,7 +491,286 @@ public class MemoryStudy implements Serializable{
 		// log the questions as well, just in case we don't get to the final point due to user fatigue or crashes
 		logStats("questions.final");
 	}
-	
+
+    // Compute date intervals, working backwards from latestDate, until earliestDate is covered
+    // most recent interval is interval 0.
+    private static List<Pair<Date, Date>> computeDateIntervals(Date earliestDate, Date latestDate) {
+        int DAYS_PER_INTERVAL = 30;
+        List<Pair<Date, Date>> intervals = new ArrayList<Pair<Date, Date>>();
+        {
+            JSPHelper.log.info("computing time intervals");
+            Date closingDate = latestDate;
+
+            JSPHelper.log.info("closing = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(closingDate));
+            while (earliestDate.before(closingDate)) {
+                Calendar cal = new GregorianCalendar();
+                cal.setTime(closingDate);
+                // scroll to the beginning of this month
+                cal.set(Calendar.HOUR_OF_DAY, 23);
+                cal.set(Calendar.MINUTE, 59);
+                cal.set(Calendar.SECOND, 59);
+                Date endDate = cal.getTime();
+
+                // scroll back by DAYS_PER_INTERVAL days
+                cal.add(Calendar.DATE, (1 - DAYS_PER_INTERVAL)); // 1- because we want from 0:00 of first date to 23:59 of last date
+                cal.set(Calendar.HOUR_OF_DAY, 0);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+                Date startDate = cal.getTime();
+
+                intervals.add(new Pair<Date, Date>(startDate, endDate));
+                // ok we got an interval
+
+                // closing date for the next interval is 1 day before endDate
+                cal.add(Calendar.DATE, -1);
+                closingDate = cal.getTime();
+            }
+        }
+        return intervals;
+    }
+
+    public static List<ClueEvaluator> getDefaultEvals()
+    {
+        List<ClueEvaluator> evals = new ArrayList<>();
+        //default tuned params
+        evals.add(new ClueEvaluator.LengthEvaluator(new float[]{-100.0f, -20.0f, 0f}));
+        evals.add(new ClueEvaluator.EmotionEvaluator(new float[]{20.0f,10.0f,20.0f}));
+        evals.add(new ClueEvaluator.NamesEvaluator(new float[]{10.0f}));
+        float[] params = new float[]{10.0f, 0.0f, 10.0f, 0.0f, 10f, 10f, 5f};
+        List<String[]> lists = new ArrayList<>();
+        lists.add("flight, travel, city, town, visit, arrive, arriving, land, landing, reach, reaching, train, road, bus, college, theatre, restaurant, book, film, movie, play, song, writer, artist, author, singer, actor, school".split("\\s*,\\s*"));
+        lists.add("from, to, in, at, as, by, inside, like, of, towards, toward, via, such as, called, named, name".split("\\s*,\\s*"));
+        lists.add("absorb, accept, admit, affirm, analyze, appreciate, assume, convinced of, believe, consider, decide, dislike, doubt, dream, dream up, expect, fail, fall for, fancy, fathom, feature, feel, find, foresee, forget, forgive, gather, get the idea, get the picture, grasp, hate, have a hunch, have faith in, have no doubt, hypothesize, ignore, image, imagine, infer, invent, judge, keep the faith, lap up, leave, lose, maintain, make rough guess, misunderstand, neglect, notice, overlook, perceive, place, place confidence in, plan, plan for, ponder, predict, presume, put heads together, rack brains, realise, realize, reckon, recognize, regard, reject, rely on, remember, rest assured, sense, share, suppose, suspect, swear by, take at one's word, take for granted, trust, understand, vision, visualize, wonder".split("\\s*,\\s*"));
+        lists.add("he,she,i,me,you".split("\\s*,\\s*"));
+        lists.add ("husband, wife, partner, spouse, sister-in-law, brother-in-law, mother-in-law, father-in-law, daughter-in-law, son-in-law, fiancé, fiancée, aunt, brother, cousin, daughter, parent, father, dad, grandparent, granddaughter, grandmother, grandfather, grandpa, grandma, grandchild, grandson, mother, mom, nephew, niece, sister, children, child, baby, son, stepdaughter, stepmother, stepson, uncle, boyfriend, girlfriend, batchmate, buddy, colleague, mentor, co-worker, family, flatmate, folks, house-mate, junior, senior, neighbour, neighbor, relative, roommate".split("\\s*,\\s*"));
+        lists.add ("happy, alive, understanding, playful, calm, confident, gay, courageous, peaceful, reliable, joyous, energetic, at ease, easy, lucky, liberated, comfortable, amazed, fortunate, optimistic, pleased, free, delighted, provocative, sympathetic, overjoyed, impulsive, clever, gleeful, surprised, satisfied, thankful, frisky, receptive, animated, quiet, accepting, festive, spirited, certain, ecstatic, thrilled, enjoy, enjoyed, relaxed,  satisfied, wonderful, serene, cheerful, bright, sunny, blessed, reassured, elated, jubilant, love, loving, loved, concerned, eager, impulsive, considerate, affected, keen, affectionate, fascinated, earnest, sensitive,  intrigued, intent, anxious, rebellious, devoted, inquisitive, inspired, unique, attracted, determined, dynamic, passionate, excited, tenacious, admiration, engrossed, enthusiastic, hardy, curious, bold, brave, sympathy, daring, optimistic, comforted, drawn, confident, hopeful, amazing, fantastic, wow".split("\\s*,\\s*"));
+        lists.add ("angry, depressed, sad, sadly, unfortunate, unfortunately, confused, irritated, lousy, upset, incapable, enraged, disappointed, doubtful, alone, hostile, discouraged, uncertain, paralyzed, insulting, ashamed, indecisive, fatigued, sore, powerless, perplexed, useless, annoyed, embarrassed, inferior, guilty, hesitant, vulnerable, hateful, dissatisfied, shy, unpleasant, miserable, stupefied, offensive, detestable, disillusioned, bitter, unbelieving, despair, aggressive, despicable, skeptical, frustrated, resentful, disgusting, distrustful, distressed, inflamed, abominable, misgiving, woeful, provoked, terrible, pathetic, incensed, tragic, infuriated, sulky, uneasy, pessimistic, tense, fuming, indignant, indifferent, afraid, hurt, fearful, tearful, dull, terrified, tormented, sorrowful, nonchalant, suspicious, deprived, pained, neutral, pained,  grief, alarmed, tortured, anguish, weary, panic, dejected, desolate, bored, nervous, rejected, desperate, preoccupied, scared, injured, worried, offended, unhappy, disinterested, frightened, afflicted, lonely, lifeless, timid, aching, grieved, shaky, victimized, mournful, restless, heartbroken, dismayed, doubtful, agonized, threatened, appalled, cowardly, humiliated, wronged, menaced, alienated, wary".split("\\s*,\\s*"));
+        return evals;
+    }
+
+    /**
+     * given a sentence, returns a new version of it which is lowercased and strips everything except letters and digit from it
+     */
+    public static String canonicalizeSentence(String sentence) {
+        if (sentence == null)
+            return null;
+
+        StringBuilder sb = new StringBuilder();
+        for (char ch : sentence.toCharArray())
+            if (Character.isLetterOrDigit(ch)) {
+                sb.append(Character.toLowerCase(ch));
+            }
+        return sb.toString();
+    }
+
+    /** Generates person names tests from the given archive. @throws IOException */
+	public void generatePersonNameQuestions(Archive archive, NERModel nerModel, Collection<EmailDocument> allDocs, Lexicon lex, int numClues) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException, ParseException {
+		this.archive = archive;
+		questions = new ArrayList<>();
+		ArchiveCluer cluer = new ArchiveCluer(null, archive, nerModel, null, lex);
+
+		tabooCluesSet = new LinkedHashSet<>();
+		archive.assignThreadIds();
+
+        List<ClueEvaluator> evaluators = getDefaultEvals();
+
+		List<Document> docs = archive.getAllDocs();
+		Multimap<Contact, EmailDocument> contactToMessages = LinkedHashMultimap.create();
+		Multimap<Contact, Long> contactToThreadIds = LinkedHashMultimap.create();
+
+		// sort by date
+		Collections.sort(docs);
+
+		Date earliestDate = null, latestDate = null;
+        Map<Contact, Date> contactToLatestDate = new LinkedHashMap<>();
+
+        // compute earliest and latest date across all messages in corpus
+        for (Document doc : docs) {
+            EmailDocument ed = (EmailDocument) doc;
+
+            if (earliestDate == null || ed.date.before(earliestDate))
+                earliestDate = ed.date;
+            if (latestDate == null || ed.date.after(latestDate))
+                latestDate = ed.date;
+        }
+        JSPHelper.log.info ("===================\nStarting to generate person names memory questions from " + docs.size() + " messages with " + numClues + " questions" + ", earliest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(earliestDate)
+                        + " latest date = " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(latestDate));
+
+
+        Set<Integer> tabooSentenceHashes = new LinkedHashSet<>();
+
+        // create hashes of all sentences seen at least twice (case insensitive, lower cased)
+        {
+            Set<Integer> hashesSeen = new LinkedHashSet<>();
+            for (Document d : docs) {
+                String contents = archive.getContents(d, true);
+                String cleanedContents = EmailUtils.cleanupEmailMessage(contents);
+                SentenceTokenizer st = new SentenceTokenizer(cleanedContents);
+                while (st.hasMoreSentences()) {
+                    String sentence = st.nextSentence();
+                    sentence = canonicalizeSentence(sentence);
+                    int hashCode = sentence.hashCode();
+                    if (hashesSeen.contains(hashCode)) {
+                        tabooSentenceHashes.add(hashCode);
+                        log.info ("Marking sentence as taboo: " + sentence);
+                    } else
+                        hashesSeen.add(hashCode);
+                }
+            }
+        }
+
+        // compute contactToLatestDate that contact has been seen on
+        for (Document doc : docs) {
+            EmailDocument ed = (EmailDocument) doc;
+            //discard doc if it is not a sent mail
+            if ((ed.sentOrReceived(archive.addressBook) & EmailDocument.SENT_MASK)==0)
+                continue;
+
+            for (Contact c: ed.getParticipatingContactsExceptOwn(archive.addressBook)) {
+                Date currentLatestDate = contactToLatestDate.get(c);
+                if (currentLatestDate == null || currentLatestDate.before(ed.date))
+                    contactToLatestDate.put(c, ed.date);
+                contactToMessages.put(c, ed);
+                contactToThreadIds.put(c, ed.threadID);
+            }
+		}
+
+		log.info("We are considering " + contactToLatestDate.size() + " contacts");
+
+        Date currentDate = new Date();
+        List<Pair<Date, Date>> intervals = computeDateIntervals(earliestDate, currentDate); // go back from current date
+        // intervals[0] is the most recent.
+        JSPHelper.log.info ("done computing " + intervals.size() + " intervals");
+        for (Pair<Date, Date> p: intervals)
+            JSPHelper.log.info ("Interval: " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getFirst()) + " - " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(p.getSecond()));
+
+        int cluesPerInterval = (numClues > 0 && intervals.size() > 0) ? (numClues + intervals.size() - 1) / intervals.size() : 0;
+        JSPHelper.log.info ("Will try to generate " + Util.pluralize(cluesPerInterval, "questions") + " per interval");
+
+        Multimap<Integer, Contact> intervalToContacts = LinkedHashMultimap.create();
+
+        //nSent is the number of sentences allowed in a clue text
+		int nSent = 2;
+		for (Contact c: contactToLatestDate.keySet()) {
+            Date lastSeenDate = contactToLatestDate.get(c);
+
+            // which interval does this date belong to? we'll assign this contact in that interval in the intervalToContacts map
+            int interval = -1;
+            Date intervalStart = null, intervalEnd = null;
+            {
+                int i = 0;
+                for (Pair<Date, Date> p : intervals) {
+                    intervalStart = p.getFirst();
+                    intervalEnd = p.getSecond();
+
+                    if ((intervalStart.before(lastSeenDate) && intervalEnd.after(lastSeenDate)) || intervalStart.equals(lastSeenDate) || intervalEnd.equals(lastSeenDate)) {
+                        interval = i;
+                        break;
+                    }
+                    i++;
+                }
+            }
+
+            if (interval < 0 || interval == intervals.size()) {
+                JSPHelper.log.info("What, no interval!? for " + edu.stanford.muse.email.CalendarUtil.formatDateForDisplay(lastSeenDate));
+                continue;
+            }
+
+            intervalToContacts.put(interval, c);
+        }
+
+        log.info ("Interval information (interval 0 is the most recent):");
+        for (int interval = 0; interval < intervals.size(); interval++) {
+            Collection<Contact> contacts = intervalToContacts.get(interval);
+            int nContactsForThisInterval = (contacts == null) ? 0 : contacts.size();
+            log.info ("In interval " + interval + " there are " + Util.pluralize (nContactsForThisInterval, "candidate contact") + " who were last seen in this interval");
+        }
+
+        for (int interval = 0; interval < intervals.size(); interval++) {
+            Date intervalStart = intervals.get(interval).getFirst();
+            Date intervalEnd = intervals.get(interval).getSecond();
+            Collection<Contact> candidateContactsForThisInterval = intervalToContacts.get(interval);
+            if (candidateContactsForThisInterval == null) {
+                log.info("Skipping interval " + interval + " because there are no contacts");
+                continue;
+            }
+
+            Map<Clue, Contact> clueToContact = new LinkedHashMap<>();
+            log.info ("=======\nGenerating questions for interval " + interval);
+
+            outer:
+            for (Contact c: candidateContactsForThisInterval) {
+                String name = c.pickBestName();
+                if (name.length() < 2) // could also check if alphanumberic only
+                    continue outer;
+
+                // ignore contact if name does not contain all alphabets. Even a period is not allowed. only space is allowed.
+                for (char ch : name.toCharArray()) {
+                    if (!Character.isAlphabetic(ch) && !Character.isSpaceChar(ch))
+                        continue outer;
+                }
+
+                Clue clue = cluer.createPersonNameClue(c, evaluators, nerModel, intervalStart, intervalEnd, nSent, archive, tabooSentenceHashes);
+                if (clue != null)
+                    clueToContact.put(clue, c);
+            }
+
+            List<Clue> clueList = new ArrayList(clueToContact.keySet());
+            Collections.sort (clueList);
+            List<Clue> selectedClues = new ArrayList<>();
+            for (int i = 0; i < cluesPerInterval && i < clueList.size(); i++) {
+                selectedClues.add(clueList.get(i));
+            }
+
+            log.info ("For interval " + interval + " selected " + selectedClues.size() + " contacts out of " + clueList.size() + " possible candidates.");
+            for (Clue c: clueList)
+                log.info ("Clue candidate for " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c );
+            for (Clue c: selectedClues)
+                log.info ("Selected clue: " + clueToContact.get(c).pickBestName() + " score = " + c.clueStats.finalScore+ " clue is " + c);
+
+            for (Clue selectedClue: selectedClues) {
+                Contact c = clueToContact.get(selectedClue);
+                String name = c.pickBestName();
+
+                List<Integer> lengthList = Crossword.convertToWord(name).getSecond();
+                String lengthDescr = "";
+                if (lengthList.size() > 1)
+                    lengthDescr += Integer.toString(lengthList.size()) + " words: ";
+
+                for (Integer i : lengthList) {
+                    lengthDescr += Util.pluralize(i, "letter") + ", ";
+                }
+                lengthDescr = lengthDescr.substring(0, lengthDescr.length() - 2); //subtract the extra comma.
+
+                ClueInfo ci = new ClueInfo();
+                ci.lastSeenDate = contactToLatestDate.get(c);
+                ci.nMessages = contactToThreadIds.get(c).size();
+                ci.nThreads = contactToThreadIds.get(c).size();
+
+				questions.add(new MemoryQuestion(this,name,selectedClue, 1, lengthDescr));
+			}
+		}
+
+		log.info (questions.size() + " questions generated");
+
+		log.info ("Top candidates are:");
+
+		// sort q's by clue score
+		Collections.sort(questions);
+
+		log.info("Based on clue score, top answers:");
+		for (MemoryQuestion mq: questions)
+			log.info (mq.correctAnswer + " times= clue=" + mq.clue.clue);
+
+		int count = 0;
+		for (MemoryQuestion mq: questions) {
+			mq.setQuestionNum(count++);
+		}
+
+		// log the questions as well, just in case we don't get to the final point due to user fatigue or crashes
+		logStats("questions.final");
+	}
+
 	private static void assignTypes(Collection<MemoryQuestion> questions, Map<String, NameInfo> nameMap) throws IOException
 	{
 		// assign categories. we have to assemble all the terms we want to look up together for efficient lookup..
@@ -521,10 +800,7 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	public boolean checkQuestionListSize(int N){
-		if (questions.size() < N)
-			return true;
-		else
-			return false;
+        return questions.size() < N;
 	}
 	
 	/* Drops terms that contain other terms (prefixes, suffixes, etc.) and trims the questionlist to the target size.*/
@@ -571,10 +847,10 @@ public class MemoryStudy implements Serializable{
 	}
 	
 	/** Takes in user response and whether a hint was used. Evaluates whether answer was correct, assigns points, and logs information about the question response. */
-	public void enterAnswer (String userAnswer, String userAnswerBeforeHint, MemoryQuestion.RecallType recallType, Object recallInfo, long millis, boolean hintused, int certainty, int memoryType, Date recency) {
-		MemoryQuestion mq = questions.get(listLocation);
-		mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallType, recallInfo, millis, hintused, certainty, memoryType, recency);
-	}
+    public void enterAnswer(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, Date guessedDate, boolean userGaveUp) {
+        MemoryQuestion mq = questions.get(listLocation);
+        mq.recordUserResponse(userAnswer, userAnswerBeforeHint, recallTypeBeforeHint, recallType, millis, hintused, certainty, memoryType, guessedDate, userGaveUp);
+    }
 	
 	/*checks whether the test is done. if it is, it outputs the final log info and does time calculations*/
 	public boolean checkForFinish(){
@@ -643,7 +919,7 @@ public class MemoryStudy implements Serializable{
 		new File(RESULTS_DIR).mkdirs();
 		String file = RESULTS_DIR + File.separator + filename; 
 		try { CryptoUtils.writeEncryptedBytes(statsLog.toString().getBytes("UTF-8"), file); } 
-		catch (UnsupportedEncodingException e) { }
+		catch (UnsupportedEncodingException e) { Util.print_exception(e, log); }
 		catch (Exception e) { Util.print_exception("NOC ERROR: encryption failed!", e, log); }
 		log.info (statsLog);	
 	}

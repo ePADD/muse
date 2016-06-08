@@ -1,14 +1,16 @@
 package edu.stanford.muse.ner.dictionary;
 
-import com.google.common.collect.*;
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.util.Pair;
-
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.*;
 
 /**
@@ -49,7 +51,7 @@ public class EnglishDictionary {
                     if(line.startsWith("#"))
                         continue;
                     String[] fields = line.split("\\s");
-                    if(fields == null || fields.length<3)
+                    if (fields.length < 3)
                         continue;
                     int cnum = Integer.parseInt(fields[1]);
                     int num = Integer.parseInt(fields[2]);
@@ -265,22 +267,17 @@ public class EnglishDictionary {
 
     public static Set<String> readFile(String fileName){
         Set<String> entries = new LinkedHashSet<>();
-        BufferedReader br = null;
-        try {
-            br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(fileName)));
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(fileName)))) {
             String line;
-            while((line=br.readLine())!=null){
-                if(line.startsWith("#"))
+            while ((line=br.readLine())!=null){
+                if (line.startsWith("#"))
                     continue;
                 entries.add(line.trim());
             }
-        } catch(IOException e){
-            log.warn("Cannot read file: "+fileName);
-            e.printStackTrace();
-        }
-        try {
             br.close();
-        } catch (Exception e) { Util.print_exception(e);}
+        } catch(IOException e){
+            Util.print_exception("Cannot read/close file: ", e, log);
+        }
         return entries;
     }
 

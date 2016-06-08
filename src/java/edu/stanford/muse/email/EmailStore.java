@@ -15,26 +15,21 @@
 */
 package edu.stanford.muse.email;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.mail.AuthenticationFailedException;
-import javax.mail.Folder;
-import javax.mail.MessagingException;
-import javax.mail.NoSuchProviderException;
-import javax.mail.Store;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import javax.mail.Folder;
+import javax.mail.MessagingException;
+import javax.mail.Store;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /** a store is an account, a source of email. */
 public abstract class EmailStore implements Serializable {
@@ -132,7 +127,7 @@ public abstract class EmailStore implements Serializable {
 	abstract public Folder openFolderWithoutCount(Store store, String fname) throws MessagingException;
 
 	/** establishes a new connection using this email store */
-	abstract public Store connect() throws AuthenticationFailedException, NoSuchProviderException, MessagingException;
+	abstract public Store connect() throws MessagingException;
 
 	/* controls printing of imap traffic */
 	public void setDebug (boolean b) { DEBUG = b; }

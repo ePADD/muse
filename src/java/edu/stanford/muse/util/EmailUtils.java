@@ -29,7 +29,6 @@ import org.apache.commons.logging.LogFactory;
 
 import javax.mail.Address;
 import javax.mail.MessagingException;
-import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.io.*;
@@ -101,8 +100,7 @@ public class EmailUtils {
 	 * use only for diagnostics, not for user-visible messages.
 	 * treads defensively, this can be called to report on a badly formatted message.
 	 */
-	public static String formatMessageHeader(MimeMessage m) throws MessagingException, AddressException
-	{
+	public static String formatMessageHeader(MimeMessage m) throws MessagingException {
 		StringBuilder sb = new StringBuilder();
 		sb.append("To: ");
 		try {
@@ -111,6 +109,7 @@ public class EmailUtils {
 				sb.append(a.toString() + " ");
 			sb.append("\n");
 		} catch (Exception e) {
+			Util.print_exception(e, log);
 		}
 
 		sb.append("From: ");
@@ -119,13 +118,16 @@ public class EmailUtils {
 			for (Address a : froms)
 				sb.append(a.toString() + " ");
 		} catch (Exception e) {
+			Util.print_exception(e, log);
 		}
 
 		try {
 			sb.append("Subject: " + m.getSubject());
 			sb.append("Message-ID: " + m.getMessageID());
 		} catch (Exception e) {
+			Util.print_exception(e, log);
 		}
+
 		return sb.toString();
 	}
 
@@ -432,7 +434,7 @@ public class EmailUtils {
 //			mbox.println("--" + frontier + "--");
 
 			// probably need to fix: other types of charset, encodings
-			if (blobStore != null)
+			if (blobStore != null && attachments != null)
 			{
 				for (Blob b : attachments)
 				{
@@ -493,11 +495,17 @@ public class EmailUtils {
 			name = name.substring(1, name.length() - 1);
 
 		// check if it has any characters at all
+		boolean allNonAlpha = true;
 		for (char c: name.toCharArray()) {
-			if (Character.isAlphabetic(c))
+			if (Character.isAlphabetic(c)) {
+				allNonAlpha = false;
 				break;
-			return null; // all non-alphabet? return nothing, because its likely a junk name like "(" or "((" (yes, we see plenty of those!)
+			}
 		}
+
+		// all non-alphabet? return nothing, because its likely a junk name like "(" or "((" (yes, we see plenty of those!)
+		if (allNonAlpha)
+			return null;
 
 		// Strip stuff inside parens, e.g. sometimes names are like:
 		// foo bar (at home) - or -
@@ -514,7 +522,8 @@ public class EmailUtils {
 		for (String t: Util.tokenize(name))
 		{
 			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase())) {
-				//log.info ("Will not consider name (because it has a banned word): " + name);
+				if (log.isDebugEnabled())
+					log.debug ("Will not consider name (because it has a banned word): " + name);
 				return null;
 			}
 			result += t + " ";
@@ -525,7 +534,9 @@ public class EmailUtils {
 		String lowerCaseName = name.toLowerCase();
 		for (String bannedString : DictUtils.bannedStringsInPeopleNames)
 			if (lowerCaseName.indexOf(bannedString) >= 0) {
-				log.info ("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
+				if (log.isDebugEnabled()) {
+					log.debug("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
+				}
 				return null;
 			}
 

@@ -32,9 +32,9 @@ import java.util.regex.Pattern;
  */
 public class WikipediaRedirectExtractor {
 
-  private static String titlePattern    = "    <title>";
-  private static String redirectPattern = "    <redirect";
-  private static String textPattern     = "      <text xml";
+  private static final String titlePattern    = "    <title>";
+  private static final String redirectPattern = "    <redirect";
+  private static final String textPattern     = "      <text xml";
   private static Pattern pRedirect = Pattern.compile(
           "#[ ]?[^ ]+[ ]?\\[\\[(.+?)\\]\\]", Pattern.CASE_INSENSITIVE);
   
@@ -114,10 +114,7 @@ public class WikipediaRedirectExtractor {
    * @return validity
    */
   private boolean isValidAlias( String title, String redirectedTitle ) {
-    if ( title.indexOf("Wikipedia:")!=-1 ) {
-      return false;
-    }
-    return true;
+    return title.indexOf("Wikipedia:") == -1;
   }
   
   public static void main(String[] args) throws Exception {

@@ -7,6 +7,7 @@ import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.cmdline.CmdLineUtil;
 import opennlp.tools.namefind.NameFinderME;
@@ -100,6 +101,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 		pctComplete = 0.75;
 		//------------training NER start--------------------
 		AdaptiveFeatureGenerator featureGenerator = new CachedFeatureGenerator(
+<<<<<<< HEAD:src/compost/FinegrainedEntityRecogniser.java
 				new AdaptiveFeatureGenerator[] {
 						new WindowFeatureGenerator(new TokenFeatureGenerator(), 2, 2),
 						new WindowFeatureGenerator(new TokenClassFeatureGenerator(true), 2, 2),
@@ -108,6 +110,16 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 						new BigramNameFeatureGenerator(),
 						new SentenceFeatureGenerator(true, false)
 				});
+=======
+				new WindowFeatureGenerator(new TokenFeatureGenerator(), 2, 2),
+				new WindowFeatureGenerator(new TokenClassFeatureGenerator(true), 2, 2),
+				new OutcomePriorFeatureGenerator(),
+				new PreviousMapFeatureGenerator(),
+				new BigramNameFeatureGenerator(),
+				new SentenceFeatureGenerator(true, false)
+				//new RefFeatureGenerator()
+		);
+>>>>>>> ner:src/java/edu/stanford/muse/ie/FinegrainedEntityRecogniser.java
 
 		String modeldir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user" + File.separator + "models";
 		if (!new File(modeldir).exists())
@@ -132,7 +144,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 			try {
 				sampleStream.close();
 			} catch (Exception e) {
-
+				edu.stanford.muse.util.Util.print_exception(e, JSPHelper.log);
 			}
 		}
 		testNER(modelFile);
@@ -318,7 +330,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 				content = content.replaceAll("^>+.*", "");
 				content = content.replaceAll("\\n\\n", ". ");
 				content = content.replaceAll("\\n", " ");
-				content.replaceAll(">+", "");
+				content = content.replaceAll(">+", "");
 
 				boolean found = false;
 				Set<String> matchingEntities = new HashSet<String>();

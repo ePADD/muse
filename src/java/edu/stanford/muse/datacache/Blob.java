@@ -15,11 +15,8 @@
 */
 package edu.stanford.muse.datacache;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Serializable;
-import java.util.Date;
-
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.tika.metadata.Metadata;
@@ -29,8 +26,10 @@ import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
 
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.util.Date;
 
 public class Blob implements Serializable {
 
@@ -135,7 +134,7 @@ public Pair<String, String> getContent(BlobStore store)
 			// http://mail-archives.apache.org/mod_mbox/tika-dev/201210.mbox/%3Calpine.DEB.2.00.1210111525530.7309@urchin.earth.li%3E
 			failed = true;
 		} finally {
-			try { stream.close(); } catch (Exception e) { failed = true; };
+			try { stream.close(); } catch (Exception e) { failed = true; }
 		}
 
 	} catch (IOException e) {

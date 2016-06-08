@@ -1,13 +1,13 @@
 <%@page language="java" contentType="text/javascript; charset=UTF-8"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="org.json.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
-<%@page language="java" import="edu.stanford.muse.index.*"%>
-<%@page language="java" import="edu.stanford.muse.exceptions.*"%>
-<%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.memory.*"%><%@ page import="edu.stanford.muse.ie.NameTypes"%><%@ page import="edu.stanford.muse.ie.NameInfo"%><%@ page import="edu.stanford.muse.ner.model.NERModel"%>
+<%@page language="java" import="edu.stanford.muse.email.EmailStore"%>
+<%@page language="java" import="edu.stanford.muse.email.MuseEmailFetcher"%>
+<%@page language="java" import="edu.stanford.muse.email.StaticStatusProvider"%>
+<%@page language="java" import="edu.stanford.muse.exceptions.CancelledException"%>
+<%@page language="java" import="edu.stanford.muse.ie.NameInfo"%>
+<%@page language="java" import="edu.stanford.muse.ie.NameTypes"%>
+<%@page language="java" import="edu.stanford.muse.index.Archive"%>
+<%@page language="java" import="edu.stanford.muse.index.EmailDocument"%><%@ page import="edu.stanford.muse.index.Lexicon"%><%@ page import="edu.stanford.muse.memory.MemoryStudy"%><%@ page import="edu.stanford.muse.ner.model.NERModel"%><%@ page import="edu.stanford.muse.util.EmailUtils"%><%@ page import="edu.stanford.muse.util.Pair"%><%@ page import="edu.stanford.muse.util.Util"%><%@ page import="edu.stanford.muse.webapp.HTMLUtils"%><%@ page import="edu.stanford.muse.webapp.JSPHelper"%><%@ page import="edu.stanford.muse.webapp.SimpleSessions"%><%@ page import="org.json.JSONObject"%><%@ page import="java.util.Collection"%><%@ page import="java.util.Map"%>
         <%
             // this JSP is like doFetchAndIndex. it sets up the archive in prep. for the memory test.
 
@@ -100,18 +100,20 @@
                     JSPHelper.log.info("STUDYSTATS-2: " + p1.getSecond() + "," + p2.getSecond() + "," + p3.getSecond());
 
                     Collection<EmailDocument> allDocs = (Collection<EmailDocument>) session.getAttribute("emailDocs");
-                    int numQ = HTMLUtils.getIntParam(request, "n", 4); //should be 4 by default
+                    int numQTotal = HTMLUtils.getIntParam(request, "n", 36);
 
-                    currentStudy.generateQuestions(archive, nerModel, allDocs, lex, numQ, true);
-                    resultPage = "memorystudy/welcome";
-                    JSPHelper.log.info("Generated #"+currentStudy.getQuestions().size()+" questions");
+                    currentStudy.generatePersonNameQuestions(archive, nerModel, allDocs, lex, numQTotal);
+                    resultPage = "memorystudy/ready";
+                    JSPHelper.log.info("Generated #" + currentStudy.getQuestions().size() + " questions");
                     Map<String,NameInfo>names = NameTypes.computeNameMap(archive, allDocs);
                     JSPHelper.log.info("NameTypes: "+names.size()+"\n"+names);
-                    boolean not_enough_questions = currentStudy.checkQuestionListSize(numQ);
+                    /*
+                    boolean not_enough_questions = currentStudy.checkQuestionListSize(numQTotal);
                     if (not_enough_questions) {
                         JSPHelper.log.info ("Not enough questions!");
                         resultPage = "/muse/memorystudy/notenoughquestions.html";
                     }
+                    */
                 }
             } catch (CancelledException ce) {
                 // op was cancelled, so just go back to where we must have been
@@ -119,6 +121,7 @@
                 cancelled = true;
             } catch (Exception e) {
                 JSPHelper.log.warn("Exception fetching/indexing emails");
+                Util.print_exception(e, JSPHelper.log);
                 Util.print_exception(e, JSPHelper.log);
                 errorMessage = "An error occured while accessing the messages";
                 // we'll leave archive in this

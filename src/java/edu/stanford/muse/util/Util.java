@@ -216,6 +216,7 @@ public class Util
 			try {
 				Thread.sleep(sleepMillis);
 			} catch (Exception e) {
+				Util.print_exception(e);
 			}
 	}
 
@@ -879,6 +880,36 @@ public class Util
 		return result;
 	}
 
+	public static List<String> tokenizeAlphaChars(String s)
+	{
+		List<String> result = new ArrayList<String>();
+		if (Util.nullOrEmpty(s))
+			return result;
+
+		int startIdx = -1;
+		char[] chars = s.toCharArray();
+		boolean inWord = false;
+		for (int i = 0; i < chars.length; i++)
+		{
+			boolean isAlphabetic = Character.isAlphabetic(chars[i]);
+
+			if (isAlphabetic && !inWord) {
+				inWord = true;
+				startIdx = i;
+			}
+			// if alphabetic and inWord, nothing to be done
+			if (!isAlphabetic && inWord) {
+				result.add(s.substring(startIdx, i)); // i will not be included
+			}
+
+			inWord = isAlphabetic;
+		}
+		if (inWord)
+			result.add(s.substring(startIdx));
+
+		return result;
+	}
+
 	public static Collection<String> breakIntoParas(String input) throws IOException
 	{
 		List<String> paras = new ArrayList<String>();
@@ -1188,8 +1219,7 @@ public class Util
 		GregorianCalendar c = new GregorianCalendar();
 		c.setTime(start);
 		int startMonth = c.get(Calendar.MONTH);
-		int startYear = c.get(Calendar.YEAR);
-		int year = startYear;
+		int year = c.get(Calendar.YEAR);
 		int month = startMonth;
 
 		intervals.add(start);
@@ -1377,8 +1407,7 @@ public class Util
 		if (start > end)
 			return "";
 
-		String strippedStr = s.substring(start, end + 1);
-		return strippedStr;
+		return s.substring(start, end + 1);
 	}
 
 	// strips brackets from (...) and [...] if there are any
@@ -1641,12 +1670,9 @@ public class Util
 		public boolean accept(File dir, String name)
 		{
 			// String path = (dir.getAbsolutePath() + File.separator + name);
-			String path = name;
-			if (prefix != null && !path.startsWith(prefix))
+			if (prefix != null && !name.startsWith(prefix))
 				return false;
-			if (suffix != null && !path.endsWith(suffix))
-				return false;
-			return true;
+			return !(suffix != null && !name.endsWith(suffix));
 		}
 	}
 
@@ -1679,7 +1705,7 @@ public class Util
 	}
 
 	/** cleans up files in directory with the given suffix */
-	public static void deleteAllFilesWithSuffix(String dir, String suffix, Log log) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static void deleteAllFilesWithSuffix(String dir, String suffix, Log log) throws IOException, ClassNotFoundException
 	{
 		if (dir == null)
 			return;
@@ -2515,7 +2541,7 @@ public class Util
 		oos.close();
 	}
 
-	public static Serializable readObjectFromFile(String filename) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static Serializable readObjectFromFile(String filename) throws IOException, ClassNotFoundException
 	{
 		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename));
 		Serializable s = (Serializable) ois.readObject();
@@ -3002,10 +3028,22 @@ public class Util
         }
     }
 
+	public static void testTokenizeAlphaChars() {
+		String[] tests = new String[]{"12abc xyz", "abc", "abc xyz12", "Dr. Prof. Doolit"};
+		for (String s : tests)
+		{
+			System.out.println ("--\n" + s);
+			List<String> result = Util.tokenizeAlphaChars(s);
+			for (String r: result)
+				System.out.println (r);
+		}
+	}
+
     public static void main(String[] args){
 //            testEllipsizeKeepingExtension();
 //            testGetExtension();
 //            System.out.println("Tests passed ok");
+		testTokenizeAlphaChars();
     }
 
 }

@@ -20,13 +20,11 @@ import java.util.stream.Collectors;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
-import edu.stanford.muse.email.AddressBook;
-import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.EmailRenderer;
-import edu.stanford.muse.webapp.JSPHelper;
-import edu.stanford.muse.webapp.ModeConfig;
+
+import java.util.*;
 
 /**
  * a collection of documents. each doc has an html representation, that is

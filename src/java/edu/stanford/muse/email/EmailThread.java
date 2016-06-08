@@ -16,13 +16,13 @@
 package edu.stanford.muse.email;
 
 
+import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.util.Util;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.util.Util;
 
 /** not to be confused with a thread to fetch emails.
     threads emails based on exactly the same normalized subject and email addresses of all participants.
@@ -68,9 +68,7 @@ public class EmailThread
 		System.out.println (Util.formatDateLong(c));
 
 		long latest = t1 + ((long) 1000)*60*60*24*N_DAYS; // make sure to cast to long, otherwise it overflows to -ve int
-		if (t2 < latest)
-			return true;
-		return false;
+		return t2 < latest;
 	}
 
 	/** checks that this thread and the other email have exactly the same set of recipient email addresses */

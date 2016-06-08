@@ -14,14 +14,6 @@
    limitations under the License.
 */
 package edu.stanford.muse.email;
-import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import javax.mail.Session;
-import javax.mail.internet.MimeMessage;
-
 import com.sun.mail.iap.Argument;
 import com.sun.mail.iap.ProtocolException;
 import com.sun.mail.iap.Response;
@@ -30,9 +22,15 @@ import com.sun.mail.imap.protocol.BODY;
 import com.sun.mail.imap.protocol.FetchResponse;
 import com.sun.mail.imap.protocol.IMAPProtocol;
 import com.sun.mail.imap.protocol.IMAPResponse;
-
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+
+import javax.mail.Session;
+import javax.mail.internet.MimeMessage;
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class ImapPrefetcher implements IMAPFolder.ProtocolCommand {
 
@@ -86,7 +84,7 @@ protected static String compactMessageSetString(List<Integer> nums)
 	StringBuilder sb = new StringBuilder();
 	for (Pair<Integer, Integer> p: ranges)
 	{
-		if (p.getFirst() == p.getSecond())
+		if (p.getFirst().equals(p.getSecond()))
 			sb.append(p.getFirst()); // simple number if start == end
 		else
 			sb.append(p.getFirst() + ":" + p.getSecond());

@@ -1,15 +1,21 @@
 <%@ page language="java" contentType="text/html; charset=ISO-8859-1"
 	pageEncoding="ISO-8859-1"%>
 <%@page trimDirectiveWhitespaces="true"%>
-<%@page language="java" import="java.util.*"%>
-<%@page language="java" import="java.io.*"%>
-<%@page language="java" import="org.json.*"%>
-<%@page language="java" import="java.text.SimpleDateFormat"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="edu.stanford.muse.index.*"%>
-<%@page language="java" import="edu.stanford.muse.lens.*"%>
+<%@page language="java" import="edu.stanford.muse.email.AddressBook"%>
+<%@page language="java" import="edu.stanford.muse.index.Archive"%>
+<%@page language="java" import="edu.stanford.muse.index.EmailDocument"%>
+<%@page language="java" import="edu.stanford.muse.index.NER"%>
+<%@page language="java" import="edu.stanford.muse.lens.Lens"%>
+<%@page language="java" import="edu.stanford.muse.lens.LensPrefs"%>
+<%@page language="java" import="edu.stanford.muse.util.Pair"%>
+<%@page language="java" import="edu.stanford.muse.util.Util"%>
+<%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
+<%@ page import="org.json.JSONArray" %>
+<%@ page import="org.json.JSONObject" %>
+<%@ page import="java.util.Collection" %>
+<%@ page import="java.util.LinkedHashMap" %>
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.Map" %>
 
 <%
 JSPHelper.setPageUncacheable(response);
@@ -43,7 +49,6 @@ try {
 		}
 		
 		Collection<EmailDocument> allDocs = (Collection<EmailDocument>) JSPHelper.getSessionAttribute(session, "emailDocs");
-		Indexer indexer = archive.indexer;
 		AddressBook ab = archive.addressBook;
 
 		if (Util.nullOrEmpty(text))

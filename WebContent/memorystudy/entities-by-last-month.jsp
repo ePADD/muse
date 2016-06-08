@@ -32,10 +32,10 @@
 %>
 <html>
 <head>
-    <link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
+    <link rel = "stylesheet" type ="text/css" href="memorystudy/css/memory.css">
     <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
-    <link rel="icon" href="memorystudy/images/stanford-favicon.gif">
+    <link rel="icon" href="memorystudy/images/ashoka-favicon.gif">
     <jsp:include page="../css/css.jsp"/>
     <script type="text/javascript" src="../js/jquery/jquery.js"></script>
     <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
@@ -160,19 +160,11 @@
         pS = request.getParameter("t1").split("[,\\s]+");
         for(int i=0;i<pS.length;i++)
             params[i] = Float.parseFloat(pS[i]);
-        evals.add(new ClueEvaluator.DirtEvaluator(params));
 
         params = new float[1];
         pS = request.getParameter("t1").split("[,\\s]+");
         for(int i=0;i<pS.length;i++)
             params[i] = Float.parseFloat(pS[i]);
-        evals.add(new ClueEvaluator.DirtEvaluator(params));
-
-        params = new float[1];
-        pS = request.getParameter("ns1").split("[,\\s]+");
-        for(int i=0;i<pS.length;i++)
-            params[i] = Float.parseFloat(pS[i]);
-        evals.add(new ClueEvaluator.SpecificityEvaluator(params));
 
         params = new float[2];
         pS = request.getParameter("na1").split("[,\\s]+");
@@ -186,7 +178,6 @@
             params[i] = Float.parseFloat(pS[i]);
             //System.err.println("ed params: "+params[i]);
         }
-        evals.add(new ClueEvaluator.EmailDocumentEvaluator(params));
 
         params = new float[4];
         List<String[]> lists = new ArrayList<>();

@@ -1,3 +1,4 @@
+
 package edu.stanford.muse.ner.model;
 
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -45,8 +46,7 @@ public class SVMModel implements NERModel, Serializable {
 			try {
 				fdw = new FileWriter(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache" + File.separator + "features.dump"));
 			} catch (Exception e) {
-				;
-			}
+            }
 		}
 
         List<Triple<String, Integer, Integer>> names = new ArrayList<Triple<String, Integer, Integer>>();

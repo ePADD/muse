@@ -56,9 +56,7 @@ public class ClueFilter {
         @Override
         public boolean filter(Clue clue, ArchiveCluer.QuestionType mode, String answer, Date startDate, Date endDate, Set<String> tabooNamesSet, NERModel nerModel, Archive archive) {
             Contact sc = archive.addressBook.getContactForSelf();
-            if(sc.names.contains(answer))
-                return false;
-            return true;
+            return !sc.names.contains(answer);
         }
     }
 

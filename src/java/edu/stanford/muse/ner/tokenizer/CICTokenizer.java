@@ -133,6 +133,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 
 		Span[] sentenceSpans = NLPUtils.tokenizeSentenceAsSpan(content);
         assert sentenceSpans != null;
+
         for (Span sentenceSpan : sentenceSpans) {
           	int sentenceStartOffset = sentenceSpan.getStart();
 			String sent = sentenceSpan.getCoveredText(content).toString();

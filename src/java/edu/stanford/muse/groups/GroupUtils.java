@@ -1,16 +1,5 @@
 package edu.stanford.muse.groups;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.CalendarUtil;
 import edu.stanford.muse.email.Contact;
@@ -19,6 +8,8 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
+
+import java.util.*;
 
 public class GroupUtils {
 	/** given a collection of equiv. sets, sets up pairs for each combination of items in the set. 
@@ -184,7 +175,7 @@ public class GroupUtils {
 			{
 				// @check shouldn't it be " return (g2.mass-g1.mass); what if they are equal??"
 				return (g1.mass > g2.mass) ? -1 : 1;
-			};
+			}
 		});
 	}
 

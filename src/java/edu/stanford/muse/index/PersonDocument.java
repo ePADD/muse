@@ -15,12 +15,11 @@
 */
 package edu.stanford.muse.index;
 
-import java.io.UnsupportedEncodingException;
-import java.util.Date;
+import edu.stanford.muse.email.AddressBook;
 
 import javax.mail.internet.InternetAddress;
-
-import edu.stanford.muse.email.AddressBook;
+import java.io.UnsupportedEncodingException;
+import java.util.Date;
 
 public class PersonDocument extends EmailDocument {
 	private static final long serialVersionUID = 1L;
@@ -50,9 +49,8 @@ public class PersonDocument extends EmailDocument {
 		String myName = ab.getContactForSelf().pickBestName();
 		this.to = new InternetAddress[]{new InternetAddress(myAddr, myName)};
 
-		String fromName = friendName;
 		String fromAddr = friendName + "@none";
-		this.from = new InternetAddress[]{new InternetAddress(fromAddr, fromName)};
+		this.from = new InternetAddress[]{new InternetAddress(fromAddr, friendName)};
 		this.pic_url = pictureURL;
 		this.page_url = sourceURL;
 		this.comment = comment;
