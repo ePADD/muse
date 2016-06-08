@@ -37,7 +37,7 @@ public class Span {
 
     @Override
     public String toString() {
-        return "[" + this.start + ".." + this.end + ")" + " " + this.type + " " + this.typeScore + this.link!=null?(link+"["+linkConf+"]"):"";
+        return "[" + this.start + ".." + this.end + ")" + " " + this.type + " " + this.typeScore + (this.link!=null?(link+"["+linkConf+"]"):"");
     }
 
     /**Prints in parse friendly manner*/

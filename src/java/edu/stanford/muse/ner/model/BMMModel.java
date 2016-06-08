@@ -482,7 +482,7 @@ public class BMMModel implements NERModel, Serializable {
             InputStream in = new FileInputStream(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"umasshw"+File.separator+"testaspacesep.txt"));
             //7==0111 PER, LOC, ORG
             Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
-            int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
+            //int numCorrect = 0, numFound = 0, numReal = 0, numWrongType = 0;
             Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(), wrongType = new LinkedHashSet<>();
             Multimap<String,String> matchMap = ArrayListMultimap.create();
             Map<String, String> foundTypes = new LinkedHashMap<>(), benchmarkTypes = new LinkedHashMap<>();
@@ -554,12 +554,12 @@ public class BMMModel implements NERModel, Serializable {
 
                     if (foundEntry) {
                         if (entry.getValue().equals(foundType)) {
-                            numCorrect++;
+                            //numCorrect++;
                             foundNames.add(entry.getKey());
                             correct.add(entry.getKey());
                         } else {
                             wrongType.add(entry.getKey());
-                            numWrongType++;
+                            //numWrongType++;
                         }
                     }
                 }
@@ -603,8 +603,8 @@ public class BMMModel implements NERModel, Serializable {
                 for(String name: names.keySet())
                     benchmarkTypes.put(name, names.get(name));
 
-                numReal += names.size();
-                numFound += foundSample.size();
+                //numReal += names.size();
+                //numFound += foundSample.size();
                 real.addAll(names.keySet());
                 found.addAll(foundSample.keySet());
                 sample = sampleStream.read();
@@ -683,7 +683,7 @@ public class BMMModel implements NERModel, Serializable {
 
     /**
      * A low level train interface for experimentation and extension over the default model.
-     * Use {@link #train} method for training the default model
+     * Use this method for training the default model
      * Training data should be a list of phrases and their types, the type should follow DBpedia ontology; specifically http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2
      * See epadd-settings/instance_types to understand the format better
      * It is possible to relax the ontology constraint by changing the aTypes and ignoreTypes fields in FeatureDictionary appropriately
