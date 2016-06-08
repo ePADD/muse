@@ -148,12 +148,12 @@ public class DBpediaTypeParser {
             System.out.println(FeatureDictionary.desc.get(type) + " : "+typeTitles.get(type).size());
     }
 
+    //The first argument should be the full path to the DBpedia instance file resource (for ex: http://data.dws.informatik.uni-mannheim.de/dbpedia/2014/en/instance_types_en.nt.bz2), the second argument should point to the DBpedia ontology file (for ex: http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2)
+    //third arg: folder to output the post-processed file in
     public static void main(String[] args){
-//        Map<String,String> ontology = parseOntology("dbpedia_2015-04.nt.bz2");
-//        for(String str: ontology.keySet())
-//            System.err.println(str+" : "+ontology.get(str));
-        String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
-        //parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources"+File.separator);
-        printStats(fldr + "instance_types_2014-04.en.nt.bz2", fldr + "dbpedia_2015-04.nt.bz2");
+        //String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
+        //fldr+"instance_types_2014-04.en.nt.bz2",fldr+"dbpedia_2015-04.nt.bz2"
+        parse(args[0], args[1], args[2]);
+        printStats(args[0], args[1]);
     }
 }

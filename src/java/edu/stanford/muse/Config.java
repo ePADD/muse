@@ -22,6 +22,10 @@ public class Config {
 	public static String 	FAST_INDEX, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
 	public static String	FEATURES_INDEX;
 
+    //List of resource file that the NER model is trained on
+    public static String[] NER_RESOURCE_FILES;
+    public static String DBPEDIA_INSTANCE_FILE;
+
 	//this is the folder name that contains the cache for internal authority assignment
 	public static int		MAX_ENTITY_FEATURES			= 200;
 	public static int		MAX_TRY_TO_RESOLVE_NAMES	= 10;
@@ -52,7 +56,8 @@ public class Config {
 		FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
 		NER_MODEL_FILE		= props.getProperty("NER_MODEL_FILE", "svm.model");
 		WORD_FEATURES		= props.getProperty("WORD_FEATURES", "WordFeatures.ser");
-
+        NER_RESOURCE_FILES = props.getProperty("NER_RESOURCE_FILES","").split(":::");
+        DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE","instance_types_2014-04.en.txt.bz2");
 		// set the int features
 		String s = props.getProperty("MAX_ENTITY_FEATURES"); if (s != null) { try { MAX_ENTITY_FEATURES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
 		s = props.getProperty("MAX_TRY_TO_RESOLVE_NAMES"); if (s != null) { try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }

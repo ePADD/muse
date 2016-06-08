@@ -697,9 +697,10 @@ public class BMMModel implements NERModel, Serializable {
     }
 
     /**
-     * the resource is expected to be a plain text file.
-     * the lines in the resource should be two fields separated by ' ', the first field should be the title and following it should be the type of the title.
+     * Use this routine to read any entity list, the resource is expected to be a plain text file
+     * the lines in the resource should be two fields separated by ' ', the first field should be the title and second it's type.
      * The type of the resource should follow the style of DBpedia types in our generated instance file, see aTypes field in FeatureDictionary for more info.
+     * for example, a building type should be expanded to "Building|ArchitecturalStructure|Place"
      * The spaces in the title, ie. the first entry should be replaced by '_'
      */
     private static Map<String,String> readEntityList(String resourcePath) {
@@ -731,7 +732,7 @@ public class BMMModel implements NERModel, Serializable {
     private static BMMModel train(float alpha, int emIter){
         CaseInsensitiveMap<String,String> tdata = EmailUtils.readDBpedia();
         //also include CONLL lists
-        String resources[] = new String[]{"CONLL/lists/ePADD.ned.list.LOC","CONLL/lists/ePADD.ned.list.ORG","CONLL/lists/ePADD.ned.list.PER"};
+        String resources[] = Config.NER_RESOURCE_FILES;
         for(String rsrc: resources) {
             //DBpedia has a finer type, respect it.
             Map<String,String> map = readEntityList(rsrc);
@@ -773,16 +774,16 @@ public class BMMModel implements NERModel, Serializable {
     }
 
     public static void main(String[] args) {
+        train();
 //        testParams();
-        //train();
         //String modelFilePath = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel.ser.gz";
-        String modelFilePath = "SeqModel.ser.gz";
-        try {
-            BMMModel model = BMMModel.loadModel(modelFilePath);
-            test(model,true);
-        }catch(IOException e) {
-            e.printStackTrace();
-        }
+//        String modelFilePath = "SeqModel.ser.gz";
+//        try {
+//            BMMModel model = BMMModel.loadModel(modelFilePath);
+//            test(model,true);
+//        }catch(IOException e) {
+//            e.printStackTrace();
+//        }
 //        Map<String,String> dbpedia = EmailUtils.readDBpedia();
 //        System.out.println(dbpedia.get("The New York Times"));
 //        System.out.println(dbpedia.get("the new York Times"));

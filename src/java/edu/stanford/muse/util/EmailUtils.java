@@ -1412,7 +1412,7 @@ public class EmailUtils {
                 return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(sample(dbpedia, p));
         }
         if(typesFile == null)
-            typesFile = "instance_types_2014-04.en.txt.bz2";
+            typesFile = Config.DBPEDIA_INSTANCE_FILE;
         //dbpedia = new LinkedHashMap<>();
 		//we want to be able to access elements in the map in a case-sensitive manner, this is a way to do that.
 		dbpedia = new org.apache.commons.collections4.map.CaseInsensitiveMap<>();
