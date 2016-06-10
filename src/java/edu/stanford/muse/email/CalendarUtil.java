@@ -15,18 +15,13 @@
 */
 package edu.stanford.muse.email;
 
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.List;
-
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /** bunch of utils for manipulating date ranges and splitting them
  up into intervals based on exchanges with contacts etc. */
@@ -139,7 +134,7 @@ public class CalendarUtil {
 		return result;
 	}
 
-    public static int[] computeHistogram(List<Date> dates, List<Date> intervals) { return computeHistogram(dates, intervals, false); }
+    public static int[] computeHistogram(List<Date> dates, List<Date> intervals) { return computeHistogram(dates, intervals, true); }
 
     /** intervals must be sorted, start from before the earliest date, and end after the latest date */
 	public static int[] computeHistogram(List<Date> dates, List<Date> intervals, boolean ignoreInvalidDates)
@@ -172,9 +167,9 @@ public class CalendarUtil {
 		Date lastDate = dates.get(dates.size()-1);
 		// intervals are assumed to be already sorted
 		if (firstDate.before (intervals.get(0)))
-			throw new RuntimeException("INTERNAL ERROR: invalid dates, first date before intervals start, aborting histogram computation");
+			throw new RuntimeException("INTERNAL ERROR: invalid dates, first date " + formatDateForDisplay(firstDate)  + " before intervals start " + formatDateForDisplay(intervals.get(0)) + ", aborting histogram computation");
 		if (lastDate.after(intervals.get(intervals.size()-1)))
-			throw new RuntimeException("INTERNAL ERROR: invalid dates, last date after intervals end, aborting histogram computation");
+			throw new RuntimeException("INTERNAL ERROR: invalid dates, last date " + formatDateForDisplay(firstDate)  + " after intervals end " + formatDateForDisplay(intervals.get(intervals.size()-1)) + ", aborting histogram computation");
 
 		int currentInterval = 0;
 		int thisIntervalCount = 0; // running count which we are accumulating into the current interval
