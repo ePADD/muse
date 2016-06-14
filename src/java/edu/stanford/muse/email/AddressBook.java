@@ -146,16 +146,19 @@ public class AddressBook implements Serializable {
         // Q: what to do if user removed a name or address from the map?
         List<String> lines = Util.tokenize(text, "\r\n");
         List<String> linesForContact = new ArrayList<String>();
-
+        boolean nextPersonIsMailingList = false;
+        String MAILING_LIST_MARKER = "ML";
         contactForSelf = null; // the first contact is contactForSelf
         for (int i = 0; i <= lines.size(); i++) {
             boolean endOfInput = (i == lines.size());
             boolean endOfPerson = endOfInput; // if end of input, definitely end of person. otherwise, could still be end of person if the line starts with PERSON_DELIMITER
-
             if (!endOfInput) {
                 String line = lines.get(i).trim();
-                if (line.startsWith(PERSON_DELIMITER))
+                if (line.startsWith(PERSON_DELIMITER)) {
                     endOfPerson = true;
+                    // check if the next characters after PERSON_DELIMITER are the mailing list marker
+                    nextPersonIsMailingList = line.substring(PERSON_DELIMITER.length()).trim().startsWith(MAILING_LIST_MARKER);
+                }
                 else {
                     if (!Util.nullOrEmpty(line)) // && !line.startsWith("#")) -- some strange address in jeb bush start with # (!)
                         linesForContact.add(line);
@@ -166,6 +169,9 @@ public class AddressBook implements Serializable {
                 // end of a contact, process linesForContact
                 if (linesForContact.size() > 0) {
                     Contact c = new Contact();
+                    if (nextPersonIsMailingList)
+                        c.mailingListState |= MailingList.USER_ASSIGNED;
+                    nextPersonIsMailingList = false;
                     for (String s : linesForContact)
                         if (s.contains("@"))
                             addEmailAddressForContact(s, c);
