@@ -146,7 +146,7 @@ public class AddressBook implements Serializable {
         // Q: what to do if user removed a name or address from the map?
         List<String> lines = Util.tokenize(text, "\r\n");
         List<String> linesForContact = new ArrayList<String>();
-        boolean nextPersonIsMailingList = false;
+        boolean thisPersonIsMailingList = false, nextPersonIsMailingList = false;
         String MAILING_LIST_MARKER = "ML";
         contactForSelf = null; // the first contact is contactForSelf
         for (int i = 0; i <= lines.size(); i++) {
@@ -169,9 +169,8 @@ public class AddressBook implements Serializable {
                 // end of a contact, process linesForContact
                 if (linesForContact.size() > 0) {
                     Contact c = new Contact();
-                    if (nextPersonIsMailingList)
+                    if (thisPersonIsMailingList)
                         c.mailingListState |= MailingList.USER_ASSIGNED;
-                    nextPersonIsMailingList = false;
                     for (String s : linesForContact)
                         if (s.contains("@"))
                             addEmailAddressForContact(s, c);
@@ -182,6 +181,8 @@ public class AddressBook implements Serializable {
                         contactForSelf = c;
                 }
                 linesForContact.clear();
+                thisPersonIsMailingList = nextPersonIsMailingList;
+                nextPersonIsMailingList = false;
             }
         }
         String firstLines = text.substring(0, text.substring(3).indexOf("--"));

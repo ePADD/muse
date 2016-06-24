@@ -1540,7 +1540,23 @@ public class EmailUtils {
 		return sample(dbpedia,p);
 	}
 
-    public static Map<String,String> readDBpedia(double fraction) {
+	/**@return list of all email sources */
+	public static Set<String> getAllEmailSourcesInDocs(Collection<EmailDocument> docs) {
+		Set<String> result = new LinkedHashSet<>();
+		for (EmailDocument d: docs)
+			result.add (d.emailSource);
+		return result;
+	}
+
+	/**@return list of all email sources */
+	public static Set<String> getAllFoldersInDocs(Collection<EmailDocument> docs) {
+		Set<String> result = new LinkedHashSet<>();
+		for (EmailDocument d: docs)
+			result.add (d.folderName);
+		return result;
+	}
+
+	public static Map<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);
     }
 
