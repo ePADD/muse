@@ -897,9 +897,9 @@ public class IndexUtils {
 			// a better way might be to process the selected messages and see which sentiments they reflect
 			Map<String, String> captionToQueryMap;
 			if (lexicon != null && !ModeConfig.isPublicMode())
-				captionToQueryMap = lexicon.getCaptionToQueryMap(indexer, docs);
+				captionToQueryMap = lexicon.getCaptionToQueryMap(docs);
 			else
-				captionToQueryMap = new LinkedHashMap<String, String>();
+				captionToQueryMap = new LinkedHashMap<>();
 
 			for (String sentiment : captionToQueryMap.keySet())
 			{
@@ -1084,12 +1084,12 @@ public class IndexUtils {
 	 * 12 for the end year
 	 * returns docs with [startDate, endDate] both inclusive
 	 */
-	public static List<Document> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
+	public static List<DatedDocument> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
 	{
 		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, startD, endY, endM - 1, endD);
 		Date startDate = p.getFirst(), endDate = p.getSecond();
 
-		List<Document> result = new ArrayList<>();
+		List<DatedDocument> result = new ArrayList<>();
 		for (DatedDocument d : c)
 		{
             //we want docs with the same date (year, month, date) or after start date

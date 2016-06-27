@@ -433,7 +433,7 @@ public class Lexicon implements Serializable {
 	}
 	
 	/** gets map for all languages */
-	public Map<String, String> getCaptionToQueryMap (Indexer indexer, Collection<Document> docs)
+	public Map<String, String> getCaptionToQueryMap (Collection<Document> docs)
 	{
 		// identify all the langs in the docs, and the corresponding lexicons
 		Set<String> languages = IndexUtils.allLanguagesInDocs(docs);
@@ -537,7 +537,7 @@ public class Lexicon implements Serializable {
 	/* returns set of terms for any of the given sentiments -- usually used for highlighting */
 	public Set<String> wordsForSentiments (Indexer indexer, Collection<Document> docs, String sentiments[])
 	{
-		Map<String, String> captionToQueryMap = getCaptionToQueryMap(indexer, docs);
+		Map<String, String> captionToQueryMap = getCaptionToQueryMap(docs);
 		
 		if (sentiments == null)
 			return null;

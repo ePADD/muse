@@ -1152,7 +1152,7 @@ public class JSPHelper {
         //Some docs with faulty date are assigned 1960/01/01
 		if (end_yy >= 0 && yy >= 0) // date range
 		{
-			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
+			docsForDateRange = (List) IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
             log.info("Found " + docsForDateRange.size() + " docs in range: [" + yy+"/"+mm+"/"+dd+" - [" + end_yy + "/" + end_mm + "/" + end_dd + "]");
         }
 		else if (yy >= 0) // single month or year

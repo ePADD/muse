@@ -1556,6 +1556,15 @@ public class EmailUtils {
 		return result;
 	}
 
+    /**@return list of all email sources */
+    public static Set<String> getAllAnnotationsInDocs(Collection<EmailDocument> docs) {
+        Set<String> result = new LinkedHashSet<>();
+        for (EmailDocument d: docs)
+            if (!Util.nullOrEmpty(d.comment))
+                result.add (d.comment);
+        return result;
+    }
+
 	public static Map<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);
     }
