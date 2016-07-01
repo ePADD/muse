@@ -29,6 +29,7 @@ import org.xml.sax.ContentHandler;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Date;
 
 public class Blob implements Serializable {
@@ -37,13 +38,17 @@ public static Log log = LogFactory.getLog(Blob.class);
 
 private final static long serialVersionUID = 1L;
 
-public long size;
+public long size = -1;
 public String filename;
 public String contentType;
 
-// we currently store content hash both as byte array and string
+	public void setContentHash(byte[] contentHash) {
+		this.contentHash = contentHash;
+	}
+
+	// we currently store content hash both as byte array and string
 //@SuppressWarnings("unused")
-//private byte[] content_hash;
+private byte[] contentHash;
 //private String content_hash_string;
 
 public Date modifiedDate;
@@ -53,7 +58,7 @@ transient private static final ParseContext context = new ParseContext();
 
 public String getName() { return filename; }
 public String getResourceURI() { return this.filename; }
-//public String getContentHash() { return this.content_hash_string; }
+// public String getContentHash() { return this.content_hash_string; }
 public Date getModifiedDate() { return modifiedDate; }
 
 public long getSize() { return size; }
@@ -75,19 +80,36 @@ public String toString()
     return sb.toString();
 }
 
+	/** a blob is the same as another one if it has the same name, and the same content hash */
 public boolean equals (Object o)
 {
 	if (!(o instanceof Blob))
 		return false;
 	Blob b = (Blob) o;
-//	return (b.filename != this.filename && Util.byteArrayToHexString(b.content_hash).equals(Util.byteArrayToHexString(this.content_hash)) && b.size == this.size);
-	return (b.filename != this.filename && b.size == this.size);
+//	return (b.filename != this.filename && Util.byteArrayToHexString(b.contentHash).equals(Util.byteArrayToHexString(this.contentHash)) && b.size == this.size);
+//	return (b.filename != this.filename && b.size == this.size);
+
+	if (this.contentHash == null || b.contentHash == null)
+		return false;
+	if (this.filename == null || b.filename == null)
+		return false;
+	if (!this.filename.equals(b.filename))
+		return false;
+	return (Arrays.equals(b.contentHash, this.contentHash));
 }
 
 public int hashCode()
 {
-	return this.filename.hashCode() ^ Long.toString(this.size).hashCode();
+    if (size == -1)
+        log.warn ("Hashcode called on blob without size being set first");
+	int filenameHash = (filename != null) ? filename.hashCode() : 0;
+	return filenameHash ^ Arrays.hashCode(contentHash);
 }
+
+//	public int hashCode()
+//	{
+//		return this.filename.hashCode() ^ Long.toString(this.size).hashCode();
+//	}
 
 public boolean is_image()
 {

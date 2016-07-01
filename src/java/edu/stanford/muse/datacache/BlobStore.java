@@ -22,6 +22,8 @@ import org.apache.commons.logging.LogFactory;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -151,24 +153,18 @@ public class BlobStore implements Serializable {
      * full filename for data
      */
     public String full_filename(Blob b) {
-        if (urlMap.get(b) != null)
-            return b.filename;
-        else {
-            int x = index(b);
-            if (x == -1)
-                return null;
-            return x + "." + b.filename;
-        }
+        return full_filename(b, b.filename);
     }
 
     /**
      * full filename for an arbitrary file associated with d
      */
     public String full_filename(Blob b, String fname) {
-        if (urlMap.get(b) != null)
+        int idx = id_map.get(b);
+        if (idx < 0)
             return fname;
         else
-            return index(b) + "." + fname;
+            return idx + "." + fname;
     }
 
     /**
@@ -181,6 +177,7 @@ public class BlobStore implements Serializable {
      */
     public long add(Blob blob, InputStream is) throws IOException {
         long nBytes = -1;
+        /* we no longer assume that if 2 blobs have the same name and file size, their contents must be the same!
         synchronized (this) {
             if (this.contains(blob)) {
                 log.info("Item is already present: " + blob);
@@ -190,19 +187,43 @@ public class BlobStore implements Serializable {
             add(blob);
             Util.ASSERT(this.contains(blob));
         }
-
+        */
         // release the lock here because we dont want a long op like reading the object's stream
         // and storing the file to be serialized across threads.
 
         // copy the stream, if it throws IOException, then we cancel the item
         try {
+            // this code is slightly tricky because blob equality (and therefore its membership in this blob store) depends on the hash , which we don't have yet.
+            // so we first read the stream into a temp file. As we read the temp file, we get its checksum. We use the checksum to initialize the blob object completely
+            // and check if it already exists in the blob store. if not, we assign it in the id_map etc. and then rename the temp file to the proper location in the blob store.
+
             DigestInputStream din = new DigestInputStream(is, MessageDigest.getInstance("SHA-1"));
-            log.info(" adding file to blob store = " + Util.blurKeepingExtension(full_filename(blob)));
-            nBytes = Util.copy_stream_to_file(din, dir + File.separatorChar + full_filename(blob));
+            log.info(" adding file to blob store = " + blob.filename);
+            Path tmpPath = Files.createTempFile(new File(System.getProperty("java.io.tmpdir")).toPath(), "epadd.", ".temp");
+            File tmpFile = tmpPath.toFile();
+            nBytes = Util.copy_stream_to_file(din, tmpFile.getAbsolutePath());
+
+            // now set the blob size and digest
             blob.size = nBytes; // overwrite this -- earlier we had the part size stored in blob size
-//        byte b[] = din.getMessageDigest().digest();
-//        blob.setContentHash(b);
-            //       blob.setContentHashString(Util.byteArrayToHexString(b));
+            // be careful -- add the blob only after its size and SHA-1 has been updated
+            byte byteArray[] = din.getMessageDigest().digest();
+            blob.setContentHash(byteArray);
+
+            // ok, now blob is finally set up and can be compared
+            // if the blob is already present, fetching the bytes was a waste, but there would no other way to know its checksum.
+            // we'll delete the file that is in the tmp dir
+
+            if (uniqueBlobs.contains(blob)) {
+                tmpFile.delete();
+                return nBytes;
+            }
+
+            // blob doesn't already exist, add it, and move it from the temp dir to its actual place in the blobstore
+
+            add(blob);
+            // move it from the temp file to the blobs dir. don't do this before add(blob), because full_filename will not be set up correctly until the blob object can be lookedup
+            String destination = dir + File.separatorChar + full_filename(blob);
+            Files.move (tmpPath, new File(destination).toPath());
         } catch (IOException ioe) {
             // we couldn't copy the stream to the data store, so undo everything
             remove(blob);
@@ -287,8 +308,10 @@ public class BlobStore implements Serializable {
 
     public synchronized void add (Blob b)
     {
-        Util.ASSERT (!this.contains(b));
+       //  Util.ASSERT (!this.contains(b));
 
+        if (uniqueBlobs.contains(b))
+            return;
         uniqueBlobs.add(b);
         id_map.put (b, next_data_id);
         views.put (b, new LinkedHashMap<String,Object>());
