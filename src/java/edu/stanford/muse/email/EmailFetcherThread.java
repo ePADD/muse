@@ -647,6 +647,8 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
 
         boolean success = true;
+        // the size passed in here is the part size, which is not really the binary blob size.
+        // when we read the stream below in blobStore.add(), we'll set it again to the binary blob size
         Blob b = new EmailAttachmentBlob(filename, p.getSize(), (MimeMessage) m, p);
 
         if (fetchConfig.downloadAttachments) {

@@ -1565,6 +1565,20 @@ public class EmailUtils {
         return result;
     }
 
+    /**@return list of all email sources */
+    public static Set<String> getAllBlobNamesInDocs(Collection<EmailDocument> docs) {
+        Set<String> result = new LinkedHashSet<>();
+        for (EmailDocument d: docs)
+            if (!Util.nullOrEmpty(d.attachments)) {
+                List<Blob> blobs = d.attachments;
+                for (Blob b: blobs) {
+                    if (!Util.nullOrEmpty(b.getName()))
+                        result.add(b.getName());
+                }
+            }
+        return result;
+    }
+
 	public static Map<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);
     }

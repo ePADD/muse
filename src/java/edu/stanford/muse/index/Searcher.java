@@ -17,6 +17,7 @@ import javax.mail.internet.InternetAddress;
 import javax.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * Created by hangal on 6/22/16.
@@ -64,6 +65,15 @@ public class Searcher {
         if (values == null || values.size() == 0)
             return null;
         return values.iterator().next();
+    }
+
+
+    /** returns multiple value for the given key */
+    private static Collection<String> getParams(Multimap<String, String> params, String key) {
+        Collection<String> values = params.get(key);
+        if (values == null || values.size() == 0)
+            return null;
+        return values;
     }
 
     private static Pair<Set<Document>, Set<Blob>> searchForTerm(Archive archive, Multimap<String, String> params, String term) {
@@ -202,7 +212,7 @@ public class Searcher {
                     result.add(ed);
             }
         }
-        return docs;
+        return result;
     }
 
 
@@ -308,7 +318,7 @@ public class Searcher {
                 if (emailSources.contains(ed.emailSource.toLowerCase()))
                     result.add(ed);
         }
-        return docs;
+        return result;
     }
 
     private static Set<EmailDocument> updateForFolder(Set<EmailDocument> docs, Multimap<String, String> params) {
@@ -325,7 +335,7 @@ public class Searcher {
                 if (folders.contains(ed.folderName.toLowerCase()))
                     result.add(ed);
         }
-        return docs;
+        return result;
     }
 
     private static Set<DatedDocument> updateForDateRange(Set<DatedDocument> docs, Multimap<String, String> params) {
@@ -359,87 +369,55 @@ public class Searcher {
         return new LinkedHashSet<DatedDocument>(IndexUtils.selectDocsByDateRange((Collection) docs, startYear, startMonth, startDate, endYear, endMonth, endDate));
     }
 
-    private static Pair<Set<EmailDocument>, Set<Blob>> updateForAttachmentType(Set<EmailDocument> docs, Set<Blob> blobs, Multimap<String, String> params) {
-
-        String attachmentType = getParam(params, "attachmentType"), attachmentExtension = getParam(params, "attachmentExtension");
-        if (Util.nullOrEmpty(attachmentType) && Util.nullOrEmpty(attachmentExtension))
-            return new Pair<>(docs, blobs);
-
-        Set<String> attachmentTypes = new LinkedHashSet<>();
-
-        if (!Util.nullOrEmpty(attachmentType)) {
-            attachmentType = attachmentType.replaceAll(",", ";"); // multiselect picker gives us , separated, convert it to ;
-            attachmentTypes.addAll (splitFieldForOr(attachmentType));
-        }
-
-        if (!Util.nullOrEmpty(attachmentExtension)) {
-            attachmentTypes.addAll (splitFieldForOr(attachmentExtension));
-        }
-
-        Set<EmailDocument> resultDocs = new LinkedHashSet<>();
-        Set<Blob> resultBlobs = new LinkedHashSet<>();;
-
-        for (EmailDocument ed : docs) {
-            List<Blob> attachments = ed.attachments;
-            if (Util.nullOrEmpty(attachments))
-                continue;
-
-            for (Blob b : attachments) {
-                if (b.filename != null) {
-                    String extension = Util.getExtension(b.filename);
-                    if (extension != null) {
-                        extension = extension.toLowerCase();
-                        if (attachmentTypes.contains(extension)) {
-                            resultDocs.add(ed);
-                            resultBlobs.add(b);
-                        }
-                    }
-                }
-            }
-        }
-
-        return new Pair<>(resultDocs, resultBlobs);
-    }
-
-    private static Pair<Set<EmailDocument>, Set<Blob>> updateForAttachmentName(Set<EmailDocument> docs, Set<Blob> blobs, Multimap<String, String> params) {
-
-        String attachmentFilename = getParam(params, "attachmentFilename");
-        if (Util.nullOrEmpty(attachmentFilename))
-            return new Pair<>(docs, blobs);
-
-        Set<String> attachmentFilenames = splitFieldForOr(attachmentFilename);
-
-        // TO DO : handle REGEX
-        Set<EmailDocument> resultDocs = new LinkedHashSet<>();
-        Set<Blob> resultBlobs = new LinkedHashSet<>();;
-
-        for (EmailDocument ed : docs) {
-            List<Blob> attachments = ed.attachments;
-            if (Util.nullOrEmpty(attachments))
-                continue;
-
-            for (Blob b : attachments) {
-                if (!Util.nullOrEmpty(b.filename)) {
-                    if (attachmentFilenames.contains(b.filename.toLowerCase())) {
-                        resultDocs.add(ed);
-                        resultBlobs.add(b);
-                    }
-                }
-            }
-        }
-
-        return new Pair<>(resultDocs, resultBlobs);
-    }
-
-    private static Pair<Set<EmailDocument>, Set<Blob>> updateForAttachmentSize(Set<EmailDocument> docs, Set<Blob> blobs, Multimap<String, String> params) {
+    /** will look in the given docs for a message with an attachment that satisfies all the requirements.
+     * the set of such messages, along with the matching blobs is returned
+     * if no requirements, Pair<docs, null> is returned.
+     *
+     * @param docs
+     * @param params
+     * @return
+     */
+    private static Pair<Set<EmailDocument>, Set<Blob>> updateForAttachments(Set<EmailDocument> docs, Multimap<String, String> params) {
 
         long KB = 1024;
 
-        String attachmentFilesize = getParam(params, "attachmentFilesize");
-        if (Util.nullOrEmpty(attachmentFilesize))
-            return new Pair<>(docs, blobs);
+        String neededFilesize = getParam(params, "attachmentFilesize");
+        String neededFilename = getParam(params, "attachmentFilename");
+        Collection<String> neededTypeStr = getParams(params, "attachmentType"); // this can come in as a single parameter with multiple values (in case of multiple selections by the user)
+        String neededExtensionStr = getParam(params, "attachmentExtension");
 
-        // TO DO : handle REGEX
+        if (Util.nullOrEmpty(neededFilesize) && Util.nullOrEmpty(neededFilename) && Util.nullOrEmpty(neededTypeStr) && Util.nullOrEmpty(neededExtensionStr)) {
+            return new Pair<>(docs, null);
+        }
+
+        // set up the file names incl. regex pattern if applicable
+        String neededFilenameRegex = getParam(params, "attachmentRegex");
+        Set<String> neededFilenames = null;
+        Pattern filenameRegexPattern = null;
+        if ("true".equals(neededFilenameRegex) && !Util.nullOrEmpty(neededFilename)) {
+            filenameRegexPattern = Pattern.compile(neededFilename);
+        } else {
+            if (!Util.nullOrEmpty(neededFilename)) // will be in lower case
+                neededFilenames = splitFieldForOr(neededFilename);
+        }
+
+        // set up the extensions
+        Set<String> neededExtensions = null; // will be in lower case
+        if (!Util.nullOrEmpty(neededTypeStr) || !Util.nullOrEmpty(neededExtensionStr))
+        {
+            // compile the list of all extensions from type (audio/video, etc) and explicitly provided extensions
+            neededExtensions = new LinkedHashSet<>();
+            if (!Util.nullOrEmpty(neededTypeStr)) {
+                // will be something like "mp3;ogg,avi;mp4" multiselect picker gives us , separated between types, convert it to ;
+                for (String s: neededTypeStr)
+                    neededExtensions.addAll(splitFieldForOr(s));
+            }
+            if (!Util.nullOrEmpty(neededExtensionStr)) {
+                neededExtensions.addAll(splitFieldForOr(neededExtensionStr));
+            }
+        }
+
+
         Set<EmailDocument> resultDocs = new LinkedHashSet<>();
         Set<Blob> resultBlobs = new LinkedHashSet<>();;
 
@@ -449,17 +427,54 @@ public class Searcher {
                 continue;
 
             for (Blob b : attachments) {
-                long size = b.getSize();
-                // attachmentFilesizes are hardcoded -- could make it more flexible if needed in the future
-                boolean include = ("1".equals(attachmentFilesize) && size < 5 * KB) ||
-                        ("2".equals(attachmentFilesize) && size >= 5 * KB && size <= 20 * KB) ||
-                        ("3".equals(attachmentFilesize) && size >= 20 * KB && size <= 100 * KB) ||
-                        ("4".equals(attachmentFilesize) && size >= 100 * KB && size <= 2 * KB * KB) ||
-                        ("5".equals(attachmentFilesize) && size >= 2 * KB * KB);
-                if (include) {
-                    resultDocs.add(ed);
-                    resultBlobs.add(b);
+                // does it satisfy all 3 requirements? if we find any condition that it set and doesn't match, bail out of the loop to the next blob
+                // of course its kinda pointless to specify extension if filename is already specified
+                // 1. filename matches?
+                if (filenameRegexPattern == null) {
+                    // non-regex check
+                    if (neededFilenames != null && (b.filename == null || !(neededFilename.contains(b.filename))) )
+                        continue;
+                } else {
+                    // regex check
+                    if (!Util.nullOrEmpty(neededFilename)) {
+                        if (b.filename == null)
+                            continue;
+                        if (!filenameRegexPattern.matcher(b.filename).matches())
+                            continue;
+                    }
                 }
+
+                // 2. extension matches?
+                if (neededExtensions != null) {
+                    if (b.filename == null)
+                        continue; // just over-defensive, if no name, effectively doesn't match
+                    String extension = Util.getExtension(b.filename);
+                    if (extension != null) {
+                        extension = extension.toLowerCase();
+                        if (!neededExtensions.contains(extension)) {
+                            continue;
+                        }
+                    }
+                }
+
+                // 3. size matches?
+                long size = b.getSize();
+
+                // these attachmentFilesizes parameters are hardcoded -- could make it more flexible if needed in the future
+                // "1".."5" are the only valid filesizes. If none of these, this parameter not set and we can include the blob
+                if ("1".equals(neededFilesize) || "2".equals(neededFilesize) || "3".equals(neededFilesize) ||"4".equals(neededFilesize) ||"5".equals(neededFilesize)) { // any other value, we ignore this param
+                    boolean include = ("1".equals(neededFilesize) && size < 5 * KB) ||
+                            ("2".equals(neededFilesize) && size >= 5 * KB && size <= 20 * KB) ||
+                            ("3".equals(neededFilesize) && size >= 20 * KB && size <= 100 * KB) ||
+                            ("4".equals(neededFilesize) && size >= 100 * KB && size <= 2 * KB * KB) ||
+                            ("5".equals(neededFilesize) && size >= 2 * KB * KB);
+                    if (!include)
+                        continue;
+                }
+
+                // if we reached here, all conditions must be satisfied
+                resultDocs.add(ed);
+                resultBlobs.add(b);
             }
         }
 
@@ -510,11 +525,19 @@ public class Searcher {
         }
 
         // attachments
-        Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachmentType((Set) resultDocs, resultBlobs, params);
-        p = updateForAttachmentName((Set) p.first, p.second, params);
-        p = updateForAttachmentSize((Set) p.first, p.second, params);
+        // Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachmentType((Set) resultDocs, resultBlobs, params);
+        // p = updateForAttachmentName((Set) p.first, p.second, params);
+        // p = updateForAttachmentSize((Set) p.first, p.second, params);
+        Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachments((Set) resultDocs, params);
         resultDocs = (Set) p.getFirst();
-        resultBlobs = p.getSecond();
+        // resultBlobs will be a *union* (not intersection) of blobs that hit above (in text search) and these blobs that satisfy other criteria
+        // resultBlobs are really used for highlighting the attachment
+        if (p.getSecond() != null) {
+            if (resultBlobs != null)
+                resultBlobs.addAll(p.getSecond());
+            else
+                resultBlobs = p.getSecond();
+        }
 
         // resultDocs = (Collection) updateForEntities((Collection) resultDocs, params);
         resultDocs = (Set) updateForCorrespondents(archive.addressBook, (Set) resultDocs, params);

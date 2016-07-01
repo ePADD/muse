@@ -199,6 +199,7 @@ public class BlobStore implements Serializable {
             DigestInputStream din = new DigestInputStream(is, MessageDigest.getInstance("SHA-1"));
             log.info(" adding file to blob store = " + Util.blurKeepingExtension(full_filename(blob)));
             nBytes = Util.copy_stream_to_file(din, dir + File.separatorChar + full_filename(blob));
+            blob.size = nBytes; // overwrite this -- earlier we had the part size stored in blob size
 //        byte b[] = din.getMessageDigest().digest();
 //        blob.setContentHash(b);
             //       blob.setContentHashString(Util.byteArrayToHexString(b));

@@ -47,6 +47,7 @@ import java.util.*;
  */
 public class Archive implements Serializable {
 
+    public static String[] LEXICONS =  new String[]{"default.english.lex.txt"}; // this is the default, for Muse. EpaddIntializer will set it differently
     /**
      * Recognises names in the supplied text with OpenNLP NER
      * @Deprecated
@@ -462,20 +463,29 @@ public class Archive implements Serializable {
     public static void prepareBaseDir(String dir) {
         dir = dir + File.separatorChar + LEXICONS_SUBDIR;
         File f_dir = new File(dir);
-        if (f_dir.exists())
-            return; // lexicons dir already exists = do not overwrite.
 
         f_dir.mkdirs();
+
         // copy lexicons over to the muse dir
-        String[] lexicons = Version.appName.equalsIgnoreCase("epadd") ? new String[]{"sensitive.english.lex.txt", "general.english.lex.txt", "sentiments.english.lex.txt"} : new String[]{"default.english.lex.txt"}; // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
-        log.info(lexicons.length + " lexicons copied to " + dir);
-        for (String l : lexicons) {
+        // unfortunately, hard-coded because we are loading as a ClassLoader resource and not as a file, so we can't use Util.filesWithSuffix()
+        // we have a different set of lexicons for epadd and muse which will be set up in LEXICONS by the time we reach here
+        log.info("copying " + LEXICONS.length + " lexicons to " + dir);
+        for (String l : LEXICONS) {
             try {
+
+                if (new File(dir+File.separator + l).exists()) {
+                    log.info ("Skipping lexicon " + l + " because it already exists");
+                    continue;
+                }
+
                 InputStream is = EmailUtils.class.getClassLoader().getResourceAsStream("lexicon/" + l);
-                if (is != null)
-                    Util.copy_stream_to_file(is, dir + File.separator + l);
-                else
-                    log.info("lexicon " + l + " not found");
+                if (is == null) {
+                    log.warn("lexicon lexicon/" + l + " not found");
+                    continue;
+                }
+
+                log.info("copying " + l + " to " + dir);
+                Util.copy_stream_to_file(is, dir + File.separator + l);
             } catch (Exception e) {
                 Util.print_exception(e, log);
             }

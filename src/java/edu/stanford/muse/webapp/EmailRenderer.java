@@ -312,10 +312,9 @@ public class EmailRenderer {
 						String s = attachment.filename;
 						// cap to a length of 25, otherwise the attachment name
 						// overflows the tn
-						if (s.length() > 25)
-							s = s.substring(0, 22) + "...";
+						String display = Util.ellipsize(s, 25);
                         boolean highlight = highlightAttachments != null && highlightAttachments.contains(attachment);
-                        page.append("&nbsp;" + "<span class='" + (highlight?"highlight":"") + "'>"+ s + "</span>&nbsp;");
+                        page.append("&nbsp;" + "<span title=\"" + Util.escapeHTML(s) + "\" class='" + (highlight?"highlight":"") + "'>"+ Util.escapeHTML(display) + "</span>&nbsp;");
 						page.append("<br/>");
 
 						String css_class = "attachment-preview" + (is_image ? " img" : "") + (highlight ? " highlight" : "");
