@@ -81,37 +81,20 @@ public class Searcher {
         Set<Document> docsForTerm = new LinkedHashSet<>();
         Set<Blob> blobsForTerm = new LinkedHashSet<>();
 
-        Indexer.SortBy sortBy = Indexer.SortBy.RELEVANCE;
-        {
-            String sortByStr = getParam(params, "sortBy");
-            if (!Util.nullOrEmpty(sortByStr)) {
-                if ("relevance".equals(sortByStr.toLowerCase()))
-                    sortBy = Indexer.SortBy.RELEVANCE;
-                else if ("recent".equals(sortByStr.toLowerCase()))
-                    sortBy = Indexer.SortBy.RECENT_FIRST;
-                else if ("chronological".equals(sortByStr.toLowerCase()))
-                    sortBy = Indexer.SortBy.CHRONOLOGICAL_ORDER;
-                else {
-                    log.warn("Unknown sort by option: " + sortBy);
-                }
-            }
-        }
+
         if ("on".equals(getParam(params, "termSubject"))) {
             Indexer.QueryOptions options = new Indexer.QueryOptions();
             options.setQueryType(Indexer.QueryType.SUBJECT);
-            options.setSortBy(sortBy);
             docsForTerm.addAll(archive.docsForQuery(term, options));
         }
 
         if ("on".equals(getParam(params, "termBody"))) {
             Indexer.QueryOptions options = new Indexer.QueryOptions();
             options.setQueryType(Indexer.QueryType.FULL);
-            options.setSortBy(sortBy);
             docsForTerm.addAll(archive.docsForQuery(term, options));
         } else if ("on".equals(getParam(params, "termOriginalBody"))) { // this is an else because we don't want to look at both body and body original
             Indexer.QueryOptions options = new Indexer.QueryOptions();
             options.setQueryType(Indexer.QueryType.ORIGINAL);
-            options.setSortBy(sortBy);
             docsForTerm.addAll(archive.docsForQuery(term, options));
         }
 
@@ -121,15 +104,8 @@ public class Searcher {
             docsForTerm.addAll(blobDocsForTerm);
         }
 
-        List<Document> docsForTermList = new ArrayList<>(docsForTerm);
-        if (sortBy == Indexer.SortBy.CHRONOLOGICAL_ORDER)
-            Collections.sort(docsForTermList);
-        else if (sortBy == Indexer.SortBy.RECENT_FIRST) {
-            Collections.sort(docsForTermList);
-            Collections.reverse(docsForTermList);
-        }
 
-        return new Pair<>(new LinkedHashSet<>(docsForTermList), blobsForTerm);
+        return new Pair<>(docsForTerm, blobsForTerm);
     }
 
     /** splits by semicolons, lowercases, trims spaces; e.g. given "A; b" returns ["a", "b"] */
@@ -391,10 +367,10 @@ public class Searcher {
         }
 
         // set up the file names incl. regex pattern if applicable
-        String neededFilenameRegex = getParam(params, "attachmentRegex");
+        String neededFilenameRegex = getParam(params, "attachmentFilenameRegex");
         Set<String> neededFilenames = null;
         Pattern filenameRegexPattern = null;
-        if ("true".equals(neededFilenameRegex) && !Util.nullOrEmpty(neededFilename)) {
+        if ("on".equals(neededFilenameRegex) && !Util.nullOrEmpty(neededFilename)) {
             filenameRegexPattern = Pattern.compile(neededFilename);
         } else {
             if (!Util.nullOrEmpty(neededFilename)) // will be in lower case
@@ -554,6 +530,31 @@ public class Searcher {
 
         // now only keep blobs that belong to resultdocs
 
-        return new Pair<Collection<Document>, Collection<Blob>>(resultDocs, resultBlobs);
+        // sort per the requirement
+        Indexer.SortBy sortBy = Indexer.SortBy.RELEVANCE;
+        {
+            String sortByStr = getParam(params, "sortBy");
+            if (!Util.nullOrEmpty(sortByStr)) {
+                if ("relevance".equals(sortByStr.toLowerCase()))
+                    sortBy = Indexer.SortBy.RELEVANCE;
+                else if ("recent".equals(sortByStr.toLowerCase()))
+                    sortBy = Indexer.SortBy.RECENT_FIRST;
+                else if ("chronological".equals(sortByStr.toLowerCase()))
+                    sortBy = Indexer.SortBy.CHRONOLOGICAL_ORDER;
+                else {
+                    log.warn("Unknown sort by option: " + sortBy);
+                }
+            }
+        }
+
+        List<Document> resultDocsList = new ArrayList<>(resultDocs);
+        if (sortBy == Indexer.SortBy.CHRONOLOGICAL_ORDER)
+            Collections.sort(resultDocsList);
+        else if (sortBy == Indexer.SortBy.RECENT_FIRST) {
+            Collections.sort(resultDocsList);
+            Collections.reverse(resultDocsList);
+        }
+
+        return new Pair<>(new LinkedHashSet<>(resultDocsList), resultBlobs);
     }
 }
