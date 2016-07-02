@@ -779,7 +779,7 @@ public class Util
 		return sb.toString();
 	}
 
-	/** returns file's extension, and null if it has no extension */
+	/** returns file's extension, and null if it has no extension. Extension has be < MAX_EXTENSION_LENGTH chars */
 	public static String getExtension(String filename)
 	{
 		if (filename == null)
@@ -787,8 +787,7 @@ public class Util
 
 		int idx = filename.lastIndexOf(".");
 		int MAX_EXTENSION_LENGTH = 6;
-		if (idx > 0) // note: > not >= if filename starts with ., its not
-						// considered an extension
+		if (idx > 0) // note: > not >= if filename starts with ., its not considered an extension
 		{
 			int ext_length = filename.length() - idx;
 			if (ext_length > 0 && ext_length < MAX_EXTENSION_LENGTH)

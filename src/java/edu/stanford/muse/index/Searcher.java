@@ -425,12 +425,11 @@ public class Searcher {
                     if (b.filename == null)
                         continue; // just over-defensive, if no name, effectively doesn't match
                     String extension = Util.getExtension(b.filename);
-                    if (extension != null) {
-                        extension = extension.toLowerCase();
-                        if (!neededExtensions.contains(extension)) {
-                            continue;
-                        }
-                    }
+                    if (extension == null)
+                        continue;
+                    extension = extension.toLowerCase();
+                    if (!neededExtensions.contains(extension))
+                        continue;
                 }
 
                 // 3. size matches?
