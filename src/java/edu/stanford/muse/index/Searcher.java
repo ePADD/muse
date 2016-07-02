@@ -456,6 +456,24 @@ public class Searcher {
         return new Pair<>(resultDocs, resultBlobs);
     }
 
+    private static Set<Document> updateForLexicons(Archive archive, Set<Document> docs, Multimap<String, String> params) {
+        String lexiconName = getParam(params, "lexiconName");
+
+        Lexicon lex = null;
+        if (Util.nullOrEmpty(lexiconName))
+            return docs;
+        lex = archive.getLexicon(lexiconName);
+        if (lex == null)
+            return docs;
+
+        String category = getParam(params, "lexiconCategory");
+        if (Util.nullOrEmpty(docs))
+            return docs;
+
+        Set<Document> result = (Set) lex.getDocsWithSentiments(new String[]{category}, archive.indexer, docs, -1, false/* request.getParameter("originalContentOnly") != null */, category);
+        return result;
+    }
+
     /**
      * Important method.
      * handle query for term, sentiment, person, attachment, docNum, timeCluster
@@ -523,9 +541,8 @@ public class Searcher {
         resultDocs = (Set) updateForFolder((Set) resultDocs, params);
         resultDocs = (Set) updateForFlags((Set) resultDocs, params);
 
-      //  resultBlobs = (Collection) updateForAttachments((Collection) resultDocs, params);
         resultDocs = (Set) updateForDateRange((Set) resultDocs, params);
-      //  resultDocs = (Collection) updateForLexicons((Collection) resultDocs, params);
+        resultDocs = (Set) updateForLexicons(archive, resultDocs, params);
 
         // now only keep blobs that belong to resultdocs
 
