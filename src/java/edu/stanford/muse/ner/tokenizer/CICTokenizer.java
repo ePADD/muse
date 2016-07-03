@@ -97,10 +97,12 @@ public class CICTokenizer implements Tokenizer, Serializable {
 
     /**
      * {@inheritDoc}
+     * The offsets returned are the start and end offsets of the token in the content,
+     * for example: in the string "I am meeting with Barney   Stinson", The offsets returned are [18,31) corresponding to "Barney   Stinson" although the token is "Barney Stinson"
      * */
     @Override
 	public List<Triple<String, Integer, Integer>> tokenize(String content, boolean pn) {
-		List<Triple<String, Integer, Integer>> matches = new ArrayList<Triple<String, Integer, Integer>>();
+		List<Triple<String, Integer, Integer>> matches = new ArrayList<>();
 		if (content == null)
 			return null;
 
@@ -115,7 +117,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
 
 		//we need a proper sentence splitter, as some of the names can contain period.
 		String[] lines = content.split("\\n");
-		//dont change the length of the content, so that the offsets are not messed up.
+		//don't change the length of the content, so that the offsets are not messed up.
 		content = "";
 		for (String line : lines) {
 			//for very short lines, new line is used as a sentence breaker.
@@ -163,20 +165,22 @@ public class CICTokenizer implements Tokenizer, Serializable {
 					else {
                         //further cleaning to remove "'s" pattern
                         //@TODO: Can these "'s" be put to a good use? Right now, we are just throwing them away
-                        String[] tokens = clean(name, m.start(1));
-                        for (String token : tokens) {
-                            int s = name.indexOf(token);
+                        Span[] tokens = clean(name, m.start(1));
+                        for (Span token : tokens) {
+                            int s = token.getStart()+m.start(1)+sentenceStartOffset;
+                            int e = token.getEnd()+m.start(1)+sentenceStartOffset;
+                            String t = name.substring(token.getStart(),token.getEnd());
                             if (s < 0) {
                                 log.error("Did not find " + token + " extracted and cleaned from " + name);
                                 continue;
                             }
-                            if(token.toLowerCase().startsWith("begin pgp") || token.toLowerCase().endsWith(" i"))
+                            if(t.startsWith("begin pgp") || t.toLowerCase().endsWith(" i"))
                                 continue;
                             //this list contains many single word bad names like Jan, Feb, Mon, Tue, etc.
-                            if(DictUtils.tabooNames.contains(token.toLowerCase())) {
+                            if (DictUtils.tabooNames.contains(t.toLowerCase())) {
                                 continue;
                             }
-                            matches.add(new Triple<>(canonicalise(token), s, s + token.length()));
+                            matches.add(new Triple<>(canonicalise(t), s, e));
                         }
                     }
 				}
@@ -205,21 +209,28 @@ public class CICTokenizer implements Tokenizer, Serializable {
      * @param offset of the phrase being considered in the original sentence, character/word offset
      * @return the tokenized, cleaned and filtered sub-chunks in the phrase passed.
      * */
-    static String[] clean(String phrase, int offset){
-        List<String> tokenL = new ArrayList<>();
+    static Span[] clean(String phrase, int offset){
+        List<Span> tokenL = new ArrayList<>();
         Matcher m = multipleStopWordPattern.matcher(phrase);
         int end = 0;
         while(m.find()){
-            tokenL.add(phrase.substring(end, m.start()));
+            if(end<m.start())
+                tokenL.add(new Span(end, m.start()));
             end = m.end();
         }
         if(end!=phrase.length())
-            tokenL.add(phrase.substring(end, phrase.length()));
+            tokenL.add(new Span(end, phrase.length()));
         //we have all the split tokens, will have to filter now
-        List<String> nts = new ArrayList<>();
+        List<Span> nts = new ArrayList<>();
         for(int i=0;i<tokenL.size();i++) {
-            String t = tokenL.get(i);
-            t = t.replaceAll("^\\W+|\\W+$", "");
+            Span sp = tokenL.get(i);
+            String t = phrase.substring(sp.getStart(),sp.getEnd());
+            int s=sp.getStart(), e = sp.getEnd();
+            //account trailing or leading non-letter chars
+            while(s<t.length() && !Character.isLetterOrDigit(phrase.charAt(s)))s++;
+            while(e>=1 && !Character.isLetterOrDigit(phrase.charAt(e-1)))e--;
+            if(s>=e) continue;
+            //t = t.replaceAll("^\\W+|\\W+$", "");
             //if the chunk is the first word then, double check the capitalisation
             if (offset == 0 && i==0) {
                 if (DictUtils.fullDictWords.contains(t.toLowerCase())) {
@@ -231,20 +242,27 @@ public class CICTokenizer implements Tokenizer, Serializable {
             //remove common start words
             //the replace pattern is a costly operations because it can contain many '|', double check if using the pattern is required
             boolean hasCSW = false;
+            //there can be multiple common stop words, hence the recursion to remove it.
             do {
                 for (String cw : commonStartWords)
                     if (t.startsWith(cw + " ")) {
                         t = t.substring(cw.length()+1);
+                        s += cw.length()+1;
                         hasCSW = true;
                         break;
                     }
                 if (!hasCSW) break;
                 hasCSW = false;
             } while (true);
+            sp = new Span(s,e);
 
-            nts.add(t);
+            //we only trim the phrase to remove common common start words etc.
+            //the s and e values should be in the range of sp.getStart and sp.getEnd
+            if(s>=e || s>sp.getStart() || e>sp.getEnd())
+                System.err.println("Unexpected parameter values while cleaning the phrase!! s:"+s+" e:"+e+" sp:"+sp);
+            nts.add(sp);
         }
-        return nts.toArray(new String[nts.size()]);
+        return nts.toArray(new Span[nts.size()]);
     }
 
     public static void test(){
@@ -300,7 +318,19 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "North Africa is the northern portion of Africa",
                 "Center of Evaluation has developed some evaluation techniques.",
                 "Hi Professor Winograd, this is your student from nowhere",
-                ">> Hi Professor Winograd, this is your student from nowhere"
+                ">> Hi Professor Winograd, this is your student from nowhere",
+                "Abraham Lincoln (February 12, 1809 – April 15, 1865) was the 16th President of the United States, " +
+                        "serving from March 1861 until his assassination in April 1865. Lincoln led the United States through its Civil War—its bloodiest war " +
+                        "and its greatest moral, constitutional, and political crisis. In doing so, he preserved the Union, abolished slavery, strengthened " +
+                        "the federal government, and modernized the economy.\n" +
+                        "\n" +
+                        "Born in Hodgenville, Kentucky, Lincoln grew up on the western frontier in Kentucky and Indiana. Largely self-educated, he became a lawyer in " +
+                        "Illinois, a Whig Party leader, and a member of the Illinois House of Representatives, in which he served for twelve years. Elected to the United " +
+                        "States House of Representatives in 1846, Lincoln promoted rapid modernization of the economy through banks, tariffs, and railroads. Because he had " +
+                        "originally agreed not to run for a second term in Congress, and because his opposition to the Mexican–American War was unpopular among Illinois " +
+                        "voters, Lincoln returned to Springfield and resumed his successful law practice. Reentering politics in 1854, he became a leader in building the " +
+                        "new Republican Party, which had a statewide majority in Illinois. In 1858, while taking part in a series of highly publicized debates with his " +
+                        "opponent and rival, Democrat Stephen A. Douglas, Lincoln spoke out against the expansion of slavery, but lost the U.S. Senate race to Douglas."
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -348,18 +378,28 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"North Africa","Africa"},
                 new String[]{"Center of Evaluation"},
                 new String[]{"Professor Winograd"},
-                new String[]{"Professor Winograd"}
+                new String[]{"Professor Winograd"},
+                new String[]{"Abraham Lincoln", "United States", "Lincoln", "Civil War", "Union", "Hodgenville", "Kentucky", "Indiana", "Illinois",
+                        "Whig Party", "Illinois House of Representatives", "United States House of Representatives", "Congress", "Mexican–American War", "Springfield",
+                        "Republican Party","Democrat Stephen A. Douglas","U.S. Senate","Douglas"
+                }
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
             List<String> ts = Arrays.asList(tokens[ci]);
             //want to specifically test person names tokenizer for index 3.
-            Set<String> cics = tokenizer.tokenizeWithoutOffsets(content, ci==3?true:false);
+            Set<String> cics = tokenizer.tokenizeWithoutOffsets(content, ci == 3 ? true : false);
+            List<Triple<String,Integer,Integer>> offs = tokenizer.tokenize(content, ci == 3 ? true : false);
+            
+            for(Triple<String,Integer,Integer> off: offs)
+                if(!content.substring(off.second, off.third).equals(off.first))
+                    System.err.println("Improper offset for \""+content+"\" found: "+content.substring(off.second,off.third)+"; offset: "+off);
+
             boolean missing  = false;
             for(String cic: cics)
                 if(!ts.contains(cic)) {
                     missing = true;
-                    break;
+                    System.err.println("Missing: "+cic);
                 }
             if(cics.size()!=ts.size() || missing) {
                 String str = "------------\n" +

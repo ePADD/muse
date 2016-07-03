@@ -515,12 +515,12 @@ public class NER implements StatusProvider {
         List<Triple<String,Integer, Integer>> offsets = edu.stanford.muse.ner.NER.getNameOffsets(doc, true);
         if (offsets == null) {
 		    //mask the whole content
-            offsets = new ArrayList<Triple<String, Integer, Integer>>();
+            offsets = new ArrayList<>();
             log.warn("Retain only names method received null offset, redacting the entire text");
 		}
 
 		int len = text.length();
-        offsets.add(new Triple<String, Integer, Integer>(null, len, len)); // sentinel
+        offsets.add(new Triple<>(null, len, len)); // sentinel
         StringBuilder result = new StringBuilder();
 		int prev_name_end_pos = 0; // pos of first char after previous name
 
