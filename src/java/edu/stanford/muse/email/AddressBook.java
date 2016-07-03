@@ -994,7 +994,7 @@ public class AddressBook implements Serializable {
         contactListForIds = new ArrayList<Contact>(allContacts);
         contactIdMap = new LinkedHashMap<Contact, Integer>();
         for (int i = 0; i < contactListForIds.size(); i++)
-            contactIdMap.put(contactListForIds.get(i), new Integer(i));
+            contactIdMap.put(contactListForIds.get(i), i);
     }
 
     public int getContactId(Contact c) {

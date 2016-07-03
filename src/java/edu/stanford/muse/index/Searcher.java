@@ -193,6 +193,23 @@ public class Searcher {
 
 
     private static Set<EmailDocument> updateForCorrespondents(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
+
+        {
+            // legacy support for the old browse page, which uses a query based on contact #
+            String contactIdStr = getParam(params, "contact");
+            int contactId = -1;
+            try { contactId = Integer.parseInt(contactIdStr); } catch (NumberFormatException nfe) { }
+            if (contactId >= 0) {
+                Contact c = ab.getContact(contactId);
+                String name = c.pickBestName();
+                params.put("correspondent", name);
+                params.put("correspondentTo", "on");
+                params.put("correspondentFrom", "on");
+                params.put("correspondentCc", "on");
+                params.put("correspondentBcc", "on");
+            }
+        }
+
         Set<EmailDocument> result = new LinkedHashSet<>();
         String correspondentsStr = getParam(params, "correspondent");
         if (Util.nullOrEmpty(correspondentsStr))

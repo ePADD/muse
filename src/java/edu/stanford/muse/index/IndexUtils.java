@@ -773,8 +773,8 @@ public class IndexUtils {
 	public static Map<String, DetailedFacetItem> partitionDocsByDoNotTransfer(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
-		DetailedFacetItem t = new DetailedFacetItem("Transfer", "To be transferred", "doNotTransfer", "false");
-		DetailedFacetItem f = new DetailedFacetItem("Do not transfer", "Not to be transferred", "doNotTransfer", "true");
+		DetailedFacetItem t = new DetailedFacetItem("Transfer", "To be transferred", "doNotTransfer", "no");
+		DetailedFacetItem f = new DetailedFacetItem("Do not transfer", "Not to be transferred", "doNotTransfer", "yes");
 
 		for (Document d : docs)
 		{
@@ -798,8 +798,8 @@ public class IndexUtils {
 	public static Map<String, DetailedFacetItem> partitionDocsByTransferWithRestrictions(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
-		DetailedFacetItem t = new DetailedFacetItem("Restrictions", "Transfer with restrictions", "transferWithRestrictions", "true");
-		DetailedFacetItem f = new DetailedFacetItem("No restrictions", "Transfer with no restrictions", "transferWithRestrictions", "false");
+		DetailedFacetItem t = new DetailedFacetItem("Restrictions", "Transfer with restrictions", "transferWithRestrictions", "yes");
+		DetailedFacetItem f = new DetailedFacetItem("No restrictions", "Transfer with no restrictions", "transferWithRestrictions", "no");
 
 		for (Document d : docs)
 		{
@@ -824,8 +824,8 @@ public class IndexUtils {
 	public static Map<String, DetailedFacetItem> partitionDocsByReviewed(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
-		DetailedFacetItem t = new DetailedFacetItem("Reviewed", "Reviewed", "reviewed", "true");
-		DetailedFacetItem f = new DetailedFacetItem("Not reviewed", "Not reviewed", "reviewed", "false");
+		DetailedFacetItem t = new DetailedFacetItem("Reviewed", "Reviewed", "reviewed", "yes");
+		DetailedFacetItem f = new DetailedFacetItem("Not reviewed", "Not reviewed", "reviewed", "no");
 		result.put("Not reviewed", f);
 
 		for (Document d : docs)
@@ -868,7 +868,7 @@ public class IndexUtils {
 					DetailedFacetItem dfi = result.get(ext);
 					if (dfi == null)
 					{
-						dfi = new DetailedFacetItem(ext, ext + " attachments", "attachment_type", ext);
+						dfi = new DetailedFacetItem(ext, ext + " attachments", "attachmentExtension", ext);
 						result.put(ext, dfi);
 					}
 					dfi.addDoc(ed);
