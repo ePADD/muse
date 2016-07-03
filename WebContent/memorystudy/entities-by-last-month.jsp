@@ -237,7 +237,7 @@
 
             List<String> entities = new ArrayList<>();
             if(mode==null || !mode.equals("person")) {
-                Map<Short, Map<String, Double>> es = NER.getEntities(archive.getDoc(doc), true);
+                Map<Short, Map<String, Double>> es = NER.getEntities(archive.getLuceneDoc(doc), true);
                 for (Short t : itypes) {
                     Map<String, Double> tes = es.get(t);
                     for (String str : tes.keySet())

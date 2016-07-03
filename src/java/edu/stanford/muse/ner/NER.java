@@ -190,7 +190,7 @@ public class NER implements StatusProvider {
             Util.aggressiveWarn("Archive/doc is null to retrieve offsets", -1);
             return null;
         }
-        org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+        org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
         return getNameOffsets(ldoc, body);
     }
 
@@ -353,7 +353,7 @@ public class NER implements StatusProvider {
 
     public static Map<Short,Map<String,Double>> getEntities(Document doc, boolean body, Archive archive) {
         try {
-            org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+            org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
             return getEntities(ldoc, body);
         } catch(IOException e){
             Util.print_exception("!!Exception while accessing named entities in the doc", e, log);
@@ -386,7 +386,7 @@ public class NER implements StatusProvider {
 		for (Document doc : docs) {
 			long st1 = System.currentTimeMillis();
 			long st = System.currentTimeMillis();
-			org.apache.lucene.document.Document ldoc = archive.getDoc(doc);
+			org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc);
 			//pass the lucene doc instead of muse doc, else a major performance penalty
 			//do not recognise names in original content and content separately
 			//Its possible to improve the performance further by using linear kernel

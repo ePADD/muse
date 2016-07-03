@@ -330,7 +330,21 @@ public class CICTokenizer implements Tokenizer, Serializable {
                         "originally agreed not to run for a second term in Congress, and because his opposition to the Mexican–American War was unpopular among Illinois " +
                         "voters, Lincoln returned to Springfield and resumed his successful law practice. Reentering politics in 1854, he became a leader in building the " +
                         "new Republican Party, which had a statewide majority in Illinois. In 1858, while taking part in a series of highly publicized debates with his " +
-                        "opponent and rival, Democrat Stephen A. Douglas, Lincoln spoke out against the expansion of slavery, but lost the U.S. Senate race to Douglas."
+                        "opponent and rival, Democrat Stephen A. Douglas, Lincoln spoke out against the expansion of slavery, but lost the U.S. Senate race to Douglas.",
+                "The President's words on health care reform were phenomenal. I pray he could get them passed in Congress.\n" +
+                        "\n" +
+                        "Thought you might want to consider some live example during your state of the state on liability reform. Maybe a doc that has had to quit like an OB/GYN to flash up on the screen asking you to resolve the problem so pregnant women can get care when they need it most.\n" +
+                        "\n" +
+                        "Your state of the state will be key to this entire debate.\n" +
+                        "\n" +
+                        "Thanks,\n" +
+                        "Sandy ",
+                "HERE IN HILLSBOROUGH COUNTY ARE COUNTING ON YOUR GOOD, WISE SELECTION APPOINTEE FOR THE POST OF SUPERVISOR OF ELECTIONS.\n" +
+                        "YOUR GREAT DECISION WILL SAVE US FROM A \n" +
+                        "WEST PALM BEACH REPLICA HERE.\n" +
+                        "PLEASE OPEN THIS ATTACHMENT.\n" +
+                        "YOUR FRIEND,\n" +
+                        "GLADYS LEVY"
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -382,7 +396,9 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"Abraham Lincoln", "United States", "Lincoln", "Civil War", "Union", "Hodgenville", "Kentucky", "Indiana", "Illinois",
                         "Whig Party", "Illinois House of Representatives", "United States House of Representatives", "Congress", "Mexican–American War", "Springfield",
                         "Republican Party","Democrat Stephen A. Douglas","U.S. Senate","Douglas"
-                }
+                },
+                new String[]{},
+                new String[]{}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
@@ -390,7 +406,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
             //want to specifically test person names tokenizer for index 3.
             Set<String> cics = tokenizer.tokenizeWithoutOffsets(content, ci == 3 ? true : false);
             List<Triple<String,Integer,Integer>> offs = tokenizer.tokenize(content, ci == 3 ? true : false);
-            
+
             for(Triple<String,Integer,Integer> off: offs)
                 if(!content.substring(off.second, off.third).equals(off.first))
                     System.err.println("Improper offset for \""+content+"\" found: "+content.substring(off.second,off.third)+"; offset: "+off);
@@ -401,6 +417,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                     missing = true;
                     System.err.println("Missing: "+cic);
                 }
+            System.out.println("Content: "+content);
+            System.out.println(offs);
             if(cics.size()!=ts.size() || missing) {
                 String str = "------------\n" +
                              "Test failed!\n" +

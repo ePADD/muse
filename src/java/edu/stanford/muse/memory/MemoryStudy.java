@@ -261,7 +261,7 @@ public class MemoryStudy implements Serializable{
 
             List<String> entities = new ArrayList<>();
             if(!personTest) {
-                Map<Short, Map<String, Double>> es = edu.stanford.muse.ner.NER.getEntities(archive.getDoc(doc), true);
+                Map<Short, Map<String, Double>> es = edu.stanford.muse.ner.NER.getEntities(archive.getLuceneDoc(doc), true);
                 for (Short t : itypes) {
                     Map<String, Double> tes = es.get(t);
                     for (String str : tes.keySet())

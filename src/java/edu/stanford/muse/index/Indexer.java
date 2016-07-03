@@ -1488,7 +1488,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				//				if (ed.languages == null)
 				//				{
 				//					// extract languages for the doc from the index and store it in the document, so we don't have to compute it again
-				//					String lang = getDoc(docId).getFieldable("languages").stringValue();
+				//					String lang = getLuceneDoc(docId).getFieldable("languages").stringValue();
 				//					StringTokenizer st = new StringTokenizer(lang, ",");
 				//					Set<String> langs = new LinkedHashSet<String>();
 				//					while (st.hasMoreTokens())
