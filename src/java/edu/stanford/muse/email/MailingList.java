@@ -25,6 +25,7 @@ import java.util.Set;
 /* class to model a mailing list with some members */
 public class MailingList implements java.io.Serializable {
 	private final static long serialVersionUID = 1L;
+	public final static String MAILING_LIST_MARKER = "[ML]";
 
 	// SUPER_DEFINITE is when we have an explicit List-Post header
 	public final static int USER_ASSIGNED = 16, SUPER_DEFINITE = 8, DEFINITE = 1, MAYBE = 2, DEFINITE_NOT = 4, DUNNO = 0;

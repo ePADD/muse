@@ -415,7 +415,7 @@ public class Searcher {
                     if (!Util.nullOrEmpty(neededFilename)) {
                         if (b.filename == null)
                             continue;
-                        if (!filenameRegexPattern.matcher(b.filename).matches())
+                        if (!filenameRegexPattern.matcher(b.filename).find()) // use find rather than matches because we want partial match on the filename, doesn't have to be full match
                             continue;
                     }
                 }

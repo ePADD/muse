@@ -147,7 +147,6 @@ public class AddressBook implements Serializable {
         List<String> lines = Util.tokenize(text, "\r\n");
         List<String> linesForContact = new ArrayList<String>();
         boolean thisPersonIsMailingList = false, nextPersonIsMailingList = false;
-        String MAILING_LIST_MARKER = "ML";
         contactForSelf = null; // the first contact is contactForSelf
         for (int i = 0; i <= lines.size(); i++) {
             boolean endOfInput = (i == lines.size());
@@ -157,7 +156,7 @@ public class AddressBook implements Serializable {
                 if (line.startsWith(PERSON_DELIMITER)) {
                     endOfPerson = true;
                     // check if the next characters after PERSON_DELIMITER are the mailing list marker
-                    nextPersonIsMailingList = line.substring(PERSON_DELIMITER.length()).trim().startsWith(MAILING_LIST_MARKER);
+                    nextPersonIsMailingList = line.substring(PERSON_DELIMITER.length()).trim().startsWith(MailingList.MAILING_LIST_MARKER);
                 }
                 else {
                     if (!Util.nullOrEmpty(line)) // && !line.startsWith("#")) -- some strange address in jeb bush start with # (!)
