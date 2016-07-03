@@ -120,7 +120,7 @@ public class Searcher {
 
     private static Set<EmailDocument> updateForFlags(Set<EmailDocument> docs, Multimap<String, String> params) {
         String reviewedValue = getParam(params, "reviewed");
-        if (!"either".equals(reviewedValue)) {
+        if (!"either".equals(reviewedValue) && !Util.nullOrEmpty(reviewedValue)) {
             Set<EmailDocument> newDocs = new LinkedHashSet<>();
             for (EmailDocument ed: docs)
                 if (ed.reviewed == "yes".equals(reviewedValue))
@@ -129,7 +129,7 @@ public class Searcher {
         }
 
         String dntValue = getParam(params, "doNotTransfer");
-        if (!"either".equals(dntValue)) {
+        if (!"either".equals(dntValue) && !Util.nullOrEmpty(dntValue)) {
             Set<EmailDocument> newDocs = new LinkedHashSet<>();
             for (EmailDocument ed: docs)
                 if (ed.doNotTransfer == "yes".equals(dntValue))
@@ -138,7 +138,7 @@ public class Searcher {
         }
 
         String twrValue = getParam(params, "transferWithRestrictions");
-        if (!"either".equals(twrValue)) {
+        if (!"either".equals(twrValue) & !Util.nullOrEmpty(twrValue)) {
             Set<EmailDocument> newDocs = new LinkedHashSet<>();
             for (EmailDocument ed: docs)
                 if (ed.transferWithRestrictions == "yes".equals(twrValue))
@@ -168,7 +168,7 @@ public class Searcher {
     private static Set<EmailDocument> updateForEmailDirection(AddressBook addressBook, Set<EmailDocument> docs, Multimap<String, String> params) {
 
         String val = getParam(params, "direction");
-        if ("either".equals(val))
+        if ("either".equals(val) || Util.nullOrEmpty(val))
             return docs;
 
         boolean direction_in = "in".equals(val), direction_out = "out".equals(val);
@@ -231,7 +231,7 @@ public class Searcher {
 
     private static Set<EmailDocument> updateForMailingListState(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
         String mailingListState = getParam(params, "mailingListState");
-        if ("either".equals(mailingListState))
+        if ("either".equals(mailingListState) || Util.nullOrEmpty(mailingListState))
             return docs;
         Set<EmailDocument> result = new LinkedHashSet<>();
 
@@ -467,7 +467,7 @@ public class Searcher {
             return docs;
 
         String category = getParam(params, "lexiconCategory");
-        if (Util.nullOrEmpty(docs))
+        if (Util.nullOrEmpty(category))
             return docs;
 
         Set<Document> result = (Set) lex.getDocsWithSentiments(new String[]{category}, archive.indexer, docs, -1, false/* request.getParameter("originalContentOnly") != null */, category);
