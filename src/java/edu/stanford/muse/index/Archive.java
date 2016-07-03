@@ -828,7 +828,7 @@ public class Archive implements Serializable {
                 // Collections.sort(names);
                 // d.description = Util.join(names,
                 // Indexer.NAMES_FIELD_DELIMITER);
-                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getLuceneDoc(d));
+                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getLuceneDoc(d), false);
             }
         }
     }
@@ -916,14 +916,14 @@ public class Archive implements Serializable {
                     doc.removeFields("body_original");
 
                     if (text != null) {
-                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
+                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc, true);
                         doc.add(new Field("body", redacted_text, Indexer.full_ft));
                         //this uses standard analyzer, not stemming because redacted bodys only have names.
                     }
                     String title = doc.get("title");
                     doc.removeFields("title");
                     if (title != null) {
-                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
+                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(title, doc, false);
                         doc.add(new Field("title", redacted_title, Indexer.full_ft));
                     }
                 }
@@ -1555,9 +1555,10 @@ public class Archive implements Serializable {
             for(Document doc: docs) {
                 EmailDocument ed = (EmailDocument)doc;
                 org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(ed);
-                System.out.println(NER.retainOnlyNames(archive.getContents(ldoc, true), ldoc));
-                System.out.println(archive.getContents(ldoc,true));
-                if(i++>10)break;
+                //System.out.println(NER.getNameOffsets(ldoc, false));
+                System.out.println(NER.retainOnlyNames(ldoc.get("title"), ldoc, false));
+                System.out.println(ldoc.get("title"));
+                if(i++>1000)break;
             }
         } catch (Exception e) {
             e.printStackTrace();
