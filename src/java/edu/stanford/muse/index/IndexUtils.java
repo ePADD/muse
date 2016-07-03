@@ -888,6 +888,7 @@ public class IndexUtils {
 
 		// Note: order is important here -- the facets will be displayed in the order they are inserted in facetMap
 		// current order: sentiments, groups, people, direction, folders
+		/* disabling sentiment facets
 		if (indexer != null)
 		{
 			List<DetailedFacetItem> sentimentItems = new ArrayList<DetailedFacetItem>();
@@ -913,6 +914,7 @@ public class IndexUtils {
 			}
 			facetMap.put("sentiments", sentimentItems);
 		}
+		*/
 
 		Set<Document> docSet = new LinkedHashSet<Document>(docs);
 		Map<String, Set<Document>> tagToDocs = new LinkedHashMap<String, Set<Document>>();
