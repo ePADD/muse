@@ -525,32 +525,31 @@ public class SequenceModel implements NERModel, Serializable {
         return mTypes;
     }
 
-    public Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> find (String content){
-        Map<Short, Map<String,Double>> maps = new LinkedHashMap<>();
-        List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
+    public Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> find (String content) {
+        Map<Short, Map<String, Double>> maps = new LinkedHashMap<>();
+        List<Triple<String, Integer, Integer>> offsets = new ArrayList<>();
 
-        for(Short at: FeatureDictionary.allTypes)
+        for (Short at : FeatureDictionary.allTypes)
             maps.put(at, new LinkedHashMap<>());
 
-        String[] sents = NLPUtils.tokeniseSentence(content);
-        for(String sent: sents) {
-            List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent, false);
-            for (Triple<String, Integer, Integer> t : toks) {
-                //this should never happen
-                if(t==null || t.first == null)
-                    continue;
+        //Do not segment on sentences here, that will mess the token offsets returned by the Tokenizer
+        //String[] sents = NLPUtils.tokeniseSentence(content);
+        List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(content, false);
+        for (Triple<String, Integer, Integer> t : toks) {
+            //this should never happen
+            if (t == null || t.first == null)
+                continue;
 
-                Map<String,Pair<Short,Double>> entities = seqLabel(t.getFirst());
-                for(String e: entities.keySet()){
-                    Pair<Short,Double> p = entities.get(e);
-                    //A new type is assigned to some words, which is of value -2
-                    if(p.first<0)
-                        continue;
-                    if(p.first!=FeatureDictionary.OTHER) {
-                        //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
-                        offsets.add(new Triple<>(e, t.second + t.first.indexOf(e), t.second + t.first.indexOf(e) + e.length()));
-                        maps.get(p.getFirst()).put(e, p.second);
-                    }
+            Map<String, Pair<Short, Double>> entities = seqLabel(t.getFirst());
+            for (String e : entities.keySet()) {
+                Pair<Short, Double> p = entities.get(e);
+                //A new type is assigned to some words, which is of value -2
+                if (p.first < 0)
+                    continue;
+                if (p.first != FeatureDictionary.OTHER) {
+                    //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
+                    offsets.add(new Triple<>(e, t.second + t.first.indexOf(e), t.second + t.first.indexOf(e) + e.length()));
+                    maps.get(p.getFirst()).put(e, p.second);
                 }
             }
         }
@@ -852,9 +851,10 @@ public class SequenceModel implements NERModel, Serializable {
         try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
         printMemoryUsage();
-        if(nerModel == null)
+        if(nerModel == null) {
+            System.out.println("Training a NER model");
             nerModel = train();
-
+        }
         if (nerModel != null) {
             System.out.println(nerModel.find("We are traveling to Vietnam the next summer and will come to New York (NYC) soon"));
             System.out.println(nerModel.find("Mr. HariPrasad was present."));

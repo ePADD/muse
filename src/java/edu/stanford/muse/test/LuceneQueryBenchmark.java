@@ -33,7 +33,7 @@ public class LuceneQueryBenchmark {
         for(int i=0;i<numTest;i++) {
             st = System.currentTimeMillis();
             Document doc = docs.get(rand.nextInt(docs.size()));
-            try {archive.getDoc(doc);} catch(IOException e){}
+            try {archive.getLuceneDoc(doc);} catch(IOException e){}
             searchTime += System.currentTimeMillis()-st;
         }
         System.out.println(

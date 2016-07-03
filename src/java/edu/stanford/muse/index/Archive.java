@@ -828,7 +828,7 @@ public class Archive implements Serializable {
                 // Collections.sort(names);
                 // d.description = Util.join(names,
                 // Indexer.NAMES_FIELD_DELIMITER);
-                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getDoc(d));
+                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getLuceneDoc(d), false);
             }
         }
     }
@@ -916,14 +916,14 @@ public class Archive implements Serializable {
                     doc.removeFields("body_original");
 
                     if (text != null) {
-                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
+                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc, true);
                         doc.add(new Field("body", redacted_text, Indexer.full_ft));
                         //this uses standard analyzer, not stemming because redacted bodys only have names.
                     }
                     String title = doc.get("title");
                     doc.removeFields("title");
                     if (title != null) {
-                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
+                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(title, doc, false);
                         doc.add(new Field("title", redacted_title, Indexer.full_ft));
                     }
                 }
@@ -1209,7 +1209,7 @@ public class Archive implements Serializable {
         return sb.toString();
     }
 
-    public org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
+    public org.apache.lucene.document.Document getLuceneDoc(edu.stanford.muse.index.Document d) throws IOException {
         return indexer.getDoc(d);
     }
 
@@ -1547,30 +1547,18 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             List<Document> docs = archive.getAllDocs();
-            int i=0;
             archive.assignThreadIds();
+            int i=0;
             for(Document doc: docs) {
                 EmailDocument ed = (EmailDocument)doc;
-                List<Document> threads = archive.docsWithThreadId(ed.threadID);
-                if(threads.size()>0){
-                    int numSent = 0;
-                    for(Document d: threads){
-                        EmailDocument thread = (EmailDocument)d;
-                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
-                        if(sent>0)
-                            numSent++;
-                    }
-                    if(threads.size()!=numSent || threads.size()>2){
-                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
-                        break;
-                    }
-                    if(i%100 == 0)
-                        System.err.println("Scanned: "+i+" docs");
-                }
-                i++;
+                org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(ed);
+                //System.out.println(NER.getNameOffsets(ldoc, false));
+                System.out.println(NER.retainOnlyNames(ldoc.get("title"), ldoc, false));
+                System.out.println(ldoc.get("title"));
+                if(i++>1000)break;
             }
         } catch (Exception e) {
             e.printStackTrace();

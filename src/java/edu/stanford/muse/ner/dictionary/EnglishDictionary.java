@@ -217,7 +217,7 @@ public class EnglishDictionary {
             return abbDict;
         abbDict = LinkedHashMultimap.create();
         try{
-            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(abbFile)));
+            BufferedReader br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(abbFile)));
             String line;
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
@@ -308,5 +308,6 @@ public class EnglishDictionary {
     public static void main(String[] args){
         //testPlurals();
         getAbbreviations();
+        getDict();
     }
 }

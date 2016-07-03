@@ -691,7 +691,7 @@ public class ProperNounLinker {
 //            }
 //            archive.close();
 ////            EmailDocument ed = (EmailDocument)archive.getAllDocs().get(2);
-////            System.err.println(archive.getDoc(ed));
+////            System.err.println(archive.getLuceneDoc(ed));
 //        }catch(Exception e){
 //            e.printStackTrace();
 //        }
