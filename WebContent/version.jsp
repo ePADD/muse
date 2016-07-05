@@ -1,1 +1,1 @@
-Muse version v1.0beta
+Muse version Release 2, beta1

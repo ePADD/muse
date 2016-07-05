@@ -76,7 +76,7 @@ public class Searcher {
         return values;
     }
 
-    private static Pair<Set<Document>, Set<Blob>> searchForTerm(Archive archive, Multimap<String, String> params, String term) {
+    public static Pair<Set<Document>, Set<Blob>> searchForTerm(Archive archive, Multimap<String, String> params, String term) {
         // go in the order subject, body, attachment
         Set<Document> docsForTerm = new LinkedHashSet<>();
         Set<Blob> blobsForTerm = new LinkedHashSet<>();
