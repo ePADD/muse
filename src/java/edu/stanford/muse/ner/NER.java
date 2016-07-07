@@ -510,54 +510,83 @@ public class NER implements StatusProvider {
 		});
 	}
 
-    //retains only filtered entities
+    /** replaces all tokens in the given text that are not in any of the entities in the given doc.
+     * all other tokens are replaced with REDACTION_CHAR.
+     * token is defined as a consecutive sequence of letters or digits
+     * Note: all other characters (incl. punctuation, special symbols) are blindly copied through
+     * anything not captured in a token is considered non-sensitive and is passed through
+     */
 	public static String retainOnlyNames(String text, org.apache.lucene.document.Document doc) {
-        List<Triple<String,Integer, Integer>> offsets = edu.stanford.muse.ner.NER.getNameOffsets(doc, true);
-        if (offsets == null) {
-		    //mask the whole content
-            offsets = new ArrayList<>();
-            log.warn("Retain only names method received null offset, redacting the entire text");
-		}
-
-		int len = text.length();
-        offsets.add(new Triple<>(null, len, len)); // sentinel
         StringBuilder result = new StringBuilder();
-		int prev_name_end_pos = 0; // pos of first char after previous name
+        Set<String> allowedTokens = new LinkedHashSet<>();
 
-		//make sure the offsets are in order, i.e. the end offsets are in increasing order
-		arrangeOffsets(offsets);
-        List<String> people = Archive.getEntitiesInLuceneDoc(doc, NER.EPER, true);
-        List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, NER.EORG, true);
-        List<String> places = Archive.getEntitiesInLuceneDoc(doc, NER.ELOC, true);
-        Set<String> allEntities = new LinkedHashSet<>();
-        if (people!=null)
-            allEntities.addAll(people);
-        if (orgs!=null)
-            allEntities.addAll(orgs);
-        if (places!=null)
-            allEntities.addAll(places);
+        // assemble all the allowed tokens (lower cased) from these 3 types of entities
+        {
+            List<String> people = Archive.getEntitiesInLuceneDoc(doc, NER.EPER, true);
+            List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, NER.EORG, true);
+            List<String> places = Archive.getEntitiesInLuceneDoc(doc, NER.ELOC, true);
+            Set<String> allEntities = new LinkedHashSet<>();
+            if (people != null)
+                allEntities.addAll(people);
+            if (orgs != null)
+                allEntities.addAll(orgs);
+            if (places != null)
+                allEntities.addAll(places);
 
-        for (Triple<String, Integer, Integer> t : offsets) {
-            String entity = t.first;
-            if(!allEntities.contains(entity))
-                continue;
+            for (String e : allEntities)
+                allowedTokens.addAll(Util.tokenize(e.toLowerCase()));
+        }
 
-          	int begin_pos = t.second();
-			int end_pos = t.third();
-			if (begin_pos > len || end_pos > len) {
-				// TODO: this is unclean. Happens because we concat body & title together when we previously generated these offsets but now we only have body.
-				begin_pos = end_pos = len;
-			}
+        final char REDACTION_CHAR = '.';
+        int idx = 0;
 
-			if (prev_name_end_pos > begin_pos) // something strange, but possible - the same string can be recognized as multiple named entity types
-				continue;
-			String filler = text.substring(prev_name_end_pos, begin_pos);
-			//filler = filler.replaceAll("\\w", "."); // CRITICAL: \w only matches (redacts) english language
-			filler = filler.replaceAll("[^\\p{Punct}\\s]", ".");
-			result.append(filler);
-			result.append(text.substring(begin_pos, end_pos));
-			prev_name_end_pos = end_pos;
-		}
+        outer:
+        while (true) {
+            StringBuilder token = new StringBuilder();
+
+            // go through all the chars one by one, either passing them through or assembling them in a token that can be looked up in allowedTokens
+
+            {
+                // skip until start of next token, passing through chars to result
+                // the letter pointed to by idx has not yet been processed
+                while (true) {
+                    if (idx >= text.length())
+                        break outer;
+
+                    char ch = text.charAt(idx++);
+                    if (Character.isLetter(ch) || Character.isDigit(ch)) {  // if other chars are judged sensitive in the future, this condition should be updated
+                        token.append(ch);
+                        break;
+                    } else
+                        result.append(ch);
+                }
+            }
+
+            {
+                // now, idx is just past the start of a token (with the first letter stored in token),
+                // keep reading letters until we find a non-letter, adding it to the token
+                // the letter pointed to by idx has not yet been processed
+                while (true) {
+                    if (idx >= text.length())
+                        break; // only break out of inner loop here, not the outer. this might be the last token, and token may have some residual content, so it has to be processed
+                    char ch = text.charAt(idx++);
+                    if (!Character.isLetter(ch) && !Character.isDigit(ch)) {
+                        result.append(ch); // pass through this char
+                        break;
+                    }
+                    token.append(ch);
+                }
+            }
+
+            // look up the token and allow it only if allowedTokens contains it
+            // use lower case token for comparison, but when appending to result, use the original string with the original case
+            String lowerCaseToken = token.toString().toLowerCase(); // ctoken = canonicalized token
+            if (allowedTokens.contains(lowerCaseToken))
+                result.append (token);
+            else
+                for (int j = 0; j < token.length(); j++)
+                    result.append (REDACTION_CHAR);
+        }
 
 		return result.toString();
 	}
