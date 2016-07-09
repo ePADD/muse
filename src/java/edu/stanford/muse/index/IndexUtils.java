@@ -23,8 +23,8 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.Group;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.util.*;
-import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.JSPHelper;
+import edu.stanford.muse.webapp.ModeConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -32,6 +32,7 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /** useful utilities for indexing */
 public class IndexUtils {
@@ -180,6 +181,95 @@ public class IndexUtils {
 
 		return sortedMap;
 	}
+
+	/** replaces all tokens in the given text that are not in any of the entities in the given doc.
+     * all other tokens are replaced with REDACTION_CHAR.
+     * token is defined as a consecutive sequence of letters or digits
+     * Note: all other characters (incl. punctuation, special symbols) are blindly copied through
+     * anything not captured in a token is considered non-sensitive and is passed through
+     */
+    public static String retainOnlyNames(String text, org.apache.lucene.document.Document doc) {
+        StringBuilder result = new StringBuilder();
+        Set<String> allowedTokens = new LinkedHashSet<>();
+
+        // assemble all the allowed tokens (lower cased) from these 3 types of entities
+        {
+            List<String> people = Archive.getEntitiesInLuceneDoc(doc, edu.stanford.muse.ner.NER.EPER, true);
+            List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, edu.stanford.muse.ner.NER.EORG, true);
+            List<String> places = Archive.getEntitiesInLuceneDoc(doc, edu.stanford.muse.ner.NER.ELOC, true);
+            Set<String> allEntities = new LinkedHashSet<>();
+            if (people != null)
+                allEntities.addAll(people);
+            if (orgs != null)
+                allEntities.addAll(orgs);
+            if (places != null)
+                allEntities.addAll(places);
+
+            for (String e : allEntities)
+                allowedTokens.addAll(Util.tokenize(e.toLowerCase()));
+            // names may sometimes still have punctuation; strip it. e.g. a name like "Rep. Duncan" should lead to the tokens "rep" and "duncan"
+            allowedTokens = allowedTokens.stream().map(s -> Util.stripPunctuation(s)).collect(Collectors.toSet());
+        }
+
+        final char REDACTION_CHAR = '.';
+        int idx = 0;
+
+        outer:
+        while (true) {
+            StringBuilder token = new StringBuilder();
+
+            // go through all the chars one by one, either passing them through or assembling them in a token that can be looked up in allowedTokens
+
+            {
+                // skip until start of next token, passing through chars to result
+                // the letter pointed to by idx has not yet been processed
+                while (true) {
+                    if (idx >= text.length())
+                        break outer;
+
+                    char ch = text.charAt(idx++);
+                    if (Character.isLetter(ch) || Character.isDigit(ch)) {  // if other chars are judged sensitive in the future, this condition should be updated
+                        token.append(ch);
+                        break;
+                    } else
+                        result.append(ch);
+                }
+            }
+
+            Character ch;
+            {
+                // now, idx is just past the start of a token (with the first letter stored in token),
+                // keep reading letters until we find a non-letter, adding it to the token
+                // the letter pointed to by idx has not yet been processed
+                while (true) {
+                    ch = null;
+                    if (idx >= text.length())
+                        break; // only break out of inner loop here, not the outer. this might be the last token, and token may have some residual content, so it has to be processed
+                    ch = text.charAt(idx++);
+                    if (!Character.isLetter(ch) && !Character.isDigit(ch))
+                        break;
+
+                    token.append(ch);
+                }
+            }
+            // ch contains the first char beyond the token (if it is not null). If it is null, it means we have reached the end of the string
+
+
+            // look up the token and allow it only if allowedTokens contains it
+            // use lower case token for comparison, but when appending to result, use the original string with the original case
+            String lowerCaseToken = token.toString().toLowerCase(); // ctoken = canonicalized token
+            if (allowedTokens.contains(lowerCaseToken) && !"a".equals(token)) // worried about "A" grade, we should disallow it although it could easily be a token in a name somewhere
+                result.append(token);
+            else
+                for (int j = 0; j < token.length(); j++)
+                    result.append(REDACTION_CHAR);
+
+            if (ch != null)
+                result.append(ch);
+        }
+
+        return result.toString();
+    }
 
 	public static class Window {
 		public Date					start;

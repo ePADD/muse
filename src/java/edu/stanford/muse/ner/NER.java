@@ -5,6 +5,7 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
+import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
@@ -29,6 +30,7 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This is the only class dependent on ePADD in this package and has all the interfacing functionality
@@ -247,6 +249,44 @@ public class NER implements StatusProvider {
             result = new LinkedHashMap<>();
         }
 
+        return result;
+    }
+
+	/** returns a set of entities of the given type (those with a score above theta = 0.001
+     *  if body is true, the email body is looked at, else the title.
+     */
+	public static Set<String> getEntitiesOfType(Archive archive, EmailDocument doc, Short type, boolean body) throws IOException {
+		Map<Short,Map<String,Double>> es = NER.getEntities(archive.getDoc(doc), body);
+		Map<String,Double> typeMap = es.get(type);
+
+        if (typeMap == null)
+            return new LinkedHashSet<>();
+
+		// pick up all keys with score > theta in the type map
+		double theta = 0.001;
+		Set<String> entities = typeMap.keySet().parallelStream().filter(s -> typeMap.get(s) >= theta).collect(Collectors.toSet());
+		return entities;
+	}
+
+    /** returns a set of all entities in the given doc (those with a score above theta = 0.001).
+     * if body is true, the email body is looked at, else the title. */
+    public static Set<String> getAllFineGrainedEntities(Archive archive, Document doc, boolean body) throws IOException {
+        Set<String> result = new LinkedHashSet<>();
+        double THETA = 0.001;
+
+        Map<Short, Map<String, Double>> es = NER.getEntities(archive.getDoc(doc), body);
+        for (Short type : es.keySet()) {
+            Map<String, Double> typeMap = es.get(type);
+
+            if (typeMap == null)
+                return new LinkedHashSet<>();
+
+            // pick up all keys with score > theta in the type map
+            Set<String> thisTypeEntities = typeMap.keySet().parallelStream().filter(s -> typeMap.get(s) >= THETA).collect(Collectors.toSet());
+            if (thisTypeEntities == null)
+                continue;
+            result.addAll(thisTypeEntities);
+        }
         return result;
     }
 
@@ -510,88 +550,7 @@ public class NER implements StatusProvider {
 		});
 	}
 
-    /** replaces all tokens in the given text that are not in any of the entities in the given doc.
-     * all other tokens are replaced with REDACTION_CHAR.
-     * token is defined as a consecutive sequence of letters or digits
-     * Note: all other characters (incl. punctuation, special symbols) are blindly copied through
-     * anything not captured in a token is considered non-sensitive and is passed through
-     */
-	public static String retainOnlyNames(String text, org.apache.lucene.document.Document doc) {
-        StringBuilder result = new StringBuilder();
-        Set<String> allowedTokens = new LinkedHashSet<>();
-
-        // assemble all the allowed tokens (lower cased) from these 3 types of entities
-        {
-            List<String> people = Archive.getEntitiesInLuceneDoc(doc, NER.EPER, true);
-            List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, NER.EORG, true);
-            List<String> places = Archive.getEntitiesInLuceneDoc(doc, NER.ELOC, true);
-            Set<String> allEntities = new LinkedHashSet<>();
-            if (people != null)
-                allEntities.addAll(people);
-            if (orgs != null)
-                allEntities.addAll(orgs);
-            if (places != null)
-                allEntities.addAll(places);
-
-            for (String e : allEntities)
-                allowedTokens.addAll(Util.tokenize(e.toLowerCase()));
-        }
-
-        final char REDACTION_CHAR = '.';
-        int idx = 0;
-
-        outer:
-        while (true) {
-            StringBuilder token = new StringBuilder();
-
-            // go through all the chars one by one, either passing them through or assembling them in a token that can be looked up in allowedTokens
-
-            {
-                // skip until start of next token, passing through chars to result
-                // the letter pointed to by idx has not yet been processed
-                while (true) {
-                    if (idx >= text.length())
-                        break outer;
-
-                    char ch = text.charAt(idx++);
-                    if (Character.isLetter(ch) || Character.isDigit(ch)) {  // if other chars are judged sensitive in the future, this condition should be updated
-                        token.append(ch);
-                        break;
-                    } else
-                        result.append(ch);
-                }
-            }
-
-            {
-                // now, idx is just past the start of a token (with the first letter stored in token),
-                // keep reading letters until we find a non-letter, adding it to the token
-                // the letter pointed to by idx has not yet been processed
-                while (true) {
-                    if (idx >= text.length())
-                        break; // only break out of inner loop here, not the outer. this might be the last token, and token may have some residual content, so it has to be processed
-                    char ch = text.charAt(idx++);
-                    if (!Character.isLetter(ch) && !Character.isDigit(ch)) {
-                        result.append(ch); // pass through this char
-                        break;
-                    }
-                    token.append(ch);
-                }
-            }
-
-            // look up the token and allow it only if allowedTokens contains it
-            // use lower case token for comparison, but when appending to result, use the original string with the original case
-            String lowerCaseToken = token.toString().toLowerCase(); // ctoken = canonicalized token
-            if (allowedTokens.contains(lowerCaseToken))
-                result.append (token);
-            else
-                for (int j = 0; j < token.length(); j++)
-                    result.append (REDACTION_CHAR);
-        }
-
-		return result.toString();
-	}
-
-	@Override
+    @Override
 	public String getStatusMessage() {
 		if(statusProvider!=null)
             return statusProvider.getStatusMessage();

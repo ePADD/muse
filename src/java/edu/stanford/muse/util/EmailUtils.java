@@ -1579,6 +1579,20 @@ public class EmailUtils {
         return result;
     }
 
+	/**@return list of all fine grained entities */
+	public static Set<String> getAllEntitiesInDocs(Archive archive, Collection<EmailDocument> docs) {
+		Set<String> result = new LinkedHashSet<>();
+		for (EmailDocument d : docs) {
+			try {
+				result.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, d, true));
+				result.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, d, false));
+			} catch (Exception e) {
+				Util.print_exception ("exception reading fine grained entities", e, log);
+			}
+ 		}
+		return result;
+	}
+
 	public static Map<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);
     }

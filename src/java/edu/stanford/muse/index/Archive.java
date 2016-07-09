@@ -828,7 +828,7 @@ public class Archive implements Serializable {
                 // Collections.sort(names);
                 // d.description = Util.join(names,
                 // Indexer.NAMES_FIELD_DELIMITER);
-                d.description = edu.stanford.muse.ner.NER.retainOnlyNames(d.description, archive.getDoc(d));
+                d.description = IndexUtils.retainOnlyNames(d.description, archive.getDoc(d));
             }
         }
     }
@@ -916,14 +916,14 @@ public class Archive implements Serializable {
                     doc.removeFields("body_original");
 
                     if (text != null) {
-                        String redacted_text = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
+                        String redacted_text = IndexUtils.retainOnlyNames(text, doc);
                         doc.add(new Field("body", redacted_text, Indexer.full_ft));
                         //this uses standard analyzer, not stemming because redacted bodys only have names.
                     }
                     String title = doc.get("title");
                     doc.removeFields("title");
                     if (title != null) {
-                        String redacted_title = edu.stanford.muse.ner.NER.retainOnlyNames(text, doc);
+                        String redacted_title = IndexUtils.retainOnlyNames(text, doc);
                         doc.add(new Field("title", redacted_title, Indexer.full_ft));
                     }
                 }
