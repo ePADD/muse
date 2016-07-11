@@ -332,35 +332,32 @@ public class EmailUtils {
 			mbox.println("X-Muse-Liked: 1");
 	}
 
-	public static void dumpMessagesToDir(Archive archive, Collection<EmailDocument> docs, String dir) throws IOException, GeneralSecurityException, ClassCastException, ClassNotFoundException
+	/** this is an export for other tools to process the message text or names. Writes files called <n>.fill and <n>.names in the givne dir */
+	public static void dumpMessagesAndNamesToDir(Archive archive, Collection<EmailDocument> docs, String dir) throws IOException, GeneralSecurityException, ClassCastException, ClassNotFoundException
 	{
 		File f = new File(dir);
 		f.mkdirs();
 		int i = 0;
-		NER.initialize();
 		for (EmailDocument ed : docs)
 		{
 			try {
-				PrintWriter pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".full"));
 				String m = ed.description + "\n\n" + archive.getContents(ed, false /* full message */);
+				PrintWriter pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".full"));
 				pw.println(m);
 				pw.close();
 
+				Set<String> allEntities = new LinkedHashSet<>();
+				allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, ed, true));
+				allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, ed, false));
+
 				pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".names"));
 
-				NERTokenizer t = (NERTokenizer) NER.parse(m);
 				String s = "";
-				while (t.hasMoreTokens())
+				for (String e: allEntities)
 				{
-					Pair<String, String> tokenAndType = t.nextTokenAndType();
-					String token = tokenAndType.getFirst().trim().toLowerCase();
-					// drop dictionary words
-					if (DictUtils.fullDictWords.contains(token))
-						continue;
-					// drop "terms" with | -- often used as a separator on the web, and totally confuses our indexer's phrase lookup
-					if (token.indexOf("|") >= 0)
-						continue;
-					s += token.replaceAll(" ", "_") + " ";
+					e = e.toLowerCase();
+					e = e.replaceAll(" ", "_");
+					s += e + " ";
 				}
 				pw.println(s);
 				pw.close();
@@ -1540,58 +1537,6 @@ public class EmailUtils {
 		return sample(dbpedia,p);
 	}
 
-	/**@return list of all email sources */
-	public static Set<String> getAllEmailSourcesInDocs(Collection<EmailDocument> docs) {
-		Set<String> result = new LinkedHashSet<>();
-		for (EmailDocument d: docs)
-			result.add (d.emailSource);
-		return result;
-	}
-
-	/**@return list of all email sources */
-	public static Set<String> getAllFoldersInDocs(Collection<EmailDocument> docs) {
-		Set<String> result = new LinkedHashSet<>();
-		for (EmailDocument d: docs)
-			result.add (d.folderName);
-		return result;
-	}
-
-    /**@return list of all email sources */
-    public static Set<String> getAllAnnotationsInDocs(Collection<EmailDocument> docs) {
-        Set<String> result = new LinkedHashSet<>();
-        for (EmailDocument d: docs)
-            if (!Util.nullOrEmpty(d.comment))
-                result.add (d.comment);
-        return result;
-    }
-
-    /**@return list of all email sources */
-    public static Set<String> getAllBlobNamesInDocs(Collection<EmailDocument> docs) {
-        Set<String> result = new LinkedHashSet<>();
-        for (EmailDocument d: docs)
-            if (!Util.nullOrEmpty(d.attachments)) {
-                List<Blob> blobs = d.attachments;
-                for (Blob b: blobs) {
-                    if (!Util.nullOrEmpty(b.getName()))
-                        result.add(b.getName());
-                }
-            }
-        return result;
-    }
-
-	/**@return list of all fine grained entities */
-	public static Set<String> getAllEntitiesInDocs(Archive archive, Collection<EmailDocument> docs) {
-		Set<String> result = new LinkedHashSet<>();
-		for (EmailDocument d : docs) {
-			try {
-				result.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, d, true));
-				result.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, d, false));
-			} catch (Exception e) {
-				Util.print_exception ("exception reading fine grained entities", e, log);
-			}
- 		}
-		return result;
-	}
 
 	public static Map<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);

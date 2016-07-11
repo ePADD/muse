@@ -320,7 +320,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			doc.add(new Field("languages", lang_str, ft));
 
 			if(edu.stanford.muse.Config.OPENNLP_NER) {
-				Set<String> names = setNameFields(documentText, doc);
+				Set<String> names = setNameFieldsOpenNLP(documentText, doc);
 
 				String s = Util.join(names, NAMES_FIELD_DELIMITER); // just some connector for storing the field
 				if (s == null)
@@ -918,7 +918,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * e.g. name category could be "person", with value
 	 * "Monica<NAMES_FIELD_DELIMITER>David"
 	 */
-	private Set<String> setNameFields(String text, org.apache.lucene.document.Document doc)
+	private Set<String> setNameFieldsOpenNLP(String text, org.apache.lucene.document.Document doc)
 	{
 		text = prepareFullBodyForNameExtraction(text);
 		Pair<Map<String, List<String>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = NER.categoryToNamesMap(text);
@@ -1039,7 +1039,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 		if(edu.stanford.muse.Config.OPENNLP_NER) {
             String textForNameExtraction = body + ". " + effectiveSubject; // Sit says put body first so that the extracted NER offsets can be used without further adjustment for epadd redaction
-            Set<String> allNames = setNameFields(textForNameExtraction, doc);
+            Set<String> allNames = setNameFieldsOpenNLP(textForNameExtraction, doc);
 
 			String names = Util.join(allNames, NAMES_FIELD_DELIMITER);
 
@@ -1053,7 +1053,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				namesOriginal = allNames;
 			else {
 				String originalTextForNameExtraction = bodyOriginal + ". " + effectiveSubject;
-				namesOriginal = Archive.extractNames(originalTextForNameExtraction);
+				namesOriginal = Archive.extractNamesOpenNLP(originalTextForNameExtraction);
 			}
 			if(stats!=null) {
 				stats.nNames += allNames.size();

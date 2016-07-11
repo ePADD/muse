@@ -46,20 +46,60 @@ import java.util.*;
  *
  */
 public class Archive implements Serializable {
+    private static Log log = LogFactory.getLog(Archive.class);
+    private final static long serialVersionUID = 1L;
 
-    public static String[] LEXICONS =  new String[]{"default.english.lex.txt"}; // this is the default, for Muse. EpaddIntializer will set it differently
-    /**
-     * Recognises names in the supplied text with OpenNLP NER
-     * @Deprecated
+    // the archive structure: the archive's top level dir has these subdirs
+    public static final String BLOBS_SUBDIR = "blobs";
+    public static final String INDEXES_SUBDIR = "indexes";
+    public static final String SESSIONS_SUBDIR = "sessions"; // original idea was that there would be different sessions on the same archive (index). but in practice we only have one session
+    public static final String LEXICONS_SUBDIR = "lexicons";
+    public static final String FEATURES_SUBDIR = "features";
+    public static final String IMAGES_SUBDIR = "images";
+
+    public static String[] LEXICONS =  new String[]{"default.english.lex.txt"}; // this is the default, for Muse. EpaddIntializer will set it differently. don't make it final
+
+    ////////////  CACHE variables ///////////////
+    // these 5 variables cache the list of all entities/blob names/annotations/folders/ email sources in the archive
+    // of these folders, email source and blob names generally don't change
+    // however, entities and annotations must be recomputed any time there is a change
+    // for good measure, we invalidate all of them when close() is called on the archive
+    private transient Set<String> allEntities, allBlobNames, allAnnotations, allFolders, allEmailSources;
+    ////////////  END CACHE variables ///////////////
+
+    /* all of the following don't change based on the current filter */
+    public Indexer indexer;
+    private IndexOptions indexOptions;
+    public BlobStore blobStore;
+    public AddressBook addressBook;
+    public GroupAssigner groupAssigner;
+    transient private Map<String, Lexicon> lexiconMap = null;
+    private List<Document> allDocs;                                                    // this is the equivalent of fullEmailDocs earlier
+    transient private Set<Document> allDocsAsSet = null;
+    private Set<FolderInfo> fetchedFolderInfos = new LinkedHashSet<FolderInfo>();    // keep this private since its updated in a controlled way
+    transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
+    public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();
+    Map<String, NameInfo> nameMap;
+
+    public ProcessingMetadata processingMetadata = new ProcessingMetadata();
+    public List<String> allAccessions = new ArrayList<String>();
+    public List<FetchStats> allStats = new ArrayList<FetchStats>(); // multiple stats because usually there is 1 per import
+
+    public String archiveTitle; // this is the name of this archive
+
+    /*
+     * baseDir is used loosely... it may not be fully reliable, e.g. when the
+     * archive moves.
      */
-    public static Set<String> extractNames(String text) throws Exception {
-        List<Pair<String, Float>> pairs = edu.stanford.muse.index.NER.namesFromText(text);
-        Set<String> names = new LinkedHashSet<String>();
-        for (Pair<String, ?> p : pairs)
-            names.add(p.getFirst());
+    public String baseDir;
 
-        return Util.scrubNames(names);
-    }
+
+    public SentimentStats stats = new SentimentStats();
+
+    // clusters are somewhat ephemeral and not necessarily a core part of the
+    // Archive struct. consider moving it elsewhere.
+    List<MultiDoc> docClusters;
+
 
     protected static void readPresetQueries() {
         List<String> q = new ArrayList<>();
@@ -216,15 +256,6 @@ public class Archive implements Serializable {
         return indexer.stats;
     }
 
-    private static Log log = LogFactory.getLog(Archive.class);
-    private final static long serialVersionUID = 1L;
-
-    public static final String BLOBS_SUBDIR = "blobs";
-    public static final String IMAGES_SUBDIR = "images";
-    public static final String INDEXES_SUBDIR = "indexes";
-    public static final String SESSIONS_SUBDIR = "sessions";                        // original idea was that there would be different sessions on the same archive (index). but in practice we only have one session
-    public static final String LEXICONS_SUBDIR = "lexicons";
-    public static final String FEATURES_SUBDIR = "features";
 
     // these fields are used in the library setting
     static public class ProcessingMetadata implements java.io.Serializable {
@@ -267,33 +298,6 @@ public class Archive implements Serializable {
         }
     }
 
-    /**
-     * all of these things don't change based on the current filter
-     */
-    public Indexer indexer;
-    private IndexOptions indexOptions;
-    public BlobStore blobStore;
-    public AddressBook addressBook;
-    public GroupAssigner groupAssigner;
-    transient private Map<String, Lexicon> lexiconMap = null;
-    private List<Document> allDocs;                                                    // this is the equivalent of fullEmailDocs earlier
-    transient private Set<Document> allDocsAsSet = null;
-    private Set<FolderInfo> fetchedFolderInfos = new LinkedHashSet<FolderInfo>();    // keep this private since its updated in a controlled way
-    transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
-    public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();
-    Map<String, NameInfo> nameMap;
-
-    public ProcessingMetadata processingMetadata = new ProcessingMetadata();
-    public List<String> allAccessions = new ArrayList<String>();
-    public List<FetchStats> allStats = new ArrayList<FetchStats>(); // multiple stats because usually there is 1 per import
-
-    public String archiveTitle; // this is the name of this archive
-
-	/*
-	 * baseDir is used loosely... it may not be fully reliable, e.g. when the
-	 * archive moves.
-	 */
-    public String baseDir;
 
     /**
      * set the base dir of the archive, this is the place where all the archive cache is dumped
@@ -319,13 +323,6 @@ public class Archive implements Serializable {
         public Map<String, Integer> sentimentCounts;
     }
 
-    public SentimentStats stats = new SentimentStats();
-
-    transient private List<Map.Entry<String, Integer>> topNames = null;
-
-    // clusters are somewhat ephemeral and not necessarily a core part of the
-    // Archive struct. consider moving it elsewhere.
-    List<MultiDoc> docClusters;
 
     protected void setBlobStore(BlobStore blobStore) {
         this.blobStore = blobStore;
@@ -388,6 +385,9 @@ public class Archive implements Serializable {
         } catch (Exception e) {
             Util.print_exception(e, log);
         }
+
+        // clear all the caches, so they will be recomputed at next use
+        allEntities = allBlobNames = allFolders = allEmailSources = allAnnotations = null;
     }
 
     // create a new/empty archive.
@@ -407,7 +407,7 @@ public class Archive implements Serializable {
         log.info("Index options are: " + indexOptions);
         indexer = new Indexer(baseDir, indexOptions);
         if(blobStore!=null)
-        setBlobStore(blobStore);
+            setBlobStore(blobStore);
     }
 
     /**
@@ -434,6 +434,9 @@ public class Archive implements Serializable {
         log.info("Updating archive's alldocs to new list of " + docs.size() + " docs");
         allDocs = docs;
         allDocsAsSet = null;
+
+        // reset all these fields, they will be computed afresh
+        allEntities = allBlobNames = allAnnotations = allFolders = allEmailSources = null;
     }
 
     public NameInfo nameLookup(String name) {
@@ -1260,52 +1263,6 @@ public class Archive implements Serializable {
     }
 
     /**
-     * One of threshold_pct and n can be set.
-     * @param threshold_pct - get only the top threshol_pct names
-     * @param n - limit the number of names returned at n
-     * @param sort_by_names - sort by names or frequency
-     * @return top names whose frequency percentage is higher than
-     * */
-    public List<Map.Entry<String, Integer>> getTopNames(int threshold_pct, int n, boolean sort_by_names) {
-        if (topNames == null) {
-            // sort by count
-            topNames = new ArrayList<Map.Entry<String, Integer>>(countNames().entrySet());
-            Collections.sort(topNames, new Comparator<Map.Entry<String, Integer>>() {
-                public int compare(Map.Entry<String, Integer> e1, Map.Entry<String, Integer> e2) {
-                    return e2.getValue().compareTo(e1.getValue());
-                }
-            });
-
-            // rescale the count to be in the range of 0-100
-            if (topNames.size() > 0) {
-                int max_count = topNames.get(0).getValue();
-                for (Map.Entry<String, Integer> e : topNames)
-                    e.setValue((int) (Math.pow(e.getValue().doubleValue() / max_count, 0.25) * 100));
-            }
-        }
-
-        int count = 0;
-        for (Map.Entry<String, Integer> e : topNames) {
-            if (e.getValue() < threshold_pct || count == n)
-                break;
-            count++;
-        }
-
-        List<Map.Entry<String, Integer>> result = new ArrayList<Map.Entry<String, Integer>>(topNames.subList(0, count));
-        if (sort_by_names) {
-            // NOTE: this sort triggers java.lang.AbstractMethodError at
-            // java.util.Arrays.mergeSort when placed in JSP.
-            Collections.sort(result, new Comparator<Map.Entry<String, Integer>>() {
-                public int compare(Map.Entry<String, Integer> e1, Map.Entry<String, Integer> e2) {
-                    return e1.getKey().compareTo(e2.getKey());
-                }
-            });
-        }
-
-        return result;
-    }
-
-    /**
      * Assign Ids to threads, can help in making out if two emails belong to the same thread
      * Subject/Title of the a message can also be used for the same purpose
      * @return the maximum thread id value assignbed to any thread in th arhchive*/
@@ -1331,7 +1288,6 @@ public class Archive implements Serializable {
 
         if (!readOnly)
             indexer.setupForWrite();
-        // getTopNames();
         if (addressBook != null) {
             // addressBook.reassignContactIds();
             addressBook.organizeContacts(); // is this idempotent?
@@ -1543,6 +1499,95 @@ public class Archive implements Serializable {
             return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
         else
             return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
+    }
+
+    /**@return list of all fine grained entities */
+    public synchronized Set<String> getAllEntities() {
+
+        if (allEntities == null) {
+            allEntities = new LinkedHashSet<>();
+            for (Document d : getAllDocs()) {
+                try {
+                    allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(this, d, true));
+//                    allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(this, d, false));
+                } catch (Exception e) {
+                    Util.print_exception("exception reading fine grained entities", e, log);
+                }
+            }
+        }
+        return allEntities;
+    }
+
+    /**@return list of all email sources */
+    public synchronized Set<String> getAllEmailSources() {
+        if (allEmailSources == null) {
+            allEmailSources = new LinkedHashSet<>();
+            Collection<EmailDocument> docs = (Collection) getAllDocs();
+            for (EmailDocument d : docs)
+                if (!Util.nullOrEmpty(d.emailSource))
+                    allEmailSources.add(d.emailSource);
+
+        }
+        return allEmailSources;
+    }
+
+    /**@return list of all email sources */
+    public synchronized Set<String> getAllFolders() {
+        if (allFolders == null) {
+            allFolders = new LinkedHashSet<>();
+            Collection<EmailDocument> docs = (Collection) getAllDocs();
+            for (EmailDocument d : docs)
+                if (!Util.nullOrEmpty(d.folderName))
+                    allFolders.add(d.folderName);
+        }
+        return allFolders;
+    }
+
+    // invalidate the cache of all annotations. this should be called any time an annotation changes
+    public void clearAllAnnotationsCache() {
+        allAnnotations = null;
+    }
+
+    /**@return list of all email sources */
+    public synchronized Set<String> getAllAnnotations() {
+        if (allAnnotations == null) {
+            allAnnotations = new LinkedHashSet<>();
+            for (Document d : getAllDocs())
+                if (!Util.nullOrEmpty(d.comment))
+                   allAnnotations.add(d.comment);
+        }
+        return allAnnotations;
+    }
+
+    /**@return list of all email sources */
+    public synchronized Set<String> getAllBlobNames() {
+        if (allBlobNames == null) {
+            allBlobNames = new LinkedHashSet<>();
+            Collection<EmailDocument> docs = (Collection) getAllDocs();
+            for (EmailDocument d : docs)
+                if (!Util.nullOrEmpty(d.attachments)) {
+                    List<Blob> blobs = d.attachments;
+                    for (Blob b : blobs) {
+                        if (!Util.nullOrEmpty(b.getName()))
+                            allBlobNames.add(b.getName());
+                    }
+                }
+        }
+        return allBlobNames;
+    }
+
+
+    /**
+     * Recognises names in the supplied text with OpenNLP NER
+     * @Deprecated
+     */
+    @Deprecated public static Set<String> extractNamesOpenNLP(String text) throws Exception {
+        List<Pair<String, Float>> pairs = edu.stanford.muse.index.NER.namesFromText(text);
+        Set<String> names = new LinkedHashSet<String>();
+        for (Pair<String, ?> p : pairs)
+            names.add(p.getFirst());
+
+        return Util.scrubNames(names);
     }
 
     public static void main(String[] args) {

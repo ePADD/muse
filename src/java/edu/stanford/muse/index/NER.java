@@ -39,9 +39,10 @@ import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 /**OpenNLP NER
- * @see edu.stanford.muse.ner.NER */
-@Deprecated
-public class NER {
+ * @see edu.stanford.muse.ner.NER
+ * @deprecated because it is not used any more
+ */
+@Deprecated public class NER {
 	public static Log								log						= LogFactory.getLog(NER.class);
 	public static boolean							REMOVE_I18N_CHARS		= false;
 
