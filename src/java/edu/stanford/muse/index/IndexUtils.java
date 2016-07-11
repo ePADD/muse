@@ -214,6 +214,8 @@ public class IndexUtils {
         final char REDACTION_CHAR = '.';
         int idx = 0;
 
+		boolean previousTokenAllowed = false;
+
         outer:
         while (true) {
             StringBuilder token = new StringBuilder();
@@ -257,12 +259,23 @@ public class IndexUtils {
 
             // look up the token and allow it only if allowedTokens contains it
             // use lower case token for comparison, but when appending to result, use the original string with the original case
-            String lowerCaseToken = token.toString().toLowerCase(); // ctoken = canonicalized token
-            if (allowedTokens.contains(lowerCaseToken) && !"a".equals(token)) // worried about "A" grade, we should disallow it although it could easily be a token in a name somewhere
+			// worried about "A" grade, we should disallow it although it could easily be a token in a name somewhere
+
+			String lowerCaseToken = token.toString().toLowerCase(); // ctoken = canonicalized token
+            boolean allowToken = allowedTokens.contains(lowerCaseToken);
+
+			// however, if this token is a stop word, only allow if previous token was allowed because we don't want to start from a stop word.
+            // note: this will still allow the stop word if it is at the beginning of a sentence, and the prev. sentence ended in an allowed token
+			if (allowToken && DictUtils.isJoinWord(lowerCaseToken))
+				allowToken = previousTokenAllowed;
+
+			if (allowToken)
                 result.append(token);
             else
                 for (int j = 0; j < token.length(); j++)
                     result.append(REDACTION_CHAR);
+
+			previousTokenAllowed = allowToken;
 
             if (ch != null)
                 result.append(ch);

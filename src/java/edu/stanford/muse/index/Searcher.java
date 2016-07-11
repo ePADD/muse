@@ -15,9 +15,11 @@ import org.apache.commons.logging.LogFactory;
 
 import javax.mail.internet.InternetAddress;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by hangal on 6/22/16.
@@ -331,6 +333,33 @@ public class Searcher {
         return result;
     }
 
+    private static Set<EmailDocument> updateForEntities(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+        String val = getParam(params, "entity");
+        if (Util.nullOrEmpty(val))
+            return docs;
+
+        Set<String> entities = splitFieldForOr(val);
+        Set<EmailDocument> result = new LinkedHashSet<>();
+
+
+        for (EmailDocument ed : docs)
+        {
+            Set<String> entitiesInThisDoc = new LinkedHashSet<>();
+            // question: should we look at fine entities intead?
+            try {
+                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.EPER, true));
+                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.EORG, true));
+                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.ELOC, true));
+            } catch (IOException ioe) { Util.print_exception("Error in reading entities", ioe, log); }
+
+            entitiesInThisDoc = entitiesInThisDoc.parallelStream().map (s -> s.toLowerCase()).collect(Collectors.toSet());
+            entitiesInThisDoc.retainAll(entities);
+            if (entitiesInThisDoc.size() > 0)
+                result.add(ed);
+        }
+        return result;
+    }
+
     private static Set<DatedDocument> updateForDateRange(Set<DatedDocument> docs, Multimap<String, String> params) {
         String start = getParam(params, "startDate"), end = getParam(params, "endDate");
         if (Util.nullOrEmpty(start) && Util.nullOrEmpty(end))
@@ -560,6 +589,7 @@ public class Searcher {
 
         resultDocs = (Set) updateForDateRange((Set) resultDocs, params);
         resultDocs = (Set) updateForLexicons(archive, resultDocs, params);
+        resultDocs = (Set) updateForEntities(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
 
         // now only keep blobs that belong to resultdocs
 
