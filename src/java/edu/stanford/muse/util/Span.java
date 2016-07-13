@@ -80,37 +80,45 @@ public class Span implements java.io.Serializable {
         return chunk;
     }
 
-    public static void main(String[] args) {
-        //an experiment to see how much space can be saved by storing the span object 'ser' and 'ser'
-        java.util.List<Span> spans = new java.util.ArrayList<>();
+    /**
+     * This method investigates the best way to store Span objects that balances both space and time requirements
+     * Experiments with text, serialized, and gzipped serialized output formats and compares the disk space and parse time of each*/
+    static void experimentio() {
+        java.util.List<java.util.List<Span>> spans = new java.util.ArrayList<>();
         java.util.Random rand = new java.util.Random();
-        int MAX = 10;
+        int MAX = 1000;
         for (int i = 0; i < MAX; i++) {
-            StringBuilder r = new StringBuilder("");
-            int l = rand.nextInt(100) + 20;
-            for (int ci = 0; ci < l; ci++)
-                r.append((char) (rand.nextInt('z' - 'a' + 1) + 'a'));
-            int rs = rand.nextInt(100);
-            int re = l + rs;
-            Span sp = new Span(r.toString(), rs, re);
-            sp.setType((short) (rand.nextInt(128)), rand.nextFloat());
-            spans.add(sp);
+            java.util.List<Span> lst = new java.util.ArrayList<>();
+            for(int j=0;j<20;j++) {
+                StringBuilder r = new StringBuilder("");
+                int l = rand.nextInt(100) + 20;
+                for (int ci = 0; ci < l; ci++)
+                    r.append((char) (rand.nextInt('z' - 'a' + 1) + 'a'));
+                int rs = rand.nextInt(100);
+                int re = l + rs;
+                Span sp = new Span(r.toString(), rs, re);
+                sp.setType((short) (rand.nextInt(128)), rand.nextFloat());
+                lst.add(sp);
+            }
+            spans.add(lst);
         }
         String sep = java.io.File.separator;
         String tmpFldr = System.getProperty("java.io.tmpdir") + sep;
         //write spans to individual files in each of the folders
         //write three files -- .txt, .ser, .ser.gz
         String fldrs[] = new String[]{tmpFldr + "txt" + sep, tmpFldr + "ser" + sep, tmpFldr + "ser.gz" + sep};
-        for(String fn: fldrs) {
+        for (String fn : fldrs) {
             System.out.println("Folder: " + fn);
             File fldr = new File(fn);
-            if(!fldr.exists())
+            if (!fldr.exists())
                 fldr.mkdir();
         }
         try {
             for (int si = 0; si < spans.size(); si++) {
                 java.io.BufferedWriter bw = new java.io.BufferedWriter(new java.io.FileWriter(fldrs[0] + si + ".txt"));
-                bw.write(spans.get(si).parsablePrint());
+                StringBuilder sb = new StringBuilder();
+                spans.get(si).forEach(sp->sb.append(sp.parsablePrint()+":::"));
+                bw.write(sb.toString());
                 bw.close();
 
                 ByteArrayOutputStream bs = new ByteArrayOutputStream();
@@ -138,65 +146,71 @@ public class Span implements java.io.Serializable {
             System.err.println("Exception writing span");
         }
 
-        for(String fldrN: fldrs) {
+        for (String fldrN : fldrs)
+
+        {
             int size = 0;
             long timeParse = 0;
             java.io.File fldr = new java.io.File(fldrN);
-            java.io.File[] files =  fldr.listFiles();
-            for(java.io.File file: files) {
+            java.io.File[] files = fldr.listFiles();
+            for (java.io.File file : files) {
                 size += file.length();
-                if(fldrN.endsWith("txt"+sep)) {
+                if (fldrN.endsWith("txt" + sep)) {
                     try {
                         java.io.BufferedReader br = new java.io.BufferedReader(new FileReader(file));
                         String line;
-                        while((line=br.readLine())!=null) {
+                        while ((line = br.readLine()) != null) {
                             long st = System.nanoTime();
-                            Span.parse(line);
-                            timeParse += (System.nanoTime()-st);
+                            String[] toks = line.split(":::");
+                            for(String tok: toks)
+                                Span.parse(tok);
+                            timeParse += (System.nanoTime() - st);
                         }
                         br.close();
-                    } catch(Exception e){
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
-                }
-                else if(fldrN.endsWith("ser"+sep)){
+                } else if (fldrN.endsWith("ser" + sep)) {
                     try {
                         java.io.FileInputStream fi = new java.io.FileInputStream(file);
-                        byte[] bytes = new byte[(int)file.length()];
+                        byte[] bytes = new byte[(int) file.length()];
                         fi.read(bytes);
                         long st = System.nanoTime();
                         ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                        Span sp = (Span) ois.readObject();
-                        timeParse += System.nanoTime()-st;
+                        java.util.List<Span> sp = (java.util.List<Span>) ois.readObject();
+                        timeParse += System.nanoTime() - st;
                         ois.close();
-                    } catch(Exception e){
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
-                }
-                else if(fldrN.endsWith("ser.gz"+sep)){
-                    try{
+                } else if (fldrN.endsWith("ser.gz" + sep)) {
+                    try {
                         java.io.FileInputStream fi = new java.io.FileInputStream(file);
-                        byte[] bytes = new byte[(int)file.length()];
+                        byte[] bytes = new byte[(int) file.length()];
                         int b, bi = 0;
-                        while((b=fi.read())!=-1)
-                            bytes[bi++] = (byte)b;
+                        while ((b = fi.read()) != -1)
+                            bytes[bi++] = (byte) b;
                         //fi.read(bytes);
                         long st = System.nanoTime();
                         ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)));
-                        Span sp = (Span) ois.readObject();
-                        timeParse += System.nanoTime()-st;
+                        java.util.List<Span> sp = (java.util.List<Span>) ois.readObject();
+                        timeParse += System.nanoTime() - st;
                         ois.close();
-                    }catch(Exception e){
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
             }
             System.out.println(
-                    "-----------------------\n"+
-                    "Folder: "+fldrN+
-                    "\nTime to parse #"+files.length+" spans "+(float)(timeParse*1E-6)+"ms."+
-                    "\nAverage size of span: "+(size/files.length)+"bytes" +
-                    "\n----------------------");
+                    "-----------------------\n" +
+                            "Folder: " + fldrN +
+                            "\nTime to parse #" + files.length + " spans " + (float) (timeParse * 1E-6) + "ms." +
+                            "\nAverage size of span: " + (size / files.length) + "bytes" +
+                            "\n----------------------");
         }
+    }
+
+    public static void main(String[] args) {
+        experimentio();
     }
 }
