@@ -22,14 +22,14 @@ public class FeatureDictionary implements Serializable {
     public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,
             MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,PERIODICAL_LITERATURE=13,
             ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,GOVAGENCY=22,HOSPITAL=25,
-            AWARD=27,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
+            AWARD=27,THEATRE=31, LEGISLATURE =32,LIBRARY=33,LAWFIRM=34,
             MONUMENT=35,DISEASE = 36,EVENT=37, OTHER=38;
     //we assign this type to a token that is not seen before and hence its type unknown
     public static short UNKNOWN_TYPE = -10;
     public static Short[] allTypes = new Short[]{PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,
             UNIVERSITY,MOUNTAIN,AIRPORT,ORGANISATION,PERIODICAL_LITERATURE,
             ISLAND,MUSEUM,BRIDGE,AIRLINE,GOVAGENCY,HOSPITAL,
-            AWARD,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
+            AWARD,THEATRE, LEGISLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
 
     public static Map<Short,String> desc = new LinkedHashMap<>();
     public static Map<Short, List<Short>> mappings = new LinkedHashMap<>();
@@ -64,7 +64,7 @@ public class FeatureDictionary implements Serializable {
         aTypes.put(HOSPITAL, new String[]{"Hospital|Building|ArchitecturalStructure|Place"});
         aTypes.put(AWARD, new String[]{"Award"});
         aTypes.put(THEATRE, new String[]{"Theatre|Venue|ArchitecturalStructure|Place"});
-        aTypes.put(LEGISTLATURE, new String[]{"Legislature|Organisation"});
+        aTypes.put(LEGISLATURE, new String[]{"Legislature|Organisation"});
         aTypes.put(LIBRARY, new String[]{"Library|Building|ArchitecturalStructure|Place"});
         aTypes.put(LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
         aTypes.put(MONUMENT, new String[]{"Monument|Place"});
@@ -111,7 +111,7 @@ public class FeatureDictionary implements Serializable {
         desc.put(MOUNTAIN, "MOUNTAIN");desc.put(AIRPORT, "AIRPORT");desc.put(ORGANISATION, "ORGANISATION");
         desc.put(PERIODICAL_LITERATURE, "PERIODICAL_LITERATURE");desc.put(ISLAND, "ISLAND");desc.put(MUSEUM, "MUSEUM");
         desc.put(BRIDGE, "BRIDGE");desc.put(AIRLINE, "AIRLINE");desc.put(GOVAGENCY, "GOVAGENCY");desc.put(HOSPITAL, "HOSPITAL");
-        desc.put(AWARD, "AWARD");desc.put(THEATRE, "THEATRE");desc.put(LEGISTLATURE, "LEGISTLATURE");desc.put(LIBRARY, "LIBRARY");
+        desc.put(AWARD, "AWARD");desc.put(THEATRE, "THEATRE");desc.put(LEGISLATURE, "LEGISLATURE");desc.put(LIBRARY, "LIBRARY");
         desc.put(LAWFIRM, "LAWFIRM");desc.put(MONUMENT, "MONUMENT");desc.put(DISEASE, "DISEASE");desc.put(EVENT, "EVENT");
         desc.put(OTHER, "OTHER");
 
@@ -120,7 +120,7 @@ public class FeatureDictionary implements Serializable {
                 FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
                 FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY, FeatureDictionary.MONUMENT));
         FeatureDictionary.mappings.put(FeatureDictionary.ORGANISATION, Arrays.asList(FeatureDictionary.COMPANY, FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
-                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
+                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISLATURE, FeatureDictionary.LAWFIRM,
                 FeatureDictionary.PERIODICAL_LITERATURE,EVENT,DISEASE));
     }
     /**

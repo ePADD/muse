@@ -35,7 +35,7 @@
     desc.put(FeatureDictionary.DISEASE, "HEALTH");desc.put(FeatureDictionary.HOSPITAL,"HEALTH");
     desc.put(FeatureDictionary.EVENT, "EVENT");
     desc.put(FeatureDictionary.PERSON,"PERSON");
-    desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.LEGISTLATURE,"COMPANY");
+    desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.LEGISLATURE,"COMPANY");
     desc.put(FeatureDictionary.AIRPORT,"PLACE");desc.put(FeatureDictionary.PLACE,"PLACE");
     desc.put(FeatureDictionary.RIVER,"NATURE");desc.put(FeatureDictionary.MOUNTAIN, "NATURE");
     desc.put(FeatureDictionary.ROAD,"ROAD");
