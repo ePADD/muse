@@ -170,7 +170,7 @@ function redirect_to(url) { if (top === self) { window.location = url; } else { 
 	session.setAttribute("lexicon", lexicon);	
  }
  
- Map<String, Collection<DetailedFacetItem>> facets = IndexUtils.computeDetailedFacets(docs, archive, lexicon);
+ Map<String, Collection<DetailedFacetItem>> facets = IndexUtils.computeDetailedFacets(docs, archive);
  boolean jogDisabled = ("true".equals(JSPHelper.getSessionAttribute(session, "jogDisabled"))) ? true : false;
 
  // now docs is the selected docs
