@@ -111,7 +111,7 @@ public class Searcher {
     }
 
     /** splits by semicolons, lowercases, trims spaces; e.g. given "A; b" returns ["a", "b"] */
-    private static Set<String> splitFieldForOr(String s) {
+    public static Set<String> splitFieldForOr(String s) {
         char OR_DELIMITER = ';';
         Collection<String> tokens = Util.tokenize(s, Character.toString(OR_DELIMITER));
         Set<String> result = new LinkedHashSet<>();

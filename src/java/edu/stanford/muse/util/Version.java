@@ -1,4 +1,4 @@
 package edu.stanford.muse.util;
 public class Version {  public static final String version = "Release 2, beta1"; 
 public static String appName = "muse";
-public static String buildInfo = "Built by hangal on SHs-MacBook-Pro.local, Tue 05 Jul 2016 2:03 PM git branch: master latest commit id: 12ad63742fa043cfc7962103e9c3934e4335a18f working dir: /Users/hangal/workspace/muse";} 
+public static String buildInfo = "Built by hangal on SHs-MacBook-Pro.local, Fri 15 Jul 2016 8:58 PM git branch: master latest commit id: 7663bb91f2dff21d93ab7943e4728634060f7a6a working dir: /Users/hangal/workspace/muse";} 
