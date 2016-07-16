@@ -1079,12 +1079,12 @@ public class Archive implements Serializable {
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
                     types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
-                    entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities.get(n), types));
+                    entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities==null?null:authorisedEntities.get(n), types));
                 });
         acrs.forEach(acr->{
             Set<String> types = new HashSet<>();
             types.add("acr");
-            entitiesWithId.put(acr,new Entity(acr, authorisedEntities.get(acr),types));
+            entitiesWithId.put(acr,new Entity(acr, authorisedEntities==null?null:authorisedEntities.get(acr),types));
         });
 
         //dont want more button anymore
@@ -1453,31 +1453,38 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             List<Document> docs = archive.getAllDocs();
             int i=0;
             archive.assignThreadIds();
+            NER.NERStats stats = new NER.NERStats();
             for(Document doc: docs) {
-                EmailDocument ed = (EmailDocument)doc;
-                List<Document> threads = archive.docsWithThreadId(ed.threadID);
-                if(threads.size()>0){
-                    int numSent = 0;
-                    for(Document d: threads){
-                        EmailDocument thread = (EmailDocument)d;
-                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
-                        if(sent>0)
-                            numSent++;
-                    }
-                    if(threads.size()!=numSent || threads.size()>2){
-                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
-                        break;
-                    }
-                    if(i%100 == 0)
-                        System.err.println("Scanned: "+i+" docs");
-                }
-                i++;
+                EmailDocument ed = (EmailDocument) doc;
+                stats.update(archive.getAllNamesInDoc(ed, true));
+                System.out.println(Arrays.asList(archive.getAllNamesInDoc(ed, true)));
+                if(i++>20)
+                    break;
+//                List<Document> threads = archive.docsWithThreadId(ed.threadID);
+//                if(threads.size()>0){
+//                    int numSent = 0;
+//                    for(Document d: threads){
+//                        EmailDocument thread = (EmailDocument)d;
+//                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
+//                        if(sent>0)
+//                            numSent++;
+//                    }
+//                    if(threads.size()!=numSent || threads.size()>2){
+//                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
+//                        break;
+//                    }
+//                    if(i%100 == 0)
+//                        System.err.println("Scanned: "+i+" docs");
+//                }
+//                i++;
             }
+            System.out.println(stats.counts);
+            System.out.println(stats.all);
         } catch (Exception e) {
             e.printStackTrace();
         }

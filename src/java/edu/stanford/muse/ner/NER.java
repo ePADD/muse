@@ -46,7 +46,7 @@ public class NER implements StatusProvider {
 		public Map<Short, Integer>		counts;
 		public Map<Short, Set<String>>	all;
 
-		NERStats() {
+		public NERStats() {
 			counts = new LinkedHashMap<>();
 			all = new LinkedHashMap<>();
 		}
@@ -55,8 +55,12 @@ public class NER implements StatusProvider {
 		public void update(Span[] names) {
             Arrays.asList(names).forEach(sp->{
                 short ct = FeatureDictionary.getCoarseType(sp.type);
-                all.getOrDefault(sp.type,new LinkedHashSet<>()).add(sp.text);
-                all.getOrDefault(ct,new LinkedHashSet<>()).add(sp.text);
+                if(!all.containsKey(sp.type))
+                    all.put(sp.type, new LinkedHashSet<>());
+                all.get(sp.type).add(sp.text);
+                if(!all.containsKey(ct))
+                    all.put(ct, new LinkedHashSet<>());
+                all.get(ct).add(sp.text);
             });
             all.entrySet().forEach(e->counts.put(e.getKey(), e.getValue().size()));
 		}
@@ -152,7 +156,7 @@ public class NER implements StatusProvider {
             fieldName = NAMES_TITLE;
         String val = doc.get(fieldName);
         String[] plainSpans = val.split(Indexer.NAMES_FIELD_DELIMITER);
-        List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).collect(Collectors.toList());
+        List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).filter(s -> s != null).collect(Collectors.toList());
 
         return spans.toArray(new Span[spans.size()]);
     }
@@ -334,4 +338,11 @@ public class NER implements StatusProvider {
 //			e.printStackTrace();
 //		}
 //	}
+
+    public static void main(String[] args){
+        String val = "";
+        String[] plainSpans = val.split(Indexer.NAMES_FIELD_DELIMITER);
+        List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).filter(s->s!=null).collect(Collectors.toList());
+        System.out.println(spans);
+    }
 }

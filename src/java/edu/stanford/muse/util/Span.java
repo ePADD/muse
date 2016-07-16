@@ -57,6 +57,9 @@ public class Span implements java.io.Serializable {
             log.warn("Found null content while parsing entity spans!!!");
             return null;
         }
+        if(text.equals(""))
+            return null;
+
         String[] fields = text.split(";");
         if (fields.length != 7 && fields.length != 5) {
             log.warn("Unexpected number of fields in content: " + text);
