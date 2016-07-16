@@ -857,9 +857,9 @@ public class IndexUtils {
 		}
 
 		if (f_in.totalCount() > 0)
-			result.put("Received", f_in);
+			result.put("in", f_in);
 		if (f_out.totalCount() > 0)
-			result.put("Sent", f_out);
+			result.put("out", f_out);
 
 		return result;
 	}
@@ -972,11 +972,10 @@ public class IndexUtils {
 	}
 
 	/** version that stores actual dates instead of just counts for each facet */
-	public static Map<String, Collection<DetailedFacetItem>> computeDetailedFacets(Collection<Document> docs, Archive archive, Lexicon lexicon)
+	public static Map<String, Collection<DetailedFacetItem>> computeDetailedFacets(Collection<Document> docs, Archive archive)
 	{
 		AddressBook addressBook = archive.addressBook;
 		GroupAssigner groupAssigner = archive.groupAssigner;
-		Indexer indexer = archive.indexer;
 
 		Map<String, Collection<DetailedFacetItem>> facetMap = new LinkedHashMap<String, Collection<DetailedFacetItem>>();
 
@@ -1038,7 +1037,7 @@ public class IndexUtils {
 
 			// people
 			Map<Contact, DetailedFacetItem> peopleMap = partitionDocsByPerson(docs, addressBook);
-			facetMap.put("people", peopleMap.values());
+			facetMap.put("correspondent", peopleMap.values());
 
 			// direction
 			Map<String, DetailedFacetItem> directionMap = partitionDocsByDirection(docs, addressBook);

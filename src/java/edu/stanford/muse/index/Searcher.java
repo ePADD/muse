@@ -58,7 +58,7 @@ public class Searcher {
                 for (String val : vals)
                     params.put(param, JSPHelper.convertRequestParamToUTF8(val));
         }
-        return selectDocsAndBlobs(archive, params, or_not_and);
+        return selectDocsAndBlobs(archive, params);
     }
 
     /** returns a single value for the given key */
@@ -144,6 +144,16 @@ public class Searcher {
             Set<EmailDocument> newDocs = new LinkedHashSet<>();
             for (EmailDocument ed: docs)
                 if (ed.transferWithRestrictions == "yes".equals(twrValue))
+                    newDocs.add(ed);
+            docs = newDocs;
+        }
+
+
+        String inCartValue = getParam(params, "inCart");
+        if (!"either".equals(inCartValue) & !Util.nullOrEmpty(inCartValue)) {
+            Set<EmailDocument> newDocs = new LinkedHashSet<>();
+            for (EmailDocument ed: docs)
+                if (ed.addedToCart == "yes".equals(inCartValue))
                     newDocs.add(ed);
             docs = newDocs;
         }
@@ -241,8 +251,10 @@ public class Searcher {
                 Contact c = ab.lookupByEmail(a.getAddress());
                 if (c == null)
                     c = ab.lookupByName(a.getPersonal());
-                if (c != null && searchedContacts.contains(c))
+                if (c != null && searchedContacts.contains(c)) {
                     result.add(ed);
+                    break;
+                }
             }
         }
         return result;
@@ -547,7 +559,7 @@ public class Searcher {
      * these extra blobs will not be seen since we only use this info for
      * highlighting blobs in resultDocs.
      */
-    public static Pair<Collection<Document>, Collection<Blob>> selectDocsAndBlobs(Archive archive, Multimap<String, String> params, boolean or_not_and) throws UnsupportedEncodingException
+    public static Pair<Collection<Document>, Collection<Blob>> selectDocsAndBlobs(Archive archive, Multimap<String, String> params) throws UnsupportedEncodingException
     {
         // below are all the controls for selecting docs
 

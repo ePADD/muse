@@ -3038,11 +3038,14 @@ public class Util
 		}
 	}
 
-    public static void main(String[] args){
-//            testEllipsizeKeepingExtension();
-//            testGetExtension();
-//            System.out.println("Tests passed ok");
+	public static void test() {
+		testEllipsizeKeepingExtension();
+		testGetExtension();
+		System.out.println("Tests passed ok");
 		testTokenizeAlphaChars();
-    }
+	}
 
+	public static void main(String[] args){
+		test();
+    }
 }
