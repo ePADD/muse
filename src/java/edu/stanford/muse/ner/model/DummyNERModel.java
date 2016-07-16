@@ -3,6 +3,7 @@ package edu.stanford.muse.ner.model;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 
@@ -13,19 +14,15 @@ import java.util.*;
  */
 public class DummyNERModel implements NERModel{
     CICTokenizer tokenizer = new CICTokenizer();
-    public Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> find (String content) {
-        // collect pseudo proper nouns
-        if (Util.nullOrEmpty(content)) {
-            return new Pair(new HashMap<>(), new ArrayList<>());
-        }
-        List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content, false);
-        //we will make a dummy object of type map
-        Map<Short, Map<String,Double>> map = new LinkedHashMap<>();
+    public Span[] find (String content) {
         Short defType = FeatureDictionary.PERSON;
-        map.put(defType,new LinkedHashMap<>());
-        for(Triple<String,Integer,Integer> pn: pns)
-            map.get(defType).put(pn.getFirst(), 1.0);
-
-        return new Pair<>(map, pns);
+        List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content, false);
+        List<Span> names = new ArrayList<>();
+        pns.forEach(tok->{
+            Span sp = new Span(tok.first,tok.second,tok.third);
+            sp.setType(defType,1.0f);
+            names.add(sp);
+        });
+        return names.toArray(new Span[names.size()]);
     }
 }

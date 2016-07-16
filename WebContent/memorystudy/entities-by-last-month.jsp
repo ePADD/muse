@@ -17,6 +17,7 @@
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
 <%@ page import="edu.stanford.muse.memory.MemoryStudy" %>
 <%@ page import="edu.stanford.muse.ner.dictionary.EnglishDictionary" %>
+<%@ page import="edu.stanford.muse.util.Span" %>
 <%@include file="../getArchive.jspf" %>
 
 <%!
@@ -237,12 +238,10 @@
 
             List<String> entities = new ArrayList<>();
             if(mode==null || !mode.equals("person")) {
-                Map<Short, Map<String, Double>> es = NER.getEntities(archive.getDoc(doc), true);
-                for (Short t : itypes) {
-                    Map<String, Double> tes = es.get(t);
-                    for (String str : tes.keySet())
-                        if (tes.get(str) > CUTOFF)
-                            entities.add(str);
+                Span[] spans = archive.getAllNamesInDoc(doc, true);
+                for (Span sp : spans) {
+                    if (sp.typeScore > CUTOFF)
+                        entities.add(sp.text);
                 }
             }
             else{

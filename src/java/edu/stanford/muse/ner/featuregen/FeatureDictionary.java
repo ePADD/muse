@@ -2,6 +2,7 @@ package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
@@ -1263,6 +1264,13 @@ public class FeatureDictionary implements Serializable {
         }
 
         return cleanAB;
+    }
+
+    public static short getCoarseType(short type){
+        for(Map.Entry<Short, Short[]> e: SequenceModel.mappings.entrySet())
+            if(Arrays.asList(e.getValue()).contains(type))
+                return e.getKey();
+        return type;
     }
 
     //not using logarithms, since the number of symbols is less

@@ -21,6 +21,7 @@ import javax.mail.Address;
 import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class MemoryStudy implements Serializable{
 
@@ -261,13 +262,8 @@ public class MemoryStudy implements Serializable{
 
             List<String> entities = new ArrayList<>();
             if(!personTest) {
-                Map<Short, Map<String, Double>> es = edu.stanford.muse.ner.NER.getEntities(archive.getDoc(doc), true);
-                for (Short t : itypes) {
-                    Map<String, Double> tes = es.get(t);
-                    for (String str : tes.keySet())
-                        if (tes.get(str) > CUTOFF)
-                            entities.add(str);
-                }
+                entities.addAll(Arrays.asList(archive.getAllNamesInDoc(doc, true)).stream().filter(n->n.typeScore>CUTOFF)
+                        .map(n->n.text).collect(Collectors.toList()));
             }
             else{
                 //do not consider mailing lists

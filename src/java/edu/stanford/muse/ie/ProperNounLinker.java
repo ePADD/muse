@@ -8,13 +8,16 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 24/12/15.
@@ -397,11 +400,12 @@ public class ProperNounLinker {
             CICTokenizer tokenizer = new CICTokenizer();
             int di = 0;
             for(EmailDocument doc: docs){
-                String[] types = new String[]{"en_person","en_org","en_loc"};
-                List<String> entities = new ArrayList<>();
-                for(String type: types) {
-                    List<String> tes = archive.getEntitiesInDoc(doc, type);
-                    entities.addAll(tes);
+                List<String> entities;
+                try {
+                    entities = Arrays.asList(archive.getAllNamesInDoc(doc, true)).stream().map(Span::getText).collect(Collectors.toList());
+                }catch(IOException ioe){
+                    edu.stanford.muse.util.Util.print_exception("Error while accessing names in "+doc.getUniqueId(),ioe,log);
+                    continue;
                 }
                 String content = archive.getContents(doc, true);
                 List<Triple<String,Integer,Integer>> tokens = tokenizer.tokenize(content, false);

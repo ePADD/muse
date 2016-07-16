@@ -111,7 +111,7 @@ public class Searcher {
     }
 
     /** splits by semicolons, lowercases, trims spaces; e.g. given "A; b" returns ["a", "b"] */
-    private static Set<String> splitFieldForOr(String s) {
+    public static Set<String> splitFieldForOr(String s) {
         char OR_DELIMITER = ';';
         Collection<String> tokens = Util.tokenize(s, Character.toString(OR_DELIMITER));
         Set<String> result = new LinkedHashSet<>();
@@ -347,9 +347,7 @@ public class Searcher {
             Set<String> entitiesInThisDoc = new LinkedHashSet<>();
             // question: should we look at fine entities intead?
             try {
-                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.EPER, true));
-                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.EORG, true));
-                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.ELOC, true));
+                entitiesInThisDoc.addAll(Arrays.asList(archive.getAllNamesInDoc(ed, true)).stream().map(n->n.text).collect(Collectors.toSet()));
             } catch (IOException ioe) { Util.print_exception("Error in reading entities", ioe, log); }
 
             entitiesInThisDoc = entitiesInThisDoc.parallelStream().map (s -> s.toLowerCase()).collect(Collectors.toSet());

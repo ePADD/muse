@@ -38,6 +38,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
@@ -347,8 +348,8 @@ public class EmailUtils {
 				pw.close();
 
 				Set<String> allEntities = new LinkedHashSet<>();
-				allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, ed, true));
-				allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(archive, ed, false));
+				allEntities.addAll(Arrays.asList(archive.getAllNamesInDoc(ed, true)).stream().map(n->n.text).collect(Collectors.toSet()));
+				allEntities.addAll(Arrays.asList(archive.getAllNamesInDoc(ed, false)).stream().map(n->n.text).collect(Collectors.toSet()));
 
 				pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".names"));
 
