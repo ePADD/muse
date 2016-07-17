@@ -171,17 +171,17 @@ public class Highlighter {
      * */
     //TODO: can also get rid of termsToHyperlink
     public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, Boolean sensitive,
-                                                          Set<String> stemmedTermsToHighlight, Set<String> unstemmedTermsToHighlight, Map<String, Archive.Entity> entitiesWithId,
-                                                          Set<String> stemmedTermsToHyperlink, Set<String> unstemmedTermsToHyperlink, boolean showDebugInfo) {
-        Set<String> termsToHighlight = new LinkedHashSet<>(), termsToHyperlink = new LinkedHashSet<>();
-        if(stemmedTermsToHighlight!=null)
-            termsToHighlight.addAll(stemmedTermsToHighlight);
-        if(unstemmedTermsToHighlight!=null)
-            termsToHighlight.addAll(unstemmedTermsToHighlight);
-        if(stemmedTermsToHyperlink!=null)
-            termsToHyperlink.addAll(stemmedTermsToHyperlink);
-        if(unstemmedTermsToHyperlink!=null)
-            termsToHyperlink.addAll(unstemmedTermsToHyperlink);
+                                                          Set<String> termsToHighlight, Map<String, Archive.Entity> entitiesWithId,
+                                                          Set<String> termsToHyperlink, boolean showDebugInfo) {
+//        Set<String> termsToHighlight = new LinkedHashSet<>(), termsToHyperlink = new LinkedHashSet<>();
+//        if(stemmedTermsToHighlight!=null)
+//            termsToHighlight.addAll(stemmedTermsToHighlight);
+//        if(unstemmedTermsToHighlight!=null)
+//            termsToHighlight.addAll(unstemmedTermsToHighlight);
+//        if(stemmedTermsToHyperlink!=null)
+//            termsToHyperlink.addAll(stemmedTermsToHyperlink);
+//        if(unstemmedTermsToHyperlink!=null)
+//            termsToHyperlink.addAll(unstemmedTermsToHyperlink);
 
         short HIGHLIGHT = 0, HYPERLINK = 1;
         Random rand = new Random();
@@ -509,7 +509,7 @@ public class Highlighter {
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.EPER).forEach(e->ewid.put(e,new Archive.Entity(e,null,Arrays.asList("cp").stream().collect(Collectors.toSet()))));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.ELOC).forEach(e->ewid.put(e,new Archive.Entity(e,null,Arrays.asList("cl").stream().collect(Collectors.toSet()))));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.EORG).forEach(e->ewid.put(e,new Archive.Entity(e, null, Arrays.asList("co").stream().collect(Collectors.toSet()))));
-                String htmlcontent = getHTMLAnnotatedDocumentContents("<body>"+content+"</body>",ed.date,ed.getUniqueId(),false,null,null,ewid,null,null,true);
+                String htmlcontent = getHTMLAnnotatedDocumentContents("<body>"+content+"</body>",ed.date,ed.getUniqueId(),false,null,ewid,null,true);
                 System.out.println("Done highlighting.");
                 htmlcontent += "<br>------<br>"+content.replaceAll("\n","<br>\n");
                 htmlcontent = "<link href=\"epadd.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"+htmlcontent;
