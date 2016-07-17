@@ -157,7 +157,7 @@ public class EnglishNumberAnalyzer extends StopwordAnalyzerBase {
               "..... .....-............-....\n" +
               ">>";
         //String text = "Phillip Randolph, A.L. Lewis-, etc";
-        analyzer = new Highlighter.SimpleNumberAnalyzer(Version.LUCENE_47);
+        analyzer = new EnglishNumberAnalyzer(Version.LUCENE_47);
 		try {
 			TokenStream stream = analyzer.tokenStream(null, new StringReader(text));
 			CharTermAttribute cattr = stream.addAttribute(CharTermAttribute.class);

@@ -1037,7 +1037,7 @@ public class Archive implements Serializable {
 
             s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed,
                     entitiesWithId, null, summarizer.importantTermsCanonical /* unstemmed because we are only using names*/,
-                    showDebugInfo);
+                    false);
 
             //indexer
             //	.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, searchTerms, isRegexSearch, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId);
