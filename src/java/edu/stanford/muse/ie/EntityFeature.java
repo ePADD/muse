@@ -9,8 +9,10 @@ import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -34,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Data structure to represent features of an entity mention in archive
@@ -381,9 +384,6 @@ public class EntityFeature implements StatusProvider, Serializable {
 		int f1 = 0, f2 = 0, f3 = 0;
 		boolean istatus = true;
 		if (force || (!exists)) {
-			String type = NER.EPER, otype = NER.EORG, pType = NER.ELOC;
-
-			Indexer indexer = archive.indexer;
 			Map<String, EntityFeature> features = new HashMap<String, EntityFeature>();
 			Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
 			int totalEntities = 0;
@@ -402,9 +402,22 @@ public class EntityFeature implements StatusProvider, Serializable {
 				}
 				di++;
 
-				List<String> entities = archive.getEntitiesInDoc(ed, type);
-				List<String> orgs = archive.getEntitiesInDoc(ed, otype);
-				List<String> places = archive.getEntitiesInDoc(ed, pType);
+                List<Span> names;
+                try {
+                    names = Arrays.asList(archive.getAllNamesInDoc(ed, true));
+                }catch (IOException ioe){
+                    log.error("Problem accessing entities in "+ed.getUniqueId(), ioe);
+                    continue;
+                }
+                List<String> entities = names.stream()
+                        .filter(n -> FeatureDictionary.getCoarseType(n.type) == FeatureDictionary.PERSON)
+                        .map(n -> n.text).collect(Collectors.toList());
+                List<String> places = names.stream()
+                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.PLACE)
+                        .map(n -> n.text).collect(Collectors.toList());
+                List<String> orgs = names.stream()
+                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.ORGANISATION)
+                        .map(n -> n.text).collect(Collectors.toList());
 				if (entities != null)
 					c1 += entities.size();
 				if (orgs != null)

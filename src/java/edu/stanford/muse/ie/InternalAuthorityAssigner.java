@@ -7,12 +7,13 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -21,6 +22,7 @@ import org.apache.lucene.analysis.util.CharArraySet;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This class contains pre-processing computations for assign-authorities.jsp
@@ -105,7 +107,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 		contactFreq = new HashMap<Integer, Integer>();
 		// collect all the entities of type person from all the docs
-		String type = NER.EPER, otype = NER.EORG, ptype = NER.ELOC;
 		Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
 		long start_time = System.currentTimeMillis();
 		AddressBook ab = archive.addressBook;
@@ -201,9 +202,21 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 		di = 0;
 		for (EmailDocument ed : docs) {
-			List<String> people = archive.getEntitiesInDoc(ed, type);
-			List<String> orgs = archive.getEntitiesInDoc(ed, otype);
-			List<String> places = archive.getEntitiesInDoc(ed, ptype);
+			List<String> people, orgs, places;
+            try {
+                Span[] names = archive.getAllNamesInDoc(ed, true);
+                people = Arrays.asList(names).stream()
+                        .filter(n -> FeatureDictionary.getCoarseType(n.type) == FeatureDictionary.PERSON)
+                        .map(n -> n.text).collect(Collectors.toList());
+                places = Arrays.asList(names).stream()
+                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.PLACE)
+                        .map(n -> n.text).collect(Collectors.toList());
+                orgs = Arrays.asList(names).stream()
+                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.ORGANISATION)
+                        .map(n -> n.text).collect(Collectors.toList());
+            }catch(IOException ioe){
+                continue;
+            }
 			//List<String> expansions = new ArrayList<String>();
 			String content = archive.getContents(ed, false);
 			//For an acronym, expand it to one of entities to only of the types: place, org or people

@@ -194,16 +194,7 @@ public class IndexUtils {
 
         // assemble all the allowed tokens (lower cased) from these 3 types of entities
         {
-            List<String> people = Archive.getEntitiesInLuceneDoc(doc, edu.stanford.muse.ner.NER.EPER, true);
-            List<String> orgs = Archive.getEntitiesInLuceneDoc(doc, edu.stanford.muse.ner.NER.EORG, true);
-            List<String> places = Archive.getEntitiesInLuceneDoc(doc, edu.stanford.muse.ner.NER.ELOC, true);
-            Set<String> allEntities = new LinkedHashSet<>();
-            if (people != null)
-                allEntities.addAll(people);
-            if (orgs != null)
-                allEntities.addAll(orgs);
-            if (places != null)
-                allEntities.addAll(places);
+            List<String> allEntities = Arrays.asList(Archive.getAllNamesInLuceneDoc(doc,true)).stream().map(Span::getText).collect(Collectors.toList());
 
             for (String e : allEntities)
                 allowedTokens.addAll(Util.tokenize(e.toLowerCase()));

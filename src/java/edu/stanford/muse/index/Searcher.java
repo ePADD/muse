@@ -359,9 +359,7 @@ public class Searcher {
             Set<String> entitiesInThisDoc = new LinkedHashSet<>();
             // question: should we look at fine entities intead?
             try {
-                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.EPER, true));
-                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.EORG, true));
-                entitiesInThisDoc.addAll(Archive.getEntitiesInLuceneDoc(archive.getDoc(ed), edu.stanford.muse.ner.NER.ELOC, true));
+                entitiesInThisDoc.addAll(Arrays.asList(archive.getAllNamesInDoc(ed, true)).stream().map(n->n.text).collect(Collectors.toSet()));
             } catch (IOException ioe) { Util.print_exception("Error in reading entities", ioe, log); }
 
             entitiesInThisDoc = entitiesInThisDoc.parallelStream().map (s -> s.toLowerCase()).collect(Collectors.toSet());
