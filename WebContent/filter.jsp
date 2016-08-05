@@ -79,7 +79,7 @@ if (currentFilter != null) {
 int g_n_months = (gEndYear*12 + gEndMonth) - (gStartYear*12 + gStartMonth); // global
 int n_months = (endYear*12 + endMonth) - (startYear*12 + startMonth); // for current selected allDocs
 
-Map<String, Collection<DetailedFacetItem>> facetMap = IndexUtils.computeDetailedFacets(allDocs, archive, lexicon);
+Map<String, Collection<DetailedFacetItem>> facetMap = IndexUtils.computeDetailedFacets(allDocs, archive);
 String muse_url = request.getParameter("muse_url");
 if (muse_url == null)
 	muse_url = "";
