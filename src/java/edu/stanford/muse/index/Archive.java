@@ -1494,6 +1494,8 @@ public class Archive implements Serializable {
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
     public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type, Boolean filter) {
+        if (ldoc == null)
+            return null;
         String field = ldoc.get(type);
         if(filter)
             return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
