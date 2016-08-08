@@ -859,7 +859,8 @@ public class IndexUtils {
 			EmailDocument ed = (EmailDocument) d;
 			int sent_or_received = ed.sentOrReceived(ab);
 
-			if ((sent_or_received & EmailDocument.RECEIVED_MASK) != 0)
+			// if sent_or_received = 0 => neither received nor sent. so it must be implicitly received.
+			if (sent_or_received == 0 || (sent_or_received & EmailDocument.RECEIVED_MASK) != 0)
 				f_in.addDoc(ed);
 			if ((sent_or_received & EmailDocument.SENT_MASK) != 0)
 				f_out.addDoc(ed);
