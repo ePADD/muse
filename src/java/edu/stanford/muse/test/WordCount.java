@@ -7,8 +7,6 @@ import edu.stanford.muse.util.Util;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
