@@ -1029,15 +1029,15 @@ public class Archive implements Serializable {
      * entitiesWithId - authorisedauthorities, for annotation
      * showDebugInfo - enabler to show debug info
      */
-    public String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+    public String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
                            Map<String, Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
         getAllDocs();
         try {
             Summarizer summarizer = new Summarizer(indexer);
 
-            s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed,
-                    entitiesWithId, null, summarizer.importantTermsCanonical /* unstemmed because we are only using names*/,
-                    showDebugInfo);
+            s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTerms,
+                    entitiesWithId, summarizer.importantTermsCanonical,
+                    false);
 
             //indexer
             //	.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, searchTerms, isRegexSearch, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId);
@@ -1049,14 +1049,14 @@ public class Archive implements Serializable {
         return s;
     }
 
-    public String annotate(String s, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+    public String annotate(String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
                            Map<String, Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
-        return annotate(null, s, date, docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed,
+        return annotate(null, s, date, docId, sensitive, highlightTerms,
                 entitiesWithId, IA_links, showDebugInfo);
     }
 
-    public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTermsStemmed,
-                                                           Set<String> highlightTermsUnstemmed, Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
+    public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
+                                                            Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
         String type = "person", otype = "organization", ptype = "location";
         //not using filtered entities here as it looks weird especially in the redaction mode not to
         // have a word not masked annotated. It is counter-intuitive.
@@ -1131,7 +1131,7 @@ public class Archive implements Serializable {
 //			contents = Util.ellipsize(contents, 4999);
 //			overflow = true;
 //		}
-        String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, showDebugInfo);
+        String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
         //also add NER offsets for debugging
 //		htmlContents += "<br>Offsets: <br>";
 //		List<Triple<String,Integer, Integer>> triples = edu.stanford.muse.ner.NER.getNamesOffsets(ldoc);

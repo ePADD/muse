@@ -1697,7 +1697,7 @@ public class IndexUtils {
 	public static void main(String args[])
 	{
 		//System.out.println(query("this is a test", "testing|is|match"));
-		List<String> substrs = computeAllSubstrings("Some thing here", true);
+		List<String> substrs = computeAllSubstrings("Some. thing here", true);
 		for(String substr: substrs)
 			System.err.print(substr+" ::: ");
 		System.err.println();
