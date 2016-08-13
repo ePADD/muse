@@ -151,7 +151,7 @@ function get_date_change_func(chart_canvas, below_data, above_data, w, h, startY
 	<%// now individual charts
 	//List<Date> intervals = CalendarUtil.divideIntoIntervals(globalStart, globalEnd, 40); // used for individual graphs
 	List<Date> intervals = CalendarUtil.divideIntoMonthlyIntervals(globalStart, globalEnd);
-	Map<String, Collection<DetailedFacetItem>> detailedFacets = IndexUtils.computeDetailedFacets((Collection) emailDocs, archive, lexicon);
+	Map<String, Collection<DetailedFacetItem>> detailedFacets = IndexUtils.computeDetailedFacets((Collection) emailDocs, archive);
 			
 	Collection<DetailedFacetItem> allTermsForThisFacet = detailedFacets.get(view);
 

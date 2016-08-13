@@ -26,27 +26,27 @@ public class EmailRenderer {
 												// much with courier font.
 
     public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-                                                          Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed)
+                                                          Set<String> highlightTerms)
             throws Exception{
-        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTermsStemmed, highlightTermsUnstemmed, null, MultiDoc.ClusteringType.MONTHLY);
+        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTerms, null, MultiDoc.ClusteringType.MONTHLY);
     }
 
     public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-                                                          Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments)
+                                                          Set<String> highlightTerms, Collection<Blob> highlightAttachments)
             throws Exception{
-        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
+        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTerms, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
     }
 
     public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-														  Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed)
+														  Set<Integer> highlightContactIds, Set<String> highlightTerms)
 			throws Exception{
-		return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, null, MultiDoc.ClusteringType.MONTHLY);
+		return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTerms, null, MultiDoc.ClusteringType.MONTHLY);
 	}
 
 	public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-                                                          Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments)
+                                                          Set<Integer> highlightContactIds, Set<String> highlightTerms, Collection<Blob> highlightAttachments)
             throws Exception{
-        return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
+        return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTerms, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
     }
 
 	/*
@@ -57,7 +57,7 @@ public class EmailRenderer {
 	 * especially when no other document type is used anywhere
 	 */
 	public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-			Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments, MultiDoc.ClusteringType coptions)
+			Set<Integer> highlightContactIds, Set<String> highlightTerms, Collection<Blob> highlightAttachments, MultiDoc.ClusteringType coptions)
 			throws Exception
 	{
 		StringBuilder html = new StringBuilder();
@@ -142,7 +142,7 @@ public class EmailRenderer {
 			html.append("</div>\n"); // section
 		}
 
-		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments);
+		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTerms, highlightAttachments);
 
 		return new Pair<>(dataset, html.toString());
 	}
@@ -234,7 +234,7 @@ public class EmailRenderer {
 	 * @throws Exception
 	 */
 	public static Pair<String, Boolean> htmlForDocument(Document d, Archive archive, String datasetTitle, BlobStore attachmentsStore,
-			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
+			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
 			boolean IA_links, boolean inFull, boolean debug) throws Exception
 	{
 		JSPHelper.log.debug("Generating HTML for document: " + d);
@@ -249,7 +249,7 @@ public class EmailRenderer {
 			page.append("<div class=\"muse-doc\">\n");
 
 			page.append("<div class=\"muse-doc-header\">\n");
-			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, IA_links, debug));
+			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightContactIds, highlightTerms, IA_links, debug));
 			page.append("</div>"); // muse-doc-header
 
 			/*
@@ -261,8 +261,8 @@ public class EmailRenderer {
 			 * page.append("<br/>\n"); }
 			 */
 			page.append("\n<div class=\"muse-doc-body\">\n");
-			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTermsStemmed,
-					highlightTermsUnstemmed, authorisedEntities, IA_links, inFull, true);
+			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTerms,
+					authorisedEntities, IA_links, inFull, true);
 			StringBuilder htmlMessageBody = contentsHtml.first;
 			overflow = contentsHtml.second;
 			// page.append(ed.getHTMLForContents(indexer, highlightTermsStemmed,
@@ -388,7 +388,7 @@ public class EmailRenderer {
 	 *            on preset regexs
 	 * @throws IOException
 	 */
-	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms,
 			boolean IA_links, boolean debug) throws IOException
 	{
 		AddressBook addressBook = archive.addressBook;
@@ -405,7 +405,7 @@ public class EmailRenderer {
                 contactNames.addAll(c.names);
                 contactAddresses.addAll(c.emails);
             }
-        contactNames.addAll(highlightTermsStemmed);
+        contactNames.addAll(highlightTerms);
 
 		StringBuilder result = new StringBuilder();
 		// header table
@@ -424,27 +424,27 @@ public class EmailRenderer {
 		Address[] addrs = ed.from;
 		if (addrs != null)
 		{
-			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses));
+			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses));
 		}
 
 		result.append(style + "To: </td><td align=\"left\">");
 		addrs = ed.to;
 		if (addrs != null)
-			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
+			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses) + "");
 
 		result.append("\n</td></tr>\n");
 
 		if (ed.cc != null && ed.cc.length > 0)
 		{
 			result.append(style + "Cc: </td><td align=\"left\">");
-			result.append(formatAddressesAsHTML(ed.cc, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
+			result.append(formatAddressesAsHTML(ed.cc, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses) + "");
 			result.append("\n</td></tr>\n");
 		}
 
 		if (ed.bcc != null && ed.bcc.length > 0)
 		{
 			result.append(style + "Bcc: </td><td align=\"left\">");
-			result.append(formatAddressesAsHTML(ed.bcc, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
+			result.append(formatAddressesAsHTML(ed.bcc, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses) + "");
 			result.append("\n</td></tr>\n");
 		}
 
@@ -490,7 +490,7 @@ public class EmailRenderer {
                     types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
                     entitiesWithId.put(n.text, new Archive.Entity(n.text, null, types));
                 });
-        x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, false);
+        x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTerms, entitiesWithId, IA_links, false);
 
 		result.append(x);
 		result.append("</b>\n");

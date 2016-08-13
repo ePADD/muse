@@ -35,6 +35,9 @@
         <p>
         If you do not want to participate in this study, please close this tab.
         </p>
+        <p>
+        Want to know more about this research project? <a href="http://cs.ashoka.edu.in/cell">Click here</a> to go to the home page. Researchers interested in using or modifying the CELL software to perform their own studies should read <a href="software.jsp">this page</a>.
+        </p>
     </div>
 </body>
 </html>

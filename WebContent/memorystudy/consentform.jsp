@@ -62,7 +62,7 @@
                     <td><input type="radio" name="consentagree" value="Yes" required></td>
                 </tr>
                 <tr>
-                    <td>I do not agree to the above consent form, and I wish to forego compensation</td>
+                    <td>I do not agree to the above consent form</td>
                     <td><input type="radio" name="consentagree" value="No"></td>
                 </tr>
             </table>
