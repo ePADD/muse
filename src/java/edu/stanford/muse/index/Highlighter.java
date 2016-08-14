@@ -168,23 +168,23 @@ public class Highlighter {
      * Also hyperlinks any URLs found in the content
      * @param sensitive - when set will highlight all the expressions matching Indexer.presetQueries
      * @param showDebugInfo - when set will append to the output some debug info. related to the entities present in the content and passed through entitiesWithId
+     *
+     * Note: DO not modify any of the objects passed in the parameter
+     *       if need to be modified then clone and modify a local copy
      * */
     //TODO: can also get rid of termsToHyperlink
     public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, Boolean sensitive,
                                                           Set<String> termsToHighlight, Map<String, Archive.Entity> entitiesWithId,
                                                           Set<String> termsToHyperlink, boolean showDebugInfo) {
-//        Set<String> termsToHighlight = new LinkedHashSet<>(), termsToHyperlink = new LinkedHashSet<>();
-//        if(stemmedTermsToHighlight!=null)
-//            termsToHighlight.addAll(stemmedTermsToHighlight);
-//        if(unstemmedTermsToHighlight!=null)
-//            termsToHighlight.addAll(unstemmedTermsToHighlight);
-//        if(stemmedTermsToHyperlink!=null)
-//            termsToHyperlink.addAll(stemmedTermsToHyperlink);
-//        if(unstemmedTermsToHyperlink!=null)
-//            termsToHyperlink.addAll(unstemmedTermsToHyperlink);
+        Set<String> highlightTerms = new LinkedHashSet<>(), hyperlinkTerms = new LinkedHashSet<>();
+        if(termsToHighlight!=null) termsToHighlight.forEach(highlightTerms::add);
+        if(termsToHyperlink!= null) termsToHyperlink.forEach(hyperlinkTerms::add);
+
+        if(log.isDebugEnabled())
+            log.debug("DocId: "+docId+"; Highlight terms: " + highlightTerms+"; Entities: " + entitiesWithId+"; Hyperlink terms: " + hyperlinkTerms);
+        //System.err.println("DocId: " + docId + "; Highlight terms: " + highlightTerms + "; Entities: " + entitiesWithId + "; Hyperlink terms: " + hyperlinkTerms);
 
         short HIGHLIGHT = 0, HYPERLINK = 1;
-        Random rand = new Random();
         //pp for post process, as we cannot add complex tags which highlighting
         String preHighlightTag = "<span class='hilitedTerm rounded' >", postHighlightTag = "</span>";
         String preHyperlinkTag = "<span data-process='pp'>", postHyperlinkTag = "</span>";
@@ -215,15 +215,16 @@ public class Highlighter {
 
         //entitiesid stuff is already canonicalized with tokenizer used with analyzer
         if (entitiesWithId != null)
-            termsToHyperlink.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
+            hyperlinkTerms.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
 
         //If there are overlapping annotations, then they need to be serialised.
         //This is serialized order for such annotations.
         //map strings to be annotated -> boolean denoting whether to highlight or hyperlink.
         List<Pair<String, Short>> order = new ArrayList<>();
-        Set<String> allTerms = new HashSet<>();
-        allTerms.addAll(termsToHighlight);
-        allTerms.addAll(termsToHyperlink);
+        //should preserve order so that highlight terms are seen before hyperlink
+        Set<String> allTerms = new LinkedHashSet<>();
+        allTerms.addAll(highlightTerms);
+        allTerms.addAll(hyperlinkTerms);
 
 		/*
 		 * We ant to assign order in which terms are highlighted or hyperlinked.
@@ -237,10 +238,12 @@ public class Highlighter {
 		 * In such cases one of the terms may not be annotated.
 		 * Terms that are added to o are those that just share at-least one word
 		 */
+        //should preserve order so that highlight terms that are added first stay that way
         Map<Pair<String, Short>, Integer> o = new LinkedHashMap<>();
         //prioritised terms
         List<String> catchTerms = Arrays.asList("class","span","data","ignore");
-        Set<String> consTerms = new HashSet<>();
+        //Note that a term can be marked both for highlight and hyperlink
+        Set<String> consTermsHighlight = new HashSet<>(), consTermsHyperlink = new HashSet<>();
         for (String at : allTerms) {
             //Catch: if we are trying to highlight terms like class, span e.t.c,
             //we better annotate them first as it may go into span tags and annotate the stuff, causing the highlighter to break
@@ -248,26 +251,26 @@ public class Highlighter {
             for (String substr : substrs) {
                 if(at.equals(substr) || at.equals("\""+substr+"\""))
                     continue;
-                short tag = -1;
                 boolean match = catchTerms.contains(substr.toLowerCase());
                 int val = match?Integer.MAX_VALUE:substr.length();
                 //remove it from terms to be annotated.
                 //The highlight or hyperlink terms may have quotes, specially handling below is for that.. is there a better way?
-                if (termsToHighlight.contains(substr) || termsToHighlight.contains("\""+substr+"\"")) {
-                    tag = HIGHLIGHT;
-                    termsToHighlight.remove(substr);
-                    termsToHighlight.remove("\""+substr+"\"");
+                if (highlightTerms.contains(substr) || highlightTerms.contains("\""+substr+"\"")) {
+                    highlightTerms.remove(substr);
+                    highlightTerms.remove("\""+substr+"\"");
+                    //there should be no repetitions in the order array, else it leads to multiple annotations i.e. two spans around one single element
+                    if(!consTermsHighlight.contains(substr)) {
+                        o.put(new Pair<>(substr, HIGHLIGHT), val);
+                        consTermsHighlight.add(substr);
+                    }
                 }
-                if (termsToHyperlink.contains(substr) || termsToHyperlink.contains("\""+substr+"\"")) {
-                    tag = HYPERLINK;
-                    termsToHyperlink.remove(substr);
-                    termsToHyperlink.remove("\""+substr+"\"");
-                }
-
-                //there should be no repetitions in the order array, else it leads to multiple annotations i.e. two spans around one single element
-                if(!consTerms.contains(substr) && tag>=0) {
-                    o.put(new Pair<>(substr, tag), val);
-                    consTerms.add(substr);
+                if (hyperlinkTerms.contains(substr) || hyperlinkTerms.contains("\""+substr+"\"")) {
+                    hyperlinkTerms.remove(substr);
+                    hyperlinkTerms.remove("\""+substr+"\"");
+                    if(!consTermsHyperlink.contains(substr)) {
+                        o.put(new Pair<>(substr, HYPERLINK), val);
+                        consTermsHyperlink.add(substr);
+                    }
                 }
             }
         }
@@ -275,11 +278,12 @@ public class Highlighter {
         //now sort the phrases from longest length to smallest length
         List<Pair<Pair<String, Short>, Integer>> os = Util.sortMapByValue(o);
         order.addAll(os.stream().map(pair -> pair.first).collect(Collectors.toSet()));
+        //System.err.println(order+" hit: "+highlightTerms+" -- hyt: "+hyperlinkTerms);
 
         //annotate whatever is left in highlight and hyperlink Terms.
 //        String result = contents;
-        String result = highlightBatch(contents, termsToHighlight.toArray(new String[termsToHighlight.size()]), preHighlightTag, postHighlightTag);
-        result = highlightBatch(result, termsToHyperlink.toArray(new String[termsToHyperlink.size()]), preHyperlinkTag, postHyperlinkTag);
+        String result = highlightBatch(contents, highlightTerms.toArray(new String[highlightTerms.size()]), preHighlightTag, postHighlightTag);
+        result = highlightBatch(result, hyperlinkTerms.toArray(new String[hyperlinkTerms.size()]), preHyperlinkTag, postHyperlinkTag);
 //        System.out.println("Terms to highlight: " + termsToHighlight);
 //        System.out.println("Terms to hyperlink: "+termsToHyperlink);
 //        System.out.println("order: "+order);
@@ -302,7 +306,11 @@ public class Highlighter {
                 result = highlight(result, term, preTag, postTag);
             } catch (IOException|InvalidTokenOffsetsException e) {
                 Util.print_exception("Exception while adding html annotation: " + ann.first, e, log);
-            } catch(ParseException e){}
+                e.printStackTrace();
+            } catch(ParseException e){
+                Util.print_exception("Exception while adding html annotation: " + ann.first, e, log);
+                e.printStackTrace();
+            }
         }
         //do some line breaking and show overflow.
         String[] lines = result.split("\\n");
@@ -329,7 +337,8 @@ public class Highlighter {
             Element elt = elts.get(j);
             Element par = elt.parent();
             //Do not touch nested entities
-            if(par!=null && (preHighlightTag.contains(par.tagName())||preHyperlinkTag.contains(par.tagName())))
+            if(par!=null && par.attr("data-process")==null)
+            //(preHighlightTag.contains(par.tagName())||preHyperlinkTag.contains(par.tagName())))
                 continue;
             String entity = elt.text();
             int span_j = j;
@@ -474,17 +483,20 @@ public class Highlighter {
             Set<String> htSet = new LinkedHashSet<>();
             for(String h: hts)
                 htSet.add(h);
-            String[] testDocIds = new String[]{"/Users/vihari/epadd-data/Bush 01 January 2003/Top of Outlook data file.mbox-591"};
+            String[] testDocIds = new String[]{"/Users/vihari/epadd-data/Bush 01 January 2003/Top of Outlook data file.mbox-706",
+                "/Users/vihari/epadd-data/Bush 01 January 2003/Top of Outlook data file.mbox-710"};
                     //"/Users/vihari/epadd-data/Bush 01 January 2003/Top of Outlook data file.mbox-38",
                     //"/Users/vihari/epadd-data/Bush 01 January 2003/Top of Outlook data file.mbox-110"};
+            String[][] highlightTerms = new String[][]{new String[]{"Hillsborough County"},new String[]{"Hillsborough County"}};
             String fldr = System.getProperty("user.home")+ File.separator+"epadd-processing"+File.separator+"ePADD archive of ";
             Archive archive = SimpleSessions.readArchiveIfPresent(fldr);
             System.out.println("Archive folder: "+fldr);
             String tmpDir = System.getProperty("java.io.tmpdir");
             int fi = 0;
+            System.out.println("Content: " + archive.getDoc(archive.docForId(testDocIds[0])));
             for(String td: testDocIds) {
                 EmailDocument ed = archive.docForId(td);
-                String content = archive.getContents(ed,true);
+                String content = archive.getContents(ed,false);
                 Map<String, Archive.Entity> ewid = new LinkedHashMap<>();
                 Util.tokenize(archive.getDoc(ed).get("names"), Indexer.NAMES_FIELD_DELIMITER).forEach(t -> {
                     if (t == null) {
@@ -506,10 +518,13 @@ public class Highlighter {
                         }
                     ewid.put(fields[0], new Archive.Entity(fields[0], null, types));
                 });
+                Set<String> termsToHighlight = new HashSet<>();
+                for(String[] ht: highlightTerms)
+                        termsToHighlight.addAll(Arrays.asList(ht));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.EPER).forEach(e->ewid.put(e,new Archive.Entity(e,null,Arrays.asList("cp").stream().collect(Collectors.toSet()))));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.ELOC).forEach(e->ewid.put(e,new Archive.Entity(e,null,Arrays.asList("cl").stream().collect(Collectors.toSet()))));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.EORG).forEach(e->ewid.put(e,new Archive.Entity(e, null, Arrays.asList("co").stream().collect(Collectors.toSet()))));
-                String htmlcontent = getHTMLAnnotatedDocumentContents("<body>"+content+"</body>",ed.date,ed.getUniqueId(),false,null,ewid,null,true);
+                String htmlcontent = getHTMLAnnotatedDocumentContents("<body>"+content+"</body>",ed.date,ed.getUniqueId(),false,termsToHighlight,ewid,null,true);
                 System.out.println("Done highlighting.");
                 htmlcontent += "<br>------<br>"+content.replaceAll("\n","<br>\n");
                 htmlcontent = "<link href=\"epadd.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"+htmlcontent;
