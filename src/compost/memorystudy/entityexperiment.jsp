@@ -45,7 +45,7 @@
             List<String> pronouns = Arrays.asList("he", "she", "his","hers", "him", "her");
             for (Document doc : docs) {
                 EmailDocument ed = (EmailDocument) doc;
-                List<String> entities = archive.getEntitiesInDoc(doc, NER.EPER, true, originalOnly);
+                List<String> entities = archive.getNamesInDoc(doc, NER.EPER, true, originalOnly);
                 List<Triple<String,Integer,Integer>> triples = archive.getNamesOffsets(doc);
                 String contents = archive.getContents(doc, false);
                 if(triples == null){

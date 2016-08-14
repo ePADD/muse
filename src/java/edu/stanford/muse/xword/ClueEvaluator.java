@@ -6,14 +6,17 @@ import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 11/12/15.
@@ -128,20 +131,18 @@ import java.util.regex.Pattern;
 
         @Override
         public double computeScore(Clue clue, String answer, NERModel nerModel, Archive archive) {
-            String sOrig = clue.getFullSentenceOriginal();
             String canonicalizedanswer = (Util.canonicalizeSpaces(answer)).toLowerCase();
-            List<String> names = new ArrayList<>();
             double CUTOFF = 0.001;
 
-            Map<Short, Map<String,Double>> eMap = edu.stanford.muse.ner.NER.getEntities(clue.d, true, archive);
-            Pair<Map<Short, Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapAndOffsets = edu.stanford.muse.ner.NER.getEntitiesInDoc(sOrig,eMap);
-            Map<Short, Map<String,Double>> map = mapAndOffsets.first;
-//            log.info("Found: " + mapAndOffsets.getSecond().size() + " names in sentences: " + sOrig+"["+map+"]");
-            for (short x : map.keySet()) {
-                for(String e: map.get(x).keySet())
-                    if(map.get(x).get(e)>CUTOFF)
-                        names.add(e);
+            Span[] namesOriginal;
+            try {
+                namesOriginal = archive.getAllOriginalNamesInDoc(clue.d);
+            } catch (IOException ioe){
+                log.error("Names evaluator fail!! Something is wrong with the archive.",ioe);
+                return 0;
             }
+
+            Collection<String> names = Arrays.asList(namesOriginal).stream().filter(n->n.typeScore>CUTOFF).map(n->n.text).collect(Collectors.toSet());
 
             float namesScore = params[0]*names.size();
 

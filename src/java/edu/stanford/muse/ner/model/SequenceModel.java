@@ -525,12 +525,8 @@ public class SequenceModel implements NERModel, Serializable {
         return mTypes;
     }
 
-    public Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> find (String content){
-        Map<Short, Map<String,Double>> maps = new LinkedHashMap<>();
-        List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
-
-        for(Short at: FeatureDictionary.allTypes)
-            maps.put(at, new LinkedHashMap<>());
+    public Span[] find (String content){
+        List<Span> spans = new ArrayList<>();
 
         String[] sents = NLPUtils.tokeniseSentence(content);
         for(String sent: sents) {
@@ -548,13 +544,14 @@ public class SequenceModel implements NERModel, Serializable {
                         continue;
                     if(p.first!=FeatureDictionary.OTHER) {
                         //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
-                        offsets.add(new Triple<>(e, t.second + t.first.indexOf(e), t.second + t.first.indexOf(e) + e.length()));
-                        maps.get(p.getFirst()).put(e, p.second);
+                        Span sp = new Span(e, t.second+t.first.indexOf(e),t.second+t.first.indexOf(e)+e.length());
+                        sp.setType(p.first,p.second.floatValue());
+                        spans.add(sp);
                     }
                 }
             }
         }
-        return new Pair<>(maps, offsets);
+        return spans.toArray(new Span[spans.size()]);
     }
 
     public synchronized void writeModel(File modelFile) throws IOException{
@@ -635,9 +632,12 @@ public class SequenceModel implements NERModel, Serializable {
             entry = EmailUtils.uncanonicaliseName(entry);
             if(entry.length()>=15)
                 continue;
-            Pair<Map<Short,Map<String,Double>>, List<Triple<String,Integer,Integer>>> p = nerModel.find(entry);
-            Map<Short, Map<String,Double>> es = p.getFirst();
-            Map<Short, Map<String,Double>> temp = new LinkedHashMap<>();
+            Span[] spans = nerModel.find(entry);
+            Map<Short, Map<String,Float>> es = new LinkedHashMap<>();
+            for(Span sp: Arrays.asList(spans))
+                es.getOrDefault(sp.type,new LinkedHashMap<>()).put(sp.text,sp.typeScore);
+            Map<Short, Map<String,Float>> temp = new LinkedHashMap<>();
+
             for(Short t: es.keySet()) {
                 if(es.get(t).size()==0)
                     continue;
@@ -671,9 +671,9 @@ public class SequenceModel implements NERModel, Serializable {
                     }
                     if (found) {
                         missAssigned++;
-                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + p.getFirst() + "--------");
+                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + "--------");
                     } else if (any) {
-                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + p.getFirst() + "--------");
+                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + "--------");
                         missSegmentation++;
                     } else {
                         missNoEvidence++;
@@ -792,20 +792,9 @@ public class SequenceModel implements NERModel, Serializable {
             catch(IOException e){e.printStackTrace();}
             if(nerModel == null)
                 nerModel = train();
-//            int di =0;
-//            for(Document doc: docs) {
-//                String content = archive.getContents(doc, true);
-//                System.err.println("Content: "+content);
-//                Pair<Map<Short,List<String>>, List<Triple<String,Integer,Integer>>> mapsAndOffsets = nerModel.find(content);
-//                for(Short type: mapsAndOffsets.getFirst().keySet())
-//                    System.err.println(type +" : "+mapsAndOffsets.getFirst().get(type));
-//                if(di++>10)
-//                    break;
-//            }
-            Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapsandoffsets = nerModel.find(content);
-            Map<Short, List<String>> map = SequenceModel.mergeTypes(mapsandoffsets.first);
-            for(Short type: map.keySet())
-                System.out.println(type + " : "+mapsandoffsets.first.get(type)+"<br>");
+            Span[] spans = nerModel.find(content);
+            for(Span sp: spans)
+                System.out.println(sp);
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
             String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",

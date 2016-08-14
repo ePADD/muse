@@ -48,7 +48,7 @@
                 List<String> entities;
                 if(!"corr".equals(type)) {
                     if(NER.EPER.equals(type)) {
-                        entities = archive.getEntitiesInDoc(doc, type, true, originalOnly);
+                        entities = archive.getNamesInDoc(doc, type, true, originalOnly);
                     }
                     else
                         entities = archive.getQualityEntitiesInDoc(doc, type, true, originalOnly);

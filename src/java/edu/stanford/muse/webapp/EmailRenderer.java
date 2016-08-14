@@ -7,7 +7,9 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
 
 import javax.mail.Address;
@@ -474,29 +476,20 @@ public class EmailRenderer {
 		x = DatedDocument.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
-        List<String> cpeople = archive.getEntitiesInDoc(ed, NER.EPER_TITLE, true);
-        List<String> corgs = archive.getEntitiesInDoc(ed, NER.EORG_TITLE, true);
-        List<String> cplaces = archive.getEntitiesInDoc(ed, NER.ELOC_TITLE, true);
-        List<String> entities = new ArrayList<String>();
-        entities.addAll(cpeople);
-        entities.addAll(cplaces);
-        entities.addAll(corgs);
+
+        Span[] names = archive.getAllNamesInDoc(ed, false);
 
         // Contains all entities and id if it is authorised else null
-        Map<String, Archive.Entity> entitiesWithId = new HashMap<String, Archive.Entity>();
-        for (String entity : entities) {
-            Set<String> types = new HashSet<String>();
-            if (cpeople.contains(entity))
-                types.add("cp");
-            if (cplaces.contains(entity))
-                types.add("cl");
-            if (corgs.contains(entity))
-                types.add("co");
-            String ce = IndexUtils.canonicalizeEntity(entity);
-            if (ce == null)
-                continue;
-            entitiesWithId.put(entity, new Archive.Entity(entity, null, types));
-        }
+        Map<String, Archive.Entity> entitiesWithId = new HashMap<>();
+        //we annotate three specially recognized types
+        Map<Short,String> recMap = new HashMap<>();
+        recMap.put(FeatureDictionary.PERSON,"cp");recMap.put(FeatureDictionary.PLACE,"cl");recMap.put(FeatureDictionary.ORGANISATION,"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(FeatureDictionary.getCoarseType(n.type)))
+                .forEach(n -> {
+                    Set<String> types = new HashSet<>();
+                    types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
+                    entitiesWithId.put(n.text, new Archive.Entity(n.text, null, types));
+                });
         x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTerms, entitiesWithId, IA_links, false);
 
 		result.append(x);

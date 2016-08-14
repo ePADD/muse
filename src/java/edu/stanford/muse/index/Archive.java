@@ -21,6 +21,7 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
@@ -32,6 +33,7 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Core data structure that represents an archive. Conceptually, an archive is a
@@ -1057,86 +1059,37 @@ public class Archive implements Serializable {
 
     public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
                                                             Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
-        String type = "person", otype = "organization", ptype = "location";
-        //not using filtered entities here as it looks weird especially in the redaction mode not to
-        // have a word not masked annotated. It is counter-intuitive.
-        List<String> cpeople = getEntitiesInDoc(d, NER.EPER, true);
-        List<String> corgs = getEntitiesInDoc(d, NER.EORG, true);
-        List<String> cplaces = getEntitiesInDoc(d, NER.ELOC, true);
-        Set<String> acrs = Util.getAcronyms(indexer.getContents(d, false));
-
-        List<String> e = getEntitiesInDoc(d, type, true);
-        List<String> orgs = getEntitiesInDoc(d, otype, true);
-        List<String> places = getEntitiesInDoc(d, ptype, true);
-        String contents = indexer.getContents(d, false);
         org.apache.lucene.document.Document ldoc = indexer.getDoc(d);
-        if (ldoc == null)
+        Span[] names = getAllNamesInLuceneDoc(ldoc,true);
+
+        String contents = indexer.getContents(d, false);
+        Set<String> acrs = Util.getAcronyms(contents);
+
+        if (ldoc == null) {
             System.err.println("Lucene Doc is null for: " + d.getUniqueId() + " but the content is " + (contents == null ? "null" : "not null"));
-
-        List<String> entities = new ArrayList<String>();
-
-        if (cpeople == null)
-            cpeople = new ArrayList<>();
-        if (cplaces == null)
-            cplaces = new ArrayList<>();
-        if (corgs == null)
-            corgs = new ArrayList<>();
-        if (e == null)
-            e = new ArrayList<>();
-        if (orgs == null)
-            orgs = new ArrayList<>();
-        if (places == null)
-            places = new ArrayList<>();
-        if (acrs == null)
-            acrs = new LinkedHashSet<>();
-
-        entities.addAll(cpeople);
-        entities.addAll(cplaces);
-        entities.addAll(corgs);
-        entities.addAll(e);
-        entities.addAll(orgs);
-        entities.addAll(places);
-        entities.addAll(acrs);
+            return null;
+        }
 
         // Contains all entities and id if it is authorised else null
-        Map<String, Entity> entitiesWithId = new HashMap<String, Entity>();
-        for (String entity : entities) {
-            Set<String> types = new HashSet<String>();
-            if (cpeople.contains(entity))
-                types.add("cp");
-            if (cplaces.contains(entity))
-                types.add("cl");
-            if (corgs.contains(entity))
-                types.add("co");
-            if (e.contains(entity))
-                types.add("person");
-            if (orgs.contains(entity))
-                types.add("org");
-            if (places.contains(entity))
-                types.add("place");
-            if (acrs.contains(entity))
-                types.add("acr");
-            String ce = IndexUtils.canonicalizeEntity(entity);
-            if (ce == null)
-                continue;
-            if (authorisedEntities != null && authorisedEntities.containsKey(ce)) {
-                entitiesWithId.put(entity, new Entity(entity, authorisedEntities.get(ce), types));
-            } else
-                entitiesWithId.put(entity, new Entity(entity, null, types));
-        }
+        Map<String, Entity> entitiesWithId = new HashMap<>();
+        //we annotate three specially recognized types
+        Map<Short,String> recMap = new HashMap<>();
+        recMap.put(FeatureDictionary.PERSON,"cp");recMap.put(FeatureDictionary.PLACE,"cl");recMap.put(FeatureDictionary.ORGANISATION,"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(FeatureDictionary.getCoarseType(n.type)))
+                .forEach(n -> {
+                    Set<String> types = new HashSet<>();
+                    types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
+                    entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities==null?null:authorisedEntities.get(n), types));
+                });
+        acrs.forEach(acr->{
+            Set<String> types = new HashSet<>();
+            types.add("acr");
+            entitiesWithId.put(acr,new Entity(acr, authorisedEntities==null?null:authorisedEntities.get(acr),types));
+        });
 
         //dont want more button anymore
         boolean overflow = false;
-//		if (!inFull && contents.length() > 4999) {
-//			contents = Util.ellipsize(contents, 4999);
-//			overflow = true;
-//		}
         String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
-        //also add NER offsets for debugging
-//		htmlContents += "<br>Offsets: <br>";
-//		List<Triple<String,Integer, Integer>> triples = edu.stanford.muse.ner.NER.getNamesOffsets(ldoc);
-//		for(Triple<String,Integer,Integer> t: triples)
-//			htmlContents += t.getFirst()+" <"+t.getSecond()+", "+t.getThird()+"><br>";
 
         if (ModeConfig.isPublicMode())
             htmlContents = Util.maskEmailDomain(htmlContents);
@@ -1370,42 +1323,6 @@ public class Archive implements Serializable {
         indexer.updateDocument(doc);
     }
 
-    /**Reads offset field in the supplied lucene doc, deserializes it and returns
-     */
-    public static List<Triple<String, Integer, Integer>> getNamesOffsets(org.apache.lucene.document.Document doc) {
-        BytesRef bytesRef = doc.getBinaryValue(NER.NAMES_OFFSETS);
-        if (bytesRef == null)
-            return null;
-        byte[] data = bytesRef.bytes;
-        if (data == null)
-            return null;
-
-        ByteArrayInputStream bs = new ByteArrayInputStream(data);
-        List<Triple<String, Integer, Integer>> result;
-        ObjectInputStream ois;
-        try {
-            ois = new ObjectInputStream(bs);
-            result = (List<Triple<String, Integer, Integer>>) ois.readObject();
-        } catch (Exception e) {
-            log.info("Failed to deserialize names_offsets");
-            e.printStackTrace();
-            result = new ArrayList<Triple<String, Integer, Integer>>();
-        }
-
-        return result;
-    }
-
-    public List<Triple<String, Integer, Integer>> getNamesOffsets(Document doc) {
-        try {
-            org.apache.lucene.document.Document ldoc = indexer.getLDoc(doc.getUniqueId());
-            return getNamesOffsets(ldoc);
-        }catch(Exception e){
-            log.info("Ldoc for "+doc.getUniqueId()+" not found");
-            return null;
-        }
-    }
-
-
     public void setupForWrite() throws IOException{
         indexer.setupForWrite();
     }
@@ -1423,101 +1340,43 @@ public class Archive implements Serializable {
         }
     }
 
-    public List<String> filterOriginalContent(edu.stanford.muse.index.Document doc, List<String> names) {
-        List<String> originalAllNames = getEntitiesInDoc(doc, NER.NAMES_ORIGINAL);
-        List<String> originalNames = new ArrayList<>();
-        for(String str: names)
-            if(originalAllNames.contains(str))
-               originalNames.add(str);
-        return originalNames;
+    public Span[] getOriginalNamesOfATypeInDoc(edu.stanford.muse.index.Document doc, short type) throws IOException{
+        Span[] spans = getAllOriginalNamesInDoc(doc);
+        List<Span> req = Arrays.asList(spans).stream().filter(sp->sp.type==type).collect(Collectors.toList());
+        return req.toArray(new Span[req.size()]);
     }
 
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
-        if(originalContentOnly)
-            return filterOriginalContent(doc, getEntitiesInDoc(doc, type, filter));
-        else
-            return getEntitiesInDoc(doc, type, filter);
-    }
-
-    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter, boolean originalContentOnly){
-        if(originalContentOnly)
-            return filterOriginalContent(doc, getQualityEntitiesInDoc(doc, type, filter));
-        else
-            return getQualityEntitiesInDoc(doc, type, filter);
-    }
-
-    //type should be one of strings EPER, ELOC, EORG, as set in NER.java
-    //returns filtered list of all names
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
-        org.apache.lucene.document.Document ldoc = null;
-        try {
-            ldoc = indexer.getDoc(doc);
-        } catch (IOException e) {
-            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
-            e.printStackTrace();
-            return null;
-        }
-        return getEntitiesInLuceneDoc(ldoc, type, filter);
-    }
-
-    //puts an extra layer of filtering over entities by filtering out entities also recognised as other type
-    public List<String> getQualityEntitiesInDoc(edu.stanford.muse.index.Document doc, String type, Boolean filter) {
-        org.apache.lucene.document.Document ldoc = null;
-        try {
-            ldoc = indexer.getDoc(doc);
-        } catch (IOException e) {
-            log.warn("Unable to obtain document " + doc.getUniqueId() + " from index");
-            e.printStackTrace();
-            return null;
-        }
-        List<String> thises = getEntitiesInLuceneDoc(ldoc, type, filter);
-        String[] types = new String[]{NER.EPER, NER.ELOC, NER.EORG};
-        List<String> otheres = new ArrayList<>();
-        for(String et: types) {
-            if (et.equals(type))
-                continue;
-            List<String> temp = getEntitiesInLuceneDoc(ldoc, et, filter);
-            if(temp!=null)
-                otheres.addAll(temp);
-        }
-        List<String> ret = new ArrayList<>();
-        for(String te: thises)
-            if(!otheres.contains(te))
-                ret.add(te);
-        return ret;
+    public Span[] getAllOriginalNamesInDoc(edu.stanford.muse.index.Document doc) throws IOException{
+        Span[] spans = getAllNamesInDoc(doc, true);
+        String oc = getContents(doc, true);
+        List<Span> req = Arrays.asList(spans).stream().filter(sp->sp.end<oc.length()).collect(Collectors.toList());
+        return req.toArray(new Span[req.size()]);
     }
 
     /**@return a list of names filtered to remove dictionary matches*/
-    public List<String> getEntitiesInDoc(edu.stanford.muse.index.Document d, String type) {
-        return getEntitiesInDoc(d, type, true);
+    public Span[] getNamesOfATypeInDoc(edu.stanford.muse.index.Document d, boolean body, short type) throws IOException{
+        return getNamesOfATypeInLuceneDoc(getDoc(d), body, type);
     }
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
-    public static List<String> getEntitiesInLuceneDoc(org.apache.lucene.document.Document ldoc, String type, Boolean filter) {
-        if (ldoc == null)
-            return null;
-        String field = ldoc.get(type);
-        if(filter)
-            return edu.stanford.muse.ie.Util.filterEntities(Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER), type);
-        else
-            return Util.tokenize(field, Indexer.NAMES_FIELD_DELIMITER);
+    public static Span[] getNamesOfATypeInLuceneDoc(org.apache.lucene.document.Document ldoc, boolean body, short type) {
+        Span[] allNames = NER.getNames(ldoc, body);
+        List<Span> req = Arrays.asList(allNames).stream().filter(s->type==s.type).collect(Collectors.toList());
+        return req.toArray(new Span[req.size()]);
     }
 
-    /**@return list of all fine grained entities */
-    public synchronized Set<String> getAllEntities() {
+    public Span[] getAllNamesInDoc(edu.stanford.muse.index.Document d, boolean body) throws IOException{
+        return NER.getNames(d, body, this);
+    }
 
-        if (allEntities == null) {
-            allEntities = new LinkedHashSet<>();
-            for (Document d : getAllDocs()) {
-                try {
-                    allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(this, d, true));
-//                    allEntities.addAll(edu.stanford.muse.ner.NER.getAllFineGrainedEntities(this, d, false));
-                } catch (Exception e) {
-                    Util.print_exception("exception reading fine grained entities", e, log);
-                }
-            }
-        }
-        return allEntities;
+    public static Span[] getAllNamesInLuceneDoc(org.apache.lucene.document.Document ldoc, boolean body){
+        return NER.getNames(ldoc, body);
+    }
+
+    public Span[] getAllNamesMapToInDoc(edu.stanford.muse.index.Document d, boolean body, short coarseType) throws IOException{
+        Span[] allNames = getAllNamesInDoc(d, body);
+        List<Span> req = Arrays.asList(allNames).stream().filter(n->FeatureDictionary.getCoarseType(n.type)==coarseType).collect(Collectors.toList());
+        return req.toArray(new Span[req.size()]);
     }
 
     /**@return list of all email sources */
@@ -1594,31 +1453,38 @@ public class Archive implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
             Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
             List<Document> docs = archive.getAllDocs();
             int i=0;
             archive.assignThreadIds();
+            NER.NERStats stats = new NER.NERStats();
             for(Document doc: docs) {
-                EmailDocument ed = (EmailDocument)doc;
-                List<Document> threads = archive.docsWithThreadId(ed.threadID);
-                if(threads.size()>0){
-                    int numSent = 0;
-                    for(Document d: threads){
-                        EmailDocument thread = (EmailDocument)d;
-                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
-                        if(sent>0)
-                            numSent++;
-                    }
-                    if(threads.size()!=numSent || threads.size()>2){
-                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
-                        break;
-                    }
-                    if(i%100 == 0)
-                        System.err.println("Scanned: "+i+" docs");
-                }
-                i++;
+                EmailDocument ed = (EmailDocument) doc;
+                stats.update(archive.getAllNamesInDoc(ed, true));
+                System.out.println(Arrays.asList(archive.getAllNamesInDoc(ed, true)));
+                if(i++>20)
+                    break;
+//                List<Document> threads = archive.docsWithThreadId(ed.threadID);
+//                if(threads.size()>0){
+//                    int numSent = 0;
+//                    for(Document d: threads){
+//                        EmailDocument thread = (EmailDocument)d;
+//                        int sent = thread.sentOrReceived(archive.addressBook)&EmailDocument.SENT_MASK;
+//                        if(sent>0)
+//                            numSent++;
+//                    }
+//                    if(threads.size()!=numSent || threads.size()>2){
+//                        System.err.println("Found a thread with "+numSent+" sent and "+threads.size()+" docs in a thread: "+ed.getSubject());
+//                        break;
+//                    }
+//                    if(i%100 == 0)
+//                        System.err.println("Scanned: "+i+" docs");
+//                }
+//                i++;
             }
+            System.out.println(stats.counts);
+            System.out.println(stats.all);
         } catch (Exception e) {
             e.printStackTrace();
         }

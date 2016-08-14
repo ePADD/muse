@@ -17,6 +17,7 @@ import org.jsoup.select.Elements;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Contains IE related util funtions and fields
@@ -225,26 +226,26 @@ public class Util {
 
 
     public static boolean filterEntity(String e){
-        return filterEntity(e, null);
+        return filterEntity(e, (short)-1);
     }
 
 	/**
 	 * Filters any entity that does not look like one
 	 * returns true if the entity looks OK and false otherwise, type can be null if it is of unknown type
      */
-	public static boolean filterEntity(String e, String type) {
+	public static boolean filterEntity(String e, short type) {
 		if (e == null)
 			return false;
 
 		int ti = 0;
-		if (NER.EPER.equals(type))
+		if (FeatureDictionary.PERSON == type)
 			ti = 0;
-		else if (NER.ELOC.equals(type))
+		else if (FeatureDictionary.PLACE == type)
 			ti = 1;
-		else if (NER.EORG.equals(type))
+		else if (FeatureDictionary.ORGANISATION == type)
 			ti = 2;
 		Set<String> cws = readFileFromResource("dict.words.full");
-		Set<String> tcws = new HashSet<String>();
+		Set<String> tcws = new HashSet<>();
 		if (ti <= 2 && ti >= 0)
 			tcws = readFile(TYPE_SPECIFIC_COMMON_WORDS_FILE[ti]);
 
@@ -307,12 +308,8 @@ public class Util {
 		return !inDict;
 	}
 
-	public static List<String> filterEntities(Collection<String> entities, String type) {
-		List<String> fes = new ArrayList<String>();
-		for (String e : entities)
-			if (Util.filterEntity(e, type))
-				fes.add(e);
-		return fes;
+	public static List<String> filterEntities(Collection<String> entities, short type) {
+		return entities.stream().filter(e->Util.filterEntity(e,type)).collect(Collectors.toList());
 	}
 
 	public static List<String> filterEntitiesByScore(List<String> entities, List<String> scores, double threshold) {
