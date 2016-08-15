@@ -7,6 +7,7 @@ import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -18,6 +19,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Contains IE related util funtions and fields
@@ -229,6 +231,10 @@ public class Util {
         return filterEntity(e, (short)-1);
     }
 
+    public static boolean filterEntity(Span s){
+        return filterEntity(s.getText(),s.type);
+    }
+
 	/**
 	 * Filters any entity that does not look like one
 	 * returns true if the entity looks OK and false otherwise, type can be null if it is of unknown type
@@ -308,29 +314,14 @@ public class Util {
 		return !inDict;
 	}
 
-	public static List<String> filterEntities(Collection<String> entities, short type) {
-		return entities.stream().filter(e->Util.filterEntity(e,type)).collect(Collectors.toList());
+	public static Span[] filterEntities(Span[] entities) {
+		List<Span> sps = Stream.of(entities).filter(Util::filterEntity).collect(Collectors.toList());
+        return sps.toArray(new Span[sps.size()]);
 	}
 
-	public static List<String> filterEntitiesByScore(List<String> entities, List<String> scores, double threshold) {
-		List<String> fes = new ArrayList<String>();
-		int cp = 0;
-		for (int ei = 0; ei < entities.size(); ei++) {
-			try {
-				double s = Double.parseDouble(scores.get(ei));
-				if (s > threshold)
-					fes.add(entities.get(ei));
-			} catch (Exception e) {
-				cp++;
-				log.warn("Cannot parse: " + scores.get(ei));
-				System.err.println("Cannot parse: " + scores.get(ei));
-			}
-		}
-		log.info("Couldn't parse " + cp + " of " + scores.size() + " scores");
-		System.err.println("Couldn't parse " + cp + " of " + scores.size() + " scores");
-		log.info(fes.size() + " of " + entities.size() + " passed the threshold");
-		System.err.println(fes.size() + " of " + entities.size() + " passed the threshold");
-		return fes;
+	public static Span[] filterEntitiesByScore(Span[] entities, double threshold) {
+        List<Span> sps = Stream.of(entities).filter(e->e.typeScore>threshold).collect(Collectors.toList());
+        return sps.toArray(new Span[sps.size()]);
 	}
 
 	public static void main(String[] args) {
