@@ -34,6 +34,7 @@ import org.apache.lucene.util.BytesRef;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Core data structure that represents an archive. Conceptually, an archive is a
@@ -1177,6 +1178,30 @@ public class Archive implements Serializable {
             Util.print_exception(e, log);
             return new LinkedHashSet<String>();
         }
+    }
+
+    public Span[] getEntitiesInDoc(Document d, boolean body){
+        try {
+            return edu.stanford.muse.ner.NER.getNames(d, body, this);
+        }catch(IOException e){
+            Util.print_exception(e, log);
+            return new Span[]{};
+        }
+    }
+
+    public synchronized Set<String> getAllEntities() {
+
+        if (allEntities == null) {
+            allEntities = new LinkedHashSet<>();
+            for (Document d : getAllDocs()) {
+                try {
+                    Stream.of(getEntitiesInDoc(d,true)).map(Span::getText).forEach(allEntities::add);
+                } catch (Exception e) {
+                    Util.print_exception("exception reading fine grained entities", e, log);
+                }
+            }
+        }
+        return allEntities;
     }
 
     //returns a map of names recognised by NER to frequency
