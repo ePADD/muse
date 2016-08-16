@@ -9,14 +9,15 @@ import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.DummyNERModel;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.*;
-import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -339,7 +340,22 @@ public class NER implements StatusProvider {
 //		}
 //	}
 
-    public static void main(String[] args){
+	/** returns a set of all entities in the given doc (those with a score above theta = 0.001).
+	 * if body is true, the email body is looked at, else the title. */
+	public static Set<String> getAllFineGrainedEntities(Archive archive, Document doc, boolean body) throws IOException {
+		Set<String> result = new LinkedHashSet<>();
+		double THETA = 0.001;
+
+		Span[] spans = NER.getNames(archive.getDoc(doc), body);
+		for (Span span : spans) {
+			if (span.typeScore >= THETA) {
+				result.add(span.getText());
+			}
+		}
+		return result;
+	}
+
+	public static void main(String[] args){
         String val = "";
         String[] plainSpans = val.split(Indexer.NAMES_FIELD_DELIMITER);
         List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).filter(s->s!=null).collect(Collectors.toList());
