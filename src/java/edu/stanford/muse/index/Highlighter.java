@@ -75,7 +75,13 @@ public class Highlighter {
         int r = randnum.nextInt();
         String upreTag = preTag.replaceAll(">$", " data-ignore=" + r + " >");
         Formatter formatter = new SimpleHTMLFormatter(upreTag, postTag);
-        query.add(new BooleanClause(qp.parse(term), BooleanClause.Occur.SHOULD));
+        //Parse exception may occur while parsing terms like "AND", "OR" etc.
+        try {
+            query.add(new BooleanClause(qp.parse(term), BooleanClause.Occur.SHOULD));
+        }catch(ParseException pe){
+            Util.print_exception("Exception while parsing: "+term,pe,log);
+            return content;
+        }
         Scorer scorer = new QueryScorer(query);
         org.apache.lucene.search.highlight.Highlighter highlighter = new org.apache.lucene.search.highlight.Highlighter(formatter, scorer);
         highlighter.setTextFragmenter(fragmenter);
@@ -266,7 +272,7 @@ public class Highlighter {
                 }
                 if (hyperlinkTerms.contains(substr) || hyperlinkTerms.contains("\""+substr+"\"")) {
                     hyperlinkTerms.remove(substr);
-                    hyperlinkTerms.remove("\""+substr+"\"");
+                    hyperlinkTerms.remove("\"" + substr + "\"");
                     if(!consTermsHyperlink.contains(substr)) {
                         o.put(new Pair<>(substr, HYPERLINK), val);
                         consTermsHyperlink.add(substr);
