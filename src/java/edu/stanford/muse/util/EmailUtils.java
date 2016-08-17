@@ -1116,6 +1116,27 @@ public class EmailUtils {
 		return result;
 	}
 
+    static void testLookupNormalizer(){
+        Pair<String,String>[] tests = new Pair[]{
+                new Pair<>("bernstein","bernstein"),
+                new Pair<>("charles, bernstein", "bernstein charles"),
+                new Pair<>("James H McGill", "james mcgill"),
+                new Pair<>("Wetterwald Julien","julien wetterwald"),
+                new Pair<>("Barack H. Obama", "barack obama"),
+                new Pair<>("George H W, Bush","bush george"),
+                //committee is a banned word in people names
+                new Pair<>("Justice committee", null),
+                new Pair<>("''''093- 'Wetterwald Jul-ien\"''''","'''093- 'wetterwald jul-ien\"'''")
+        };
+        for(Pair<String,String> p: tests) {
+            String np =normalizePersonNameForLookup(p.getFirst());
+            if ((np==null&&p.second!=null) || (np!=null&&p.second==null) || (np!=null&&p.second!=null&&!np.equals(p.getSecond()))) {
+                System.err.println("Test fail!! Expected: "+p.second+" found: "+np+" -- for: "+p.first);
+            }
+        }
+        System.err.println("All tests done!");
+    }
+
 	/*
 	 * normalizes names.
 	 * orders words in the name alphabetically.
@@ -1145,8 +1166,16 @@ public class EmailUtils {
 		String originalName = name;
 
 		name = cleanPersonName(name);
-		if (name == null)
-			return null;
+        //cleanPersonName returns null for singlw word names for some reason
+		if (name == null) {
+            if(originalName.indexOf(' ')==-1) {
+                name = originalName;
+                name = name.toLowerCase();
+                name = name.replaceAll("^\\W+|\\W+$","");
+                return name;
+            }
+            return null;
+        }
 		// remove all periods and commas
 		// in future: consider removing all non-alpha, non-number chars.
 		// but should we also remove valid quote chars in names like O'Melveny
@@ -1155,8 +1184,9 @@ public class EmailUtils {
 		name = name.replaceAll(",", " ");
 
 		StringTokenizer st = new StringTokenizer(name);
-		if (st.countTokens() <= 1)
-			return name;
+		if (st.countTokens() <= 1) {
+            return name;
+        }
 
 		// gather all the words in the name into tokens and sort it
 		List<String> tokens = new ArrayList<String>();
@@ -1393,28 +1423,6 @@ public class EmailUtils {
 		return content;
 	}
 
-	public static String cleanRoad(String title){
-		String[] words = title.split(" ");
-		String lw = words[words.length-1];
-		String ct = "";
-		boolean hasNumber = false;
-		for(Character c: lw.toCharArray())
-			if(c>='0' && c<='9') {
-            	hasNumber = true;
-                break;
-			}
-		if(words.length == 1 || !hasNumber)
-			ct = title;
-		else{
-			for(int i=0;i<words.length-1;i++) {
-				ct += words[i];
-				if(i<words.length-2)
-					ct += " ";
-			}
-		}
-		return ct;
-	}
-
 	public static Map<String,String> sample(Map<String,String> full, double p){
 		Random rand = new Random();
 		Map<String,String> sample = new LinkedHashMap<>();
@@ -1424,6 +1432,28 @@ public class EmailUtils {
 		}
 		return sample;
 	}
+
+    static String cleanDBPediaRoad(String title){
+        String[] words = title.split(" ");
+        String lw = words[words.length-1];
+        String ct = "";
+        boolean hasNumber = false;
+        for(Character c: lw.toCharArray())
+            if(c>='0' && c<='9') {
+                hasNumber = true;
+                break;
+            }
+        if(words.length == 1 || !hasNumber)
+            ct = title;
+        else{
+            for(int i=0;i<words.length-1;i++) {
+                ct += words[i];
+                if(i<words.length-2)
+                    ct += " ";
+            }
+        }
+        return ct;
+    }
 
 	public static Map<String, String> readDBpedia(double p, String typesFile) {
         if (dbpedia != null) {
@@ -1485,17 +1515,7 @@ public class EmailUtils {
                 //in places there are things like: Shaikh_Ibrahim,_Iraq
                 if (type.endsWith("Settlement|PopulatedPlace|Place"))
                     r = r.replaceAll(",_.*","");
-                //so as not to allow single word entries
-//                if(!r.contains("_"))
-//                    continue;
-//                if(r.contains("(")) {
-//                    int ti = r.indexOf('(');
-//                    int ui = r.indexOf('_');
-//                    //if is a single word token, then continue;
-//                    if((ui==-1) || ti<ui || (ui+1==ti)) {
-//                        continue;
-//                    }
-//                }
+
                 //its very dangerous to remove things inside brackets as that may lead to terms like
                 //University_(Metrorail_Station) MetroStation|Place e.t.c.
                 //so keep them, or just skip this entry all together
@@ -1523,7 +1543,7 @@ public class EmailUtils {
 
 				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
 					//System.err.print("Cleaned: "+title);
-					title = cleanRoad(title);
+					title = cleanDBPediaRoad(title);
 					//System.err.println(" to "+title);
 				}
                 dbpedia.put(title, type);
@@ -1546,4 +1566,8 @@ public class EmailUtils {
 	public static Map<String,String> readDBpedia(){
 		return readDBpedia(1.0);
 	}
+
+    public static void main(String[] args){
+        testLookupNormalizer();
+    }
 }

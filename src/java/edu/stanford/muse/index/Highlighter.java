@@ -79,7 +79,8 @@ public class Highlighter {
         try {
             query.add(new BooleanClause(qp.parse(term), BooleanClause.Occur.SHOULD));
         }catch(ParseException pe){
-            Util.print_exception("Exception while parsing: "+term,pe,log);
+            if(log.isDebugEnabled())
+                log.debug("Exception while parsing: "+term,pe);
             return content;
         }
         Scorer scorer = new QueryScorer(query);
