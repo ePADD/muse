@@ -150,12 +150,21 @@ public class NER implements StatusProvider {
 	}
 
     public static Span[] getNames(org.apache.lucene.document.Document doc, boolean body) {
+        if (doc == null)
+            return new Span[0];
+
         String fieldName;
         if(body)
             fieldName = NAMES;
         else
             fieldName = NAMES_TITLE;
         String val = doc.get(fieldName);
+
+        if (val == null) {
+            log.warn ("Names NOT extracted in document");
+            return new Span[0];
+        }
+
         String[] plainSpans = val.split(Indexer.NAMES_FIELD_DELIMITER);
         List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).filter(s -> s != null).collect(Collectors.toList());
 

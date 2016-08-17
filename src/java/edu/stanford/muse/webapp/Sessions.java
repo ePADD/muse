@@ -39,7 +39,7 @@ import java.util.*;
 /** class to manage sessions. sessions are stored as .session files in the baseDir/sessions (which itself is stored in the session). */
 public class Sessions {
     public static Log log = LogFactory.getLog(Sessions.class);
-    public static final String SESSION_SUFFIX = ".archive.v1"; // all session files end with .session	
+    public static final String SESSION_SUFFIX = ".archive.v2"; // all session files end with .session
     public static final String PROCESSING_METADATA_SUFFIX = ".processing.metadata"; // all session files end with .session	
     public  static String CACHE_BASE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"
     public static String CACHE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"

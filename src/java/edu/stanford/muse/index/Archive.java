@@ -1183,7 +1183,7 @@ public class Archive implements Serializable {
     public Span[] getEntitiesInDoc(Document d, boolean body){
         try {
             return edu.stanford.muse.ner.NER.getNames(d, body, this);
-        }catch(IOException e){
+        }catch(Exception e){
             Util.print_exception(e, log);
             return new Span[]{};
         }

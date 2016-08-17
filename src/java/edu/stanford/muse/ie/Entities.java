@@ -496,7 +496,8 @@ public class Entities implements Serializable, StatusProvider {
             //random id for this row
             String randNum = entitynum+"";
             if(enableDAButton) {
-                html += "<span style='cursor:pointer' id='" + randNum + "' onclick='sort(" + randNum + ")' class='sort'><i class='fa fa-sort-amount-desc'></i></span>" + tab;
+				// disabling this now - sgh, aug 16 2016
+//                html += "<span style='cursor:pointer' id='" + randNum + "' onclick='sort(" + randNum + ")' class='sort'><i class='fa fa-sort-amount-desc'></i></span>" + tab;
             }
 			html += "<span class='manual' id='manual_" + randNum + "'>";
 			html += "<a class='popupManual' id='inline_" + randNum + "' title='' href='#manualassign' onclick='localStorage.setItem(\"entitynum\",\"" + randNum + "\");'>";
