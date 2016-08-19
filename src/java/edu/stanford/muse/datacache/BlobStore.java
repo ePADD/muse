@@ -160,7 +160,8 @@ public class BlobStore implements Serializable {
      * full filename for an arbitrary file associated with d
      */
     public String full_filename(Blob b, String fname) {
-        int idx = id_map.get(b);
+        int idx = index(b);
+
         if (idx < 0)
             return fname;
         else

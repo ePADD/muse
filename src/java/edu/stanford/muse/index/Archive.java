@@ -22,14 +22,16 @@ import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.util.*;
+import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
+import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.util.BytesRef;
 
 import java.io.*;
 import java.util.*;
@@ -876,9 +878,10 @@ public class Archive implements Serializable {
         if (Util.nullOrEmpty(out_dir))
             return null;
         File dir = new File(out_dir);
-        if (dir.exists() && dir.isDirectory())
+        if (dir.exists() && dir.isDirectory()) {
             log.warn("Overwriting existing directory '" + out_dir + "' (it may already exist)");
-        else if (!dir.mkdirs()) {
+            FileUtils.deleteDirectory(dir);
+        } else if (!dir.mkdirs()) {
             log.warn("Unable to create directory: " + out_dir);
             return null;
         }
