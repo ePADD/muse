@@ -17,8 +17,6 @@ package edu.stanford.muse.index;
  * limitations under the License.
  */
 
-import java.io.*;
-
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.standard.StandardTokenizerImpl;
@@ -28,6 +26,10 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.Version;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 
 public final class StandardNumberTokenizer extends Tokenizer {
 	public StandardTokenizerImpl	scanner;
@@ -58,7 +60,7 @@ public final class StandardNumberTokenizer extends Tokenizer {
 
 	private int						skippedPositions;
 
-	private int						maxTokenLength	= StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH;
+	private static final int maxTokenLength	= StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH;
 
 	public StandardNumberTokenizer(Version matchVersion, Reader input) {
 		super(input);

@@ -2,16 +2,17 @@ package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
+import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
-
 import edu.stanford.muse.util.Util;
 import libsvm.svm_parameter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -24,15 +25,16 @@ import java.util.regex.Pattern;
 public class FeatureDictionary implements Serializable {
     //The data type of types (Short or String) below has no effect on the size of the dumped serialised model, Of course!
     //public static Short PERSON = 1, ORGANISATION = 2, PLACE = 3, OTHER = -1;
-    public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,MILITARYUNIT=8,
-            MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,NEWSPAPER=13,ACADEMICJOURNAL=14,MAGAZINE=15,POLITICALPARTY=16,
-            ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,NPORG=21,GOVAGENCY=22,SHOPPINGMALL=24,HOSPITAL=25,
-            POWERSTATION=26,AWARD=27,TRADEUNIN=28,PARK=29,HOTEL=30,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
+    //merged political party into organisation
+    public static short PERSON=0,COMPANY=1,BUILDING=2,PLACE=3,RIVER=4,ROAD=5,UNIVERSITY=7,
+            MOUNTAIN=9,AIRPORT=10,ORGANISATION=11,PERIODICAL_LITERATURE=13,
+            ISLAND=17,MUSEUM=18,BRIDGE=19,AIRLINE=20,GOVAGENCY=22,HOSPITAL=25,
+            AWARD=27,THEATRE=31,LEGISTLATURE=32,LIBRARY=33,LAWFIRM=34,
             MONUMENT=35,DISEASE = 36,EVENT=37, OTHER=38;
     public static Short[] allTypes = new Short[]{PERSON,COMPANY,BUILDING,PLACE,RIVER,ROAD,
-            UNIVERSITY,MILITARYUNIT,MOUNTAIN,AIRPORT,ORGANISATION,NEWSPAPER,ACADEMICJOURNAL,
-            MAGAZINE,POLITICALPARTY,ISLAND,MUSEUM,BRIDGE,AIRLINE,NPORG,GOVAGENCY,SHOPPINGMALL,HOSPITAL,
-            POWERSTATION,AWARD,TRADEUNIN,PARK,HOTEL,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
+            UNIVERSITY,MOUNTAIN,AIRPORT,ORGANISATION,PERIODICAL_LITERATURE,
+            ISLAND,MUSEUM,BRIDGE,AIRLINE,GOVAGENCY,HOSPITAL,
+            AWARD,THEATRE,LEGISTLATURE,LIBRARY,LAWFIRM,MONUMENT,DISEASE,EVENT,OTHER};
 
     public static Map<Short,String> desc = new LinkedHashMap<>();
     static Log log = LogFactory.getLog(FeatureDictionary.class);
@@ -44,40 +46,31 @@ public class FeatureDictionary implements Serializable {
     //feature types
     public static short NOMINAL = 0, BOOLEAN = 1, NUMERIC = 2;
     public static Pattern endClean = Pattern.compile("^\\W+|\\W+$");
-    public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is", "from");
+    public static List<String> sws = Arrays.asList("and","for","to","in","at","on","the","of", "a", "an", "is", "from",
+            "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do");
     static List<String> symbols = Arrays.asList("&","-",",");
     static final boolean DEBUG = false;
     static {
         //the extra '|' is appended so as not to match junk.
         //matches both Person and PersonFunction in dbpedia types.
         aTypes.put(PERSON, new String[]{"Person"});
-        aTypes.put(PLACE, new String[]{"Place"});
-        aTypes.put(COMPANY, new String[]{"Company|Organisation"});
-        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place"});
+        aTypes.put(PLACE, new String[]{"Place","Park|Place","ProtectedArea|Place","PowerStation|Infrastructure|ArchitecturalStructure|Place","ShoppingMall|Building|ArchitecturalStructure|Place"});
+        aTypes.put(COMPANY, new String[]{"Company|Organisation","Non-ProfitOrganisation|Organisation"});
+        aTypes.put(BUILDING, new String[]{"Building|ArchitecturalStructure|Place","Hotel|Building|ArchitecturalStructure|Place"});
         aTypes.put(RIVER, new String[]{"River|Stream|BodyOfWater|NaturalPlace|Place","Canal|Stream|BodyOfWater|NaturalPlace|Place","Stream|BodyOfWater|NaturalPlace|Place","BodyOfWater|NaturalPlace|Place", "Lake|BodyOfWater|NaturalPlace|Place"});
         aTypes.put(ROAD, new String[]{"Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(UNIVERSITY, new String[]{"University|EducationalInstitution|Organisation","School|EducationalInstitution|Organisation","College|EducationalInstitution|Organisation"});
-        aTypes.put(MILITARYUNIT, new String[]{"MilitaryUnit|Organisation"});
         aTypes.put(MOUNTAIN, new String[]{"Mountain|NaturalPlace|Place", "MountainRange|NaturalPlace|Place"});
         aTypes.put(AIRPORT, new String[]{"Airport|Infrastructure|ArchitecturalStructure|Place"});
-        aTypes.put(ORGANISATION, new String[]{"Organisation"});
-        aTypes.put(NEWSPAPER, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work"});
-        aTypes.put(ACADEMICJOURNAL, new String[]{"AcademicJournal|PeriodicalLiterature|WrittenWork|Work"});
-        aTypes.put(MAGAZINE, new String[]{"Magazine|PeriodicalLiterature|WrittenWork|Work"});
-        aTypes.put(POLITICALPARTY, new String[]{"PoliticalParty|Organisation"});
+        aTypes.put(ORGANISATION, new String[]{"Organisation","PoliticalParty|Organisation","TradeUnion|Organisation"});
+        aTypes.put(PERIODICAL_LITERATURE, new String[]{"Newspaper|PeriodicalLiterature|WrittenWork|Work","AcademicJournal|PeriodicalLiterature|WrittenWork|Work","Magazine|PeriodicalLiterature|WrittenWork|Work"});
         aTypes.put(ISLAND, new String[]{"Island|PopulatedPlace|Place"});
         aTypes.put(MUSEUM, new String[]{"Museum|Building|ArchitecturalStructure|Place"});
         aTypes.put(BRIDGE, new String[]{"Bridge|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(AIRLINE, new String[]{"Airline|Company|Organisation"});
-        aTypes.put(NPORG, new String[]{"Non-ProfitOrganisation|Organisation"});
         aTypes.put(GOVAGENCY, new String[]{"GovernmentAgency|Organisation"});
-        aTypes.put(SHOPPINGMALL, new String[]{"ShoppingMall|Building|ArchitecturalStructure|Place"});
         aTypes.put(HOSPITAL, new String[]{"Hospital|Building|ArchitecturalStructure|Place"});
-        aTypes.put(POWERSTATION, new String[]{"PowerStation|Infrastructure|ArchitecturalStructure|Place"});
         aTypes.put(AWARD, new String[]{"Award"});
-        aTypes.put(TRADEUNIN, new String[]{"TradeUnion|Organisation"});
-        aTypes.put(PARK, new String[]{"Park|Place","ProtectedArea|Place"});
-        aTypes.put(HOTEL, new String[]{"Hotel|Building|ArchitecturalStructure|Place"});
         aTypes.put(THEATRE, new String[]{"Theatre|Venue|ArchitecturalStructure|Place"});
         aTypes.put(LEGISTLATURE, new String[]{"Legislature|Organisation"});
         aTypes.put(LIBRARY, new String[]{"Library|Building|ArchitecturalStructure|Place"});
@@ -107,12 +100,12 @@ public class FeatureDictionary implements Serializable {
                 "PersonFunction"
         );
         desc.put(PERSON,"PERSON");desc.put(COMPANY,"COMPANY");desc.put(BUILDING,"BUILDING");desc.put(PLACE,"PLACE");desc.put(RIVER,"RIVER");
-        desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MILITARYUNIT,"MILITARYUNIT");desc.put(MOUNTAIN,"MOUNTAIN");
-        desc.put(AIRPORT,"AIRPORT");desc.put(ORGANISATION,"ORGANISATION");desc.put(NEWSPAPER,"NEWSPAPER");desc.put(ACADEMICJOURNAL,"ACADEMICJOURNAL");
-        desc.put(MAGAZINE,"MAGAZINE");desc.put(POLITICALPARTY,"POLITICALPARTY");desc.put(ISLAND,"ISLAND");desc.put(MUSEUM,"MUSEUM");
-        desc.put(BRIDGE,"BRIDGE");desc.put(AIRLINE,"AIRLINE");desc.put(NPORG,"NPORG");desc.put(GOVAGENCY,"GOVAGENCY");desc.put(SHOPPINGMALL,"SHOPPINGMALL");
-        desc.put(HOSPITAL,"HOSPITAL");desc.put(POWERSTATION,"POWERSTATION");desc.put(AWARD,"AWARD");desc.put(TRADEUNIN,"TRADEUNIN");desc.put(PARK,"PARK");
-        desc.put(HOTEL,"HOTEL");desc.put(THEATRE,"THEATRE");desc.put(LEGISTLATURE,"LEGISTLATURE");desc.put(LIBRARY,"LIBRARY");desc.put(LAWFIRM,"LAWFIRM");
+        desc.put(ROAD,"ROAD");desc.put(UNIVERSITY,"UNIVERSITY");desc.put(MOUNTAIN,"MOUNTAIN");
+        desc.put(AIRPORT,"AIRPORT");desc.put(ORGANISATION,"ORGANISATION");desc.put(PERIODICAL_LITERATURE,"PERIODICAL_LITERATURE");
+        desc.put(ISLAND,"ISLAND");desc.put(MUSEUM,"MUSEUM");desc.put(BRIDGE,"BRIDGE");desc.put(AIRLINE,"AIRLINE");
+        desc.put(GOVAGENCY,"GOVAGENCY");
+        desc.put(HOSPITAL,"HOSPITAL");desc.put(AWARD,"AWARD");
+        desc.put(THEATRE,"THEATRE");desc.put(LEGISTLATURE,"LEGISTLATURE");desc.put(LIBRARY,"LIBRARY");desc.put(LAWFIRM,"LAWFIRM");
         desc.put(MONUMENT,"MONUMENT");desc.put(DISEASE,"DISEASE");desc.put(EVENT,"EVENT");desc.put(OTHER,"OTHER");
     }
     /**
@@ -137,6 +130,7 @@ public class FeatureDictionary implements Serializable {
         //it is useful to have special symbols for position, even though we have NULL symbol in the word labels, so that we dont see symbols like University, Association e.t.c.
         static final long serialVersionUID = 1L;
         static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
+        //word label is used to label the semantic type of neighbouring words and also  includes "NULL" when there are no neighbouring words on any side.
         static String[] WORD_LABELS = new String[allTypes.length+1];
         static String[] TYPE_LABELS = new String[allTypes.length];
         static String[] BOOLEAN_VARIABLES = new String[]{"Y","N"};
@@ -225,10 +219,12 @@ public class FeatureDictionary implements Serializable {
                     }
                 }
             }
-            System.err.println("!!!FATAL: Unknown type label: "+typeLabel+"!!!");
-            System.err.println("Expected");
-            for(String tl: TYPE_LABELS)
-                System.err.println(tl);
+            log.warn("!!!FATAL: Unknown type label: " + typeLabel + "!!!");
+            if(log.isDebugEnabled()) {
+                log.debug("Expected one of: ");
+                for (String tl : TYPE_LABELS)
+                    log.debug(tl);
+            }
             return 0;
         }
 
@@ -315,14 +311,8 @@ public class FeatureDictionary implements Serializable {
                             log.info(t + ": <" + ls.get(t).first+"-"+ls.get(t).second+">");
                     }
                     p *= Math.pow(s, 1.0 / strs.size());
-//                    if(si == 1)
-//                        System.err.println("left: "+Math.pow(s, 1.0/strs.size()));
-//                    else
-//                        System.err.println("Right: "+Math.pow(s, 1.0/strs.size()));
                 }
             }
-//            System.err.println("left and right: "+p);
-//            System.err.println(numMixture+", s: "+s);
 
             for (String f : features) {
                 int v = getNumberOfSymbols(f);
@@ -519,6 +509,41 @@ public class FeatureDictionary implements Serializable {
             str += "NMR:"+nmR+", NML:"+nmL+"\n";
             return str;
         }
+
+        public String prettyPrint(){
+            String str = "";
+            String p[] = new String[]{"L:","R:","T:","SW:","DICT:","ADJ:","ADV:","PREP:","V:","PN:"};
+            String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS,sws.toArray(new String[sws.size()]),DICT_LABELS,ADJ_LABELS, ADV_LABELS,PREP_LABELS,V_LABELS,PN_LABELS};
+            str += "ID: " + id + "\n";
+            for(int i=0;i<labels.length;i++) {
+                Map<String,Double> some = new LinkedHashMap<>();
+                for(int l=0;l<labels[i].length;l++) {
+                    String k = p[i] + labels[i][l];
+                    String d;
+                    if(i==0 || i==1 || i==2)
+                        d = p[i].replaceAll(":","") + "[" + (labels[i][l].equals("NULL")?"EMPTY":FeatureDictionary.desc.get(Short.parseShort(labels[i][l]))) + "]";
+                    else
+                        d = p[i].replaceAll(":","") + "[" + labels[i][l] + "]";
+                    if(muVectorPositive.get(k) != null)
+                        some.put(d, muVectorPositive.get(k) / numMixture);
+                    else
+                        some.put(d, 0.0);
+                }
+                List<Pair<String,Double>> smap;
+                smap = Util.sortMapByValue(some);
+                int numF = 0;
+                for(Pair<String,Double> pair: smap) {
+                    if(numF>=3)
+                        break;
+
+                    str += pair.getFirst() + ":" + new DecimalFormat("#.##").format(pair.getSecond()) + "-";
+                    numF++;
+                }
+                str += "\n";
+            }
+            str += "Evidence: "+numSeen+"\n";
+            return str;
+        }
     }
     private static final long serialVersionUID = 1L;
     //dimension -> instance -> entity type of interest -> #positive type, #negative type
@@ -630,7 +655,23 @@ public class FeatureDictionary implements Serializable {
 //            }
 //        }
         int wi=0, ws = words.size();
+        int numIgnored = 0;
         for(String str: words.keySet()){
+            double wordFreq = words.get(str).values().iterator().next().second;
+            if (wordFreq<3 || str.length()<=1) {
+                numIgnored++;
+                continue;
+            }
+            boolean hasNumber = false;
+            for(char c: str.toCharArray())
+                if(Character.isDigit(c)) {
+                    hasNumber = true;
+                    numIgnored++;
+                    break;
+                }
+            if (hasNumber)
+                continue;
+
             //dont touch priors that are already initialised
             if(features.containsKey(str))
                 continue;
@@ -699,7 +740,7 @@ public class FeatureDictionary implements Serializable {
             return;
         for (String dim : wfeatures.keySet()) {
             if (!lfeatures.containsKey(dim))
-                lfeatures.put(dim, new LinkedHashMap<String, Map<Short, Pair<Double, Double>>>());
+                lfeatures.put(dim, new LinkedHashMap<>());
             Map<String, Map<Short, Pair<Double, Double>>> hm = lfeatures.get(dim);
             if (wfeatures.get(dim) != null)
                 for (String val : wfeatures.get(dim)) {
@@ -711,8 +752,7 @@ public class FeatureDictionary implements Serializable {
                     }
                     Pair<Double, Double> p = hm.get(val).get(iType);
                     Short eType = codeType(type);
-                    //System.err.println("Type info: "+eType+", "+iType+", "+type);
-                    if(eType == iType)
+                    if (eType.equals(iType))
                         p.first++;
                     p.second++;
                     hm.get(val).put(iType, p);
@@ -1016,8 +1056,8 @@ public class FeatureDictionary implements Serializable {
             double p = this.getConditional(phrase, et, null);
             if(p!=0)
                 ll += Math.log(p);
-            else
-                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
+//            else
+//                log.warn("!!FATAL!! Phrase: "+phrase+" is assigned a score: 0");
         }
         return ll;
     }
@@ -1052,7 +1092,7 @@ public class FeatureDictionary implements Serializable {
                     }
                     MU mu = features.get(mi);
                     if(mu == null) {
-                        log.warn("!!FATAL!! mu null for: " + mi + ", " + features.size());
+                        //log.warn("!!FATAL!! mu null for: " + mi + ", " + features.size());
                         continue;
                     }
                     double d = mu.getLikelihood(wfeatures.get(mi), this) * mu.getPrior();
@@ -1066,7 +1106,7 @@ public class FeatureDictionary implements Serializable {
                     //System.err.println(mi + " : " + d + ", "+mu.getLikelihood(wfeatures.get(mi), this) );
                 }
                 if (z == 0) {
-                    log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
+                    //log.warn("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
                     continue;
                 }
 
@@ -1111,34 +1151,54 @@ public class FeatureDictionary implements Serializable {
 
             revisedMixtures = new LinkedHashMap<>();
 
-            try {
-                if(i==(MAX_ITER-1)) {
-                    Short[] ats = FeatureDictionary.allTypes;
-                    for (Short type : ats) {
-                        FileWriter fw = new FileWriter(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "em.dump." + type + "." + i);
-                        Map<String, Double> some = new LinkedHashMap<>();
-                        for (String w : features.keySet()) {
-                            double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
-                            if (Double.isNaN(v))
-                                some.put(w, 0.0);
-                            else
-                                some.put(w, v);
-                        }
-                        List<Pair<String, Double>> ps = Util.sortMapByValue(some);
-                        for (Pair<String, Double> p : ps) {
-                            if(type!=ats[0])
-                                if(p.second<=0.01)
-                                    break;
-                            fw.write("Token: " + p.getFirst() + " : " + p.getSecond() + "\n");
-                            fw.write(features.get(p.getFirst()).toString());
-                            fw.write("========================\n");
-                        }
-                        fw.close();
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                if(i==(MAX_ITER-1)) {
+//                    Short[] ats = FeatureDictionary.allTypes;
+//                    //make cache dir if it does not exist
+//                    String cacheDir = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache";
+//                    if(!new File(cacheDir).exists())
+//                        new File(cacheDir).mkdir();
+//                    for (Short type : ats) {
+//                        FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
+//                        FileWriter ffw = new FileWriter(cacheDir + File.separator + FeatureDictionary.desc.get(type) + ".txt");
+//                        Map<String, Double> some = new LinkedHashMap<>();
+//                        for (String w : features.keySet()) {
+//                            double v = features.get(w).getLikelihoodWithType(type) * Math.log(features.get(w).numMixture);
+//                            if (Double.isNaN(v))
+//                                some.put(w, 0.0);
+//                            else
+//                                some.put(w, v);
+//                        }
+//                        List<Pair<String, Double>> ps = Util.sortMapByValue(some);
+//                        for (Pair<String, Double> p : ps) {
+//                            if(type==ats[0] || p.second>=0.001) {
+//                                fw.write(features.get(p.getFirst()).toString());
+//                                fw.write("========================\n");
+//                            }
+//
+//                            //TODO: This is a very costly operation, think of other ways to do this more efficiently
+//                            MU mu = features.get(p.getFirst());
+//                            Short maxT = -1;double maxV = -1;
+//                            for(Short t: ats) {
+//                                double d = mu.getLikelihoodWithType(t);
+//                                if (d > maxV){
+//                                    maxT = t;
+//                                    maxV = d;
+//                                }
+//                            }
+//                            if(maxT == type) {
+//                                ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
+//                                ffw.write(mu.prettyPrint());
+//                                ffw.write("========================\n");
+//                            }
+//                        }
+//                        fw.close();
+//                        ffw.close();
+//                    }
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
         }
     }
 
@@ -1204,6 +1264,13 @@ public class FeatureDictionary implements Serializable {
         }
 
         return cleanAB;
+    }
+
+    public static short getCoarseType(short type){
+        for(Map.Entry<Short, Short[]> e: SequenceModel.mappings.entrySet())
+            if(Arrays.asList(e.getValue()).contains(type))
+                return e.getKey();
+        return type;
     }
 
     //not using logarithms, since the number of symbols is less

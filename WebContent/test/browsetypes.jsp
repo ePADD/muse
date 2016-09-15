@@ -1,14 +1,16 @@
-<%@ page import="edu.stanford.muse.util.Pair" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
-<%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
-<%@ page import="java.io.*" %>
-<%@ page import="edu.stanford.muse.util.Triple" %>
-<%@ page import="edu.stanford.muse.util.Util" %>
-<%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
-<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.ner.tokenizer.CICTokenizer" %>
+<%@ page import="edu.stanford.muse.util.Pair" %>
+<%@ page import="edu.stanford.muse.util.Triple" %>
+<%@ page import="edu.stanford.muse.util.Util" %>
+<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
+<%@ page import="java.io.File" %>
+<%@ page import="java.io.FileWriter" %>
+<%@ page import="java.io.IOException" %>
+<%@ page import="java.util.*" %>
 <%
     class Some{
         public Map<String,Double> find (String content, Short type, SequenceModel model){
@@ -45,7 +47,7 @@
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
+            nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -54,9 +56,9 @@
         session.setAttribute("ner", nerModel);
     }
 
-    if (nerModel.fdw == null) {
+    if (SequenceModel.fdw == null) {
         try {
-            nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
+            SequenceModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "cache" + File.separator + "features.dump"));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -75,8 +77,7 @@
     Set<String> orgs = new LinkedHashSet<>();
     double CUTOFF = 0;
 
-    Map<Short, String> desc = new LinkedHashMap<>();
-    desc.put(FeatureDictionary.SETTLEMENT,"SETTLEMENT");desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.SPORTSTEAM,"SPORTSTEAM");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.LAKE,"LAKE");desc.put(FeatureDictionary.STADIUM,"STADIUM");desc.put(FeatureDictionary.PROTECTEDAREA,"PROTECTEDAREA");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");desc.put(FeatureDictionary.DRUG,"DRUG");desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"POLITICALPARTY");desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");desc.put(FeatureDictionary.RECORDLABEL,"RECORDLABEL");desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"TRADEUNIN");desc.put(FeatureDictionary.PARK,"PARK");desc.put(FeatureDictionary.WORLDHERITAGESITE,"WORLDHERITAGESITE");desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.CANAL,"CANAL");desc.put(FeatureDictionary.STREAM,"STREAM");desc.put(FeatureDictionary.BODYOFWATER,"BODYOFWATER");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");desc.put(FeatureDictionary.OTHER,"OTHER");
+    Map<Short, String> desc = FeatureDictionary.desc;
     if(types.length==1) {
         Map<String, Double> all = new LinkedHashMap<>();
         for (String sent : sents) {

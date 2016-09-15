@@ -1,6 +1,4 @@
-<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
-    pageEncoding="ISO-8859-1"%>
-<%@page language="java" import="java.util.*"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@page language="java" import="edu.stanford.muse.index.Archive"%>
 <%@page language="java" import="edu.stanford.muse.index.Indexer"%>
 <%@page language="java" import="edu.stanford.muse.memory.*"%>
@@ -9,7 +7,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
-<link rel="icon" href="images/stanford-favicon.gif">
+<link rel="icon" href="../images/ashoka-favicon.gif">
 <title>Stats Page</title>
 <style>
 td { 
@@ -59,9 +57,9 @@ text-align:right;
 		Pair<String, String> indexStats = Util.fieldsToCSV(stats, true);
 		Pair<String, String> addressBookStats = Util.fieldsToCSV(study.archive.addressBook.getStats(), true);
 		Pair<String, String> studyStats = Util.fieldsToCSV(study.stats, true);
-		  Pair<String, String> archiveStats = Util.fieldsToCSV(archive.stats, true);
-          out.println (studyStats.getFirst() + indexStats.getFirst() + addressBookStats.getFirst() + archiveStats.getFirst() + "<br/>");
-          out.println (studyStats.getSecond() + indexStats.getSecond() + addressBookStats.getSecond() + archiveStats.getSecond() + "<br/>");
+        Pair<String, String> archiveStats = Util.fieldsToCSV(archive.stats, true);
+        out.println (studyStats.getFirst() + indexStats.getFirst() + addressBookStats.getFirst() + archiveStats.getFirst() + "<br/>");
+        out.println (studyStats.getSecond() + indexStats.getSecond() + addressBookStats.getSecond() + archiveStats.getSecond() + "<br/>");
 	}
 %>	
 	<p>
@@ -69,18 +67,17 @@ text-align:right;
 	int idx = 1;
 	if (!csv) { out.println("<table>"); }
 	for (MemoryQuestion mq : study.getQuestions()) {
-
-		Date clueDate = new Date(mq.clue.date);
-
-		String correctAnswer = mq.getCorrectAnswer();
-		String userAnswer = mq.getUserAnswer();
-		if (userAnswer == null)
-			userAnswer = "";
-		correctAnswer = Util.canonicalizeSpaces(correctAnswer);
-		userAnswer = Util.canonicalizeSpaces(userAnswer);
+//		Date clueDate = new Date(mq.clue.date);
+//		String correctAnswer = mq.getCorrectAnswer();
+//		String userAnswer = mq.getUserAnswer();
+//		if (userAnswer == null)
+//			userAnswer = "";
+//		correctAnswer = Util.canonicalizeSpaces(correctAnswer);
+//		userAnswer = Util.canonicalizeSpaces(userAnswer);
+		//DO not set expand param in fieldsToCSV or fieldsToHTML, it will lead to inconsistent number of columns due to arrays in the object like mentionHistogram in ClueStats etc.
 		if (!csv) {
-			Pair<String, String> p = Util.fieldsToHTMLTD(mq.clue.clueStats, true);		
-			Pair<String, String> p1 = Util.fieldsToHTMLTD(mq.stats, true);
+			Pair<String, String> p = Util.fieldsToHTMLTD(mq.clue.clueStats, false);
+			Pair<String, String> p1 = Util.fieldsToHTMLTD(mq.stats, false);
 			if (idx == 1) {
 				out.println("<tr>" + p.getFirst()  + p1.getFirst() + "<td>correct answer</td><td>user answer</td><td>user answer before hint</td><td>clue</tr>");
 			}

@@ -12,13 +12,22 @@
 	<name>Muse</name>
 	<url>http://maven.apache.org</url>
 
- <pluginRepositories>
-    <pluginRepository>
-      <id>apache.snapshots</id>
-      <url>http://repository.apache.org/snapshots/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
+	<repositories>
+	  <repository>
+	    <id>project_lib</id>
+	    <name>Repository in project's lib dir</name>
+	    <layout>default</layout>
+	    <url>file:///${basedir}/lib</url>
+	  </repository>
+	</repositories>
+	
+	<pluginRepositories>
+	  <pluginRepository>
+	    <id>apache.snapshots</id>
+	    <url>http://repository.apache.org/snapshots/</url>
+	  </pluginRepository>
+	</pluginRepositories>
+	
 	<dependencies>
 		<dependency>
 			<groupId>tw.edu.ntu.csie</groupId>
@@ -99,17 +108,25 @@
 			<version>1.5</version>
 		</dependency>
 
-		<dependency>
-			<groupId>javax.mail</groupId>
-			<artifactId>mail</artifactId>
-			<version>1.4.2</version>
-		</dependency>
+		<!--
+                <dependency>
+                    <groupId>javax.mail</groupId>
+                    <artifactId>javax.mail-api</artifactId>
+                    <version>1.5.5</version>
+                </dependency>
 
-		<dependency>
-			<groupId>org.mnode.mstor</groupId>
-			<artifactId>mstor</artifactId>
-			<version>0.9.13</version>
-		</dependency>
+                <dependency>
+                    <groupId>com.sun.mail</groupId>
+                    <artifactId>javax.mail</artifactId>
+                    <version>1.5.5</version>
+                </dependency>
+        -->
+
+<dependency>
+	<groupId>javax.mail</groupId>
+	<artifactId>mail</artifactId>
+	<version>1.4.2</version>
+</dependency>
 
 		<dependency>
 			<groupId>net.sf.jtidy</groupId>
@@ -192,17 +209,29 @@
 		  <version>18.0</version>
 		</dependency>
 		
-		<!--<dependency>
-		  <groupId>edu.stanford.nlp</groupId>
-		  <artifactId>stanford-corenlp</artifactId>
-		  <version>3.5.2</version>
-		</dependency>
 		<dependency>
-		  <groupId>edu.stanford.nlp</groupId>
-		  <artifactId>stanford-corenlp</artifactId>
-		  <version>3.5.2</version>
-		  <classifier>models</classifier>
-		</dependency>-->
+		  <groupId>org.mnode.mstor</groupId>
+		  <artifactId>mstor</artifactId>
+		  <version>0.9.14</version>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
+		<!--<dependency>
+		    <groupId>edu.stanford.nlp</groupId>
+		    <artifactId>stanford-corenlp</artifactId>
+		    <version>3.5.2</version>
+		    </dependency>
+		    <dependency>
+		      <groupId>edu.stanford.nlp</groupId>
+		      <artifactId>stanford-corenlp</artifactId>
+		      <version>3.5.2</version>
+		      <classifier>models</classifier>
+		    </dependency>-->
 	</dependencies>
 	<build>
 	  <defaultGoal>install</defaultGoal>

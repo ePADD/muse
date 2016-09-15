@@ -17,28 +17,8 @@
 package edu.stanford.muse.index;
 
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Formatter;
-import java.util.GregorianCalendar;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
-import edu.stanford.muse.datacache.BlobStore;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import edu.stanford.muse.datacache.Blob;
+import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.CalendarUtil;
 import edu.stanford.muse.email.Contact;
@@ -47,6 +27,17 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
+import java.io.IOException;
+import java.io.Serializable;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 /** EmailDocument is really like an email header - it stores metadata about a message.
  * use ed.date, ed.to/from/cc/bcc, and ed.getContents() gets its contents, ed.attachments gets its attachments */
@@ -58,7 +49,7 @@ public class EmailDocument extends DatedDocument implements Serializable
     public static final int SENT_MASK = 1;
     public static final int RECEIVED_MASK = 2;
 
-	public String folderName;
+	public String folderName, emailSource;
 	public Address[] to, from, cc, bcc;
 	
 	public String messageID;
@@ -72,8 +63,9 @@ public class EmailDocument extends DatedDocument implements Serializable
 	// default constructor for serialization
 	public EmailDocument() { /* */ }
 	public EmailDocument(String id) { this.id = id; } /* prob. useful only for errors */
+    public static Log log						= LogFactory.getLog(EmailDocument.class);
 
-	public EmailDocument(String id, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
+	public EmailDocument(String id, String emailSource, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
 	{
 		super(id, subject, date);
 		this.to = to;
@@ -84,6 +76,8 @@ public class EmailDocument extends DatedDocument implements Serializable
 //		this.url = url;
 		if (folderName != null)
 			this.folderName = InternTable.intern(folderName); // many messages will have the same foldername so better to intern
+		if (emailSource != null)
+			this.emailSource = emailSource;
 	}
 
 	public boolean hasError() { return errorString != null; }
@@ -406,9 +400,9 @@ public class EmailDocument extends DatedDocument implements Serializable
 			// expect only one from address, warn if more than one
 			if (from.length > 1)
 			{
-				System.err.println ("SERIOUS WARNING!: froms.length > 1: " + from.length);
+				log.warn("SERIOUS WARNING!: froms.length > 1: " + from.length);
 				for (Address f: from)
-					System.err.println (f);
+					log.warn(f);
 			}
 
 			if (from[0] instanceof InternetAddress)
@@ -426,21 +420,17 @@ public class EmailDocument extends DatedDocument implements Serializable
 	public String getFromString()
 	{
 		StringBuilder fromSB = new StringBuilder();
-		if (from != null)
+		if (from != null && from.length > 0)
 		{
 			// expect only one from address, warn if more than one
 			if (from.length > 1)
 			{
-				System.err.println ("Alert!: froms.length > 1: " + from.length);
+				log.warn("Alert!: froms.length > 1: " + from.length);
 				for (Address f: from)
-					System.err.println (f);
+					log.warn (f);
 			}
-			for (Address f: from)
-			{
-				InternetAddress ia = (InternetAddress) f;
-				fromSB.append (ia + " ");
-				break;
-			}
+			InternetAddress ia = (InternetAddress) from[0];
+			fromSB.append (ia + " ");
 		}
 		else
 			fromSB.append ("<None>");

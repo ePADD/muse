@@ -18,27 +18,25 @@ if (nWrongAnswers == 0) {
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<link rel="icon" href="images/stanford-favicon.gif">
-<link rel="stylesheet" href="css/tester.css"/>
+<link rel="icon" href="../images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="../css/fonts.css"/>
+	<link rel="stylesheet" href="css/memory.css"/>
 <script src="../js/jquery/jquery.js"></script>
 <title>Check answers</title>
 </head>
 <body>
 <div class="box">
-Almost done! Now, we'll show you the answers that the computer marked as incorrect.
-Please provide us a little more information about these answers. 
-<p>
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="../images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
 
-It's possible that these answers are actually correct, or reasonably close to being correct; for example, 
-for a clue like "I went to _ _ _ _ _ _ _ last summer", it may be reasonable to enter the answer word "Germany" instead of "Hamburg", or to substitute
-a nickname for a person's real name. In such cases, select the option: "My answer is essentially correct".
+	<p>
+	Almost done! We would now like some more information on the answers that the computer has marked as incorrect.
+	It is possible that your answer is really correct. For example, you may have used a nickname, or only the first or last name, or made a typo.
+	In such cases, please choose the option &quot;My answer is essentially correct&quot;.
+</p>
 
-<p>
-
-On the next page, you will be able to review all the questions.
-<p>
-
-<form action = "answers.jsp?details=1" method="post">
+<form action = "answers?details=1" method="post">
 
 <%
 int idx = 0;
@@ -53,14 +51,14 @@ for (MemoryQuestion mq : study.getQuestions()) {
 	<br/>Answer: <%=mq.getCorrectAnswer()%>
 	<span style="color:red"> Your answer: <%=((Util.nullOrEmpty(mq.userAnswer))?"&lt;No answer&gt;":mq.userAnswer)%> </span>
 		<p>
-		<select class="wrongAnswerOption" name="wrongAnswerOption<%=idx%>" id="<%=idx%>">
+			<select class="wrongAnswerOption" name="wrongAnswerOption<%=idx%>" id="<%=idx%>">
 			<option value="0">About this answer...</option>
-			<option value="1">I really should have gotten this correct</option>
-			<option value="2">The answer was on the "tip of my tongue"</option>
-			<option value="3">My answer is essentially correct</option>
-			<option value="4">This is an insignificant detail that I'm unlikely to have remembered</option>
-			<option value="5">The answer is hard to guess... the clue sentence did not provide enough context</option>
-		</select>
+			<option value="1">I feel like I should have remembered this name</option>
+			<option value="2">My answer is essentially correct</option> <!-- don't change this! calculating # correct answers depends on this being #2 -->
+			<option value="3">I recognize the context, but not the person</option>
+			<option value="4">I have trouble remembering this name</option>
+			<option value="5">The sentences were very vague or generic</option>
+			</select>
 	<br/><hr/>
 <% } %>
 <br/>

@@ -2,16 +2,12 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
 <%@page language="java" import="java.util.*"%>
-<%@page language="java" import="java.io.*"%>
-<%@page language="java" import="edu.stanford.muse.index.*"%>
-<%@page language="java" import="edu.stanford.muse.xword.*"%>
-<%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.JSPHelper"%>
 <!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<link rel="icon" href="images/stanford-favicon.gif">
+<link rel="icon" href="../images/ashoka-favicon.gif">
 <title>Creating Study Log</title>
 </head>
 <body>

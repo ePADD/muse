@@ -145,7 +145,7 @@ public class FASTSearcher {
 	/**
 	 * gets matches of a phrase, can supply original name or variant name ex:
 	 * Dzhordzh -- variant of George Bush (what? who calls him that?)
-	 * set imit to negative if dont want to set it.
+	 * set limit to negative if dont want to set it.
 	 */
 	public static Set<FASTRecord> getMatches(String dname, FASTDB type, int limit) {
 		String name = EmailUtils.normalizePersonNameForLookup(dname);

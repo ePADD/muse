@@ -13,17 +13,18 @@
 <%@include file="../getArchive.jspf" %>
 <html>
 <head>
-    <link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
+    <link rel = "stylesheet" type ="text/css" href="memorystudy/css/memory.css">
     <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
-    <link rel="icon" href="memorystudy/images/stanford-favicon.gif">
-    <jsp:include page="../css/css.jsp"/>
+    <link rel="icon" href="memorystudy/images/ashoka-favicon.gif">
     <script type="text/javascript" src="js/jquery/jquery.js"></script>
     <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
     <script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>
     <script type="text/javascript" src="js/statusUpdate.js"></script>
     <script type="text/javascript" src="js/muse.js"></script>
     <script type="text/javascript" src="js/ops.js"></script>
+    <link rel="stylesheet" href="css/memory.css"/>
+
     <title>Solo contact stats</title>
     <style> td { padding: 2px 25px 2px 10px} </style>
 </head>

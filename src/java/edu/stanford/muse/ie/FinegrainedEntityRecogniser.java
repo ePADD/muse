@@ -1,11 +1,13 @@
 package edu.stanford.muse.ie;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.cmdline.CmdLineUtil;
 import opennlp.tools.namefind.NameFinderME;
@@ -62,8 +64,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 		try {
 			TokenNameFinderModel nmodel = new TokenNameFinderModel(new FileInputStream(modelFile));
 			NameFinderME nameFinder = new NameFinderME(nmodel);
-			InputStream tokenStream = FinegrainedEntityRecogniser.class.getClassLoader()
-					.getResourceAsStream("models/en-token.bin");
+			InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
 			TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
 			TokenizerME tokenizer = new TokenizerME(modelTokenizer);
 
@@ -94,15 +95,14 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 		pctComplete = 0.75;
 		//------------training NER start--------------------
 		AdaptiveFeatureGenerator featureGenerator = new CachedFeatureGenerator(
-				new AdaptiveFeatureGenerator[] {
-						new WindowFeatureGenerator(new TokenFeatureGenerator(), 2, 2),
-						new WindowFeatureGenerator(new TokenClassFeatureGenerator(true), 2, 2),
-						new OutcomePriorFeatureGenerator(),
-						new PreviousMapFeatureGenerator(),
-						new BigramNameFeatureGenerator(),
-						new SentenceFeatureGenerator(true, false)
+				new WindowFeatureGenerator(new TokenFeatureGenerator(), 2, 2),
+				new WindowFeatureGenerator(new TokenClassFeatureGenerator(true), 2, 2),
+				new OutcomePriorFeatureGenerator(),
+				new PreviousMapFeatureGenerator(),
+				new BigramNameFeatureGenerator(),
+				new SentenceFeatureGenerator(true, false)
 				//new RefFeatureGenerator()
-				});
+		);
 
 		String modeldir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user" + File.separator + "models";
 		if (!new File(modeldir).exists())
@@ -127,7 +127,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 			try {
 				sampleStream.close();
 			} catch (Exception e) {
-
+				edu.stanford.muse.util.Util.print_exception(e, JSPHelper.log);
 			}
 		}
 		testNER(modelFile);
@@ -251,7 +251,6 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 
 	/** Generates training data and trains the NER */
 	public void trainNER(Archive archive) {
-		archive = archive;
 		String[] ftypes = new String[] { KnownClasses.BOOK, KnownClasses.DISEASE, KnownClasses.UNIV, KnownClasses.MUSEUM, KnownClasses.MOVIE, KnownClasses.AWARD, KnownClasses.COMPANY };
 		KnownClasses kc = new KnownClasses();
 		Set<String> keywords = new HashSet<String>();
@@ -314,7 +313,7 @@ public class FinegrainedEntityRecogniser implements StatusProvider {
 				content = content.replaceAll("^>+.*", "");
 				content = content.replaceAll("\\n\\n", ". ");
 				content = content.replaceAll("\\n", " ");
-				content.replaceAll(">+", "");
+				content = content.replaceAll(">+", "");
 
 				boolean found = false;
 				Set<String> matchingEntities = new HashSet<String>();

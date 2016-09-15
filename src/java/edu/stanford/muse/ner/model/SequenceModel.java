@@ -1,21 +1,23 @@
 package edu.stanford.muse.ner.model;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
 import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by vihari on 07/09/15.
@@ -23,17 +25,29 @@ import java.util.*;
  */
 public class SequenceModel implements NERModel, Serializable {
     public FeatureDictionary dictionary;
-    public static String modelFileName = "SeqModel.ser";
+    public static String modelFileName = "SeqModel.ser.gz";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
     public static FileWriter fdw = null;
     public static CICTokenizer tokenizer = new CICTokenizer();
     public Map<String, String> dbpedia;
+    public static Map<Short, Short[]>mappings = new LinkedHashMap<>();
+
+    static{
+        mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
+        mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
+                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
+                FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
+        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
+                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM,
+                FeatureDictionary.PERIODICAL_LITERATURE
+        });
+    }
 
     public SequenceModel(FeatureDictionary dictionary, CICTokenizer tokenizer) {
         this.dictionary = dictionary;
-        this.tokenizer = tokenizer;
+        SequenceModel.tokenizer = tokenizer;
     }
 
     public SequenceModel() {
@@ -127,8 +141,7 @@ public class SequenceModel implements NERModel, Serializable {
 
         String dbpediaType = dbpedia.get(phrase.toLowerCase());
         Short ct = FeatureDictionary.codeType(dbpediaType);
-        return -1;
-        //return ct;
+        return ct;
     }
 
     /**
@@ -241,7 +254,10 @@ public class SequenceModel implements NERModel, Serializable {
             else
                 val = getLikelihoodWithOther(seg, true);
 
-            segments.put(seg, new Pair<>(t.getThird(), val));
+            //This segmentation is not acceptable and better thing to do is to fall back to the next best sequence labelling where this does not happen
+            //people names should still be fine
+            if(seg.contains(" ") || !(DictUtils.fullDictWords.contains(seg.toLowerCase()) || DictUtils.fullDictWords.contains(EnglishDictionary.getSingular(seg.toLowerCase()))))
+                segments.put(seg, new Pair<>(t.getThird(), val));
             start = t.second;
             if (t.second == -1)
                 break;
@@ -297,7 +313,7 @@ public class SequenceModel implements NERModel, Serializable {
         double sorg = 0;
         Short ct = lookup(phrase);
         String dbpediaType = dbpedia.get(phrase.toLowerCase());
-        if(dbpediaType!=null && ct==type){
+        if(dbpediaType!=null && ct.equals(type)){
             if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
                 return 1;
             else if (phrase.contains(" "))
@@ -442,7 +458,7 @@ public class SequenceModel implements NERModel, Serializable {
                 e.printStackTrace();
             }
         }
-        return bs*((bt==type)?1:-1);
+        return bs*((bt.equals(type))?1:-1);
     }
 
     public Pair<String,Double> scoreSubstrs(String phrase, Short type) {
@@ -499,65 +515,63 @@ public class SequenceModel implements NERModel, Serializable {
         Map<Short,List<String>> mTypes = new LinkedHashMap<>();
         Short[] types = new Short[]{FeatureDictionary.PERSON, FeatureDictionary.ORGANISATION, FeatureDictionary.PLACE};
         for(Short type: types)
-            mTypes.put(type, new ArrayList<String>());
+            mTypes.put(type, new ArrayList<>());
 
-        Map<Short, Short[]>mappings = new LinkedHashMap<>();
-        mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
-        mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
-                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.SHOPPINGMALL, FeatureDictionary.PARK,
-                FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
-        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.POWERSTATION,FeatureDictionary.UNIVERSITY, FeatureDictionary.MILITARYUNIT, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.ACADEMICJOURNAL,
-                FeatureDictionary.AIRLINE, FeatureDictionary.MAGAZINE, FeatureDictionary.POLITICALPARTY, FeatureDictionary.NPORG, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.TRADEUNIN, FeatureDictionary.LEGISTLATURE, FeatureDictionary.LAWFIRM});
         for(Short gt: types){
             for(Short ft: mappings.get(gt))
-                mTypes.get(gt).addAll(entities.get(ft).keySet());
+                if(entities.containsKey(ft))
+                    mTypes.get(gt).addAll(entities.get(ft).keySet());
         }
         return mTypes;
     }
 
-    public Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> find (String content){
-        Map<Short, Map<String,Double>> maps = new LinkedHashMap<>();
-        List<Triple<String,Integer,Integer>> offsets = new ArrayList<>();
-
-        for(Short at: FeatureDictionary.allTypes)
-            maps.put(at, new LinkedHashMap<String, Double>());
+    public Span[] find (String content){
+        List<Span> spans = new ArrayList<>();
 
         String[] sents = NLPUtils.tokeniseSentence(content);
         for(String sent: sents) {
             List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent, false);
             for (Triple<String, Integer, Integer> t : toks) {
+                //this should never happen
+                if(t==null || t.first == null)
+                    continue;
+
                 Map<String,Pair<Short,Double>> entities = seqLabel(t.getFirst());
                 for(String e: entities.keySet()){
                     Pair<Short,Double> p = entities.get(e);
                     //A new type is assigned to some words, which is of value -2
                     if(p.first<0)
                         continue;
-                    //if(p.first!=FeatureDictionary.OTHER && p.second>=1.0E-3) {
+                    if(p.first!=FeatureDictionary.OTHER) {
                         //System.err.println("Segment: "+t.first+", "+t.second+", "+t.third+", "+sent.substring(t.second,t.third));
-                    offsets.add(new Triple<>(e, t.second+t.first.indexOf(e), t.second+t.first.indexOf(e)+e.length()));
-                    maps.get(p.getFirst()).put(e, p.second);
-                    //}
+                        Span sp = new Span(e, t.second+t.first.indexOf(e),t.second+t.first.indexOf(e)+e.length());
+                        sp.setType(p.first,p.second.floatValue());
+                        spans.add(sp);
+                    }
                 }
             }
         }
-        return new Pair<>(maps, offsets);
+        return spans.toArray(new Span[spans.size()]);
     }
 
-    public void writeModel(File modelFile) throws IOException{
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(modelFile));
+    public synchronized void writeModel(File modelFile) throws IOException{
+        FileOutputStream fos = new FileOutputStream(modelFile);
+        GZIPOutputStream gos = new GZIPOutputStream(fos);
+        ObjectOutputStream oos = new ObjectOutputStream(gos);
         oos.writeObject(this);
         oos.close();
     }
 
-    public static SequenceModel loadModel(File modelFile) throws IOException{
-        ObjectInputStream ois = null;
+    public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
+        ObjectInputStream ois;
         try {
-            ois = new ObjectInputStream(new FileInputStream(modelFile));
+            //the buffer size can be much higher than default 512 for GZIPInputStream
+            ois = new ObjectInputStream(new GZIPInputStream(Config.getResourceAsStream(modelPath)));
             SequenceModel model = (SequenceModel) ois.readObject();
             ois.close();
             return model;
         } catch (Exception e) {
-            Util.print_exception("Exception while trying to load model from: " + modelFile, e, log);
+            Util.print_exception("Exception while trying to load model from: " + modelPath, e, log);
             return null;
         }
     }
@@ -577,7 +591,7 @@ public class SequenceModel implements NERModel, Serializable {
         return new Pair<>(dict1, dict2);
     }
 
-    public static void test(NERModel nerModel){
+    public static void testDBpedia(NERModel nerModel){
         //when testing remember to change
         //1. lookup method, disable the lookup
         System.err.println("DBpedia scoring check starts");
@@ -595,22 +609,39 @@ public class SequenceModel implements NERModel, Serializable {
         double CUTOFF = 0;
         Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
         Map<Short, Integer> freqs = new LinkedHashMap<>();
+        String[] badSuffixTypes = new String[]{"MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
+                "EthnicGroup","RadioStation|Broadcaster|Organisation", "MeanOfTransportation", "TelevisionShow|Work",
+                "Play|WrittenWork|Work","Language", "Book|WrittenWork|Work","Genre|TopicalConcept", "InformationAppliance|Device",
+                "SportsTeam|Organisation", "Eukaryote|Species","Software|Work", "TelevisionEpisode|Work", "Comic|WrittenWork|Work",
+                "Mayor", "Website|Work", "Cartoon|Work"
+        };
+        ol:
         for(String entry: dbpedia.keySet()){
             if(!entry.contains(" "))
                 continue;
             String fullType = dbpedia.get(entry);
             Short type = FeatureDictionary.codeType(dbpedia.get(entry));
 
+            if(fullType.equals("Agent"))
+                type = FeatureDictionary.PERSON;
+            else
+                for (String bst: badSuffixTypes)
+                    if(fullType.endsWith(bst))
+                        continue ol;
+
             entry = EmailUtils.uncanonicaliseName(entry);
             if(entry.length()>=15)
                 continue;
-            Pair<Map<Short,Map<String,Double>>, List<Triple<String,Integer,Integer>>> p = nerModel.find(entry);
-            Map<Short, Map<String,Double>> es = p.getFirst();
-            Map<Short, Map<String,Double>> temp = new LinkedHashMap<>();
+            Span[] spans = nerModel.find(entry);
+            Map<Short, Map<String,Float>> es = new LinkedHashMap<>();
+            for(Span sp: Arrays.asList(spans))
+                es.getOrDefault(sp.type,new LinkedHashMap<>()).put(sp.text,sp.typeScore);
+            Map<Short, Map<String,Float>> temp = new LinkedHashMap<>();
+
             for(Short t: es.keySet()) {
                 if(es.get(t).size()==0)
                     continue;
-                temp.put(t, new LinkedHashMap<String, Double>());
+                temp.put(t, new LinkedHashMap<>());
                 for (String str : es.get(t).keySet())
                     if(es.get(t).get(str)>CUTOFF)
                         temp.get(t).put(str, es.get(t).get(str));
@@ -622,7 +653,7 @@ public class SequenceModel implements NERModel, Serializable {
             //we should not bother about segmentation in the case of OTHER
             if(!(es.containsKey(FeatureDictionary.OTHER) && es.size()==1)) {
                 shown = true;
-                boolean any = true;
+                boolean any;
                 if (type!=FeatureDictionary.OTHER && es.containsKey(type) && es.get(type).containsKey(entry))
                     correct++;
                 else {
@@ -640,9 +671,9 @@ public class SequenceModel implements NERModel, Serializable {
                     }
                     if (found) {
                         missAssigned++;
-                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + p.getFirst() + "--------");
+                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + "--------");
                     } else if (any) {
-                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + p.getFirst() + "--------");
+                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + "--------");
                         missSegmentation++;
                     } else {
                         missNoEvidence++;
@@ -659,7 +690,7 @@ public class SequenceModel implements NERModel, Serializable {
             if(ne++%100 == 0)
                 System.err.println("Done testing on "+ne+" of "+dbpedia.size());
             if(!confMat.containsKey(type))
-                confMat.put(type, new LinkedHashMap<Short, Integer>());
+                confMat.put(type, new LinkedHashMap<>());
             if(!confMat.get(type).containsKey(assignedTo))
                 confMat.get(type).put(assignedTo, 0);
             confMat.get(type).put(assignedTo, confMat.get(type).get(assignedTo)+1);
@@ -673,6 +704,7 @@ public class SequenceModel implements NERModel, Serializable {
             allTypes.add(type);
         Collections.sort(allTypes);
         allTypes.add((short)-1);
+        System.err.println("Tested on "+ne+" entries");
         System.err.println("------------------------");
         String ln = "  ";
         for(Short type: allTypes)
@@ -700,36 +732,18 @@ public class SequenceModel implements NERModel, Serializable {
 
     public static SequenceModel train(){
         SequenceModel nerModel = new SequenceModel();
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        //This split is essential to isolate some entries that trained model has not seen
-        Pair<Map<String,String>,Map<String,String>> p = split(dbpedia, 0.8f);
-        Map<String,String> train = p.getFirst();
-        Map<String, String> test = p.getSecond();
+        Map<String,String> train = EmailUtils.readDBpedia(1.0/5);
 
         //split the dictionary into train and test sets
         Set<String> fts = new LinkedHashSet<>();
         fts.add(WordSurfaceFeature.WORDS);
         FeatureGenerator[] fgs = new FeatureGenerator[]{new WordSurfaceFeature(fts)};
-        FeatureDictionary dictionary = new FeatureDictionary(train, fgs);
-        nerModel.dictionary = dictionary;
+        nerModel.dictionary = new FeatureDictionary(train, fgs);
         nerModel.dictionary.EM(train);
         try {
             String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
             String modelFile = mwl + SequenceModel.modelFileName;
-            log.info("Performing EM...");
             nerModel.writeModel(new File(modelFile));
-            //also write the test split
-            String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-            OutputStreamWriter osw = new OutputStreamWriter(new BZip2CompressorOutputStream(new FileOutputStream(new File(twl))));
-            int numTest = 0;
-            for(String str: test.keySet()) {
-                String orig = str;
-                str = str.replaceAll(" ","_");
-                osw.write(str + " " + test.get(orig) + "\n");
-                numTest++;
-            }
-            osw.close();
-            System.err.println("Wrote "+numTest+" records in test split to: "+twl);
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -774,24 +788,13 @@ public class SequenceModel implements NERModel, Serializable {
             }
             System.err.println("Loading model...");
             SequenceModel nerModel = null;
-            try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+            try{nerModel = SequenceModel.loadModel(modelFile);}
             catch(IOException e){e.printStackTrace();}
             if(nerModel == null)
                 nerModel = train();
-//            int di =0;
-//            for(Document doc: docs) {
-//                String content = archive.getContents(doc, true);
-//                System.err.println("Content: "+content);
-//                Pair<Map<Short,List<String>>, List<Triple<String,Integer,Integer>>> mapsAndOffsets = nerModel.find(content);
-//                for(Short type: mapsAndOffsets.getFirst().keySet())
-//                    System.err.println(type +" : "+mapsAndOffsets.getFirst().get(type));
-//                if(di++>10)
-//                    break;
-//            }
-            Pair<Map<Short,Map<String,Double>>, List<Triple<String, Integer, Integer>>> mapsandoffsets = nerModel.find(content);
-            Map<Short, List<String>> map = SequenceModel.mergeTypes(mapsandoffsets.first);
-            for(Short type: map.keySet())
-                System.out.println(type + " : "+mapsandoffsets.first.get(type)+"<br>");
+            Span[] spans = nerModel.find(content);
+            for(Span sp: spans)
+                System.out.println(sp);
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
             System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
             String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",
@@ -804,10 +807,27 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
-    public static void main(String[] args){
+    public static void test(){
+        Pair<String,String[]>[] test = new Pair[]{
+                new Pair<>("hi terry-\n\ntried to meet carol today with no luck",new String[]{"terry","carol"}),
+                new Pair<>("We are traveling to Vietnam the next summer and will come to New York (NYC) soon",new String[]{"Vietnam","New York","NYC"}),
+        };
+    }
+
+    static void printMemoryUsage(){
+        int mb = 1024*1024;
+        Runtime runtime = Runtime.getRuntime();
+        log.info(
+                "Used memory: " + ((runtime.totalMemory() - runtime.freeMemory()) / mb) + "MB\n" +
+                        "Free memory: " + (runtime.freeMemory() / mb) + "MB\n" +
+                        "Total memory: " + (runtime.totalMemory() / mb) + "MB\n" +
+                        "-------------"
+        );
+    }
+
+    public static void main(String[] args) {
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
-        String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
+        String modelFile = SequenceModel.modelFileName;
         if (fdw == null) {
             try {
                 fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
@@ -817,13 +837,18 @@ public class SequenceModel implements NERModel, Serializable {
         }
         System.err.println("Loading model...");
         SequenceModel nerModel = null;
-        try{nerModel = SequenceModel.loadModel(new File(modelFile));}
+        printMemoryUsage();
+        try{nerModel = SequenceModel.loadModel(modelFile);}
         catch(IOException e){e.printStackTrace();}
+        printMemoryUsage();
         if(nerModel == null)
             nerModel = train();
 
-        if(nerModel!=null){
-            test(nerModel);
+        if (nerModel != null) {
+            System.out.println(nerModel.find("We are traveling to Vietnam the next summer and will come to New York (NYC) soon"));
+            System.out.println(nerModel.find("Mr. HariPrasad was present."));
+            System.out.println(nerModel.find("A book named Information Retrieval by Christopher Manning"));
         }
+        printMemoryUsage();
     }
 }

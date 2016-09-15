@@ -23,14 +23,16 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.Group;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.util.*;
-import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.JSPHelper;
+import edu.stanford.muse.webapp.ModeConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /** useful utilities for indexing */
 public class IndexUtils {
@@ -179,6 +181,99 @@ public class IndexUtils {
 
 		return sortedMap;
 	}
+
+	/** replaces all tokens in the given text that are not in any of the entities in the given doc.
+     * all other tokens are replaced with REDACTION_CHAR.
+     * token is defined as a consecutive sequence of letters or digits
+     * Note: all other characters (incl. punctuation, special symbols) are blindly copied through
+     * anything not captured in a token is considered non-sensitive and is passed through
+     */
+    public static String retainOnlyNames(String text, org.apache.lucene.document.Document doc) {
+        StringBuilder result = new StringBuilder();
+        Set<String> allowedTokens = new LinkedHashSet<>();
+
+        // assemble all the allowed tokens (lower cased) from these 3 types of entities
+        {
+            List<String> allEntities = Arrays.asList(Archive.getAllNamesInLuceneDoc(doc,true)).stream().map(Span::getText).collect(Collectors.toList());
+
+            for (String e : allEntities)
+                allowedTokens.addAll(Util.tokenize(e.toLowerCase()));
+            // names may sometimes still have punctuation; strip it. e.g. a name like "Rep. Duncan" should lead to the tokens "rep" and "duncan"
+            allowedTokens = allowedTokens.stream().map(s -> Util.stripPunctuation(s)).collect(Collectors.toSet());
+        }
+
+        final char REDACTION_CHAR = '.';
+        int idx = 0;
+
+		boolean previousTokenAllowed = false;
+
+        outer:
+        while (true) {
+            StringBuilder token = new StringBuilder();
+
+            // go through all the chars one by one, either passing them through or assembling them in a token that can be looked up in allowedTokens
+
+            {
+                // skip until start of next token, passing through chars to result
+                // the letter pointed to by idx has not yet been processed
+                while (true) {
+                    if (idx >= text.length())
+                        break outer;
+
+                    char ch = text.charAt(idx++);
+                    if (Character.isLetter(ch) || Character.isDigit(ch)) {  // if other chars are judged sensitive in the future, this condition should be updated
+                        token.append(ch);
+                        break;
+                    } else
+                        result.append(ch);
+                }
+            }
+
+            Character ch;
+            {
+                // now, idx is just past the start of a token (with the first letter stored in token),
+                // keep reading letters until we find a non-letter, adding it to the token
+                // the letter pointed to by idx has not yet been processed
+                while (true) {
+                    ch = null;
+                    if (idx >= text.length())
+                        break; // only break out of inner loop here, not the outer. this might be the last token, and token may have some residual content, so it has to be processed
+                    ch = text.charAt(idx++);
+                    if (!Character.isLetter(ch) && !Character.isDigit(ch))
+                        break;
+
+                    token.append(ch);
+                }
+            }
+            // ch contains the first char beyond the token (if it is not null). If it is null, it means we have reached the end of the string
+
+
+            // look up the token and allow it only if allowedTokens contains it
+            // use lower case token for comparison, but when appending to result, use the original string with the original case
+			// worried about "A" grade, we should disallow it although it could easily be a token in a name somewhere
+
+			String lowerCaseToken = token.toString().toLowerCase(); // ctoken = canonicalized token
+            boolean allowToken = allowedTokens.contains(lowerCaseToken);
+
+			// however, if this token is a stop word, only allow if previous token was allowed because we don't want to start from a stop word.
+            // note: this will still allow the stop word if it is at the beginning of a sentence, and the prev. sentence ended in an allowed token
+			if (allowToken && DictUtils.isJoinWord(lowerCaseToken))
+				allowToken = previousTokenAllowed;
+
+			if (allowToken)
+                result.append(token);
+            else
+                for (int j = 0; j < token.length(); j++)
+                    result.append(REDACTION_CHAR);
+
+			previousTokenAllowed = allowToken;
+
+            if (ch != null)
+                result.append(ch);
+        }
+
+        return result.toString();
+    }
 
 	public static class Window {
 		public Date					start;
@@ -460,13 +555,13 @@ public class IndexUtils {
 				} else {
 					// single token (partial name), use lookup that returns a set, e.g., "john"
 
-					//@vihari: BUG-FIX: throws Null-pointer exception when ab.lookupByNameAsSet is null. 
-					if (ab.lookupByNameAsSet(e) == null) {
+					//@vihari: BUG-FIX: throws Null-pointer exception when ab.lookupByNameTokenAsSet is null.
+					if (ab.lookupByNameTokenAsSet(e) == null) {
 						log.info("Null pointer for: " + e);
 						continue;
 					}
 					else
-						contactSet.addAll(ab.lookupByNameAsSet(e));
+						contactSet.addAll(ab.lookupByNameTokenAsSet(e));
 				}
 				if (contactSet.isEmpty())
 					log.info("Unknown email/name " + e);
@@ -755,16 +850,17 @@ public class IndexUtils {
 			EmailDocument ed = (EmailDocument) d;
 			int sent_or_received = ed.sentOrReceived(ab);
 
-			if ((sent_or_received & EmailDocument.RECEIVED_MASK) != 0)
+			// if sent_or_received = 0 => neither received nor sent. so it must be implicitly received.
+			if (sent_or_received == 0 || (sent_or_received & EmailDocument.RECEIVED_MASK) != 0)
 				f_in.addDoc(ed);
 			if ((sent_or_received & EmailDocument.SENT_MASK) != 0)
 				f_out.addDoc(ed);
 		}
 
 		if (f_in.totalCount() > 0)
-			result.put("Received", f_in);
+			result.put("in", f_in);
 		if (f_out.totalCount() > 0)
-			result.put("Sent", f_out);
+			result.put("out", f_out);
 
 		return result;
 	}
@@ -772,8 +868,8 @@ public class IndexUtils {
 	public static Map<String, DetailedFacetItem> partitionDocsByDoNotTransfer(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
-		DetailedFacetItem t = new DetailedFacetItem("Transfer", "To be transferred", "doNotTransfer", "false");
-		DetailedFacetItem f = new DetailedFacetItem("Do not transfer", "Not to be transferred", "doNotTransfer", "true");
+		DetailedFacetItem t = new DetailedFacetItem("Transfer", "To be transferred", "doNotTransfer", "no");
+		DetailedFacetItem f = new DetailedFacetItem("Do not transfer", "Not to be transferred", "doNotTransfer", "yes");
 
 		for (Document d : docs)
 		{
@@ -797,8 +893,8 @@ public class IndexUtils {
 	public static Map<String, DetailedFacetItem> partitionDocsByTransferWithRestrictions(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
-		DetailedFacetItem t = new DetailedFacetItem("Restrictions", "Transfer with restrictions", "transferWithRestrictions", "true");
-		DetailedFacetItem f = new DetailedFacetItem("No restrictions", "Transfer with no restrictions", "transferWithRestrictions", "false");
+		DetailedFacetItem t = new DetailedFacetItem("Restrictions", "Transfer with restrictions", "transferWithRestrictions", "yes");
+		DetailedFacetItem f = new DetailedFacetItem("No restrictions", "Transfer with no restrictions", "transferWithRestrictions", "no");
 
 		for (Document d : docs)
 		{
@@ -823,8 +919,8 @@ public class IndexUtils {
 	public static Map<String, DetailedFacetItem> partitionDocsByReviewed(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
-		DetailedFacetItem t = new DetailedFacetItem("Reviewed", "Reviewed", "reviewed", "true");
-		DetailedFacetItem f = new DetailedFacetItem("Not reviewed", "Not reviewed", "reviewed", "false");
+		DetailedFacetItem t = new DetailedFacetItem("Reviewed", "Reviewed", "reviewed", "yes");
+		DetailedFacetItem f = new DetailedFacetItem("Not reviewed", "Not reviewed", "reviewed", "no");
 		result.put("Not reviewed", f);
 
 		for (Document d : docs)
@@ -867,7 +963,7 @@ public class IndexUtils {
 					DetailedFacetItem dfi = result.get(ext);
 					if (dfi == null)
 					{
-						dfi = new DetailedFacetItem(ext, ext + " attachments", "attachment_type", ext);
+						dfi = new DetailedFacetItem(ext, ext + " attachments", "attachmentExtension", ext);
 						result.put(ext, dfi);
 					}
 					dfi.addDoc(ed);
@@ -877,16 +973,16 @@ public class IndexUtils {
 	}
 
 	/** version that stores actual dates instead of just counts for each facet */
-	public static Map<String, Collection<DetailedFacetItem>> computeDetailedFacets(Collection<Document> docs, Archive archive, Lexicon lexicon)
+	public static Map<String, Collection<DetailedFacetItem>> computeDetailedFacets(Collection<Document> docs, Archive archive)
 	{
 		AddressBook addressBook = archive.addressBook;
 		GroupAssigner groupAssigner = archive.groupAssigner;
-		Indexer indexer = archive.indexer;
 
 		Map<String, Collection<DetailedFacetItem>> facetMap = new LinkedHashMap<String, Collection<DetailedFacetItem>>();
 
 		// Note: order is important here -- the facets will be displayed in the order they are inserted in facetMap
 		// current order: sentiments, groups, people, direction, folders
+		/* disabling sentiment facets
 		if (indexer != null)
 		{
 			List<DetailedFacetItem> sentimentItems = new ArrayList<DetailedFacetItem>();
@@ -896,9 +992,9 @@ public class IndexUtils {
 			// a better way might be to process the selected messages and see which sentiments they reflect
 			Map<String, String> captionToQueryMap;
 			if (lexicon != null && !ModeConfig.isPublicMode())
-				captionToQueryMap = lexicon.getCaptionToQueryMap(indexer, docs);
+				captionToQueryMap = lexicon.getCaptionToQueryMap(docs);
 			else
-				captionToQueryMap = new LinkedHashMap<String, String>();
+				captionToQueryMap = new LinkedHashMap<>();
 
 			for (String sentiment : captionToQueryMap.keySet())
 			{
@@ -912,6 +1008,7 @@ public class IndexUtils {
 			}
 			facetMap.put("sentiments", sentimentItems);
 		}
+		*/
 
 		Set<Document> docSet = new LinkedHashSet<Document>(docs);
 		Map<String, Set<Document>> tagToDocs = new LinkedHashMap<String, Set<Document>>();
@@ -941,7 +1038,7 @@ public class IndexUtils {
 
 			// people
 			Map<Contact, DetailedFacetItem> peopleMap = partitionDocsByPerson(docs, addressBook);
-			facetMap.put("people", peopleMap.values());
+			facetMap.put("correspondent", peopleMap.values());
 
 			// direction
 			Map<String, DetailedFacetItem> directionMap = partitionDocsByDirection(docs, addressBook);
@@ -1057,10 +1154,10 @@ public class IndexUtils {
 	// if month is < 0, it is ignored
 	public static <D extends DatedDocument> List<D> selectDocsByDateRange(Collection<D> c, int year, int month, int date)
 	{
-        --date;
-		--month; // adjust month to be 0 based because thats what calendar gives us
+        //Calendar date is not 0 indexed: https://docs.oracle.com/javase/7/docs/api/java/util/Calendar.html#DATE
+		--month; // adjust month to be 0 based because that's what calendar gives us
 		boolean invalid_month = month < 0 || month > 11;
-        boolean invalid_date = date<0 || date>30;
+        boolean invalid_date = date<1 || date>31;
 		List<D> result = new ArrayList<D>();
 		for (D d : c)
 		{
@@ -1081,15 +1178,18 @@ public class IndexUtils {
 	 * see calendarUtil.getDateRange specs for handling of the y/m/d fields.
 	 * if month is < 0, it is ignored, i.e. effectively 1 for the start year and
 	 * 12 for the end year
+	 * returns docs with [startDate, endDate] both inclusive
 	 */
-	public static List<Document> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
+	public static List<DatedDocument> selectDocsByDateRange(Collection<DatedDocument> c, int startY, int startM, int startD, int endY, int endM, int endD)
 	{
 		Pair<Date, Date> p = CalendarUtil.getDateRange(startY, startM - 1, startD, endY, endM - 1, endD);
 		Date startDate = p.getFirst(), endDate = p.getSecond();
 
-		List<Document> result = new ArrayList<Document>();
+		List<DatedDocument> result = new ArrayList<>();
 		for (DatedDocument d : c)
 		{
+            //we want docs with the same date (year, month, date) or after start date
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 			if (!startDate.after(d.date) && !endDate.before(d.date))
 				result.add(d);
 		}
@@ -1588,7 +1688,7 @@ public class IndexUtils {
 	public static void main(String args[])
 	{
 		//System.out.println(query("this is a test", "testing|is|match"));
-		List<String> substrs = computeAllSubstrings("Some thing here", true);
+		List<String> substrs = computeAllSubstrings("Some. thing here", true);
 		for(String substr: substrs)
 			System.err.print(substr+" ::: ");
 		System.err.println();

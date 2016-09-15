@@ -51,7 +51,7 @@ abstract public class FASTRecord {
 
 	public abstract org.apache.lucene.document.Document getIndexerDoc();
 
-	static public enum FASTDB {
+	public enum FASTDB {
 		ALL("all"), TOPICS("topics"), CORPORATE("corporate"), GEOGRAPHIC("geographic"), PERSON("person");
 		public final String	txt;
 
@@ -310,7 +310,7 @@ abstract public class FASTRecord {
 				sourceNames += Authority.types[Authority.LOC_NAME] + sep;
 				sourceIds += locName + sep;
 			}
-			else if (src.contains("http://sws.geonames.org/")) {
+			else if (src.contains("http://stopWords.geonames.org/")) {
 				String geoId = src.replaceAll("http://sws.geonames.org/", "").replaceAll("(<|>|\\\\)", "");
 				sourceNames += Authority.types[Authority.GEO_NAMES] + sep;
 				sourceIds += geoId + sep;
@@ -365,7 +365,6 @@ abstract public class FASTRecord {
 				continue;
 			src = src.replaceAll("(<|>)+", "");
 			if (src.contains("dbpedia") || src.contains("wiki")) {
-				String id = src;
 				String dbpedia = src.replace("http://dbpedia.org/resource/", "");
 				String wikiResolve = "<script>resolve(\"" + dbpedia + "\");</script><div id=\"page_" + id + "\"></div>";
 				links.add(" <a target=\"_blank\" title='" + wikiResolve + "' href=\"" + src + "\">DBpedia:" + dbpedia + "</a>");
@@ -382,7 +381,7 @@ abstract public class FASTRecord {
 				String locName = src.replaceAll("http://id.loc.gov/authorities/names/", "");
 				links.add(" <a target=\"_blank\" href=\"" + src + "\">LCNAF: " + locName + "</a>");
 			}
-			else if (src.contains("http://sws.geonames.org/")) {
+			else if (src.contains("http://stopWords.geonames.org/")) {
 				String geoId = src.replaceAll("http://sws.geonames.org/", "").replaceAll("(<|>|\\\\)", "");
 				links.add("<a target=\"_blank\" href=\"" + src + "\">GeoName:" + geoId + "</a>");
 			}

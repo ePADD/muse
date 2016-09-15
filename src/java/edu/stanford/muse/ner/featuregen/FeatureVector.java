@@ -1,14 +1,14 @@
 package edu.stanford.muse.ner.featuregen;
 
+import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.util.Pair;
+import libsvm.svm_node;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.util.Pair;
-import libsvm.svm_node;
 
 public class FeatureVector implements Serializable {
 	private static final long	serialVersionUID	= 1L;
@@ -52,7 +52,7 @@ public class FeatureVector implements Serializable {
 
                             //There can be pairs like <0,0> as we try to emit person like features and organisation like features for an entity
                             if(p!=null && p.second>0) {
-								double ratio = (double) p.first / (double) p.second;
+								double ratio = p.first / p.second;
 								maxfreq = Math.max(maxfreq, ratio);
                                 minfreq = Math.min(minfreq, ratio);
                                 if(maxfreq==ratio)
@@ -80,7 +80,7 @@ public class FeatureVector implements Serializable {
                                 //2 million is just a normalizing factor, number of entries in DBpedia instance file
                                 //considered logarithm for scaling
                                 if(maxcount>0)
-                                    fvList.add((double)maxcount/2000000);
+                                    fvList.add(maxcount /2000000);
                                 else
                                     fvList.add(0.0);
 

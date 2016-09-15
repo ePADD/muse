@@ -88,12 +88,14 @@ public class Filter implements Serializable {
 		int dd = c.get(Calendar.DATE);
 		return String.format("%04d", yyyy) + String.format("%02d", mm) + String.format("%02d", dd);
 	}
-	
-	/** returns date range in the format accepted by filter, e.g., 20130709-20130710 */
+
+	/**
+	 * returns date range in the format accepted by filter, e.g., 20130709-20130710. Used only by memory study etc.
+	 */
 	public static String getDateRangeForLast1Year()
 	{
 		Date d = new Date();
-		Date d1 = new Date(d.getTime() - (365L * 24 * 60 * 60 * 1000));
+		Date d1 = new Date(d.getTime() - (30L * 12 * 24 * 60 * 60 * 1000));
 		return dateToString(d1) + "-" + dateToString(d);		
 	}
 	
@@ -261,8 +263,7 @@ public class Filter implements Serializable {
 		String dateRange = request.get("dateRange");
 		String sentOnly = request.get("sentOnly");
 		String filterPersonOrEmail = request.get("filterPersonOrEmail");
-		Filter filter = new Filter(filterPersonOrEmail, (sentOnly != null), dateRange, keywords);
-		return filter;
+		return new Filter(filterPersonOrEmail, (sentOnly != null), dateRange, keywords);
 	}
 	
 	public boolean isActive()
@@ -274,6 +275,8 @@ public class Filter implements Serializable {
 	 * if dates specified, sent or recd. date terms are used based on the incoming param. */
 	public SearchTerm convertToSearchTerm(boolean useReceivedDateTerms)
 	{
+		// FLAG DEBUG: end date = null
+		//endDate = null;
 		SearchTerm sentOnlyTerm = null;
 		if (sentMessagesOnly)
 		{
@@ -299,7 +302,7 @@ public class Filter implements Serializable {
 		
 		if (startDate != null)
 		{
-			SearchTerm startTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.GE, startDate) : new SentDateTerm(ComparisonTerm.GE, startDate);
+			SearchTerm startTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.GT, startDate) : new SentDateTerm(ComparisonTerm.GT, startDate);
 			if (result != null)
 				result = new AndTerm(result, startTerm);
 			else
@@ -308,7 +311,7 @@ public class Filter implements Serializable {
 		
 		if (endDate != null)
 		{
-			SearchTerm endTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.LE, endDate) : new SentDateTerm(ComparisonTerm.LE, endDate);
+			SearchTerm endTerm = useReceivedDateTerms ? new ReceivedDateTerm(ComparisonTerm.LT, endDate) : new SentDateTerm(ComparisonTerm.LT, endDate);
 			if (result != null)
 				result = new AndTerm(result, endTerm);
 			else

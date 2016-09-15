@@ -1,21 +1,14 @@
 package edu.stanford.muse.xword;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.store.LockObtainFailedException;
-
 import edu.stanford.muse.exceptions.ReadContentsException;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 /** no state that is relevant for the finished xword should be here.... all the state in this class is temp state used for placability calc.
  * general rule: any state that is visible to the UI should not be in this class */
@@ -446,13 +439,11 @@ public class Placer {
 
 		if (isLegalSquare(x-incrX, y-incrY) && !Crossword.stopOrEmpty(this.c.box[x-incrX][y-incrY]))
 			return false;
-		if (isLegalSquare(x+incrX, y+incrY) && !Crossword.stopOrEmpty(this.c.box[x+incrX][y+incrY]))
-			return false;
-		return true;
+		return !(isLegalSquare(x + incrX, y + incrY) && !Crossword.stopOrEmpty(this.c.box[x + incrX][y + incrY]));
 	}
 
 	/** main (and only) entry point to placer. try to place candidateWords on the grid. placement may depend on clues, so placer needs to know about cluer also. */
-	public void placeWordsAndCreateClues (boolean doSymmetric, Cluer cluer) throws UnplaceableException, CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException 
+	public void placeWordsAndCreateClues (boolean doSymmetric, Cluer cluer) throws UnplaceableException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
 	{
 		boolean preferAcrossNotDown = true;
 		
@@ -611,7 +602,7 @@ public class Placer {
 	}
 	
 	/** returns twin word, if one can be placed. note: a word can be its own twin */
-	private Word findTwinFor(Word W, boolean mustIntersect, Cluer cluer) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
+	private Word findTwinFor(Word W, boolean mustIntersect, Cluer cluer) throws IOException, GeneralSecurityException, ClassNotFoundException, ReadContentsException
 	{
 		int twinX = c.w-1-W.x, twinY = c.h-1-W.y;
 		if (W.acrossNotDown)
@@ -745,7 +736,7 @@ public class Placer {
 			for (int i = 0; i < w; i++)
 			{
 				char c = this.c.box[i][j];
-				if (c == this.c.EMPTY)
+				if (c == Crossword.EMPTY)
 					c = '#';	
 				sb.append (c + " ");
 			}

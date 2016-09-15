@@ -1,1 +1,1 @@
-Muse version Aug 20, 2015
+Muse version Release 2, beta1

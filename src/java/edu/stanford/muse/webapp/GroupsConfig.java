@@ -15,19 +15,16 @@
 */
 package edu.stanford.muse.webapp;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Collection;
-
-import javax.servlet.http.HttpSession;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.GroupAssigner;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import javax.servlet.http.HttpSession;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
 
 /** Manage save/load/delete of groupings */
 public class GroupsConfig {
@@ -63,13 +60,13 @@ public class GroupsConfig {
 	 		return success;
 	 	}
 
-	 	public static Collection<String> list() throws FileNotFoundException, IOException, ClassNotFoundException
+	 	public static Collection<String> list() throws IOException, ClassNotFoundException
 	 	{
 	 		return list(null);
 	 	}
 	 	
 	 	/** returns a list of available session names */
-	 	public static Collection<String> list(String dir) throws FileNotFoundException, IOException, ClassNotFoundException
+	 	public static Collection<String> list(String dir) throws IOException, ClassNotFoundException
 	 	{	
 	 		if (dir == null)
 	 			dir = DEFAULT_CACHE_DIR;
@@ -78,7 +75,7 @@ public class GroupsConfig {
 	 	}
 	 	
 	 	/** returns status of success */
-	 	public static boolean delete(String dir, String session) throws FileNotFoundException, IOException, ClassNotFoundException
+	 	public static boolean delete(String dir, String session) throws IOException, ClassNotFoundException
 	 	{
 	 		if (dir == null)
 	 			return false;
@@ -90,7 +87,7 @@ public class GroupsConfig {
 	 	}
 	 	
 	 	/** writes out all serializable objects in the current session to a file */
-	 	public static boolean save(HttpSession session, String title) throws FileNotFoundException, IOException
+	 	public static boolean save(HttpSession session, String title) throws IOException
 	 	{
 	 		String cacheDir = (String) JSPHelper.getSessionAttribute(session, "cacheDir");
 	 		if (cacheDir == null)

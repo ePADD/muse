@@ -49,16 +49,11 @@ try {
 	long ner_start_millis = System.currentTimeMillis();
 
 	//names = NER.namesFromText(text, true, NER.defaultTokenTypeWeights, normalizeByLength, 1);
-	Pair<Map<Short, List<String>>, List<Triple<String, Integer, Integer>>> p = nerModel.find(text);
-	if(p!=null){
-	    Map<Short,List<String>> map = p.getFirst();
-	    if(map!=null){
-	        for(Short k: map.keySet()){
-	            JSPHelper.log.info("Entity type: "+k+", "+map.get(k).size());
-	            for(String e: map.get(k)){
-	                names.add(new Pair<String,Float>(e,new Float(1.0)));
-	            }
-	        }
+	Span[] spans = nerModel.find(text);
+	if(spans!=null){
+	    for(Span sp: spans){
+	        //JSPHelper.log.info("Entity type: "+sp.type+", "+map.get(k).size());
+	        names.add(new Pair<>(sp.text,new Float(1.0)));
 	    }
 	}
 	//names = POS.namesFromPOS(text);

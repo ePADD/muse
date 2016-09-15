@@ -16,7 +16,7 @@ if (!underWebstart)
 	out.println ("<p><br/><br/>Sorry, exit can only be called when running on your own computer with Java webstart.");
 	return;
 }
-String mesg = "Muse v" + Version.num + " was asked to shut down and exit completely in 2 seconds.";
+String mesg = "Muse " + Version.version + " was asked to shut down and exit completely in 2 seconds.";
 String s = request.getParameter("message");
 if (!Util.nullOrEmpty(s))
 	mesg += "Message: " + s;

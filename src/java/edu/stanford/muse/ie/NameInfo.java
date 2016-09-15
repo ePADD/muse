@@ -1,11 +1,11 @@
 package edu.stanford.muse.ie;
 
+import edu.stanford.muse.email.Contact;
+import edu.stanford.muse.util.Util;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.Map;
-
-import edu.stanford.muse.email.Contact;
-import edu.stanford.muse.util.Util;
 
 public class NameInfo implements Comparable<NameInfo>, Serializable { 
 	private final static long serialVersionUID = 1L;
@@ -28,14 +28,12 @@ public class NameInfo implements Comparable<NameInfo>, Serializable {
 	
 	}
 	
-	private String firstDatetoString () { 
-		String returndate = Util.formatDate(firstDate);
-		return returndate;
+	private String firstDatetoString () {
+		return Util.formatDate(firstDate);
 	
 	}
-	private String lastDatetoString () { 
-		String returndate = Util.formatDate(lastDate);
-		return returndate;	
+	private String lastDatetoString () {
+		return Util.formatDate(lastDate);
 	}
 	public String toString()
 	{

@@ -1,11 +1,5 @@
 package edu.stanford.muse.webapp;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
@@ -13,8 +7,15 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
+
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
+import java.io.IOException;
+import java.util.*;
 
 /** This class has util methods to display an email message in an html page */
 
@@ -25,27 +26,27 @@ public class EmailRenderer {
 												// much with courier font.
 
     public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-                                                          Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed)
+                                                          Set<String> highlightTerms)
             throws Exception{
-        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTermsStemmed, highlightTermsUnstemmed, null, MultiDoc.ClusteringType.MONTHLY);
+        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTerms, null, MultiDoc.ClusteringType.MONTHLY);
     }
 
     public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-                                                          Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments)
+                                                          Set<String> highlightTerms, Collection<Blob> highlightAttachments)
             throws Exception{
-        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
+        return pagesForDocuments(ds, archive, datasetTitle, null, highlightTerms, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
     }
 
     public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-														  Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed)
+														  Set<Integer> highlightContactIds, Set<String> highlightTerms)
 			throws Exception{
-		return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, null, MultiDoc.ClusteringType.MONTHLY);
+		return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTerms, null, MultiDoc.ClusteringType.MONTHLY);
 	}
 
 	public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-                                                          Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments)
+                                                          Set<Integer> highlightContactIds, Set<String> highlightTerms, Collection<Blob> highlightAttachments)
             throws Exception{
-        return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
+        return pagesForDocuments(ds, archive, datasetTitle, highlightContactIds, highlightTerms, highlightAttachments, MultiDoc.ClusteringType.MONTHLY);
     }
 
 	/*
@@ -56,7 +57,7 @@ public class EmailRenderer {
 	 * especially when no other document type is used anywhere
 	 */
 	public static Pair<DataSet, String> pagesForDocuments(Collection<Document> ds, Archive archive, String datasetTitle,
-			Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Collection<Blob> highlightAttachments, MultiDoc.ClusteringType coptions)
+			Set<Integer> highlightContactIds, Set<String> highlightTerms, Collection<Blob> highlightAttachments, MultiDoc.ClusteringType coptions)
 			throws Exception
 	{
 		StringBuilder html = new StringBuilder();
@@ -119,7 +120,7 @@ public class EmailRenderer {
 
 					if (!Util.nullOrEmpty(comment) && (d instanceof EmailDocument))
 					{
-						String messageId = ((EmailDocument) d).getUniqueId();
+						String messageId = d.getUniqueId();
 						html.append(" messageID=\"" + messageId + "\"");
 					}
 
@@ -141,9 +142,9 @@ public class EmailRenderer {
 			html.append("</div>\n"); // section
 		}
 
-		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, highlightAttachments);
+		DataSet dataset = new DataSet(datasetDocs, archive, datasetTitle, highlightContactIds, highlightTerms, highlightAttachments);
 
-		return new Pair<DataSet, String>(dataset, html.toString());
+		return new Pair<>(dataset, html.toString());
 	}
 
 	/**
@@ -168,30 +169,46 @@ public class EmailRenderer {
 				String url = p.getSecond();
 				String str = ia.toString();
                 String addr = ia.getAddress();
-                String name = ia.getPersonal();
                 boolean match = false;
-                if(highlightUnstemmed!=null)
-                    if(highlightUnstemmed.contains(name))
-                        match = true;
-                if(!match && highlightNames!=null)
-                    if(highlightNames.contains(name))
-                        match = true;
-                if(!match && highlightAddresses!=null)
-                    if(highlightAddresses.contains(addr))
-                        match = true;
+                if(str!=null) {
+                    //The goal here is to explain why a doc is selected and hence we should replicate Lucene doc selection and Lucene is case insensitive most of the times
+                    String lc = str.toLowerCase();
+                    if (highlightUnstemmed != null)
+                        for (String hs : highlightUnstemmed)
+                            if (lc.contains(hs.toLowerCase())) {
+                                match = true;
+                                break;
+                            }
+                    if (!match && highlightNames != null)
+                        for (String hn : highlightNames)
+                            if (lc.contains(hn.toLowerCase())) {
+                                match = true;
+                                break;
+                            }
+                }
+                if(addr!=null){
+                    if (!match && highlightAddresses != null)
+                        for (String ha : highlightAddresses)
+                            if (addr.contains(ha)) {
+                                match = true;
+                                break;
+                            }
+                }
 
                 if(match)
                     thisAddrStr = ("<a href=\"" + url + "\"><span class=\"hilitedTerm rounded\">" + Util.escapeHTML(str) + "</span></a>");
                 else
                     thisAddrStr = ("<a href=\"" + url + "\">" + Util.escapeHTML(str) + "</a>");
 
-                outputLineLength += str.length();
+				if (str != null)
+	                outputLineLength += str.length();
 			}
 			else
 			{
 				String str = a.toString();
 				thisAddrStr = str;
 				outputLineLength += str.length();
+                JSPHelper.log.warn("Address is not an instance of InternetAddress - is of instance: "+a.getClass().getName() + ", highlighting won't work.");
 			}
 
 			if (i + 1 < addrs.length)
@@ -217,7 +234,7 @@ public class EmailRenderer {
 	 * @throws Exception
 	 */
 	public static Pair<String, Boolean> htmlForDocument(Document d, Archive archive, String datasetTitle, BlobStore attachmentsStore,
-			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
+			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
 			boolean IA_links, boolean inFull, boolean debug) throws Exception
 	{
 		JSPHelper.log.debug("Generating HTML for document: " + d);
@@ -232,7 +249,7 @@ public class EmailRenderer {
 			page.append("<div class=\"muse-doc\">\n");
 
 			page.append("<div class=\"muse-doc-header\">\n");
-			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightContactIds, highlightTermsStemmed, highlightTermsUnstemmed, IA_links, debug));
+			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightContactIds, highlightTerms, IA_links, debug));
 			page.append("</div>"); // muse-doc-header
 
 			/*
@@ -244,8 +261,8 @@ public class EmailRenderer {
 			 * page.append("<br/>\n"); }
 			 */
 			page.append("\n<div class=\"muse-doc-body\">\n");
-			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTermsStemmed,
-					highlightTermsUnstemmed, authorisedEntities, IA_links, inFull, true);
+			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTerms,
+					authorisedEntities, IA_links, inFull, true);
 			StringBuilder htmlMessageBody = contentsHtml.first;
 			overflow = contentsHtml.second;
 			// page.append(ed.getHTMLForContents(indexer, highlightTermsStemmed,
@@ -297,10 +314,9 @@ public class EmailRenderer {
 						String s = attachment.filename;
 						// cap to a length of 25, otherwise the attachment name
 						// overflows the tn
-						if (s.length() > 25)
-							s = s.substring(0, 22) + "...";
+						String display = Util.ellipsize(s, 25);
                         boolean highlight = highlightAttachments != null && highlightAttachments.contains(attachment);
-                        page.append("&nbsp;" + "<span class='" + (highlight?"highlight":"") + "'>"+ s + "</span>&nbsp;");
+                        page.append("&nbsp;" + "<span title=\"" + Util.escapeHTML(s) + "\" class='" + (highlight?"highlight":"") + "'>"+ Util.escapeHTML(display) + "</span>&nbsp;");
 						page.append("<br/>");
 
 						String css_class = "attachment-preview" + (is_image ? " img" : "") + (highlight ? " highlight" : "");
@@ -372,7 +388,7 @@ public class EmailRenderer {
 	 *            on preset regexs
 	 * @throws IOException
 	 */
-	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms,
 			boolean IA_links, boolean debug) throws IOException
 	{
 		AddressBook addressBook = archive.addressBook;
@@ -389,6 +405,7 @@ public class EmailRenderer {
                 contactNames.addAll(c.names);
                 contactAddresses.addAll(c.emails);
             }
+        contactNames.addAll(highlightTerms);
 
 		StringBuilder result = new StringBuilder();
 		// header table
@@ -407,27 +424,27 @@ public class EmailRenderer {
 		Address[] addrs = ed.from;
 		if (addrs != null)
 		{
-			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses));
+			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses));
 		}
 
 		result.append(style + "To: </td><td align=\"left\">");
 		addrs = ed.to;
 		if (addrs != null)
-			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
+			result.append(formatAddressesAsHTML(addrs, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses) + "");
 
 		result.append("\n</td></tr>\n");
 
 		if (ed.cc != null && ed.cc.length > 0)
 		{
 			result.append(style + "Cc: </td><td align=\"left\">");
-			result.append(formatAddressesAsHTML(ed.cc, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
+			result.append(formatAddressesAsHTML(ed.cc, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses) + "");
 			result.append("\n</td></tr>\n");
 		}
 
 		if (ed.bcc != null && ed.bcc.length > 0)
 		{
 			result.append(style + "Bcc: </td><td align=\"left\">");
-			result.append(formatAddressesAsHTML(ed.bcc, addressBook, TEXT_WRAP_WIDTH, highlightTermsUnstemmed, contactNames, contactAddresses) + "");
+			result.append(formatAddressesAsHTML(ed.bcc, addressBook, TEXT_WRAP_WIDTH, highlightTerms, contactNames, contactAddresses) + "");
 			result.append("\n</td></tr>\n");
 		}
 
@@ -456,33 +473,24 @@ public class EmailRenderer {
 		// <pre> to escape special chars if any in the subject. max 70 chars in
 		// one line, otherwise spill to next line
 		result.append("<td align=\"left\"><b>");
-		x = ed.formatStringForMaxCharsPerLine(x, 70).toString();
+		x = DatedDocument.formatStringForMaxCharsPerLine(x, 70).toString();
 		if (x.endsWith("\n"))
 			x = x.substring(0, x.length() - 1);
-        List<String> cpeople = archive.getEntitiesInDoc(ed, NER.EPER_TITLE, true);
-        List<String> corgs = archive.getEntitiesInDoc(ed, NER.EORG_TITLE, true);
-        List<String> cplaces = archive.getEntitiesInDoc(ed, NER.ELOC_TITLE, true);
-        List<String> entities = new ArrayList<String>();
-        entities.addAll(cpeople);
-        entities.addAll(cplaces);
-        entities.addAll(corgs);
+
+        Span[] names = archive.getAllNamesInDoc(ed, false);
 
         // Contains all entities and id if it is authorised else null
-        Map<String, Archive.Entity> entitiesWithId = new HashMap<String, Archive.Entity>();
-        for (String entity : entities) {
-            Set<String> types = new HashSet<String>();
-            if (cpeople.contains(entity))
-                types.add("cp");
-            if (cplaces.contains(entity))
-                types.add("cl");
-            if (corgs.contains(entity))
-                types.add("co");
-            String ce = IndexUtils.canonicalizeEntity(entity);
-            if (ce == null)
-                continue;
-            entitiesWithId.put(entity, new Archive.Entity(entity, null, types));
-        }
-        x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId, IA_links, false);
+        Map<String, Archive.Entity> entitiesWithId = new HashMap<>();
+        //we annotate three specially recognized types
+        Map<Short,String> recMap = new HashMap<>();
+        recMap.put(FeatureDictionary.PERSON,"cp");recMap.put(FeatureDictionary.PLACE,"cl");recMap.put(FeatureDictionary.ORGANISATION,"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(FeatureDictionary.getCoarseType(n.type)))
+                .forEach(n -> {
+                    Set<String> types = new HashSet<>();
+                    types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
+                    entitiesWithId.put(n.text, new Archive.Entity(n.text, null, types));
+                });
+        x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTerms, entitiesWithId, IA_links, false);
 
 		result.append(x);
 		result.append("</b>\n");

@@ -1,7 +1,5 @@
 <%@ page import="edu.stanford.muse.webapp.*" %>
-<%@ page import="edu.stanford.muse.ner.model.NERModel" %>
 <%@ page import="java.io.File" %>
-<%@ page import="edu.stanford.muse.ner.model.SVMModel" %>
 <%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
 <%--
   User: vihari
@@ -15,7 +13,7 @@
     {
         JSPHelper.log.info("Loading model ...");
         String modelFile = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel.ser";
-        nerModel = SequenceModel.loadModel(new File(modelFile));
+        nerModel = SequenceModel.loadModel(modelFile);
         JSPHelper.log.info("Loaded ner model from "+modelFile);
         request.getSession().setAttribute("ner", nerModel);
     }

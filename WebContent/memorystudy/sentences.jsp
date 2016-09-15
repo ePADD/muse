@@ -11,13 +11,11 @@
 <%@ page import="javax.mail.Address" %>
 <%@ page import="com.google.common.collect.Multimap" %>
 <%@ page import="com.google.common.collect.LinkedHashMultimap" %>
-<%@ page import="oracle.jrockit.jfr.StringConstantPool" %>
 <%@ page import="edu.stanford.muse.util.DictUtils" %>
 <%@ page import="org.w3c.tidy.Dict" %>
 <%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
 <%@ page import="edu.stanford.muse.xword.Clue" %>
 <%@ page import="java.io.File" %>
-<%@ page import="edu.stanford.muse.ner.model.SVMModel" %>
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
 <%@ page import="edu.stanford.muse.util.EmailUtils" %>
 <%@ page import="edu.stanford.muse.xword.SentenceTokenizer" %>
@@ -26,10 +24,10 @@
 
 <html>
 <head>
-    <link rel = "stylesheet" type ="text/css" href="memorystudy/css/screen.css">
+    <link rel = "stylesheet" type ="text/css" href="css/memory.css">
     <link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
-    <link rel="icon" href="memorystudy/images/stanford-favicon.gif">
+    <link rel="icon" href="images/ashoka-favicon.gif">
     <jsp:include page="../css/css.jsp"/>
     <script type="text/javascript" src="js/jquery/jquery.js"></script>
     <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>

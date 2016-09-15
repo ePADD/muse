@@ -15,6 +15,7 @@
  */
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
@@ -29,7 +30,6 @@ import org.apache.commons.logging.LogFactory;
 
 import javax.mail.Address;
 import javax.mail.MessagingException;
-import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.io.*;
@@ -38,26 +38,71 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
+import java.util.stream.Collectors;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
 	public static Map<String, String>	dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
-    static class DBpediaTypes {
+	/** Returns the part before @ in an email address, e.g. hangal@gmail.com => hangal.
+	 * Returns the full string if the input does not have @, or null if the input is null. */
+	public static String getAccountNameFromEmailAddress(String email) {
+		if (email == null)
+			return null;
+		int idx = email.indexOf("@");
+		return (idx < 0) ? email : email.substring(0, idx);
+	}
+
+	/** get a list of possible names, like "First Last" from "First.Last@gmail.com" etc */
+	public static List<String> parsePossibleNamesFromEmailAddress(String email)
+	{
+		List<String> result = new ArrayList<String>();
+		if (email == null)
+			return result;
+		String strippedEmail = getAccountNameFromEmailAddress(email);
+
+		// handle addrs like mondy_dana%umich-mts.mailnet@mit-multics.arp, in this case strip out the part after %
+		int idx = strippedEmail.indexOf("%");
+		if (idx >= 0)
+			strippedEmail = strippedEmail.substring(0, idx);
+
+		// 2 sets of splitters, one containing just periods, other just underscores.
+		// most people have periods, but at least Dell has underscores
+		String[] splitters = new String[]{".", "_"};
+		for (String splitter: splitters)
+		{
+			StringTokenizer st = new StringTokenizer (strippedEmail, splitter);
+			int nTokens = st.countTokens();
+			// allow only first.last or first.middle.last
+			if (nTokens < 2 || nTokens > 3)
+				continue;
+
+			String possibleName = "";
+			while (st.hasMoreTokens())
+			{
+				String token = st.nextToken();
+				if (Util.hasOnlyDigits(token))
+					return result; // abort immediately if only numbers, we don't want things like 70451.2444@compuserve.com
+				possibleName += Util.capitalizeFirstLetter(token) + " "; // optionally we could upper case first letter of each token.
+			}
+			possibleName = possibleName.trim(); // remove trailing space
+			result.add(possibleName);
+		}
+		return result;
+	}
+
+	static class DBpediaTypes {
         //these are types identified from DBpedia that may contain some predictable tokens and omitting types with any possible tokens like TVShows and Bands
         //also omitting types that are not very different from other types like, Company and AutomobileEngine|Device
     }
 
-	public static String tabooEmailNames[] = new String[]{"paypal member", "info@evite.com", "evite.com"}; // could consider adding things ending in clients, members, etc.
 	/**
 	 * best effort to toString something about the given message.
 	 * use only for diagnostics, not for user-visible messages.
 	 * treads defensively, this can be called to report on a badly formatted message.
 	 */
-	public static String formatMessageHeader(MimeMessage m) throws MessagingException, AddressException
-	{
+	public static String formatMessageHeader(MimeMessage m) throws MessagingException {
 		StringBuilder sb = new StringBuilder();
 		sb.append("To: ");
 		try {
@@ -66,6 +111,7 @@ public class EmailUtils {
 				sb.append(a.toString() + " ");
 			sb.append("\n");
 		} catch (Exception e) {
+			Util.print_exception(e, log);
 		}
 
 		sb.append("From: ");
@@ -74,13 +120,16 @@ public class EmailUtils {
 			for (Address a : froms)
 				sb.append(a.toString() + " ");
 		} catch (Exception e) {
+			Util.print_exception(e, log);
 		}
 
 		try {
 			sb.append("Subject: " + m.getSubject());
 			sb.append("Message-ID: " + m.getMessageID());
 		} catch (Exception e) {
+			Util.print_exception(e, log);
 		}
+
 		return sb.toString();
 	}
 
@@ -284,35 +333,32 @@ public class EmailUtils {
 			mbox.println("X-Muse-Liked: 1");
 	}
 
-	public static void dumpMessagesToDir(Archive archive, Collection<EmailDocument> docs, String dir) throws IOException, GeneralSecurityException, ClassCastException, ClassNotFoundException
+	/** this is an export for other tools to process the message text or names. Writes files called <n>.fill and <n>.names in the givne dir */
+	public static void dumpMessagesAndNamesToDir(Archive archive, Collection<EmailDocument> docs, String dir) throws IOException, GeneralSecurityException, ClassCastException, ClassNotFoundException
 	{
 		File f = new File(dir);
 		f.mkdirs();
 		int i = 0;
-		NER.initialize();
 		for (EmailDocument ed : docs)
 		{
 			try {
-				PrintWriter pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".full"));
 				String m = ed.description + "\n\n" + archive.getContents(ed, false /* full message */);
+				PrintWriter pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".full"));
 				pw.println(m);
 				pw.close();
 
+				Set<String> allEntities = new LinkedHashSet<>();
+				allEntities.addAll(Arrays.asList(archive.getAllNamesInDoc(ed, true)).stream().map(n->n.text).collect(Collectors.toSet()));
+				allEntities.addAll(Arrays.asList(archive.getAllNamesInDoc(ed, false)).stream().map(n->n.text).collect(Collectors.toSet()));
+
 				pw = new PrintWriter(new FileOutputStream(dir + File.separatorChar + i + ".names"));
 
-				NERTokenizer t = (NERTokenizer) NER.parse(m);
 				String s = "";
-				while (t.hasMoreTokens())
+				for (String e: allEntities)
 				{
-					Pair<String, String> tokenAndType = t.nextTokenAndType();
-					String token = tokenAndType.getFirst().trim().toLowerCase();
-					// drop dictionary words
-					if (DictUtils.fullDictWords.contains(token))
-						continue;
-					// drop "terms" with | -- often used as a separator on the web, and totally confuses our indexer's phrase lookup
-					if (token.indexOf("|") >= 0)
-						continue;
-					s += token.replaceAll(" ", "_") + " ";
+					e = e.toLowerCase();
+					e = e.replaceAll(" ", "_");
+					s += e + " ";
 				}
 				pw.println(s);
 				pw.close();
@@ -387,7 +433,7 @@ public class EmailUtils {
 //			mbox.println("--" + frontier + "--");
 
 			// probably need to fix: other types of charset, encodings
-			if (blobStore != null)
+			if (blobStore != null && attachments != null)
 			{
 				for (Blob b : attachments)
 				{
@@ -425,23 +471,40 @@ public class EmailUtils {
 	// hopefully people don't have any of these words in their names... note, should be lowercase
 
 	/**
-	 * normalizes the given person name.
-	 * strips whitespace at either end
-	 * returns null if not a valid name
+	 * normalizes the given person name, by stripping whitespace at either end, normalizes spaces, so exactly 1 space between tokens.
+	 * returns null if not a valid name or has a banned word/string or is a single word name
+	 * retains case of the input as is.
+	 * returns same case
 	 */
 	public static String cleanPersonName(String name)
 	{
+		// be careful with case, we want name to remain in its original case
 		if (name == null)
 			return null;
-		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is
+		name = name.trim();
+
+		if (name.indexOf("@") >= 0) // an email addr, not a real name -- we dunno what's happening, just return it as is, just lowercasing it.
 			return name.toLowerCase();
-		if ("user".equals(name))
-			return null;
 
 		// a surprising number of names in email headers start and end with a single quote
 		// if so, strip it.
 		if (name.startsWith("'") && name.endsWith("'"))
 			name = name.substring(1, name.length() - 1);
+		if (name.startsWith("\"") && name.endsWith("\""))
+			name = name.substring(1, name.length() - 1);
+
+		// check if it has any characters at all
+		boolean allNonAlpha = true;
+		for (char c: name.toCharArray()) {
+			if (Character.isAlphabetic(c)) {
+				allNonAlpha = false;
+				break;
+			}
+		}
+
+		// all non-alphabet? return nothing, because its likely a junk name like "(" or "((" (yes, we see plenty of those!)
+		if (allNonAlpha)
+			return null;
 
 		// Strip stuff inside parens, e.g. sometimes names are like:
 		// foo bar (at home) - or -
@@ -453,24 +516,34 @@ public class EmailUtils {
 		name = name.trim();
 
 		// normalize spaces
-		// return null if name has banned words - e.g. ben shneiderman's email has different people with the "name" (IPM Return requested)
-		String s = "";
-		StringTokenizer st = new StringTokenizer(name);
-		while (st.hasMoreTokens())
+		// return null if name has banned words - e.g. ben s's email has different people with the "name" (IPM Return requested)
+		String result = "";
+		for (String t: Util.tokenize(name))
 		{
-			String t = st.nextToken();
-			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase()))
+			if (DictUtils.bannedWordsInPeopleNames.contains(t.toLowerCase())) {
+				if (log.isDebugEnabled())
+					log.debug ("Will not consider name (because it has a banned word): " + name);
 				return null;
-			s += t + " ";
+			}
+			result += t + " ";
 		}
 
-		s = s.trim(); // very important, we've added a space after the last token above
+		result = result.trim(); // very important, we've added a space after the last token above
 
+		String lowerCaseName = name.toLowerCase();
 		for (String bannedString : DictUtils.bannedStringsInPeopleNames)
-			if (name.toLowerCase().indexOf(bannedString) >= 0)
+			if (lowerCaseName.indexOf(bannedString) >= 0) {
+				if (log.isDebugEnabled()) {
+					log.debug("Will not consider name due to banned string: " + name + " due to string: " + bannedString);
+				}
 				return null;
+			}
 
-		return s;
+		if (Util.tokenize(name).size() < 2) {
+			return null; // single word names should not be considered for merging
+		}
+
+		return result;
 	}
 
 	// removes dups from the input list
@@ -490,7 +563,7 @@ public class EmailUtils {
 		return result;
 	}
 
-	// removes obviously bad names from the input list
+	// removes obviously bad names from the input list. used only by grouper.
 	public static List<String> removeIncorrectNames(List<String> in)
 	{
 
@@ -500,21 +573,6 @@ public class EmailUtils {
 			s = EmailUtils.cleanPersonName(s);
             if(s == null)
                 continue;
-			if (s.startsWith("undisclosed-recipients"))
-			{
-				log.info("Dropping undisclosed recipients: " + s);
-				continue;
-			}
-
-			for (String taboo: tabooEmailNames) {
-				if (taboo.equals(s))
-					continue;
-			}
-			if (s.toLowerCase().equals("user"))
-			{
-				log.info("Dropping bad name: " + s);
-				continue;
-			}
 			result.add(s);
 		}
 		return result;
@@ -1058,6 +1116,27 @@ public class EmailUtils {
 		return result;
 	}
 
+    static void testLookupNormalizer(){
+        Pair<String,String>[] tests = new Pair[]{
+                new Pair<>("bernstein","bernstein"),
+                new Pair<>("charles, bernstein", "bernstein charles"),
+                new Pair<>("James H McGill", "james mcgill"),
+                new Pair<>("Wetterwald Julien","julien wetterwald"),
+                new Pair<>("Barack H. Obama", "barack obama"),
+                new Pair<>("George H W, Bush","bush george"),
+                //committee is a banned word in people names
+                new Pair<>("Justice committee", null),
+                new Pair<>("''''093- 'Wetterwald Jul-ien\"''''","'''093- 'wetterwald jul-ien\"'''")
+        };
+        for(Pair<String,String> p: tests) {
+            String np =normalizePersonNameForLookup(p.getFirst());
+            if ((np==null&&p.second!=null) || (np!=null&&p.second==null) || (np!=null&&p.second!=null&&!np.equals(p.getSecond()))) {
+                System.err.println("Test fail!! Expected: "+p.second+" found: "+np+" -- for: "+p.first);
+            }
+        }
+        System.err.println("All tests done!");
+    }
+
 	/*
 	 * normalizes names.
 	 * orders words in the name alphabetically.
@@ -1087,8 +1166,16 @@ public class EmailUtils {
 		String originalName = name;
 
 		name = cleanPersonName(name);
-		if (name == null)
-			return null;
+        //cleanPersonName returns null for singlw word names for some reason
+		if (name == null) {
+            if(originalName.indexOf(' ')==-1) {
+                name = originalName;
+                name = name.toLowerCase();
+                name = name.replaceAll("^\\W+|\\W+$","");
+                return name;
+            }
+            return null;
+        }
 		// remove all periods and commas
 		// in future: consider removing all non-alpha, non-number chars.
 		// but should we also remove valid quote chars in names like O'Melveny
@@ -1097,8 +1184,9 @@ public class EmailUtils {
 		name = name.replaceAll(",", " ");
 
 		StringTokenizer st = new StringTokenizer(name);
-		if (st.countTokens() <= 1)
-			return name;
+		if (st.countTokens() <= 1) {
+            return name;
+        }
 
 		// gather all the words in the name into tokens and sort it
 		List<String> tokens = new ArrayList<String>();
@@ -1335,28 +1423,6 @@ public class EmailUtils {
 		return content;
 	}
 
-	public static String cleanRoad(String title){
-		String[] words = title.split(" ");
-		String lw = words[words.length-1];
-		String ct = "";
-		boolean hasNumber = false;
-		for(Character c: lw.toCharArray())
-			if(c>='0' && c<='9') {
-            	hasNumber = true;
-                break;
-			}
-		if(words.length == 1 || !hasNumber)
-			ct = title;
-		else{
-			for(int i=0;i<words.length-1;i++) {
-				ct += words[i];
-				if(i<words.length-2)
-					ct += " ";
-			}
-		}
-		return ct;
-	}
-
 	public static Map<String,String> sample(Map<String,String> full, double p){
 		Random rand = new Random();
 		Map<String,String> sample = new LinkedHashMap<>();
@@ -1367,35 +1433,54 @@ public class EmailUtils {
 		return sample;
 	}
 
-	public static Map<String, String> readDBpedia(double p, String typesFile) {
-        boolean resourceFile = false;
-        if(typesFile == null) {
-            typesFile = "instance_types_2014-04.en.txt.bz2";
-            resourceFile = true;
+    static String cleanDBPediaRoad(String title){
+        String[] words = title.split(" ");
+        String lw = words[words.length-1];
+        String ct = "";
+        boolean hasNumber = false;
+        for(Character c: lw.toCharArray())
+            if(c>='0' && c<='9') {
+                hasNumber = true;
+                break;
+            }
+        if(words.length == 1 || !hasNumber)
+            ct = title;
+        else{
+            for(int i=0;i<words.length-1;i++) {
+                ct += words[i];
+                if(i<words.length-2)
+                    ct += " ";
+            }
         }
+        return ct;
+    }
+
+	public static Map<String, String> readDBpedia(double p, String typesFile) {
         if (dbpedia != null) {
             if(p==1)
                 return dbpedia;
             else
                 return sample(dbpedia, p);
         }
+        if(typesFile == null)
+            typesFile = "instance_types_2014-04.en.txt.bz2";
         dbpedia = new LinkedHashMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
+			InputStream is = Config.getResourceAsStream(typesFile);
+			if (is == null) {
+				log.warn ("Dbpedia file resource could not be read!!");
+				return dbpedia;
+			}
+
             //true argument for BZip2CompressorInputStream so as to load the whole file content into memory
-            LineNumberReader lnr;
-            if(resourceFile)
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(EmailUtils.class.getClassLoader().getResourceAsStream(typesFile), true), "UTF-8"));
-            else
-                lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(typesFile),true)));
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(is, true), "UTF-8"));
             while (true) {
                 String line = lnr.readLine();
                 if (line == null)
                     break;
-                if (lines++ % 10000 == 0)
+                if (lines++ % 1000000 == 0)
                     log.info("Processed " + lines + " lines of approx. 3.02M in " + typesFile);
-//                if (lines > 500000)
-//                    break;
 
                 if (line.contains("GivenName"))
                     continue;
@@ -1430,22 +1515,13 @@ public class EmailUtils {
                 //in places there are things like: Shaikh_Ibrahim,_Iraq
                 if (type.endsWith("Settlement|PopulatedPlace|Place"))
                     r = r.replaceAll(",_.*","");
-                //so as not to allow single word entries
-//                if(!r.contains("_"))
-//                    continue;
-//                if(r.contains("(")) {
-//                    int ti = r.indexOf('(');
-//                    int ui = r.indexOf('_');
-//                    //if is a single word token, then continue;
-//                    if((ui==-1) || ti<ui || (ui+1==ti)) {
-//                        continue;
-//                    }
-//                }
+
                 //its very dangerous to remove things inside brackets as that may lead to terms like
                 //University_(Metrorail_Station) MetroStation|Place e.t.c.
                 //so keep them, or just skip this entry all together
                 //We are not considering single word tokens any way, so its OK to remove things inside the brackets
-                r = r.replaceAll("_\\(.*?\\)", "");
+                //removing stuff in brackets may cause trouble when blind matching entities
+                //r = r.replaceAll("_\\(.*?\\)", "");
                 String title = r.replaceAll("_"," ");
 
                 String badSuffix = "|Agent";
@@ -1467,7 +1543,7 @@ public class EmailUtils {
 
 				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
 					//System.err.print("Cleaned: "+title);
-					title = cleanRoad(title);
+					title = cleanDBPediaRoad(title);
 					//System.err.println(" to "+title);
 				}
                 dbpedia.put(title, type);
@@ -1478,12 +1554,12 @@ public class EmailUtils {
 		}
 
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
-        log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
 		return sample(dbpedia,p);
 	}
 
-    public static Map<String,String> readDBpedia(double fraction) {
+
+	public static Map<String,String> readDBpedia(double fraction) {
         return readDBpedia(fraction, null);
     }
 
@@ -1492,8 +1568,6 @@ public class EmailUtils {
 	}
 
     public static void main(String[] args){
-//        Map<String,String> dbpedia = readDBpedia();
-//        System.err.println(dbpedia.get("Canada"));
-        System.err.println("hello".indexOf(':'));
+        testLookupNormalizer();
     }
 }

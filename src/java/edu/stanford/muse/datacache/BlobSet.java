@@ -49,12 +49,12 @@ private String piclensFormat = "<object id=\"o\" classid=\"clsid:D27CDB6E-AE6D-1
 						"allowFullScreen=\"true\" allowScriptAccess=\"always\"></embed>\n" +
 						"</object>\n";
 */
-private String photoRSSHeader = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
+private static final String photoRSSHeader = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n" +
 								"<rss version=\"2.0\" xmlns:media=\"http://search.yahoo.com/mrss/\"\n" +
 								"xmlns:atom=\"http://www.w3.org/2005/Atom\">\n" +
 								"<channel>\n";
 
-private String photoRSSFooter = "</channel>\n</rss>\n";
+private static final String photoRSSFooter = "</channel>\n</rss>\n";
 
 // compute the unique d1 -> d2, d1, d3... map.
 private void compute_unique_data_map()
@@ -85,7 +85,7 @@ public BlobSet(String root_dir, List<Blob> allBlobs, BlobStore store) throws IOE
 	
     this.rootDir = root_dir;
     this.allBlobs = allBlobs;
-    this.blobStore = (BlobStore) store;
+    this.blobStore = store;
     // be defensive, sometimes due to an error, all_datas gets passed in as null.
     // instead of crashing, better to treat it as an empty dataset.
     if (this.allBlobs == null)

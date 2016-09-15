@@ -27,6 +27,7 @@
 
 package edu.stanford.muse.util;
 
+import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 
 import java.io.*;
@@ -37,6 +38,7 @@ import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
@@ -214,6 +216,7 @@ public class Util
 			try {
 				Thread.sleep(sleepMillis);
 			} catch (Exception e) {
+				Util.print_exception(e);
 			}
 	}
 
@@ -776,7 +779,7 @@ public class Util
 		return sb.toString();
 	}
 
-	/** returns file's extension, and null if it has no extension */
+	/** returns file's extension, and null if it has no extension. Extension has be < MAX_EXTENSION_LENGTH chars */
 	public static String getExtension(String filename)
 	{
 		if (filename == null)
@@ -784,8 +787,7 @@ public class Util
 
 		int idx = filename.lastIndexOf(".");
 		int MAX_EXTENSION_LENGTH = 6;
-		if (idx > 0) // note: > not >= if filename starts with ., its not
-						// considered an extension
+		if (idx > 0) // note: > not >= if filename starts with ., its not considered an extension
 		{
 			int ext_length = filename.length() - idx;
 			if (ext_length > 0 && ext_length < MAX_EXTENSION_LENGTH)
@@ -877,6 +879,36 @@ public class Util
 		return result;
 	}
 
+	public static List<String> tokenizeAlphaChars(String s)
+	{
+		List<String> result = new ArrayList<String>();
+		if (Util.nullOrEmpty(s))
+			return result;
+
+		int startIdx = -1;
+		char[] chars = s.toCharArray();
+		boolean inWord = false;
+		for (int i = 0; i < chars.length; i++)
+		{
+			boolean isAlphabetic = Character.isAlphabetic(chars[i]);
+
+			if (isAlphabetic && !inWord) {
+				inWord = true;
+				startIdx = i;
+			}
+			// if alphabetic and inWord, nothing to be done
+			if (!isAlphabetic && inWord) {
+				result.add(s.substring(startIdx, i)); // i will not be included
+			}
+
+			inWord = isAlphabetic;
+		}
+		if (inWord)
+			result.add(s.substring(startIdx));
+
+		return result;
+	}
+
 	public static Collection<String> breakIntoParas(String input) throws IOException
 	{
 		List<String> paras = new ArrayList<String>();
@@ -919,13 +951,6 @@ public class Util
 		ASSERT(ellipsizeKeepingExtension("Harold I. Cammer to ED,.doc", 15).equals("Harold ...,.doc"));
 		ASSERT(ellipsizeKeepingExtension("ED to Harold I. Cammer.doc", 15).equals("ED to H...r.doc"));
 		ASSERT(ellipsizeKeepingExtension("permission creeley.doc", 15).equals("permiss...y.doc"));
-	}
-
-	public static void main1(String args[])
-	{
-		testEllipsizeKeepingExtension();
-		testGetExtension();
-		System.out.println("Tests passed ok");
 	}
 
 	/**
@@ -1193,8 +1218,7 @@ public class Util
 		GregorianCalendar c = new GregorianCalendar();
 		c.setTime(start);
 		int startMonth = c.get(Calendar.MONTH);
-		int startYear = c.get(Calendar.YEAR);
-		int year = startYear;
+		int year = c.get(Calendar.YEAR);
 		int month = startMonth;
 
 		intervals.add(start);
@@ -1382,8 +1406,7 @@ public class Util
 		if (start > end)
 			return "";
 
-		String strippedStr = s.substring(start, end + 1);
-		return strippedStr;
+		return s.substring(start, end + 1);
 	}
 
 	// strips brackets from (...) and [...] if there are any
@@ -1606,7 +1629,32 @@ public class Util
 			warnIf(true, "Sorry, can't delete path because it doesn't even exist: " + path);
 	}
 
-	public static class MyFilenameFilter implements FilenameFilter {
+    static String cleanEmailStuff(String content){
+        content = content.replaceAll("(Email:|To:|From:|Date:|Subject: Re:|Subject:)\\W+","");
+        return content;
+    }
+
+    public static Set<String> getAcronyms(String content) {
+        if (content == null)
+            return null;
+        Pattern acronymPattern = Pattern.compile("[A-Z]{3,}");
+
+        content = cleanEmailStuff(content);
+
+        Set<String> acrs = new HashSet<String>();
+        Matcher m = acronymPattern.matcher(content);
+        while (m.find()) {
+            String acr = m.group();
+            String tt = FeatureGeneratorUtil.tokenFeature(acr);
+            if (!tt.equals("ac")) {
+                continue;
+            }
+            acrs.add(acr);
+        }
+        return acrs;
+    }
+
+    public static class MyFilenameFilter implements FilenameFilter {
 		private String	prefix, suffix; // suffix is optional
 
 		public MyFilenameFilter(String prefix) {
@@ -1621,12 +1669,9 @@ public class Util
 		public boolean accept(File dir, String name)
 		{
 			// String path = (dir.getAbsolutePath() + File.separator + name);
-			String path = name;
-			if (prefix != null && !path.startsWith(prefix))
+			if (prefix != null && !name.startsWith(prefix))
 				return false;
-			if (suffix != null && !path.endsWith(suffix))
-				return false;
-			return true;
+			return !(suffix != null && !name.endsWith(suffix));
 		}
 	}
 
@@ -1659,7 +1704,7 @@ public class Util
 	}
 
 	/** cleans up files in directory with the given suffix */
-	public static void deleteAllFilesWithSuffix(String dir, String suffix, Log log) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static void deleteAllFilesWithSuffix(String dir, String suffix, Log log) throws IOException, ClassNotFoundException
 	{
 		if (dir == null)
 			return;
@@ -1744,7 +1789,7 @@ public class Util
 		});
 	}
 
-	public static void main(String args[])
+	public static void main1(String args[])
 	{
 		System.out.println(edu.stanford.muse.ie.Util.getAcronym("UC Santa Barbara"));
 		test_tail();
@@ -2022,8 +2067,7 @@ public class Util
 			{
 				boolean acc = f[i].isAccessible();
 				if (!acc)
-					f[i].setAccessible(true); // ok to do in absence of a
-												// security manager
+					f[i].setAccessible(true); // ok to do in absence of a security manager
 
 				Class t = f[i].getType();
 				String name = f[i].getName();
@@ -2076,15 +2120,8 @@ public class Util
 								for (Object x : m.keySet())
 									map.put(name + "." + x, m.get(x) + "");
 						}
-						else if (java.util.Collection.class.isAssignableFrom(valClass)) // could
-																						// also
-																						// check
-																						// t,
-																						// but
-																						// val.getClass
-																						// is
-																						// more
-																						// specific
+                        // could also check t, but val.getClass is more specific
+						else if (java.util.Collection.class.isAssignableFrom(valClass))
 						{
 							Collection c1 = (Collection) f[i].get(o);
 							if (expand)
@@ -2503,7 +2540,7 @@ public class Util
 		oos.close();
 	}
 
-	public static Serializable readObjectFromFile(String filename) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static Serializable readObjectFromFile(String filename) throws IOException, ClassNotFoundException
 	{
 		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename));
 		Serializable s = (Serializable) ois.readObject();
@@ -2990,4 +3027,25 @@ public class Util
         }
     }
 
+	public static void testTokenizeAlphaChars() {
+		String[] tests = new String[]{"12abc xyz", "abc", "abc xyz12", "Dr. Prof. Doolit"};
+		for (String s : tests)
+		{
+			System.out.println ("--\n" + s);
+			List<String> result = Util.tokenizeAlphaChars(s);
+			for (String r: result)
+				System.out.println (r);
+		}
+	}
+
+	public static void test() {
+		testEllipsizeKeepingExtension();
+		testGetExtension();
+		System.out.println("Tests passed ok");
+		testTokenizeAlphaChars();
+	}
+
+	public static void main(String[] args){
+		test();
+    }
 }

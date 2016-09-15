@@ -21,7 +21,7 @@ Muse will generate a set of leads into the archive based on this text.
 <br/>
 
 <form id="folders" method="post" action="reflectText">
-<textarea name="refText" id="refText" cols="80" rows="30"></textarea>
+<textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="refText" id="refText" cols="80" rows="30"></textarea>
 <br/>
 <input style="margin-top: 5px" type="submit" name="Submit"></input>
 </form>

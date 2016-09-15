@@ -100,14 +100,15 @@ public class Contact extends UnionFindObject {
 				continue;
 			if (name.toLowerCase().indexOf("viagra") >= 0) // unfortunately, sometimes we see "names" such as "viagra official site"
 				continue;
-			if ("user".equals(name))
-				continue;
 			boolean twoOrMoreTokens = (new StringTokenizer(name).countTokens() > 1);
 			boolean capitalized = Character.isUpperCase(name.charAt(0));
 			boolean comma = name.indexOf(',') >= 0;
 			int score = (twoOrMoreTokens ? 100 : 0)
 					+ (capitalized ? 10:0)
 					- (comma ? 1:0);
+
+			score = score * 100;
+			score += name.length(); // prefer longer names, but only if most other things are equal.
 
 			if (score > bestScore)
 			{

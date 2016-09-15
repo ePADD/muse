@@ -1,20 +1,20 @@
 package edu.stanford.muse;
 
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.util.Version;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Properties;
 
 public class Config {
 	public static Log log = LogFactory.getLog(Config.class);
 
-	// we may want to set this differently when running as muse vs. epadd
-	public static String	SETTINGS_DIR		= System.getProperty("user.home") + File.separator + ("epadd".equalsIgnoreCase(Version.appName) ? "epadd-settings" : "muse-settings") + File.separator;
+	//Ideally Muse should not even have the concept of settings file, by default everything should be in the WEB-INF
+	public static String	SETTINGS_DIR		= System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
 	public static String	FAST_FILE = SETTINGS_DIR + "cnameToFASTPersons.db.gz";
 
 	public static String	NER_MODEL_FILE, WORD_FEATURES;
@@ -57,13 +57,37 @@ public class Config {
 		WORD_FEATURES		= props.getProperty("WORD_FEATURES", "WordFeatures.ser");
 
 		// set the int features
-		try { MAX_ENTITY_FEATURES = Integer.parseInt(props.getProperty("MAX_ENTITY_FEATURES")); } catch (Exception e) { }
-		try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(props.getProperty("MAX_TRY_TO_RESOLVE_NAMES")); } catch (Exception e) { }
-		try { MAX_DOCS_PER_QUERY = Integer.parseInt(props.getProperty("MAX_DOCS_PER_QUERY")); } catch (Exception e) { }
+		String s = props.getProperty("MAX_ENTITY_FEATURES"); if (s != null) { try { MAX_ENTITY_FEATURES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
+		s = props.getProperty("MAX_TRY_TO_RESOLVE_NAMES"); if (s != null) { try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
+		s = props.getProperty("MAX_DOCS_PER_QUERY"); if (s != null) { try { MAX_DOCS_PER_QUERY = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
 
-		String s = props.getProperty("OPENNLP_NER");
+		s = props.getProperty("OPENNLP_NER");
 		if (!Util.nullOrEmpty(s))
 			OPENNLP_NER = Boolean.parseBoolean(s);
 	}
 
+	/** reads a resource with the given offset path. Path components are always separated by forward slashes, just like resource paths in Java.
+	 * First looks in settings folder, then on classpath (e.g. inside war).
+	 * typically for the */
+	public static InputStream getResourceAsStream(String path) {
+		File f = new File(SETTINGS_DIR + File.separator+ path.replaceAll("/", "\\"+File.separator));
+		if (f.exists()) {
+			if (f.canRead()) {
+				log.info ("Reading resource " + path + " from " + f.getAbsolutePath());
+				try {
+					InputStream is = new FileInputStream(f.getAbsoluteFile());
+					return is;
+				} catch (FileNotFoundException fnfe) {
+					Util.print_exception(fnfe, log);
+				}
+			}
+			else
+				log.warn ("Sorry, file exists but cannot read it: " + f.getAbsolutePath());
+		}
+
+		InputStream is = Config.class.getClassLoader().getResourceAsStream(path);
+		if (is == null)
+			log.warn ("UNABLE TO READ RESOURCE FILE: " + path);
+		return is;
+	}
 }

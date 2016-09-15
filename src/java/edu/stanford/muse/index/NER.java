@@ -27,7 +27,6 @@ import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
-import opennlp.tools.util.InvalidFormatException;
 import opennlp.tools.util.Span;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -40,9 +39,10 @@ import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 /**OpenNLP NER
- * @see edu.stanford.muse.ner.NER */
-@Deprecated
-public class NER {
+ * @see edu.stanford.muse.ner.NER
+ * @deprecated because it is not used any more
+ */
+@Deprecated public class NER {
 	public static Log								log						= LogFactory.getLog(NER.class);
 	public static boolean							REMOVE_I18N_CHARS		= false;
 
@@ -172,15 +172,15 @@ public class NER {
 		log.info("Initializing NER models");
 
         try {
-            InputStream pis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-person.bin");
+            InputStream pis = Config.getResourceAsStream("models/en-ner-person.bin");
             TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
             pFinder = new NameFinderME(pmodel);
 
-            InputStream lis = NER.class.getClassLoader().getResourceAsStream("models/en-ner-location.bin");
+            InputStream lis = Config.getResourceAsStream("models/en-ner-location.bin");
             TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
             lFinder = new NameFinderME(lmodel);
 
-            InputStream ois = NER.class.getClassLoader().getResourceAsStream("models/en-ner-organization.bin");
+            InputStream ois = Config.getResourceAsStream("models/en-ner-organization.bin");
             TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
             oFinder = new NameFinderME(omodel);
         }
@@ -189,11 +189,11 @@ public class NER {
             Util.print_exception(e, log);
         }
         try {
-            InputStream modelIn = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+            InputStream modelIn = Config.getResourceAsStream("models/en-sent.bin");
             SentenceModel model = new SentenceModel(modelIn);
             sFinder = new SentenceDetectorME(model);
 
-            InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("models/en-token.bin");
+            InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
             TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
             tokenizer = new TokenizerME(modelTokenizer);
         }catch(Exception e){
@@ -570,7 +570,6 @@ public class NER {
 		}
 		assert (termFreqMap.isEmpty());
 
-		List<Pair<String, Float>> list = Util.sortMapByValue(orgTermFreqMap);
 		/*
 		 * for(Pair<String,Float> entity: list){
 		 * if(!namesAdded.contains(entity.getFirst())){
@@ -586,7 +585,7 @@ public class NER {
 		 */
 		//	for (Pair<String, Integer> p: list)
 		//		log.info (p.getFirst() + " (" + p.getSecond() + " occurrence(s))");
-		return list;
+		return Util.sortMapByValue(orgTermFreqMap);
 	}
 
 	// classifier.classifyToCharacterOffsets() is compute intensive
@@ -687,9 +686,9 @@ public class NER {
 
 	static int	count	= 0, hitCount = 0;
 
-	public static void printSentencesWithWords(String text, Set<String> wordsToSearch) throws InvalidFormatException, IOException
+	public static void printSentencesWithWords(String text, Set<String> wordsToSearch) throws IOException
 	{
-		//		InputStream SentStream = NER.class.getClassLoader().getResourceAsStream("models/en-sent.bin");
+		//		InputStream SentStream = Config.getResourceAsStream("models/en-sent.bin");
 		//		SentenceModel model = sFinder; // new SentenceModel(SentStream);
 		//		SentenceDetectorME sentenceDetector = new SentenceDetectorME(model);
 		String[] splitTexts = sFinder.sentDetect(text); // sentenceDetector.sentDetect(text);
@@ -727,13 +726,13 @@ public class NER {
 			System.out.println ("-----");
 			*/
 
-            InputStream pis = NER.class.getClassLoader().getResourceAsStream("en-ner-person.bin");
+            InputStream pis = Config.getResourceAsStream("en-ner-person.bin");
             TokenNameFinderModel pmodel = new TokenNameFinderModel(pis);
-            InputStream lis = NER.class.getClassLoader().getResourceAsStream("en-ner-location.bin");
+            InputStream lis = Config.getResourceAsStream("en-ner-location.bin");
             TokenNameFinderModel lmodel = new TokenNameFinderModel(lis);
-            InputStream ois = NER.class.getClassLoader().getResourceAsStream("en-ner-organization.bin");
+            InputStream ois = Config.getResourceAsStream("en-ner-organization.bin");
             TokenNameFinderModel omodel = new TokenNameFinderModel(ois);
-            InputStream tokenStream = NER.class.getClassLoader().getResourceAsStream("en-token.bin");
+            InputStream tokenStream = Config.getResourceAsStream("en-token.bin");
             TokenizerModel modelTokenizer = new TokenizerModel(tokenStream);
             TokenizerME tokenizer = new TokenizerME(modelTokenizer);
             Span[] tokSpans = tokenizer.tokenizePos(s); // Util.tokenize(s).toArray(new String[0]);
@@ -789,7 +788,7 @@ public class NER {
 			//Random randnum = new Random();
 			Indexer li = archive.indexer;
 			for (String dId : dIds) {
-				Document doc = (Document) archive.docForId(dId);
+				Document doc = archive.docForId(dId);
 				org.apache.lucene.document.Document ldoc = li.getDoc(doc);
 				System.err.println(ldoc.getBinaryValue("names_offsets"));
 				//System.err.println(ldoc.get("body_redacted"));

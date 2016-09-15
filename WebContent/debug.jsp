@@ -1,11 +1,8 @@
 <%@page contentType="text/html; charset=UTF-8"%>
 <%@page language="java" import="java.util.*"%>
 <%@page language="java" import="java.io.*"%>
-<%@page language="java" import="edu.stanford.muse.index.*"%>
-<%@page language="java" import="edu.stanford.muse.email.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.webapp.*"%>
-<%@page language="java" import="org.json.*"%>
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
@@ -55,19 +52,19 @@ We are sorry you encountered a problem with Muse.
 Submitting this report back to Stanford will help us fix it.<br/>
 
 <div id="submitFormDiv">
-    <input type="hidden" name="to" value="hangal@cs.stanford.edu"></input>
+    <input type="hidden" name="to" value="hangal@cs.stanford.edu"/>
 	<p>
-	<input id="submitter" style="background-color: #FAFFBD" type="text" value="" placeholder="your email address (optional)" size="40"></input><br/><br/>
-	<input style="font-size:24px" type="button" value="Submit" onclick="javascript:sendDebugInfo()"></input>
+	<input id="submitter" style="background-color: #FAFFBD" type="text" value="" placeholder="your email address (optional)" size="40"/><br/><br/>
+	<input style="font-size:24px" type="button" value="Submit" onclick="javascript:sendDebugInfo()"/>
 	<p>
 	<!--
 	What were you trying to do when you encountered an error?<br/> 
-	<textarea style="background-color: #FAFFBD" id="context" value="" rows="4" cols="52"></textarea>
+	<textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="background-color: #FAFFBD" id="context" value="" rows="4" cols="52"></textarea>
   	-->			
 	</form>
 </div>
 <hr style="color:rgba(0,0,0,0.2)"/>
-<b>Muse version <%=Version.num %> <%=Version.buildInfo%></b>
+<b>Muse version <%=Version.version %> <%=Version.buildInfo%></b>
 <p/>
 
 <% if (ModeConfig.isMultiUser()) { return; } %>

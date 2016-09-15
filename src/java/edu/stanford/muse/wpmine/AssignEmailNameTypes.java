@@ -1,22 +1,11 @@
 package edu.stanford.muse.wpmine;
 
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.LineNumberReader;
-import java.io.PrintStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-
 import com.google.gson.Gson;
+import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.JSPHelper;
+
+import java.io.*;
+import java.util.*;
 
 public class AssignEmailNameTypes {
 
@@ -90,7 +79,7 @@ public class AssignEmailNameTypes {
 			StringTokenizer st = new StringTokenizer(line, "|");
 			String title = st.nextToken().trim().replaceAll(" ", "_");
 			int times = 0;
-			try { times = Integer.parseInt(st.nextToken().trim()); } catch (Exception e)  { }
+			try { times = Integer.parseInt(st.nextToken().trim()); } catch (NumberFormatException e)  {Util.print_exception(e, JSPHelper.log); }
 			Info I = new Info(title);
 			I.times = times;
 			I.snippet = "";

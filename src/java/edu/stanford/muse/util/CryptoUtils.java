@@ -16,23 +16,17 @@
 package edu.stanford.muse.util;
 
 
-import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.LineNumberReader;
-import java.io.ObjectInputStream;
-import java.io.StringReader;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.List;
+import edu.stanford.muse.memory.MemoryStudy;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.PBEParameterSpec;
-
-import edu.stanford.muse.memory.MemoryStudy;
+import java.io.*;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CryptoUtils {
 	 private static final byte[] salt = {
@@ -44,7 +38,7 @@ public class CryptoUtils {
 	 static {
 		 pw = System.getProperty("encpw");
 		 if (Util.nullOrEmpty(pw))
-			 pw = "ga104tes";
+			 pw = "something";
 	 }
 	 private static Cipher getCipher(int mode) throws GeneralSecurityException
 	 {
@@ -112,18 +106,41 @@ public class CryptoUtils {
 
 	public static void main (String[] args) throws Exception
 	{		 
-		//writeEncryptedBytes("String to encode".getBytes("utf-8"), "/tmp/TEST");
+//		//writeEncryptedBytes("String to encode".getBytes("utf-8"), "/tmp/TEST");
 		String file = (args.length == 0) ? "/tmp/TEST" : args[0];
-		
+		System.err.println("Decrypting...");
+
+		// note: we could be decrypting 2 different types of files here
+		// the users file is a serialized object
+		// the questions.final is a text file, with a bunch of CSV lines
 		byte b[] = readEncryptedBytes(file);
 		// for users file only, toString the contents
-		if (file.endsWith("users")) {
+		if (file.endsWith("users")) { // FRAGILE Warning: this depends on MemoryStudy.USERS_FILE
 			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(b));
+
 			List<MemoryStudy.UserStats> users = (List<MemoryStudy.UserStats>) ois.readObject();
-			for (int i = 0; i < users.size(); i++)
-				System.out.println (i + ". " + Util.fieldsToString(users.get(i)));
+			System.err.println("#users=" + users.size());
+			for (int i = 0; i < users.size(); i++) {
+				Pair<String, String> p = Util.fieldsToCSV(users.get(i), true);
+				if (i == 0)
+					System.out.println(p.getFirst()); // all the keys, for first user only
+				System.out.println(p.getSecond()); // the values for this
+			}
 		}
-		else // otherwise, toString as a string
-			System.out.println (new String(b, "UTF-8"));
+//		else // otherwise, toString as a string
+//			System.out.println (new String(b, "UTF-8"));
+
+		else {
+			try {
+				byte[] bytes = readEncryptedBytes(file);
+				// the questions.final is a text file, with a bunch of CSV lines, so just write them out.
+				LineNumberReader lr = new LineNumberReader(new InputStreamReader(new ByteArrayInputStream(bytes)));
+				String line;
+				while ((line = lr.readLine()) != null)
+					System.out.println(line);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 }

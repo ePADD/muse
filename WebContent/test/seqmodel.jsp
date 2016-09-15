@@ -1,18 +1,21 @@
-<%@ page import="java.io.File" %>
-<%@ page import="java.io.IOException" %>
-<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
-<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
-<%@ page import="java.io.FileWriter" %>
-<%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.util.*" %>
-<%@ page import="java.util.regex.Pattern" %>
-<%@ page import="java.util.regex.Matcher" %>
-<%@ page import="opennlp.tools.util.featuregen.FeatureGeneratorUtil" %>
 <%@ page import="edu.stanford.muse.index.EmailDocument" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.model.SequenceModel" %>
+<%@ page import="edu.stanford.muse.util.NLPUtils" %>
+<%@ page import="edu.stanford.muse.util.Pair" %>
+<%@ page import="edu.stanford.muse.util.Triple" %>
+<%@ page import="edu.stanford.muse.util.Util" %>
+<%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
+<%@ page import="opennlp.tools.util.featuregen.FeatureGeneratorUtil" %>
 <%@ page import="org.json.JSONArray" %>
+<%@ page import="java.io.File" %>
+<%@ page import="java.io.FileWriter" %>
+<%@ page import="java.io.IOException" %>
+<%@ page import="java.util.*" %>
+<%@ page import="java.util.regex.Matcher" %>
+<%@ page import="java.util.regex.Pattern" %>
 <%--<%@ page import="edu.stanford.nlp.ling.CoreLabel" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ie.crf.CRFClassifier" %>--%>
 <%--<%@ page import="edu.stanford.nlp.ie.AbstractSequenceClassifier" %>--%>
@@ -282,7 +285,7 @@
     if(nerModel == null) {
         System.err.println("Loading model...");
         try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
+            nerModel = SequenceModel.loadModel(modelFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -292,7 +295,7 @@
     }
 
     try {
-            nerModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
+            SequenceModel.fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "features.dump"));
     } catch (Exception e) {
             e.printStackTrace();
     }
@@ -301,20 +304,7 @@
     int si=0;
     int MAX_SENT = 10000;
     Map<Short,Map<String,Double>> found = new LinkedHashMap<>();
-    Map<Short,String> desc = new LinkedHashMap<>();
-    desc.put(FeatureDictionary.PERSON,"PERSON");desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.BUILDING,"BUILDING");
-        desc.put(FeatureDictionary.DISEASE,"DISEASE");desc.put(FeatureDictionary.PLACE,"PLACE");desc.put(FeatureDictionary.RIVER,"RIVER");
-        desc.put(FeatureDictionary.ROAD,"ROAD");desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");
-        desc.put(FeatureDictionary.MOUNTAIN,"MOUNTAIN");desc.put(FeatureDictionary.AIRPORT,"AIRPORT");desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION");
-        desc.put(FeatureDictionary.NEWSPAPER,"NEWSPAPER");desc.put(FeatureDictionary.ACADEMICJOURNAL,"ACADEMICJOURNAL");
-        desc.put(FeatureDictionary.MAGAZINE,"MAGAZINE");desc.put(FeatureDictionary.POLITICALPARTY,"PARTY");
-        desc.put(FeatureDictionary.ISLAND,"ISLAND");desc.put(FeatureDictionary.MUSEUM,"MUSEUM");desc.put(FeatureDictionary.BRIDGE,"BRIDGE");
-        desc.put(FeatureDictionary.AIRLINE,"AIRLINE");desc.put(FeatureDictionary.NPORG,"NPORG");desc.put(FeatureDictionary.GOVAGENCY,"GOVAGENCY");
-        desc.put(FeatureDictionary.SHOPPINGMALL,"SHOPPINGMALL");desc.put(FeatureDictionary.HOSPITAL,"HOSPITAL");desc.put(FeatureDictionary.POWERSTATION,"POWERSTATION");
-        desc.put(FeatureDictionary.AWARD,"AWARD");desc.put(FeatureDictionary.TRADEUNIN,"UNION");desc.put(FeatureDictionary.PARK,"PARK");
-        desc.put(FeatureDictionary.HOTEL,"HOTEL");desc.put(FeatureDictionary.THEATRE,"THEATRE");desc.put(FeatureDictionary.LEGISTLATURE,"LEGISTLATURE");
-        desc.put(FeatureDictionary.LIBRARY,"LIBRARY");desc.put(FeatureDictionary.LAWFIRM,"LAWFIRM");desc.put(FeatureDictionary.MONUMENT,"MONUMENT");
-        desc.put(FeatureDictionary.EVENT, "EVENT");
+    Map<Short,String> desc = FeatureDictionary.desc;
         long start_time = System.currentTimeMillis();
     Map<String,Info> infos = new LinkedHashMap<>();
     for(Document doc: docs) {
@@ -370,13 +360,7 @@
     }
     System.err.println("Done in: "+(System.currentTimeMillis()-start_time));
     //ordered according to what I think is doing best
-    Short[] otypes = new Short[]{FeatureDictionary.AWARD, FeatureDictionary.BUILDING, FeatureDictionary.ROAD,FeatureDictionary.DISEASE, FeatureDictionary.EVENT,
-            FeatureDictionary.UNIVERSITY, FeatureDictionary.LIBRARY, FeatureDictionary.MUSEUM, FeatureDictionary.ORGANISATION, FeatureDictionary.NEWSPAPER, FeatureDictionary.PERSON, FeatureDictionary.COMPANY,
-            FeatureDictionary.ACADEMICJOURNAL, FeatureDictionary.AIRPORT, FeatureDictionary.LAWFIRM, FeatureDictionary.LEGISTLATURE, FeatureDictionary.MAGAZINE,
-            FeatureDictionary.POLITICALPARTY,
-            FeatureDictionary.HOSPITAL,FeatureDictionary.HOTEL, FeatureDictionary.THEATRE, FeatureDictionary.PLACE, FeatureDictionary.ISLAND,
-            FeatureDictionary.BRIDGE,FeatureDictionary.GOVAGENCY,FeatureDictionary.NPORG, FeatureDictionary.MONUMENT,
-            FeatureDictionary.SHOPPINGMALL, FeatureDictionary.THEATRE, FeatureDictionary.TRADEUNIN, FeatureDictionary.MILITARYUNIT, FeatureDictionary.RIVER, FeatureDictionary.PARK};
+    Short[] otypes = FeatureDictionary.allTypes;
     String shtml = "Select type: <select name='type' onchange='change()'>";
     for(Short type: otypes){
         shtml += "<option value='"+type+"'>"+desc.get(type)+"</option>";

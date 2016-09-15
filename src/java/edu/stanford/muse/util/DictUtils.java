@@ -7,12 +7,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.Reader;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
+import edu.stanford.muse.Config;
+import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -34,48 +33,54 @@ public class DictUtils {
 	public static Set<String>	tabooNames		= new LinkedHashSet<String>();			// this will be ignored by NER
 
 	public static Set<String>	bannedWordsInPeopleNames	= new HashSet<String>(), bannedStringsInPeopleNames = new HashSet<String>();	// bannedWords => discrete word; bannedStrings => occurs anywhere in the name
+	public static Set<String>	bannedStartStringsForEmailAddresses = new HashSet<String>();
 	static Set<String>			joinWords					= new HashSet<String>();														// this will be ignored for the indexing
 	private static final String	COMMENT_STRING				= "#";
 
 	static {
+		initialize();
+	}
+
+	/** initializes all lists in DictUtils. kept public so it can be called from JSPs for quick debugging */
+	public static void initialize() {
 		try {
-			InputStream is = DictUtils.class.getClassLoader().getResourceAsStream("join.words");
+			InputStream is = Config.getResourceAsStream("join.words");
 			if (is != null) {
 				joinWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("stop.words");
+			is = Config.getResourceAsStream("stop.words");
 			if (is != null) {
 				stopWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("dict.words");
+			is = Config.getResourceAsStream("dict.words");
 			if (is != null) {
 				commonDictWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("dict.words.full");
+			is = Config.getResourceAsStream("dict.words.full");
 			if (is != null) {
 				fullDictWords = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("words.5000");
+			is = Config.getResourceAsStream("words.5000");
 			if (is != null) {
 				commonDictWords5000 = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("top-names");
+			is = Config.getResourceAsStream("top-names");
 			if (is != null) {
 				topNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("taboo-names");
+			is = Config.getResourceAsStream("taboo-names");
 			if (is != null) {
 				tabooNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
 				tabooNames.addAll(joinWords);
@@ -84,15 +89,24 @@ public class DictUtils {
 			}
 
 			// banned words and strings in people names (for address book, to avoid noisy names merging unrelated entities)
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedWordsInPeopleNames.txt");
+            // use getLinesFromInputStream because readStreamAndInternStrings() canonicalizes spaces between tokens and cannot handle special chars
+            // so info@ becomes "info @".
+            // instead, we want to read the line as is
+			is = Config.getResourceAsStream("bannedWordsInPeopleNames.txt");
 			if (is != null) {
-				bannedWordsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				bannedWordsInPeopleNames = new LinkedHashSet<>(Util.getLinesFromInputStream(is, true));
 				is.close();
 			}
 
-			is = DictUtils.class.getClassLoader().getResourceAsStream("bannedStringsInPeopleNames.txt");
+			is = Config.getResourceAsStream("bannedStringsInPeopleNames.txt");
 			if (is != null) {
-				bannedStringsInPeopleNames = readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
+				bannedStringsInPeopleNames = new LinkedHashSet<>(Util.getLinesFromInputStream(is, true));
+				is.close();
+			}
+
+			is = Config.getResourceAsStream("bannedStartStringsForEmailAddresses.txt");
+			if (is != null) {
+				bannedStartStringsForEmailAddresses = new LinkedHashSet<>(Util.getLinesFromInputStream(is, true));
 				is.close();
 			}
 
@@ -101,7 +115,12 @@ public class DictUtils {
 		}
 	}
 
-	/* General util method */
+	/* General util method. Reads lines from the given reader and ignores comment lines.
+	 * the rest of the lines are space canonicalized.
+	  * beware: don't give this anything that may have non-letters because it space-canonicalizes word tokens.
+	  * e.g. "info@" on an input line will get stored as "info @" in the returned strings
+	  * this has led to bugs.
+	  * */
 	public static Set<String> readStreamAndInternStrings(Reader r)
 	{
 		Set<String> result = new LinkedHashSet<String>();
@@ -255,5 +274,34 @@ public class DictUtils {
 	{
 		return commonDictWords.contains(canonicalizeTerm(term));
 	}
+
+    /**
+     * returns a case and space normalized version of the input
+     * returns null if the input does not look like an entity ie. when
+     * <ul>
+     *  <li>the entity starts with i/you</li>
+     *  <li>If the phrase contains only dictionary words</li>
+     * </ul>
+     * */
+    public static String canonicalize(String s) {
+        s = s.toLowerCase();
+        List<String> tokens = Util.tokenize(s);
+        tokens.removeAll(EnglishDictionary.stopWords);
+        if (Util.nullOrEmpty(tokens))
+            return null;
+
+        boolean allDict = true;
+        for (String t: tokens) {
+            if (t.startsWith("i'") || t.startsWith("you'")) // remove i've, you're, etc.
+                return null;
+            if (!(DictUtils.fullDictWords.contains(t)))
+                allDict = false;
+        }
+        if (allDict)
+            return null;
+
+        // sanity check all tokens. any of them has i' or you' or has a disallowed title, just bail out.
+        return Util.join(tokens, " ");
+    }
 
 }

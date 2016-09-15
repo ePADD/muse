@@ -11,7 +11,10 @@
 
 <%
 
-if (!MemoryStudy.anyCodesAvailable()) { 
+	boolean codesAvailable = false;
+	try { codesAvailable = MemoryStudy.anyCodesAvailable(); } catch (Exception e) { Util.print_exception (" Error checking for available codes!", e, JSPHelper.log); }
+
+if (!codesAvailable) {
 	MemoryStudy.UserStats stats = new MemoryStudy.UserStats();
 	stats.emailid = (String) session.getAttribute("screenPassEmail");
 	stats.gender = (String) session.getAttribute("gender");
@@ -24,12 +27,21 @@ if (!MemoryStudy.anyCodesAvailable()) {
 	JSPHelper.log.info("NOC: no more codes available");
 %>
 <html>
+<head>
+	<title>CELL screening</title>
+	<jsp:include page="css/css.jsp"/> <!-- required for styling status_div -->
+	<link rel="icon" href="../images/ashoka-favicon.gif">
+	<link rel="stylesheet" href="css/fonts.css" type="text/css" />
+	<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css" />
+</head>
 <body>
-<div style="margin:10%;font-size:12pt">
-Sorry, but all available codes have been used up.<br/>
-Please sign up for our mailing list 
-<a href="https://mailman.stanford.edu/mailman/listinfo/memorystudy" target="_blank" >here</a> to be notified about future studies.
-
+<div class="box">
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+	<br/>
+	Sorry, but all available codes have been used up.<br/>
+	Please email cell@ashoka.edu.in to be notified about future studies.
 </div>
 </body>
 </html>
@@ -38,29 +50,40 @@ Please sign up for our mailing list
 
 session.setAttribute("mode", "memorytest");
 String googleClientId = null;
-if(request.getLocalPort() == 8043) {
-	googleClientId = "1072171428245-72o4t2f53c1ksrnefnh6amofj6d7h4op.apps.googleusercontent.com"; // Client ID for development environment
-} else {
-	if (!"localhost".equals(request.getServerName()) /* this part for debugging only, when running on localhost but with server mode */
-	 	&& !JSPHelper.runningOnLocalhost(request))
-		googleClientId = "1072171428245-lj239vjtemn7cgstafptk0c46c20kgih.apps.googleusercontent.com"; // this is for the muse installed at https://muse.stanford.edu:8443/muse
-	else {
-		googleClientId = "1072171428245.apps.googleusercontent.com"; // this is for local host "1058011743827-t8e0fjt1btmujjesoaamgequ5utf4g77.apps.googleusercontent.com";	
+	if (request.getLocalPort() == 8043 || request.getLocalPort() == 8443 || request.getLocalPort() == 443) {
+		googleClientId = "1072171428245-72o4t2f53c1ksrnefnh6amofj6d7h4op.apps.googleusercontent.com"; // Client ID for mem study
+	} else {
+		if (!"localhost".equals(request.getServerName())) { /* this part for debugging only, when running on localhost but with server mode */
+			//&& !JSPHelper.runningOnLocalhost(request)) {
+			if (JSPHelper.runningOnMuseMachine(request)) {
+				googleClientId = "1072171428245-lj239vjtemn7cgstafptk0c46c20kgih.apps.googleusercontent.com"; // this is for the muse installed at https://muse.stanford.edu:8443/muse
+			}
+			//running on cell account at Ashoka
+			else if (JSPHelper.runningOnAshokaMachine(request)) {
+				if (request.getLocalPort() == 8443 || request.getLocalPort() == 443)
+					googleClientId = "988715773953-ok2lre2e7hekbst6iandervmao3o9gqh.apps.googleusercontent.com";
+				else
+					googleClientId = "8392513058-0oq4g55m7fhtgnqf8lrbhcgigfhuhmu4.apps.googleusercontent.com"; //for http://125.22.40.138:8080
+			}
+		} else {
+			googleClientId = "1072171428245.apps.googleusercontent.com"; // this is for local host "1058011743827-t8e0fjt1btmujjesoaamgequ5utf4g77.apps.googleusercontent.com";
+		}
 	}
-}
 %>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
   "http://www.w3.org/TR/html4/loose.dtd">
 <html lang="en">
 <head>
+	<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
+	<title>Screening</title>
+	<link rel="icon" href="images/ashoka-favicon.gif">
 
-<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
-<link rel="stylesheet" href="memorystudy/css/screen.css" type="text/css" />
-<meta http-equiv="Content-type" content="text/html;charset=UTF-8" />
-<link rel="icon" href="memorystudy/images/stanford-favicon.gif">
-<jsp:include page="css/css.jsp"/>
-<title>Screening</title>
-<script type="text/javascript" src="js/jquery/jquery.js"></script>
+	<link href="css/jquery.jgrowl.css" rel="stylesheet" type="text/css"/>
+	<link rel="stylesheet" href="css/fonts.css" type="text/css" />
+	<jsp:include page="css/css.jsp"/> <!-- required for styling status_div -->
+	<link rel="stylesheet" href="memorystudy/css/memory.css" type="text/css" />
+
+	<script type="text/javascript" src="js/jquery/jquery.js"></script>
 <script type="text/javascript" src="js/jquery.safeEnter.1.0.js"></script>
 <script type="text/javascript" src="js/jquery.jgrowl_minimized.js"></script>
 <script src="https://apis.google.com/js/client.js"></script>
@@ -104,9 +127,16 @@ $(document).ready(function() {
  -->
 <%@include file="div_status.jsp"%>
  
-<body class="graded"> 
+<body class="graded">
+<div class = "box" style="font-size:11pt">
+	<img style="position:absolute;top:5px;width:50px" title="Ashoka University" src="images/ashoka-logo.png"/>
+	<h1 style="text-align:center;font-weight:normal;font-variant:normal;text-transform:none;font-family:Dancing Script, cursive">Cognitive Experiments with Life-Logs</h1>
+	<hr style="color:rgba(0,0,0,0.2);background-color:rgba(0,0,0,0.2);"/>
+	<br/>
+	<h2 class="title">Check your Eligibility</h2>
 
-<%
+
+	<%
 session.setMaxInactiveInterval(-1);
 String linkAfterLoadSession = ("search".equals(JSPHelper.getSessionAttribute(session, "mode"))) ? "createEmailLinksCSE.jsp" : "info";
 
@@ -168,7 +198,7 @@ function accountTypeChanged(e)
 		var $spinner = $('<img id="spinner' + idx + '" src="images/spinner-white.gif" width="15" style="margin-left:10px;visibility:hidden"><br/>');
 		$login_fields.append($login).append($password).append($spinner);
 		if ('live' == type) {
-			var $message = $('<div id="message' + idx + '" style="font-style: italic">Only Inbox is accessible for Hotmail <br/>(<a href="help.jsp#hotmail">More</a>)</div>');	
+			var $message = $('<div id="message' + idx + '" style="font-style: italic">Only Inbox is accessible for Hotmail <br/>(<a href="help.jsp#hotmail">More</a>)</div>');
 			$login_fields.append($message);
 		}
 	}
@@ -186,10 +216,6 @@ function accountTypeChanged(e)
 
 <div id="main"> <!--  style="margin-top:100px;position:relative;width:1000px;overflow:hidden" -->
 
-<h1 style="color:#ffffff; text-align:center">Check your Eligibility <!-- font-style:italic; -->
- </h1>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<p>
 
 
 
@@ -201,8 +227,8 @@ if (!Util.nullOrEmpty(error))
 	<% session.removeAttribute("loginErrorMessage");
 }
 %>
-<div class = "boxorange" style="font-size:11pt">
-We will now run a quick screening check to ensure that you are eligible for the study.
+	<br/>
+	We will now run a quick screening check to ensure that you are eligible for the study.
 This should only take a minute or two.
 <p>
 <div class="login-account">
@@ -235,7 +261,7 @@ This should only take a minute or two.
 <input type ="button" id="gobutton" onclick="javascript:muse.do_logins()" style="font-size:large" value="Check eligibility">
 <input type="hidden" name="simple" value="true"/>
 <br/>
-</div> <!-- boxorange -->
+</div> <!-- box -->
 
 
 <div style="clear:both"></div>

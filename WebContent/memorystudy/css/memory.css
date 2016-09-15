@@ -1,25 +1,69 @@
-body{
-	font-family:"Trebuchet MS", sans-serif;
-	background-image: url('../images/tweed_muse.png');
-	font-size :14pt;
+
+
+html, body, h1, div, fieldset, legend, ol, li {
+	margin: 0;
+	padding: 0;
 }
-h1{
+
+body {
+	background-color: #082041; /*#faf6e3;*/
+	color: #ffffff;
+	font-size: 16px;
+	padding: 20px;
+	font-family: "Open Sans", "Trebuchet MS", sans-serif;
+}
+
+
+h1 {
 	font-size :28px;
 	margin-bottom: 20px;
 }
-p.bold{font-weight:bold;}
-body.consent{
-    font-family: 'Raleway', "Futura", "Trebuchet MS", sans-serif;
+
+h2.title {
+	font-weight:normal;
+	font-size:24px;
+	text-align:center;
+	text-transform: none;
+	font-family: inherit;
+	color:black;
 }
+
+p.bold{font-weight:bold;}
+
 hr {
   border: 0;
   width: 80%;
   color: #f00;
-  background-color:#909090;
   height: 2px;
 }
 
-.box{
+.center {
+	text-align:center;
+}
+
+p.bold{font-weight:bold;}
+
+hr {
+	border: 0;
+	width: 80%;
+	color: #f00;
+	background-color:#909090;
+	height: 2px;
+}
+
+.heading{
+	position: absolute;
+	left: 20%;
+	top: 5%;
+	width: 60%;
+	height:auto;
+}
+
+.box {
+	position: absolute;
+	min-width:900px;
+	color: black;
+	background-color: #faf6e3;
 	width: 60%;
 	height: auto;
 	display: block;
@@ -29,23 +73,232 @@ hr {
 	margin-bottom:auto;
 	border-style: solid;
 	border-width:5px;
-	border-color:#63AF96;
+	border-color:#bbb; /* #63AF96; */
 	border-radius: 3px;
 	padding-top:10px;
 	padding-bottom:10px;
 	padding-left:10px;
 	padding-right:10px;
 	z-index:15;
-	background: #ffffff;
 	text-align: left;
+	padding: 20px;
+	position: relative;
 }
-.title{
-	color:#ffffff;
-	/*position:absolute;*/
-	text-align:center;
-	font-family: "Myriad Pro", Courier, Arial, sans-serif;
-	font-variant: small-caps;
+
+.hintwait{
+	display:none;
 }
-.center{
-	text-align:center;
+
+.hint-letter { color: red; }
+
+input[type="button"], button {
+	background: #484848;
+	border: none;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	-khtml-border-radius: 5px;
+	border-radius: 5px;
+	color: #ffffff;
+	display: block;
+	font: 18px Georgia, "Times New Roman", Times, serif;
+	letter-spacing: 1px;
+	/*margin: auto;*/
+	text-shadow: 0 1px 1px #000000;
+	text-transdiv: uppercase;
+	margin:auto;
+	padding: 7px 25px;
 }
+
+input[type="button"]:hover{
+	background: #a70e13; /* #33aa33; /* #63AF96; */
+	cursor: pointer;
+}
+
+input[type="button"]:active {
+	position: relative;
+	top: 1px;
+	background: #a70e13;
+}
+
+input[type="text"]{
+	margin: auto;
+	border-style:solid;
+	border-width:2px;
+	border-color: #082041;
+	background: #082041;
+	overflow: visible;
+	color: white;
+	border-radius: 4px;
+	font: 18px "Trebuchet MS", sans-serif;
+	letter-spacing: 1px;
+	width :200px;
+	outline :none;
+	height: 20px;
+	border:1px solid #ccc;
+	-webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+	box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+	-webkit-transition: border linear .2s,box-shadow linear .2s;
+	transition: border linear .2s,box-shadow linear .2s;
+	padding: 7px;
+}
+
+input[type="text"]:focus{
+	outline: none;
+	border-color: #9ecaed;
+	box-shadow: 0 0 10px #9ecaed;
+	border:1px solid #ccc;
+	-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,0.075);
+	-moz-box-shadow:inset 0 1px 1px rgba(0,0,0,0.075);
+	box-shadow:inset 0 1px 1px rgba(0,0,0,0.075);
+	-webkit-transition:border linear .2s,box-shadow linear .2s;
+	-moz-transition:border linear .2s,box-shadow linear .2s;
+	-o-transition:border linear .2s,box-shadow linear .2s;
+	transition:border linear .2s,box-shadow linear .2s;
+	/*    border-color:rgba(82,168,236,0.8); */
+	outline:0;
+	outline:thin dotted \9;
+	-webkit-box-shadow:inset 0 1px 1px rgba(0,0,0,0.075),0 0 8px rgba(82,168,236,0.6);
+	-moz-box-shadow:inset 0 1px 1px rgba(0,0,0,0.075),0 0 8px rgba(82,168,236,0.6);
+	box-shadow:inset 0 1px 1px rgba(0,0,0,0.075),0 0 8px rgba(82,168,236,0.6)
+}
+
+input[type=range] {
+	/*removes default webkit styles*/
+	-webkit-appearance: none;
+	width: 350px;
+	height:20px;
+	position: relative;
+	background-color: transparent;
+}
+input[type=range]::-webkit-slider-runnable-track {
+	width: 350px;
+	height: 3px;
+	background: black;
+	border: none;
+	border-radius: 3px;
+}
+input[type=range]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	border: none;
+	height: 18px;
+	width: 18px;
+	border-radius: 50%;
+	background: #a70e13;
+	margin-top: -4px;
+}
+input[type=range]:focus {
+	outline: none;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+	background: #ccc;
+}
+
+input[type=range]::-moz-range-track {
+	width: 350px;
+	height: 3px;
+	background: black;
+	border: none;
+	border-radius: 3px;
+	/**For the tick marks, a hack around for FF http://stackoverflow.com/questions/26612700/ticks-for-type-range-html-input*/
+	background: repeating-linear-gradient(to right,
+	#ccc,
+	#ccc 5%,
+	#000 5%,
+	#000 6%,
+	#ccc 6%,
+	#ccc 10%);
+}
+input[type=range]::-moz-range-thumb {
+	border: none;
+	height: 18px;
+	width: 18px;
+	border-radius: 50%;
+	background: #a70e13;
+}
+
+/*hide the outline behind the border*/
+input[type=range]:-moz-focusring{
+	outline: none;
+}
+
+button:hover {
+	background: #a70e13; /* #33aa33; /* #63AF96; */
+	cursor: pointer;
+}
+
+.smaller{
+	font-size: 1em;
+}
+
+.questiontext{
+	font-size: 18px;
+}
+
+.answer { color: royalblue;}
+
+.question:before, .question:after
+{
+	z-index: -1;
+	position: absolute;
+	content: "";
+	bottom: 15px;
+	left: 10px;
+	width: 50%;
+	top: 80%;
+	max-width:300px;
+	background: #777;
+	-webkit-box-shadow: 0 10px 10px #777;
+	-moz-box-shadow: 0 15px 10px #777;
+	box-shadow: 0 10px 10px #777;
+	-webkit-transform: rotate(-3deg);
+	-moz-transform: rotate(-3deg);
+	-o-transform: rotate(-3deg);
+	-ms-transform: rotate(-3deg);
+	transform: rotate(-3deg);
+}
+
+.question:after
+{
+	-webkit-transform: rotate(3deg);
+	-moz-transform: rotate(3deg);
+	-o-transform: rotate(3deg);
+	-ms-transform: rotate(3deg);
+	transform: rotate(3deg);
+	right: 10px;
+	left: auto;
+}
+
+
+.question{
+	position:relative;
+	-webkit-box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+	-moz-box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+	box-shadow:0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+	padding:30px;
+	/* border: 1px dashed #000; */
+	color: royalblue;
+	background-color: #eee;
+	margin:auto;
+	width:90%;
+}
+
+
+
+fieldset { border: none;}
+ol { list-style-type: square;}
+
+.answer { letter-spacing: 3px; 	color: royalblue;}
+
+output { color: white; background-color: black; padding: 5px;}
+
+.styled-select select {
+	padding: 5px 0px 5px 5px;
+}
+
+.styled-select {
+	display:inline;
+}
+
+.introjs-tooltiptext { color: black; }
+
+.progress_bar { background-color: #a70e13;}

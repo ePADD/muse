@@ -52,14 +52,14 @@ If you would like access to future versions of Muse, please send email to hangal
 
 <div id="submitFormDiv">
     <form method="post" id="submitForm" action="http://prpl.stanford.edu/report/field_report.php">
-    <input type="hidden" name="to" value="hangal@cs.stanford.edu"></input>
-	<input type="button" value="Submit" onclick="javascript:sendDebugInfo()"></input> these statistics back to Stanford.
+    <input type="hidden" name="to" value="hangal@cs.stanford.edu"/>
+	<input type="button" value="Submit" onclick="javascript:sendDebugInfo()"/> these statistics back to Stanford.
 	<p>
-	Your email address (optional) <input id="submitter" type="text" value="" size="40"></input>
+	Your email address (optional) <input id="submitter" type="text" value="" size="40"/>
 	</form>
 </div>
 
-<b>Muse version v<%=Version.num%></b><p/>
+<b>Muse version <%=Version.version%></b><p/>
 
 <p/> <p/> <p/> <p/>
     <%@page language="java" import="edu.stanford.muse.index.*"%>
@@ -87,7 +87,7 @@ if (allDocs != null) {
 <%
 if (archive != null && archive.indexer != null)
 {
-	String stats = archive.indexer.computeStats();
+	String stats = archive.getStats();
 	JSPHelper.log.info ("STATS: " + stats);
 	String htmlStats = stats.replace("\n", "<br/>\n");
 	out.println(htmlStats);

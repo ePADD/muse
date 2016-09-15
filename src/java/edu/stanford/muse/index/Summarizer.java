@@ -15,32 +15,18 @@
 */
 package edu.stanford.muse.index;
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.GregorianCalendar;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.store.LockObtainFailedException;
-
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.CalendarUtil;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 /** this is the class responsible for generating summaries (currently, in the form of cards). it is closely tied to the indexer.
  * mainly provides 2 features: recomputeCards() which does TFIDF scoring and populateCards, which uses the scores already computed 
@@ -110,7 +96,7 @@ public class Summarizer implements java.io.Serializable {
 	}
 
 	/** compute tf-idf based scores for a single multi-doc */
-	public synchronized void scoreNamesFromMultiDoc(edu.stanford.muse.index.MultiDoc mdoc) throws CorruptIndexException, LockObtainFailedException, IOException, GeneralSecurityException, ClassNotFoundException
+	public synchronized void scoreNamesFromMultiDoc(edu.stanford.muse.index.MultiDoc mdoc) throws IOException, GeneralSecurityException, ClassNotFoundException
 	{		
 		// create a list of all the names in this mdoc first
 		List<String> clusterNames = new ArrayList<String>();
@@ -353,7 +339,7 @@ public class Summarizer implements java.io.Serializable {
 	{
 		for (Map.Entry<Document, List<Posting>> entry: superdocToPostingsIndex.entrySet())
 		{
-			Document doc = (MultiDoc) entry.getKey();
+			Document doc = entry.getKey();
 			List<Posting> list = entry.getValue();
 			out.print("Document " + doc.description + ": ");
 			for (Posting p: list)

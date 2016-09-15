@@ -92,7 +92,7 @@ function addCategory()
 	if (name == null || name.length == 0)
 		return;
 	
-	var html = '<p><b>' + name + '</b> <br/> <textarea cols="120" rows="2" name="' + name + '" placeholder="Enter some words or phrases, separated by |">';
+	var html = '<p><b>' + name + '</b> <br/> <textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" cols="120" rows="2" name="' + name + '" placeholder="Enter some words or phrases, separated by |">';
 	$('#categories').append(html);
 	var areas = $('textarea');
 	areas[areas.length-1].focus();
@@ -178,7 +178,7 @@ if (captionToQueryMap != null)
 	%>
 	<p>
 	<b><%=sentiment%></b><br/>
-	<textarea style="padding:5px" cols="120" rows="<%=nRows%>" name="<%=sentiment%>" ><%=query%></textarea>
+	<textarea autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="padding:5px" cols="120" rows="<%=nRows%>" name="<%=sentiment%>" ><%=query%></textarea>
 	<% 
 	
 	}

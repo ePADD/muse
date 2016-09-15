@@ -32,7 +32,6 @@ import javax.servlet.http.HttpSession;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.util.*;
@@ -40,7 +39,7 @@ import java.util.*;
 /** class to manage sessions. sessions are stored as .session files in the baseDir/sessions (which itself is stored in the session). */
 public class Sessions {
     public static Log log = LogFactory.getLog(Sessions.class);
-    public static final String SESSION_SUFFIX = ".archive.v1"; // all session files end with .session	
+    public static final String SESSION_SUFFIX = ".archive.v2"; // all session files end with .session
     public static final String PROCESSING_METADATA_SUFFIX = ".processing.metadata"; // all session files end with .session	
     public  static String CACHE_BASE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"
     public static String CACHE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"
@@ -224,7 +223,7 @@ public class Sessions {
 	*/
 
 	/** returns status of success */
-	public static boolean deleteSession(String dir, String session) throws FileNotFoundException, IOException, ClassNotFoundException
+	public static boolean deleteSession(String dir, String session) throws IOException, ClassNotFoundException
 	{
 		if (dir == null)
 			return false;
@@ -241,7 +240,7 @@ public class Sessions {
 	 * @throws LockObtainFailedException 
 	 * @throws CorruptIndexException 
 	 */
-	private static Map<String, Object> getGlobalSession(String session_filename, String baseDir) throws CorruptIndexException, LockObtainFailedException, IOException
+	private static Map<String, Object> getGlobalSession(String session_filename, String baseDir) throws IOException
 	{
 		Map<String, Object> map = null;
 		synchronized (globalSessions) {
@@ -336,7 +335,7 @@ public class Sessions {
 	 * @throws LockObtainFailedException
 	 * @throws IOException
 	 */
-	public static Archive loadSharedArchiveAndPrepareSession(HttpSession session, String archiveId) throws CorruptIndexException, LockObtainFailedException, IOException
+	public static Archive loadSharedArchiveAndPrepareSession(HttpSession session, String archiveId) throws IOException
     {
     	Util.ASSERT(ModeConfig.isMultiUser());
 		log.info ("Loading shared session: " + archiveId);

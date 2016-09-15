@@ -31,15 +31,14 @@
 ############
 # it's better to unpack these files and commit the raw source
 # git has its own built in compression methods
-*.7z
-*.dmg
-*.gz
-*.iso
-*.rar
-*.tar
-*.zip
-*.war
-*.jar
+# *.7z
+# *.dmg
+# *.gz
+# *.iso
+# *.rar
+# *.tar
+# *.zip
+# *.war
 
 # Logs and databases #
 ######################
@@ -67,7 +66,6 @@ Thumbs.db
 #####################
 *.iml
 *.txt
-*.html
 *.json
 *.git
 /target
@@ -80,8 +78,7 @@ Thumbs.db
 /.idea
 /WebContent/WEB-INF/classes/instance_types_2015-04.en.txt.bz2
 /WebContent/WEB-INF/classes/instance_types_2014-04.en.txt.bz2
-<<<<<<< HEAD
 /WebContent/WEB-INF/classes/models
-=======
-/WebContent/WEB-INF/classes/models
->>>>>>> 57544bc4d39bd4b5d25cadbc23c6d0f956e82196
+*~
+*.swp
+*.swo

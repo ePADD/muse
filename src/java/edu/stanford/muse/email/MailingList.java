@@ -15,20 +15,20 @@
 */
 package edu.stanford.muse.email;
 
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
 /* class to model a mailing list with some members */
 public class MailingList implements java.io.Serializable {
 	private final static long serialVersionUID = 1L;
+	public final static String MAILING_LIST_MARKER = "[ML]";
 
 	// SUPER_DEFINITE is when we have an explicit List-Post header
-	public final static int SUPER_DEFINITE = 8, DEFINITE = 1, MAYBE = 2, DEFINITE_NOT = 4, DUNNO = 0;
+	public final static int USER_ASSIGNED = 16, SUPER_DEFINITE = 8, DEFINITE = 1, MAYBE = 2, DEFINITE_NOT = 4, DUNNO = 0;
 	
 	public Contact ci;
 	public Set<Contact> members = new LinkedHashSet<Contact>();
@@ -41,6 +41,9 @@ public class MailingList implements java.io.Serializable {
 
 	public void addMember(Contact c)
 	{
+		if (c == null) // ignore null contacts
+			return;
+
 		members.add(c);
 	}
 
@@ -65,12 +68,12 @@ public class MailingList implements java.io.Serializable {
 			{
 				Contact c = ab.lookupByEmail(mailingList);
 				if (c != null)
-					c.mailingListState = SUPER_DEFINITE;
+					c.mailingListState |= SUPER_DEFINITE;
 			}
 	
 			if (sentToMailingLists.length == 1)
 			{
-				// definite list
+				// definite list, we make the assumption that all from addresses must belong to this mailing list
 				Contact c = ab.lookupByEmail(sentToMailingLists[0]);
 	
 				if (c != null)
@@ -113,7 +116,10 @@ public class MailingList implements java.io.Serializable {
 					continue;
 	
 				Contact c = ab.registerAddress((InternetAddress) a);
-	
+
+				if (c == null)
+					continue;
+
 				if ((c.mailingListState & DEFINITE_NOT) != 0)
 					continue;
 	
@@ -162,7 +168,8 @@ public class MailingList implements java.io.Serializable {
 						continue;
 	
 					Contact c = ab.registerAddress((InternetAddress) a);
-					c.mailingListState |= DEFINITE_NOT;
+					if (c != null)
+						c.mailingListState |= DEFINITE_NOT;
 				}
 		}
 	}

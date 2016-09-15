@@ -2,7 +2,7 @@
  <%boolean show_help_page = !"memorytest".equals(session.getAttribute("mode")); %>
 <div id="status" class="rounded status" style="display:none;z-index:1000;min-height:130px;height:130px;padding:30px;position:fixed;width:600px;box-shadow:0 4px 23px 5px rgba(25,255,255, 0.2), 0 2px 6px rgba(255,255,255,0.15)" >
 		<div style="float:left">
-		  <span style="font-size:20px">Working... (<a id="cancel" href="#" onclick="cancelCurrentOp()">Cancel</a></span> 
+		  <span>Working... (<a id="cancel" href="#" onclick="cancelCurrentOp()">Cancel</a></span>
 		  <% if (show_help_page) { %>
 			  or <a title="Read FAQ while you wait. Opens in a separate window." href="help" target="_new">Read Help</a>			  
 		  <% } %>

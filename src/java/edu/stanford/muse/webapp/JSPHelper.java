@@ -15,15 +15,17 @@
  */
 package edu.stanford.muse.webapp;
 
-import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.exceptions.NoDefaultFolderException;
 import edu.stanford.muse.groups.*;
+import edu.stanford.muse.ie.InternalAuthorityAssigner;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.NER;
+import edu.stanford.muse.ner.model.DummyNERModel;
+import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.*;
 import edu.stanford.muse.util.SloppyDates.DateRangeSpec;
@@ -44,6 +46,7 @@ import javax.servlet.http.HttpSession;
 import javax.xml.transform.TransformerException;
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /* import javax.servlet.jsp.JspWriter; */
 
@@ -217,9 +220,8 @@ public class JSPHelper {
 		String userKey = (String) getSessionAttribute(session, "userKey");
 		ServletContext application = session.getServletContext();
 		String documentRootPath = application.getRealPath("/").toString();
-		String rootDir = documentRootPath + File.separatorChar + userKey;
 
-		return rootDir;
+		return documentRootPath + File.separatorChar + userKey;
 	}
 
 	/**
@@ -293,6 +295,14 @@ public class JSPHelper {
         return false;
     }
 
+	public static boolean runningOnAshokaMachine(HttpServletRequest request){
+		String sn = request.getServerName();
+		if(sn!=null){
+			return sn.contains("ashoka.edu.in");
+		}
+		return false;
+	}
+
 	//	/* this version of fetchemails must have folders defined in request since there is no primary email address */
 	//	public static Triple<Collection<EmailDocument>, AddressBook, BlobStore> fetchEmails(HttpServletRequest request, HttpSession session, boolean download) throws Exception
 	//	{
@@ -326,7 +336,8 @@ public class JSPHelper {
 	 * A VIP method.
 	 * reads email accounts and installs addressBook and emailDocs into session
 	 * useDefaultFolders: use the default folder for that fetcher if there are
-	 * no explicit folders in that fetcher
+	 * no explicit folders in that fetcher.
+	 * throws out of memory error if it runs out of memory.
 	 * 
 	 * @throws JSONException
 	 * @throws IOException
@@ -337,7 +348,7 @@ public class JSPHelper {
 	 * @throws Exception
 	 */
 	public static void fetchAndIndexEmails(Archive archive, MuseEmailFetcher m, HttpServletRequest request, HttpSession session, boolean downloadMessageText, boolean downloadAttachments, boolean useDefaultFolders)
-			throws UnsupportedEncodingException, MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException
+			throws MessagingException, InterruptedException, IOException, JSONException, NoDefaultFolderException, CancelledException, OutOfMemoryError
 	{
 		// first thing, set up a static status so user doesn't see a stale status message
 		session.setAttribute("statusProvider", new StaticStatusProvider("Starting up..."));
@@ -389,69 +400,61 @@ public class JSPHelper {
 
 		archive.setBaseDir(getBaseDir(m, request));
 		m.fetchAndIndexEmails(archive, allFolders, useDefaultFolders, fc, session);
+		//make sure the archive is dumped at this point
+		archive.close();
+		archive.openForRead();
 
-        String mwl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator;
-        String modelFile = mwl + SequenceModel.modelFileName;
-        SequenceModel nerModel = (SequenceModel)session.getAttribute("ner");
-        session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from: "+modelFile+"..."));
-        log.info("Loading NER sequence model from: " + modelFile + " ...");
-        try {
-            nerModel = SequenceModel.loadModel(new File(modelFile));
-        } catch (IOException e) {
-            Util.print_exception("Could not load the sequence model from: "+modelFile,e, log);
-        }
-        if (nerModel == null) {
-            log.error("Could not load NER model from: "+modelFile);
-        }
-        else {
-            NER ner = new NER(archive, nerModel);
-            session.setAttribute("statusProvider", ner);
-            ner.recongniseArchive();
-            archive.processingMetadata.entityCounts = ner.stats.counts;
-			log.info(ner.stats);
-        }
-        archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
-        log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
+		// only do all this if we are download message text.
+		if (downloadMessageText) {
+			String modelFile = SequenceModel.modelFileName;
+			NERModel nerModel = (SequenceModel) session.getAttribute("ner");
+			session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: " + modelFile + "..."));
+			try {
+				if (System.getProperty("muse.dummy.ner") != null) {
+					log.info("Using dummy NER model, all CIC patterns will be treated as valid entities");
+					nerModel = new DummyNERModel();
+				} else {
+					log.info("Loading NER sequence model from: " + modelFile + " ...");
+					nerModel = SequenceModel.loadModel(modelFile);
+				}
+			} catch (IOException e) {
+				Util.print_exception("Could not load the sequence model from: " + modelFile, e, log);
+			}
 
-//
-//		try {
-//			//train an epadd ner ; recognise the entities and dd it to the index
-//			NER ner = new NER(archive);
-//			session.setAttribute("statusProvider", ner);
-//			log.info("Base dir: " + getBaseDir(m, request));
-//            String mode = (String)JSPHelper.getSessionAttribute(session, "mode");
-//            if("memorytest".equals(mode)) {
-//                log.info("Setting dump model to false for NER");
-//                ner.recongniseArchive(false);
-//            }else
-//                ner.recongniseArchive(true);
+			if (nerModel == null) {
+				log.error("Could not load NER model from: " + modelFile);
+			} else {
+				NER ner = new NER(archive, nerModel);
+				session.setAttribute("statusProvider", ner);
+				ner.recognizeArchive();
+				archive.processingMetadata.entityCounts = ner.stats.counts;
+				log.info(ner.stats);
+				archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+				log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
-//		}
-//		//trying to be extra defensive during indexing.
-//		catch (Exception e) {
-//			e.printStackTrace();
-//			Util.print_exception("Serious!!! Exception caught when adding epadd ner names to the index", e, log);
-//		}
-
-//        if(!"muse".equals(Version.appName)) {
-//            //one final step of building entity feature index to build context for every entity
-//            try {
-//                InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
-//                session.setAttribute("statusProvider", assignauthorities);
-//                assignauthorities.initialize(archive);
-//                if (!assignauthorities.isCancelled())
-//                    request.getSession().setAttribute("authorities", assignauthorities);
-//                else
-//                    assignauthorities = null;
-//                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
-//                if (!success) {
-//                    log.warn("Could not build context features for entities");
-//                } else
-//                    log.info("Successfully built context features for entities");
-//            } catch (Exception e) {
-//                log.warn("Exception while building context features", e);
-//            }
-//        }
+				//Is there a reliable and more proper way of checking the mode it is running in?
+				String logF = System.getProperty("muse.log");
+				if (logF == null || logF.endsWith("epadd.log")) {
+					//one final step of building entity feature index to build context for every entity
+					try {
+						InternalAuthorityAssigner assignauthorities = new InternalAuthorityAssigner();
+						session.setAttribute("statusProvider", assignauthorities);
+						assignauthorities.initialize(archive);
+						if (!assignauthorities.isCancelled())
+							request.getSession().setAttribute("authorities", assignauthorities);
+						else
+							assignauthorities = null;
+						boolean success = assignauthorities.checkFeaturesIndex(archive, true);
+						if (!success) {
+							log.warn("Could not build context features for entities");
+						} else
+							log.info("Successfully built context features for entities");
+					} catch (Exception e) {
+						log.warn("Exception while building context features", e);
+					}
+				}
+			}
+		}
 		// add the new stores
 	}
 
@@ -572,7 +575,7 @@ public class JSPHelper {
 
 		String link = request.getRequestURL() + "?";
 
-		Map<String, String[]> rpMap = (Map<String, String[]>) request.getParameterMap();
+		Map<String, String[]> rpMap = request.getParameterMap();
 		if (rpMap.size() > 0)
 			sb.append(" params: ");
 		for (Object o : rpMap.keySet())
@@ -585,7 +588,7 @@ public class JSPHelper {
 				continue;
 			}
 
-			String[] vals = (String[]) rpMap.get(str1);
+			String[] vals = rpMap.get(str1);
 			if (vals.length == 1)
 				sb.append(Util.ellipsize(vals[0], 100));
 			else
@@ -715,7 +718,7 @@ public class JSPHelper {
 		if (addressBook == null) {
 			return new Pair<String, String>(s, "browse?person=" + s);
 		} else {
-			Contact contact = addressBook.lookupByEmail(((InternetAddress) a).getAddress());
+			Contact contact = addressBook.lookupByEmail(a.getAddress());
 			return new Pair<String, String>(s, "browse?contact=" + addressBook.getContactId(contact));
 		}
 	}
@@ -900,8 +903,28 @@ public class JSPHelper {
 		String term = request.getParameter("term"); // search term
 		String[] contact_ids = request.getParameterValues("contact");
 		String[] persons = request.getParameterValues("person");
-		String[] attachments = request.getParameterValues("attachment");
-		String[] attachment_types = request.getParameterValues("attachment_type");
+		String[] attachments = request.getParameterValues("attachment"); // actual attachment name
+
+		String[] attachment_extensions = request.getParameterValues("attachment_extension");
+
+		{
+			// if attachment_types specified, parse them and add the values in them to attachment_extensions also
+			// types are higher level (video, audio, etc.) and map to more than 1 extension
+			String[] attachment_types = request.getParameterValues("attachment_type"); // will be something like ["pdf,doc", "ppt,pptx,key"]
+			if (!Util.nullOrEmpty(attachment_types)) {
+				// assemble all extensions in a list first
+				List<String> list = new ArrayList<>();
+				if (!Util.nullOrEmpty(attachment_extensions))
+					list.addAll(Arrays.asList(attachment_extensions));
+
+				for (String s : attachment_types)
+					list.addAll(Util.tokenize(s, ","));
+				// trim all spaces, then convert back to array
+				list = list.stream().map(s -> s.trim()).collect(Collectors.toList());
+				attachment_extensions = list.toArray(new String[list.size()]);
+			}
+		}
+
 		String datasetId = request.getParameter("datasetId");
 		String[] docIds = request.getParameterValues("docId");
 		String[] folders = request.getParameterValues("folder");
@@ -1117,7 +1140,7 @@ public class JSPHelper {
 			docsForTag = Document.selectDocByTag(allDocs, tag, true);
 		}
 		if (cluster >= 0) {
-			docsForCluster = new ArrayList<Document>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
+			docsForCluster = new ArrayList<>(archive.docsForQuery(null, cluster, Indexer.QueryType.FULL)); // null for term returns all docs in cluster
 		}
 
 		if (persons != null || contact_ids != null)
@@ -1126,13 +1149,16 @@ public class JSPHelper {
 			docsForPersons = IndexUtils.selectDocsByAllPersons(addressBook, (Collection) allDocs, persons, Util.toIntArray(contact_ids));
 		}
 
-		if (end_yy >= 1970 && yy >= 1970) // date range
+        //Some docs with faulty date are assigned 1960/01/01
+		if (end_yy >= 0 && yy >= 0) // date range
 		{
-			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
-		}
-		else if (yy >= 1970) // single month or year
+			docsForDateRange = (List) IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd, end_yy, end_mm, end_dd);
+            log.info("Found " + docsForDateRange.size() + " docs in range: [" + yy+"/"+mm+"/"+dd+" - [" + end_yy + "/" + end_mm + "/" + end_dd + "]");
+        }
+		else if (yy >= 0) // single month or year
 		{
 			docsForDateRange = IndexUtils.selectDocsByDateRange((Collection) allDocs, yy, mm, dd);
+            log.info("Found " + docsForDateRange.size() + " docs beyond " + yy+"/"+mm+"/"+dd);
 		}
 
 		if (groupIdx != Integer.MAX_VALUE)
@@ -1149,16 +1175,16 @@ public class JSPHelper {
 			docsForAttachments = (Set<Document>) EmailUtils.getDocsForAttachments((Collection) allDocs, blobsForAttachments);
 		}
 
-		if (!Util.nullOrEmpty(attachment_types))
+		if (!Util.nullOrEmpty(attachment_extensions))
 		{
-			attachment_types = JSPHelper.convertRequestParamsToUTF8(attachment_types);
-			blobsForAttachmentTypes = IndexUtils.getBlobsForAttachmentTypes(allDocs, attachment_types);
+			attachment_extensions = JSPHelper.convertRequestParamsToUTF8(attachment_extensions);
+			blobsForAttachmentTypes = IndexUtils.getBlobsForAttachmentTypes(allDocs, attachment_extensions);
 			docsForAttachmentTypes = (Set<Document>) EmailUtils.getDocsForAttachments((Collection) allDocs, blobsForAttachmentTypes);
 		}
 
 		if (!Util.nullOrEmpty(docIds))
 		{
-			docsForDocIds = new ArrayList<Document>();
+			docsForDocIds = new ArrayList<>();
 			for (String id : docIds)
 			{
 				Document d = archive.docForId(id);

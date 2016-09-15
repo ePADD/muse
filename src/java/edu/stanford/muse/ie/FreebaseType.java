@@ -9,7 +9,7 @@ public class FreebaseType {
 	//TODO merge this with FastRecord and rename FASTRecord to Record.
 	//Note: Dont use the type value except for location.
 	//TODO: fix it.
-	static public enum Type {
+	public enum Type {
 		All("all"),
 		Music("/music"),
 		Books("/book"),

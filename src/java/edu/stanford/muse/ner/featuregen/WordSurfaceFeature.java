@@ -1,21 +1,13 @@
 package edu.stanford.muse.ner.featuregen;
 
-import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.model.NERModel;
-import edu.stanford.muse.ner.model.SVMModel;
-import edu.stanford.muse.ner.train.SVMModelTrainer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 // @TODO: Good to have segmentation too.
 // For example: "Clemens Hall" recognized with good confidence should segment out the entity in phrase like: "Party in Clemens Hall"
@@ -334,7 +326,6 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
             for(String k: map.keySet())
                 System.err.println(k+":"+new LinkedHashSet<>(map.get(k)));
             String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;
-            String modelFile = mwl + SVMModel.modelFileName;
             //SVMModel nerModel = SVMModel.loadModel(new File(modelFile));
         }catch(Exception e){
 			e.printStackTrace();

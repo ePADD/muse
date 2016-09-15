@@ -2,14 +2,12 @@ package edu.stanford.muse.memory;
 
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.Indexer;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.xword.Clue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.Collection;
-import java.util.Set;
 
 public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Serializable {
 	private static final long serialVersionUID = 1L;
@@ -25,9 +23,8 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 
 	public String userAnswerBeforeHint, userAnswer;
 	public UserAnswerStats stats;
-	
 	static public class UserAnswerStats implements java.io.Serializable {
-		
+        //comment by @vihari: Why are some fields marked public and others not? I don't see a pattern or a need for that.
 		public String uid;
 		public int num;
 		private static final long serialVersionUID = 1L;
@@ -38,14 +35,18 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		public boolean userAnswerCorrect; // was the answer judged to be correct
 		// potentially add edit distance
 
+        //Will be set only if the answer is wrong
+		public int recallType, recallTypeBeforeHint;
+
 		int certainty = -1;
 		int memoryType = -1;
 		public int recency = -1;
+		public boolean userGaveUp = false;
 
 		// stats computed when answer is wrong
 		public boolean letterCountCorrect; // (only populated if the answer is wrong)
 		public boolean userAnswerPartOfAnyAddressBookName; // (only populated if the answer is wrong)
-		int wrongAnswerReason = -1; // only populated if the answer is wrong
+		public int wrongAnswerReason = -1; // only populated if the answer is wrong
 		public int nMessagesWithUserAnswer = -1; // original content only
 		public int userAnswerAssociationWithCorrectAnswer = -1; // # messages in which the user answer and the correct answer appear together (only populated if the answer is wrong)
 		public String toString() { return Util.fieldsToString(this, true); }
@@ -87,27 +88,27 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 			return null;
 	}
 	
-	public String getPreHintQuestion() {
-		String originalClue = clue.getClue();
-		// do some slight reformatting... "______ Dumpty sat on a wall" to "_ _ _ _ _ _ Dumpty sat on a wall"
-		String correctanswer = this.correctAnswer;
-		String blanksToReplace = "", blanksPlusSpace = "";
-		for (int i = 0; i < correctanswer.length(); i++){
-			blanksPlusSpace = blanksPlusSpace + "_ ";
-			blanksToReplace +="_";
-		}
-		return originalClue.replaceAll(blanksToReplace, blanksPlusSpace);
-	}
-	
-	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, long millis, boolean hintused, int certainty, int memoryType, int recency) {
+
+    /**
+     * @param userAnswer - The user answer when the submit button is clicked
+     * @param userAnswerBeforeHint - The user answer before the hint is used
+     * @param recallType - The reason why the answer cannot be recalled
+     * @param millis - Time elapsed before the question is answered
+     * @param hintused - indicating if the hint is used
+     * @param certainty - A rating on how certain the user is about the answer
+     * @param memoryType - A rating on how well the user can recall the context
+	 * @param recency - 0 to N (months), 0 being hte most recent
+	 * */
+	public void recordUserResponse(String userAnswer, String userAnswerBeforeHint, int recallTypeBeforeHint, int recallType, long millis, boolean hintused, int certainty, int memoryType, int recency, boolean userGaveUp) {
 		this.userAnswer = userAnswer;
 		this.userAnswerBeforeHint = userAnswerBeforeHint;
-		
+		this.stats.recallTypeBeforeHint = recallTypeBeforeHint;
 		this.stats.userAnswerCorrect = isUserAnswerCorrect();
 		this.stats.certainty = certainty;
 		this.stats.memoryType = memoryType;
 		this.stats.recency = recency;
 		this.stats.hintused = hintused;
+		this.stats.userGaveUp = userGaveUp;
 		this.stats.millis = millis;
 
 		boolean userAnswerPartOfAnyAddressBookName = study.archive.addressBook.isStringPartOfAnyAddressBookName(userAnswer);
@@ -116,7 +117,7 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 		
 		stats.letterCountCorrect = (cAnswer.length() == correctAnswer.length());
 
-		if (!correctAnswer.toLowerCase().equals(cAnswer)) {
+		if (userAnswer.equals("") || !isUserAnswerCorrect()) {
 			// do further lookups on user answer if its wrong
 			try {
 				Archive archive = study.archive;
@@ -125,25 +126,95 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 				Collection<EmailDocument> correctAnswerDocs = archive.convertToED(archive.docsForQuery("\"" + correctAnswer.toLowerCase() + "\"", edu.stanford.muse.index.Indexer.QueryType.ORIGINAL)); // look up inside double quotes since answer may contain blanks
 				docs.retainAll(correctAnswerDocs);
 				stats.userAnswerAssociationWithCorrectAnswer = docs.size();
-			} catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }			
+                this.stats.recallType = recallType;
+            } catch (Exception e) { Util.print_exception("error looking up stats for incorrect answer", e, log); }
 		} 
 	}
-	
-	public String getPostHintQuestion() {
+
+	public String getBlanksWithNoHintForCorrespondentTest() {
 		String correctanswer = this.correctAnswer;
-		String hint = Character.toString(correctanswer.charAt(0));
-		hint += " ";
-		String blanksToReplace = "_";
-		for (int i = 1; i < correctanswer.length(); i++){
-			hint = hint + "_ ";
-			blanksToReplace +="_";
+		String blanks = "";
+
+		for (int i = 0; i < correctanswer.length(); i++) {
+			//we can reveal the spaces in the answer, else it is very counter-intuitive.
+			if (correctanswer.charAt(i) != ' ')
+				blanks += "_ ";
+			else
+				blanks += "  ";
 		}
-		return clue.getClue().replaceAll(blanksToReplace, hint);	
+
+		return blanks;
 	}
 
+	/**
+	 * warning: no need to escape the string returned by this method
+	 */
+	public String getBlanksWithHintForCorrespondentTest() {
+		String correctanswer = this.correctAnswer;
+		String blanks = "";
+		boolean showNextLetter = true;
+		for (int i = 0; i < correctanswer.length(); i++) {
+			char ch = correctanswer.charAt(i);
+			// we can reveal the spaces in the answer, else it is very counter-intuitive.
+			if (showNextLetter) {
+				blanks += "<span class=\"hint-letter\">" + ch + "</span>";
+			} else {
+				blanks += (Character.isWhitespace(ch) ? " " : "_ ");
+			}
+
+			showNextLetter = (Character.isWhitespace(ch));
+		}
+		return blanks;
+	}
+
+	public String getPreHintQuestion() {
+		String originalClue = clue.getClue();
+		// do some slight reformatting... "______ Dumpty sat on a wall" to "_ _ _ _ _ _ Dumpty sat on a wall"
+		String correctanswer = this.correctAnswer;
+		String blanksToReplace = "", blanksPlusSpace = "";
+		for (int i = 0; i < correctanswer.length(); i++){
+			//we can reveal the spaces in the answer, else it is very counter-intuitive.
+			if(correctanswer.charAt(i) != ' ')
+				blanksPlusSpace += "_ ";
+			else
+				blanksPlusSpace += "  ";
+			blanksToReplace +="_";
+		}
+		if(originalClue.contains(blanksToReplace))
+			return originalClue.replaceAll(blanksToReplace, blanksPlusSpace);
+			//some type of questions are not fill in the blank type
+		else
+			return originalClue + "<p>Email recipient name: " + blanksPlusSpace + "</p>";
+	}
+
+	public String getPostHintQuestion() {
+        String clueText = clue.getClue();
+        String correctanswer = this.correctAnswer;
+        String hint = Character.toString(correctanswer.charAt(0));
+        hint += " ";
+        String blanksToReplace = "_ ";
+        for (int i = 1; i < correctanswer.length(); i++) {
+            if(correctanswer.charAt(i-1) == ' ')
+                hint = hint + correctanswer.charAt(i)+" ";
+            else if (correctAnswer.charAt(i)==' ')
+                hint = hint + "  ";
+            else
+                hint = hint + "_ ";
+            blanksToReplace += "_ ";
+        }
+
+        if (clueText.contains(blanksToReplace)) {
+            log.info("Original text: "+clueText+", after replace: "+clue.getClue().replaceAll(blanksToReplace, hint));
+            return clue.getClue().replaceAll(blanksToReplace, hint);
+        }
+        else {
+            return clueText+"<p>Email recipient name: "+hint + "</p>";
+        }
+    }
+
 	/** case and space normalize first */
-	public String normalizeAnswer(String s) {
-		return (s == null) ? "" : s.toLowerCase().replaceAll("\\s", "");
+	public static String normalizeAnswer(String s) {
+		return (s == null) ? "" : s.toLowerCase().replaceAll("[\\s\\.]", "");
 	}
 	
 	public boolean isUserAnswerCorrect() {
@@ -172,5 +243,9 @@ public class MemoryQuestion implements Comparable<MemoryQuestion>, java.io.Seria
 	}
 	
 	public String toString() { 	return Util.fieldsToString(this, false) + " " + Util.fieldsToString(stats, false); }
+
+    public static void main(String[] args){
+        System.err.println(normalizeAnswer("Dileep A. D"));
+    }
 
 }

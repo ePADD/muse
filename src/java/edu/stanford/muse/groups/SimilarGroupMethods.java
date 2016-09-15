@@ -16,22 +16,12 @@
 package edu.stanford.muse.groups;
 
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
+import java.util.*;
 
 /** static methods related to similar groups */
 public class SimilarGroupMethods {
@@ -47,7 +37,6 @@ public class SimilarGroupMethods {
 				if (b.contains(g))
 					g.freq++;
 		}
-		return;
 	}
 
 
@@ -596,7 +585,6 @@ public class SimilarGroupMethods {
 				if (b.equals(g))
 					g.freq++;
 		}
-		return;
 	}
 
 }

@@ -12,7 +12,7 @@
 			if (JSPHelper.getSessionAttribute(session, "search") != null)
 				out.println ("Slant mode. ");
 			%>
-			Muse v<%=edu.stanford.muse.util.Version.num%>.
+			Muse <%=edu.stanford.muse.util.Version.version%>.
 			
 			Please <a href="https://docs.google.com/spreadsheet/viewform?formkey=dF9yYkhfbEdJNnVYaGhaYUdZaG1EeXc6MQ">send us feedback</a>.
 			Or <a href="debug">report</a> a problem.&nbsp;&nbsp;&nbsp;&nbsp;

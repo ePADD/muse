@@ -1,10 +1,16 @@
 package edu.stanford.muse.ner.dictionary;
 
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.*;
 
 public class EnglishDictionary {
@@ -13,15 +19,20 @@ public class EnglishDictionary {
     static String verbsFile = "dictionaries/en-pure-verbs.txt";
     static String prepFile = "dictionaries/en-prepositions.txt";
     static String pronounFile = "dictionaries/en-pronouns.txt";
+    static String abbFile = "dictionaries/en-abbreviations.txt";
     static String fullDictFile = "dict.words.full.safe";
     static String dictStatsFile = "stats.txt";
+    static String commonNamesFile = "firstNames.txt";
 
     static Log log = LogFactory.getLog(EnglishDictionary.class);
 
-    static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary;
+    static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary, commonNames;
+    static Multimap<String,String> abbDict;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
-    public static List<String> sws = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> stopWords = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
+    public static List<String> personTitles = Arrays.asList("mr.", "mr", "ms.", "ms", "mrs.", "mrs", "dr.", "dr", "prof.", "prof");
+    public static List<String> articles = Arrays.asList("the","a","an");
 
     /**
      * @return dictionary entry -> #times appeared in capitalised form, total number of occurrences */
@@ -35,7 +46,7 @@ public class EnglishDictionary {
                     if(line.startsWith("#"))
                         continue;
                     String[] fields = line.split("\\s");
-                    if(fields == null || fields.length<3)
+                    if (fields.length < 3)
                         continue;
                     int cnum = Integer.parseInt(fields[1]);
                     int num = Integer.parseInt(fields[2]);
@@ -102,6 +113,23 @@ public class EnglishDictionary {
             return prepositions;
         }
         return prepositions;
+    }
+
+    //This has nothing to do with English Dictionary though.
+    public static Set<String> getCommonNames(){
+        if(commonNames == null){
+            Set<String> entries = readFile(commonNamesFile);
+            commonNames = new LinkedHashSet<>();
+            for(String str: entries) {
+                //may contain some unicode chars
+                if(str.contains("%"))
+                    continue;
+                commonNames.add(str.toLowerCase().replaceAll("_"," "));
+            }
+            log.info("Read "+commonNames.size()+" entries from "+commonNamesFile);
+            return commonNames;
+        }
+        return commonNames;
     }
 
     /**
@@ -184,25 +212,70 @@ public class EnglishDictionary {
         return word;
     }
 
-    public static Set<String> readFile(String fileName){
-        Set<String> entries = new LinkedHashSet<>();
+    public static Multimap getAbbreviations(){
+        if(abbDict!=null)
+            return abbDict;
+        abbDict = LinkedHashMultimap.create();
         try{
-            //new FileReader("/Users/vihari/repos/epadd-git/muse/WebContent/WEB-INF/classes/dictionaries/en-pronouns.txt"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(fileName)));
+            BufferedReader br = new BufferedReader(new InputStreamReader(EnglishDictionary.class.getClassLoader().getResourceAsStream(abbFile)));
             String line;
             while((line=br.readLine())!=null){
                 if(line.startsWith("#"))
                     continue;
-                entries.add(line.trim().toLowerCase());
+                line = line.trim();
+                String[] fields = line.split("\\s{2,}|\t");
+                String abbr = "", expT = "";
+                for(int i=0;i<fields.length;i++){
+                    String str = fields[i];
+                    //remove explanatory text, there can be multiple brackets in the same expansion, make sure not to remove span the regex between them
+                    str = str.replaceAll("(^|\\s)\\(.+?\\)\\s?","");
+                    if(i==0)
+                        abbr = str;
+                    else
+                        expT = str;
+                }
+                if(abbr.contains(", "))
+                    log.warn("Found an abbreviation entry with comma, line: "+line+"\nFile: "+abbFile);
+                String[] exps = expT.split(", ");
+                for(String exp: exps) {
+                    if(!exp.contains("("))
+                        abbDict.put(abbr.toLowerCase(), exp.toLowerCase());
+                    else{
+                        if(exp.contains(" (") || exp.indexOf(")")==-1){
+                            log.warn("The entry: "+exp+" in Line: "+line+" not properly cleaned!\nFile: "+abbFile);
+                            continue;
+                        }
+                        String alt = exp.substring(exp.indexOf('(')+1,exp.indexOf(')'));
+                        String sf = exp.substring(0,exp.indexOf('('));
+                        abbDict.put(abbr.toLowerCase(), sf.toLowerCase());
+                        abbDict.put(abbr.toLowerCase(), (sf+alt).toLowerCase());
+                        //log.info("Adding the alternate forms: "+ sf+" - "+sf+alt);
+                    }
+                }
             }
         }catch(IOException e){
-            log.warn("Cannot read file: "+fileName);
+            log.warn("Cannot read file: "+abbFile);
             e.printStackTrace();
+        }
+        return abbDict;
+    }
+
+    public static Set<String> readFile(String fileName){
+        Set<String> entries = new LinkedHashSet<>();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(fileName)))) {
+            String line;
+            while ((line=br.readLine())!=null){
+                if (line.startsWith("#"))
+                    continue;
+                entries.add(line.trim().toLowerCase());
+            }
+        } catch(IOException e){
+            Util.print_exception("Cannot read file: ", e, log);
         }
         return entries;
     }
 
-    public static void main(String[] args){
+    public static void testPlurals(){
         List<Pair<String,String>> plurals = new ArrayList<>();
         plurals.add(new Pair<>("selves","self"));
         plurals.add(new Pair<>("indices", "index"));
@@ -230,6 +303,10 @@ public class EnglishDictionary {
             if(!getSingular(p.first).equals(p.second))
                 System.err.println("Fails at: "+p.first);
         System.err.println("Done testing!");
-        //System.err.println(getDictStats().get("john"));
+    }
+
+    public static void main(String[] args){
+        //testPlurals();
+        getAbbreviations();
     }
 }

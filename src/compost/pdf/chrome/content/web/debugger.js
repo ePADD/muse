@@ -298,7 +298,7 @@ var Stepper = (function StepperClosure() {
             callback();
             break;
         }
-      }
+      };
       dom.addEventListener('keydown', listener, false);
       self.goTo(idx);
     },

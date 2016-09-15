@@ -126,7 +126,7 @@ THE SOFTWARE.
 			//click event		
 			if(settings.autoload == true && $("body").find("#"+settings.autoloadobject).length !=0){
 				$("#control a[title="+settings.autoloadobject+"]").trigger('click');
-			};
+			}
 			$this.click(function() {  
 				showelement(top, left, width, height, obj, description);
 				$("#control a").removeClass("jhighlight-active");
@@ -168,7 +168,9 @@ THE SOFTWARE.
 					if(i >= 1){
 						jQuery(next1).trigger('click');
 						i-1;}
-					if(i == 1){i=1};
+					if (i == 1) {
+						i = 1
+					}
 					break;
 				case 39:
 					var active = jQuery("a.jhighlight-active");
@@ -181,7 +183,7 @@ THE SOFTWARE.
 				case 27:
 					closer();
 					break;
-			};
+			}
 		}); //end key
 }
 })(jQuery);

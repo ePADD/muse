@@ -1,33 +1,18 @@
 package edu.stanford.muse.ie;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-import java.util.zip.GZIPInputStream;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
+import edu.stanford.muse.email.Contact;
+import edu.stanford.muse.index.*;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.email.Contact;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.Document;
-import edu.stanford.muse.index.EmailDocument;
-import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.index.Lexicon;
-import edu.stanford.muse.util.Util;
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.LineNumberReader;
+import java.util.*;
+import java.util.zip.GZIPInputStream;
 
 public class NameTypesMemory {
     private static Log log = LogFactory.getLog(NameTypes.class);
@@ -131,7 +116,7 @@ public class NameTypesMemory {
 		
 		log.info ("-------------\n" + typedHits.size() + " categories of typed hits identified \n--------------");
 
-		typedHits = Util.sortMapByListSize( (Map<String, Collection<NameInfoMemory>>) typedHits);
+		typedHits = Util.sortMapByListSize(typedHits);
 
 		return typedHits;
 	}

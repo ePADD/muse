@@ -15,62 +15,51 @@
  */
 package edu.stanford.muse.index;
 
-import java.util.*;
-
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
-import edu.stanford.muse.email.AddressBook;
-import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.EmailRenderer;
-import edu.stanford.muse.webapp.JSPHelper;
-import edu.stanford.muse.webapp.ModeConfig;
+
+import java.util.*;
 
 /**
  * a collection of documents. each doc has an html representation, that is
  * computed lazily and cached.
  */
 public class DataSet {
-    List<String> pages = new ArrayList<String>();
-    List<Document> docs = new ArrayList<Document>();
-    private Indexer indexer;
-    private AddressBook addressBook;
-    private GroupAssigner groupAssigner;
+    List<String> pages = new ArrayList<>();
+    List<Document> docs = new ArrayList<>();
     String datasetTitle;
     Archive archive;
     BlobStore attachmentsStore;
     Set<Integer> highlightContactIds;
-    Set<String> highlightTermsStemmed;
-    Set<String> highlightTermsUnstemmed;
+    Set<String> highlightTerms;
     Set<Blob> highlightAttachments;
     //String -> <dbId -> dbType>
     Map<String, Map<String, Short>> authorisedEntities;
 
     public Boolean sensitive;
 
-    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTermsStemmed, Set<String> highlightTermsUnstemmed,
+    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTerms,
                    Collection<Blob> highlightAttachments) {
         if(docs!=null) {
             //calling assigning new ArrayList<>(docs) is calling sort on docs by default
             this.docs = new ArrayList<>();
-            for(Document d: docs)
-                this.docs.add(d);
+            docs.forEach(d->this.docs.add(d));
         }
         this.archive = archive;
-        this.indexer = archive.indexer;
-        this.addressBook = archive.addressBook;
-        this.groupAssigner = archive.groupAssigner;
         this.datasetTitle = datasetTitle;
         this.attachmentsStore = archive.blobStore;
         this.highlightContactIds = highlightContactIds;
-        this.highlightTermsStemmed = highlightTermsStemmed;
-        this.highlightTermsUnstemmed = highlightTermsUnstemmed;
+        this.highlightTerms = highlightTerms;
         if(highlightAttachments!=null)
             this.highlightAttachments = new LinkedHashSet<>(highlightAttachments);
-        for (@SuppressWarnings("unused")
-        Document d : docs)
-            pages.add(null);
+        if (docs != null) {
+            for (@SuppressWarnings("unused")
+            Document d : docs)
+                pages.add(null);
+        }
     }
 
     public void clear() {
@@ -110,8 +99,8 @@ public class DataSet {
             {
                 // we are assuming one one page per doc for now. (true for
                 // emails)
-                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightContactIds, highlightTermsStemmed,
-                        highlightTermsUnstemmed, highlightAttachments, authorisedEntities, IA_links, inFull, debug);
+                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightContactIds,
+                        highlightTerms, highlightAttachments, authorisedEntities, IA_links, inFull, debug);
                 boolean overflow = htmlResut.second;
                 Util.ASSERT(!(inFull && overflow));
                 String pageContent = htmlResut.first

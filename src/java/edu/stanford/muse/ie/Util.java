@@ -7,6 +7,7 @@ import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -17,6 +18,8 @@ import org.jsoup.select.Elements;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Contains IE related util funtions and fields
@@ -225,26 +228,30 @@ public class Util {
 
 
     public static boolean filterEntity(String e){
-        return filterEntity(e, null);
+        return filterEntity(e, (short)-1);
+    }
+
+    public static boolean filterEntity(Span s){
+        return filterEntity(s.getText(),s.type);
     }
 
 	/**
 	 * Filters any entity that does not look like one
 	 * returns true if the entity looks OK and false otherwise, type can be null if it is of unknown type
      */
-	public static boolean filterEntity(String e, String type) {
+	public static boolean filterEntity(String e, short type) {
 		if (e == null)
 			return false;
 
 		int ti = 0;
-		if (NER.EPER.equals(type))
+		if (FeatureDictionary.PERSON == type)
 			ti = 0;
-		else if (NER.ELOC.equals(type))
+		else if (FeatureDictionary.PLACE == type)
 			ti = 1;
-		else if (NER.EORG.equals(type))
+		else if (FeatureDictionary.ORGANISATION == type)
 			ti = 2;
 		Set<String> cws = readFileFromResource("dict.words.full");
-		Set<String> tcws = new HashSet<String>();
+		Set<String> tcws = new HashSet<>();
 		if (ti <= 2 && ti >= 0)
 			tcws = readFile(TYPE_SPECIFIC_COMMON_WORDS_FILE[ti]);
 
@@ -304,38 +311,17 @@ public class Util {
 				return false;
 		}
 
-		if (inDict)
-			return false;
-		return true;
+		return !inDict;
 	}
 
-	public static List<String> filterEntities(Collection<String> entities, String type) {
-		List<String> fes = new ArrayList<String>();
-		for (String e : entities)
-			if (Util.filterEntity(e, type))
-				fes.add(e);
-		return fes;
+	public static Span[] filterEntities(Span[] entities) {
+		List<Span> sps = Stream.of(entities).filter(Util::filterEntity).collect(Collectors.toList());
+        return sps.toArray(new Span[sps.size()]);
 	}
 
-	public static List<String> filterEntitiesByScore(List<String> entities, List<String> scores, double threshold) {
-		List<String> fes = new ArrayList<String>();
-		int cp = 0;
-		for (int ei = 0; ei < entities.size(); ei++) {
-			try {
-				double s = Double.parseDouble(scores.get(ei));
-				if (s > threshold)
-					fes.add(entities.get(ei));
-			} catch (Exception e) {
-				cp++;
-				log.warn("Cannot parse: " + scores.get(ei));
-				System.err.println("Cannot parse: " + scores.get(ei));
-			}
-		}
-		log.info("Couldn't parse " + cp + " of " + scores.size() + " scores");
-		System.err.println("Couldn't parse " + cp + " of " + scores.size() + " scores");
-		log.info(fes.size() + " of " + entities.size() + " passed the threshold");
-		System.err.println(fes.size() + " of " + entities.size() + " passed the threshold");
-		return fes;
+	public static Span[] filterEntitiesByScore(Span[] entities, double threshold) {
+        List<Span> sps = Stream.of(entities).filter(e->e.typeScore>threshold).collect(Collectors.toList());
+        return sps.toArray(new Span[sps.size()]);
 	}
 
 	public static void main(String[] args) {
@@ -351,11 +337,16 @@ public class Util {
 
     /**
      * Should also be able to handle phrases like: NY Times and UC Santa Barbara
-     */
-    public static String getAcronym(String phrase) {
+     * @param considerStopWords also considers stop words in the phrase as part of acronym
+     * */
+    public static String getAcronym(String phrase, boolean considerStopWords) {
         String[] words = phrase.split("\\s+");
         String acr = "";
         for (String word : words) {
+            if(FeatureDictionary.sws.contains(word) && considerStopWords) {
+                acr += word.charAt(0);
+                continue;
+            }
             for (int i = 0; i < word.length(); i++) {
                 char c = word.charAt(i);
                 if ((c >= 'A' && c <= 'Z') || c=='.')
@@ -365,5 +356,9 @@ public class Util {
             }
         }
         return acr;
+    }
+
+    public static String getAcronym(String phrase){
+        return getAcronym(phrase, false);
     }
 }

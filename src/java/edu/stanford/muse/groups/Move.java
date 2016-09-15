@@ -15,20 +15,16 @@
 */
 package edu.stanford.muse.groups;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-
 import edu.stanford.muse.graph.GroupsGraph;
 import edu.stanford.muse.graph.Node;
 import edu.stanford.muse.util.Util;
 
+import java.util.*;
+
 public class Move <T extends Comparable<? super T>> implements Comparable<Move<T>>
 {
 	// order is important here, the absolute numbers are used in MyComparator
-    public enum Type { UNION, DOMINATE, INTERSECT, DROP };
+    public enum Type { UNION, DOMINATE, INTERSECT, DROP }
 //	public static final int MoveType_UNION = 1;
 //	public static final int MoveType_DOMINATE = 2;
 //	public static final int MoveType_INTERSECT = 3;

@@ -43,7 +43,7 @@
 	List<Document> docs = JSPHelper.selectDocsAsList(request, session);
 	GroupAssigner groupAssigner = archive.groupAssigner;
 	String datasetName = String.format("docset-%08x", EmailUtils.rng.nextInt());
-	DataSet dataset = new DataSet (docs, archive, datasetName, null /* highlightTerms */, null, null, null);
+	DataSet dataset = new DataSet (docs, archive, datasetName, null /* highlightTerms */, null, null);
 	session.setAttribute(datasetName, dataset);
 	List<LinkInfo> links = EmailUtils.getLinksForDocs(docs);
 	for (LinkInfo li : links)

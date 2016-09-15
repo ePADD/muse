@@ -16,35 +16,14 @@
 package edu.stanford.muse.email;
 
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import javax.mail.AuthenticationFailedException;
-import javax.mail.Folder;
-import javax.mail.MessagingException;
-import javax.mail.NoSuchProviderException;
-import javax.mail.Session;
-import javax.mail.Store;
-import javax.mail.URLName;
-
+import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Util;
+import javax.mail.*;
+import java.io.*;
+import java.util.*;
 
 /** email store in mbox format. caches message counts in folders.
  */
@@ -58,13 +37,20 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	public static final Properties mstorProps;
 	private FolderCache folderCache;
 	private String rootPath;
+	private String accountKey;
 
 	static {
+        //http://sourceforge.net/projects/mstor/files/mstor/0.9.13/
 		mstorProps = new Properties();
 		mstorProps.put("mstor.mbox.metadataStrategy", "NONE");
-		mstorProps.put("mstor.mbox.cacheBuffers", "enabled");
+		//the following two properties are actually different.
+		//while cache buffers option enables/disables the caching of the message content to optimise the message content retieval
+		//cache.disabled option controls what kind of CacheAdapter is used by Mstor; CacheAdapter (dummy) or EhCacheAdapter
+		mstorProps.put("mstor.mbox.cacheBuffers", "disabled");
+		mstorProps.put("mstor.cache.disabled", "true");
 		// http://code.google.com/p/coucou/source/browse/src/main/resources/mstor.properties?spec=svn9e5ed7be0c8e39027c72a220f745d87b944be826&r=9e5ed7be0c8e39027c72a220f745d87b944be826
-		mstorProps.put("mstor.mbox.parsing.relaxed", "true");
+		//relaxed parsing uses a relaxed pattern that is adapted to FoxMail export
+		//mstorProps.put("mstor.mbox.parsing.relaxed", "true");
 		mstorProps.put("mstor.mbox.encoding", "UTF-8"); // note: we are assuming utf-8 because that's what gmail+thunderbird will save as
 		// consider adding mstor.cache.disabled true, then won't need ehcache etc
 		// see: https://sourceforge.net/tracker/?func=detail&aid=2791167&group_id=114229&atid=667640
@@ -73,15 +59,16 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	// constructor for de-serialization
 	public MboxEmailStore() { }
 
-	public MboxEmailStore(String name, String path) throws IOException
+	public MboxEmailStore(String accountKey, String name, String path) throws IOException
 	{
 		super(name, "" /* no automatic email address for mbox files */);
+		this.accountKey = accountKey;
 		this.rootPath = new File(path).getCanonicalPath(); // get canonical because the incoming path may be convoluted, like <tbird profiledir>/../../... etc
 	}
 
 	public String getRootPath() { return rootPath; }
 	
-	public Store connect() throws AuthenticationFailedException, NoSuchProviderException, MessagingException
+	public Store connect() throws MessagingException
 	{
 		// Get a Session object
 		// can customize javamail properties here if needed, see e.g. http://java.sun.com/products/javamail/javadocs/com/sun/mail/imap/package-summary.html
@@ -173,6 +160,8 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 		Store store = session.getStore(new URLName("mstor:" + fname));
 		store.connect();
 
+        //This is the root folder in the namespace provided
+        //see http://docs.oracle.com/javaee/5/api/javax/mail/Store.html#getDefaultFolder%28%29
 		Folder folder = store.getDefaultFolder();
 		if (folder == null)
 			throw new RuntimeException ("Invalid folder: " + fname);
@@ -198,7 +187,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 		if (folder != null)
 			count = folder.getMessageCount(); // warning, do not close, we need to return an open folder
 
-		return new Pair<Folder,Integer>(folder, count);
+		return new Pair<>(folder, count);
 	}
 
 	@Override
@@ -223,7 +212,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	@Override
 	public String getAccountID()
 	{
-		return "mbox"; // always return mbox because the "folder" part of the cache file name will reflect the full path
+		return (Util.nullOrEmpty(accountKey) ? "mbox" : accountKey); // always return mbox because the "folder" part of the cache file name will reflect the full path
 	}
 
 	public static void main (String args[]) throws MessagingException, IOException
@@ -282,7 +271,6 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 			{
 				log.warn ("Error trying to read cache file: " + e);
 				e.printStackTrace(System.err);
-				return;
 			}
 		}
 

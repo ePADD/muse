@@ -1,17 +1,19 @@
 package edu.stanford.muse.util;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.stanford.muse.Config;
 import opennlp.tools.chunker.Chunker;
 import opennlp.tools.chunker.ChunkerME;
 import opennlp.tools.chunker.ChunkerModel;
+import opennlp.tools.dictionary.Dictionary;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
+import opennlp.tools.sentdetect.SentenceDetectorFactory;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.Tokenizer;
@@ -30,25 +32,25 @@ public class NLPUtils {
     public static Chunker chunker;
 
 	static {
-		InputStream sentStream = NLPUtils.class.getClassLoader()
-				.getResourceAsStream("models/en-sent.bin");
+		InputStream sentStream = Config.getResourceAsStream("models/en-sent.bin");
 		SentenceModel model = null;
-        InputStream posStream = NLPUtils.class.getClassLoader()
-                .getResourceAsStream("models/en-pos-maxent.bin");
-        InputStream tokenStream = NLPUtils.class.getClassLoader()
-                .getResourceAsStream("models/en-token.bin");
-        InputStream chunkerStream = NLPUtils.class.getClassLoader()
-                .getResourceAsStream("models/en-chunker.bin");
+        InputStream posStream = Config.getResourceAsStream("models/en-pos-maxent.bin");
+        InputStream tokenStream = Config.getResourceAsStream("models/en-token.bin");
+        InputStream chunkerStream = Config.getResourceAsStream("models/en-chunker.bin");
         try {
-			if (sentStream == null) {
-				File SentFile = new File("WebContent/WEB-INF/classes/models/en-sent.bin");
-				if (SentFile.exists())
-					model = new SentenceModel(SentFile);
-				else
-					log.info(SentFile.getAbsolutePath() + " doesnt exist");
-			} else
-				model = new SentenceModel(sentStream);
+            //keeping the dictionary null for now, adding a list of abbreviations could improve the performance or at least makes sure that it does not fail in obvious cases
+            //case-insesitive dictionary
+            //Dictionary dictionary = new Dictionary(false);
+            //dictionary.put(new StringList("Mr.","Mt."));
+            //When the sentence delimiter list contains '\n', some weird bug in SentenceDetector is causing an exception, dont want to get into that. Reverting the change for now.
+            SentenceDetectorFactory cf = new SentenceDetectorFactory("en",true,null,new char[] { '.', '?','!'});
+            SentenceModel dummyModel = new SentenceModel(sentStream);
 
+            //this way of getting maxent model from the initialised sentence model may look improper
+            //proper way to initialise the maxent model is:
+            //AbstractModel model = new GenericModelReader(new File(modelName)).getModel()
+            //but it was throwing java.io.UTFDataFormatException: malformed input around byte 48
+            model = new SentenceModel("en",dummyModel.getMaxentModel(), null, cf);
             POSModel posModel = new POSModel(posStream);
             posTagger = new POSTaggerME(posModel);
             TokenizerModel tokenizerModel = new TokenizerModel(tokenStream);
@@ -77,13 +79,21 @@ public class NLPUtils {
         }
     }
 
-    //TODO: OpenNLP is too bad with tokenisation of special chars except period. Atleast handle new lines, '>' whicgh are common in the case of ePADD and muse
+    //TODO: OpenNLP is too bad with tokenisation of special chars except period. At least handle new lines, '>' whicgh are common in the case of ePADD and muse
 	public static String[] tokeniseSentence(String text) {
+        if(text == null)
+            return new String[]{};
         return sentenceDetector.sentDetect(text);
 	}
 
 	public static Span[] tokeniseSentenceAsSpan(String text) {
-		return sentenceDetector.sentPosDetect(text);
+        try {
+            return sentenceDetector.sentPosDetect(text);
+        }catch(IllegalArgumentException e){
+            log.warn("Cannot tokenize: "+text);
+            e.printStackTrace();
+            return null;
+        }
 	}
 
     public static String[] tokenise(String sentence){

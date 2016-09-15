@@ -1,18 +1,17 @@
 package edu.stanford.muse.ie;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Pattern;
-
+import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.Pair;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 
-import edu.stanford.muse.util.EmailUtils;
-import edu.stanford.muse.util.Pair;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class FASTPerson extends FASTRecord implements java.io.Serializable {
 	public static final long	serialVersionUID				= 1L;
@@ -192,7 +191,7 @@ public class FASTPerson extends FASTRecord implements java.io.Serializable {
 				sourceNames += Authority.types[Authority.LOC_NAME] + sep;
 				sourceIds += locName + sep;
 			}
-			else if (src.contains("http://sws.geonames.org/")) {
+			else if (src.contains("http://stopWords.geonames.org/")) {
 				String geoId = src.replaceAll("http://sws.geonames.org/", "").replaceAll("(<|>|\\\\)", "");
 				sourceNames += Authority.types[Authority.GEO_NAMES] + sep;
 				sourceIds += geoId + sep;
@@ -264,10 +263,7 @@ public class FASTPerson extends FASTRecord implements java.io.Serializable {
 	public boolean equals(Object o) {
 		if (o instanceof FASTPerson) {
 			FASTPerson fp = (FASTPerson) o;
-			if (fp.FAST_id.equals(this.FAST_id))
-				return true;
-			else
-				return false;
+			return fp.FAST_id.equals(this.FAST_id);
 		}
 		else
 			return false;
@@ -282,18 +278,18 @@ public class FASTPerson extends FASTRecord implements java.io.Serializable {
 
 	@Override
 	public void addValue(String relation, String value) {
-		String predicate = relation, object = value;
+		String object = value;
 
 		// http://id.worldcat.org/fast/148474> <http://schema.org/name>
 		// "Stampford, Lord (Henry Grey), 1599?-1673" .
-		if (predicate.equalsIgnoreCase("<http://schema.org/name>")) {
+		if (relation.equalsIgnoreCase("<http://schema.org/name>")) {
 			String name = extractName(object);
 			names.add(name);
 		}
 
 		// <http://id.worldcat.org/fast/212611> <http://schema.org/sameAs>
 		// <http://id.loc.gov/authorities/subjects/sh85083889> .
-		if (predicate.equalsIgnoreCase("<http://schema.org/sameAs>")) {
+		if (relation.equalsIgnoreCase("<http://schema.org/sameAs>")) {
 			object = object.replaceAll("(^<|>$)+", "");
 			if (object.startsWith("http://viaf.org/viaf/")) {
 				// <http://id.worldcat.org/fast/1773461>
@@ -324,13 +320,13 @@ public class FASTPerson extends FASTRecord implements java.io.Serializable {
 		// <http://id.worldcat.org/fast/1773461>
 		// <http://xmlns.com/foaf/0.1/focus>
 		// <http://dbpedia.org/resource/Ferdinand_Kittel> .
-		if (predicate.equalsIgnoreCase("<http://xmlns.com/foaf/0.1/focus>")
+		if (relation.equalsIgnoreCase("<http://xmlns.com/foaf/0.1/focus>")
 				&& object.startsWith("<http://dbpedia.org/resource")) {
 			dbpedia = object;
 			this.wikiSource = true;
 		}
 
-		if (predicate.equals("<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"))
+		if (relation.equals("<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"))
 			type = value;
 	}
 

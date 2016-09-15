@@ -8,7 +8,7 @@
 # priority in which case they inherit their priority from the
 # hierarchy.
 
-log4j.rootCategory=DEBUG, Console
+log4j.rootCategory=INFO, Console
 
 # shut ehcache, pdfbox and mstor etc up, creates too much debug output
 log4j.logger.net.sf.ehcache=OFF

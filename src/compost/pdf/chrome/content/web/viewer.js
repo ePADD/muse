@@ -540,7 +540,7 @@ var PDFView = {
                 } else
                 this.page = params.page;
                 // simple page
-                return;
+
             }
         } else if (/^\d+$/.test(hash))
         // page number
@@ -1120,7 +1120,7 @@ var TextLayerBuilder = function textLayerBuilder(textLayerDiv) {
                 renderTimer = setInterval(renderTextLayer, renderInterval);
             },
             resumeInterval);
-        };
+        }
         // textLayerOnScroll
         window.addEventListener('scroll', textLayerOnScroll, false);
     };
@@ -1490,7 +1490,7 @@ function addTextNodes(node, arr, insert_delimiters) {
     }
     //   textNodesParsedWithoutBreak++;
     if (!arr)
-    arr = new Array();
+    arr = [];
     if (node.nodeType == 7 || node.nodeType == 2)
     // comment node, attribute node
     return;
@@ -1546,13 +1546,13 @@ function addTextNodes(node, arr, insert_delimiters) {
 
 String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g, "");
-}
+};
 String.prototype.ltrim = function() {
     return this.replace(/^\s+/, "");
-}
+};
 String.prototype.rtrim = function() {
     return this.replace(/\s+$/, "");
-}
+};
 
 
 function render_rounder()
@@ -1823,7 +1823,7 @@ function driver(pageNumber)
                 // callback(null);
                 }
         }
-    }
+    };
     // Note that any URL fetched here must be matched by a permission in
     // the manifest.json file!
     var encoded_page = encodeURIComponent(textOnPage);
@@ -1903,7 +1903,7 @@ function my_selection_callback()
     //alert(selected.text);
     $(selected.obj).css({
         'border': '3px solid yellow'
-    })
+    });
 
     $(selected.obj).addClass('jhighlight');
 
@@ -2001,7 +2001,7 @@ function my_selection_callback()
                 // callback(null);
                 }
         }
-    }
+    };
     // Note that any URL fetched here must be matched by a permission in
     // the manifest.json file!
     var encoded_page = encodeURIComponent(textOnPage);
@@ -2069,4 +2069,4 @@ function doIt()
 
 
 
-};
+}

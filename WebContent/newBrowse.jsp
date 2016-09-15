@@ -170,7 +170,7 @@ function redirect_to(url) { if (top === self) { window.location = url; } else { 
 	session.setAttribute("lexicon", lexicon);	
  }
  
- Map<String, Collection<DetailedFacetItem>> facets = IndexUtils.computeDetailedFacets(docs, archive, lexicon);
+ Map<String, Collection<DetailedFacetItem>> facets = IndexUtils.computeDetailedFacets(docs, archive);
  boolean jogDisabled = ("true".equals(JSPHelper.getSessionAttribute(session, "jogDisabled"))) ? true : false;
 
  // now docs is the selected docs
@@ -440,12 +440,17 @@ int nAttachments = EmailUtils.countAttachmentsInDocs((Collection) docs);
             JSPHelper.log.info("Highlight contact id param is not integer"+hci);
         }
     }
+    Set<String> highlightTerms = new HashSet<>();
+    if(highlightTermsUnstemmed!=null)
+        highlightTerms.addAll(highlightTermsUnstemmed);
+    if(selectedPrefixes!=null)
+        highlightTerms.addAll(selectedPrefixes);
     Pair<DataSet, String> pair;
     String sortBy = request.getParameter("sort_by");
     if ("recent".equals(sortBy) || "relevance".equals(sortBy))
-        pair = EmailRenderer.pagesForDocuments(docs, archive, datasetName, highlightContactIds, selectedPrefixes, highlightTermsUnstemmed, highlightAttachments, MultiDoc.ClusteringType.NONE);
+        pair = EmailRenderer.pagesForDocuments(docs, archive, datasetName, highlightContactIds, highlightTerms, highlightAttachments, MultiDoc.ClusteringType.NONE);
     else
-        pair = EmailRenderer.pagesForDocuments(docs, archive, datasetName, highlightContactIds, selectedPrefixes, highlightTermsUnstemmed, highlightAttachments);
+        pair = EmailRenderer.pagesForDocuments(docs, archive, datasetName, highlightContactIds, highlightTerms, highlightAttachments);
 
     DataSet browseSet = pair.getFirst();
 	String html = pair.getSecond();
