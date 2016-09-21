@@ -106,7 +106,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	transient private QueryParser parser, parserOriginal, parserSubject, parserCorrespondents, parserRegex, parserMeta;		// parserOriginal searches the original content (non quoted parts) of a message
 	transient private IndexWriter iwriter;
 	transient private IndexWriter					iwriter_blob;
-	transient private Map<Integer,String>			blobDocIds, contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
+	transient protected Map<Integer,String>			blobDocIds, contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
 
 	transient private String						baseDir					= null;												// where the file-based directories should be stored (under "indexes" dir)
 
@@ -724,7 +724,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 			String[] defaultSearchFields, defaultSearchFieldsOriginal;
 			String[] defaultSearchFieldSubject = new String[] { "title" }; // for subject only search
-			String[] defaultSearchFieldCorrespondents = null;
+			String[] defaultSearchFieldCorrespondents;
             //body field should be there, as the content of the attachment lies in this field, should also include meta field?
             //why the search over en-names and en-names-original when body/body_original is included in the search fields?
             defaultSearchFields = new String[] { "body", "title", "to_names", "from_names", "cc_names", "bcc_names", "to_emails", "from_emails", "cc_emails", "bcc_emails" };
@@ -761,14 +761,17 @@ public class Indexer implements StatusProvider, java.io.Serializable {
                     log.warn ("!!!!!!!\nIndex reader has " + ireader.numDocs() + " doc(s) of which " + ireader.numDeletedDocs() + " are deleted)\n!!!!!!!!!!");
 				isearcher = new IndexSearcher(ireader);
 				contentDocIds = new LinkedHashMap<>();
-
                 numContentDocs = ireader.numDocs();
                 numContentDeletedDocs = ireader.numDeletedDocs();
 
+                Bits liveDocs = MultiFields.getLiveDocs(ireader);
                 Set<String> fieldsToLoad = new HashSet<>();
                 fieldsToLoad.add("docId");
                 for(int i=0;i<ireader.maxDoc();i++){
 					org.apache.lucene.document.Document doc = ireader.document(i,fieldsToLoad);
+                    if(liveDocs!=null && !liveDocs.get(i))
+                        continue;
+
                     if(doc == null || doc.get("docId") == null)
 						continue;
 					contentDocIds.put(i, doc.get("docId"));
@@ -785,10 +788,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
                 numAttachmentDocs = ireader_blob.numDocs();
                 numAttachmentDeletedDocs = ireader_blob.numDeletedDocs();
 
+                Bits liveDocs = MultiFields.getLiveDocs(ireader_blob);
                 Set<String> fieldsToLoad = new HashSet<String>();
 				fieldsToLoad.add("docId");
 				for(int i=0;i<ireader_blob.maxDoc();i++){
 					org.apache.lucene.document.Document doc = ireader_blob.document(i,fieldsToLoad);
+                    if(liveDocs!=null && !liveDocs.get(i))
+                        continue;
+
 					if(doc == null || doc.get("docId") == null)
 						continue;
 					blobDocIds.put(i,doc.get("docId"));
@@ -1488,7 +1495,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 				//				if (ed.languages == null)
 				//				{
 				//					// extract languages for the doc from the index and store it in the document, so we don't have to compute it again
-				//					String lang = getDoc(docId).getFieldable("languages").stringValue();
+				//					String lang = getLuceneDoc(docId).getFieldable("languages").stringValue();
 				//					StringTokenizer st = new StringTokenizer(lang, ",");
 				//					Set<String> langs = new LinkedHashSet<String>();
 				//					while (st.hasMoreTokens())
@@ -1695,11 +1702,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	{
 		TermQuery q = new TermQuery(new Term("docId", docId));
 		TopDocs td = isearcher.search(q, 1); // there must be only 1 doc with this id anyway
-		Util.softAssert(td.totalHits == 0, "Oboy! docId: " + docId + " already present in the index, don't try to add it again!");
+        Util.softAssert(td.totalHits == 0, "Oboy! docId: " + docId + " already present in the index, don't try to add it again!");
 	}
 
 	// look up the doc from doc id assigned to it
-	private org.apache.lucene.document.Document getLDoc(String docId, Boolean attachment) throws IOException
+	private org.apache.lucene.document.Document getLDoc(String docId, Boolean attachment, Set<String> fieldsToLoad) throws IOException
 	{
 		IndexSearcher searcher = null;
 		if(!attachment) {
@@ -1728,16 +1735,26 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			return null;
 		}
 
-		return searcher.doc(sd[0].doc);
+        if(fieldsToLoad!=null)
+		    return searcher.doc(sd[0].doc, fieldsToLoad);
+        else return searcher.doc(sd[0].doc);
 	}
 
 	private org.apache.lucene.document.Document getLDocAttachment(String docId) throws IOException{
-		return getLDoc(docId, true);
+		return getLDoc(docId, true, null);
 	}
 
 	protected org.apache.lucene.document.Document getLDoc(String docId) throws IOException{
-		return getLDoc(docId, false);
+		return getLDoc(docId, false, null);
 	}
+
+    private org.apache.lucene.document.Document getLDocAttachment(String docId, Set<String> fieldsToLoad) throws IOException{
+        return getLDoc(docId, true, fieldsToLoad);
+    }
+
+    protected org.apache.lucene.document.Document getLDoc(String docId, Set<String> fieldsToLoad) throws IOException{
+        return getLDoc(docId, false, fieldsToLoad);
+    }
 
 	protected String getContents(edu.stanford.muse.index.Document d, boolean originalContentOnly)
 	{
@@ -1788,6 +1805,18 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return contents;
     }
 
+    protected org.apache.lucene.document.Document getLDoc(Integer ldocId, Set<String> fieldsToLoad) {
+        try {
+            if (isearcher == null) {
+                DirectoryReader ireader = DirectoryReader.open(directory);
+                isearcher = new IndexSearcher(ireader);
+            }
+            return isearcher.doc(ldocId, fieldsToLoad);
+        } catch(IOException e){
+            Util.print_exception(e, log);
+            return null;
+        }
+    }
 
 	public static void main(String args[]) throws IOException, ClassNotFoundException, ParseException, GeneralSecurityException
 	{

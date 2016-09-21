@@ -5,10 +5,11 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
-// This is a generic authority class to represent an entity found in a database.
+/**
+ *  A generic authority class to represent various authority records found for an element.
+ */
 public class Authority implements Serializable {
     private static final long	serialVersionUID	= 1L;
 	public String				name;
@@ -20,14 +21,10 @@ public class Authority implements Serializable {
     public static Log log						= LogFactory.getLog(Authority.class);
     public static String        sep = ":::";
 
-
-    /**
-	 * @TODO Add export to csv function
-	 */
 	public Authority(String name, String[] ids, String[] dbTypes) {
         //geo names -> http://sws.geonames.org/
         this.name = name;
-		sources = new HashMap<String, Short>();
+		sources = new HashMap<>();
 		if (ids == null || dbTypes == null) {
 			log.warn("Improper params to add authority! Either of ids or dbTypes field supplied is null! Returning");
 			return;
@@ -61,7 +58,7 @@ public class Authority implements Serializable {
        // short[] dbs = new short[]{Authority.FAST, Authority.FREEBASE, Authority.DBPEDIA, Authority.VIAF, Authority.LOC_NAME, Authority.LOC_SUBJECT, Authority.GEO_NAMES};
         //TODO: make the sources be printed in a pre-defined order
         for (String id : sources.keySet()) {
-			String dType = null;
+			String dType;
 			String link = null;
 			short dbType = sources.get(id);
 			if (dbType == Authority.DBPEDIA) {
@@ -96,7 +93,7 @@ public class Authority implements Serializable {
                 log.warn("Unknown type: " + dbType + " found in sources of: " + name);
                 continue;
             }
-			if (!link.equals(""))
+			if (link!=null && !link.equals(""))
 				sourceStr += "<span class=\"authority-id\" <a href='" + link + "'>" + dType + ":" + id + "</a></span>&nbsp&nbsp";
 			else
 				sourceStr += dType + ":" + id + "&nbsp&nbsp";

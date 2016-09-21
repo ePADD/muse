@@ -1,5 +1,17 @@
 package edu.stanford.muse.memory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.email.Contact;
@@ -11,10 +23,11 @@ import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.util.*;
-import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.xword.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import edu.stanford.muse.webapp.JSPHelper;
 import org.apache.lucene.queryparser.classic.ParseException;
 
 import javax.mail.Address;
@@ -28,7 +41,6 @@ public class MemoryStudy implements Serializable{
 	private static final long serialVersionUID = 1L;
 
 	public static Log log = LogFactory.getLog(MemoryStudy.class);
-	private static final int MIN_ANSWER_LENGTH = 3, MAX_ANSWER_LENGTH = 15;
 	public static String PAYMENT = System.getProperty("PAYMENT"); // note, this does not have $10, only 10
 	
 	/** screening params */

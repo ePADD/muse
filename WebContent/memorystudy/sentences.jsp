@@ -1,22 +1,7 @@
 <%@ page import="edu.stanford.muse.index.Document" %>
-<%@ page import="java.util.*" %>
 <%@ page import="edu.stanford.muse.index.EmailDocument" %>
-<%@ page import="edu.stanford.muse.util.Pair" %>
 <%@ page import="edu.stanford.muse.util.Util" %>
-<%@ page import="edu.stanford.muse.email.AddressBook" %>
-<%@ page import="edu.stanford.muse.email.Contact" %>
-<%@ page import="edu.stanford.muse.ner.NER" %>
 
-<%@ page import="java.text.SimpleDateFormat" %>
-<%@ page import="javax.mail.Address" %>
-<%@ page import="com.google.common.collect.Multimap" %>
-<%@ page import="com.google.common.collect.LinkedHashMultimap" %>
-<%@ page import="edu.stanford.muse.util.DictUtils" %>
-<%@ page import="org.w3c.tidy.Dict" %>
-<%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
-<%@ page import="edu.stanford.muse.xword.Clue" %>
-<%@ page import="java.io.File" %>
-<%@ page import="edu.stanford.muse.ner.model.NERModel" %>
 <%@ page import="edu.stanford.muse.util.EmailUtils" %>
 <%@ page import="edu.stanford.muse.xword.SentenceTokenizer" %>
 <%@include file="../getArchive.jspf" %>

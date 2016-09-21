@@ -231,7 +231,6 @@ public class Highlighter {
         //should preserve order so that highlight terms are seen before hyperlink
         Set<String> allTerms = new LinkedHashSet<>();
         allTerms.addAll(highlightTerms);
-        allTerms.addAll(hyperlinkTerms);
 
 		/*
 		 * We ant to assign order in which terms are highlighted or hyperlinked.
@@ -258,6 +257,7 @@ public class Highlighter {
             for (String substr : substrs) {
                 if(at.equals(substr) || at.equals("\""+substr+"\""))
                     continue;
+
                 boolean match = catchTerms.contains(substr.toLowerCase());
                 int val = match?Integer.MAX_VALUE:substr.length();
                 //remove it from terms to be annotated.
@@ -291,6 +291,7 @@ public class Highlighter {
 //        String result = contents;
         String result = highlightBatch(contents, highlightTerms.toArray(new String[highlightTerms.size()]), preHighlightTag, postHighlightTag);
         result = highlightBatch(result, hyperlinkTerms.toArray(new String[hyperlinkTerms.size()]), preHyperlinkTag, postHyperlinkTag);
+
 //        System.out.println("Terms to highlight: " + termsToHighlight);
 //        System.out.println("Terms to hyperlink: "+termsToHyperlink);
 //        System.out.println("order: "+order);
@@ -500,12 +501,12 @@ public class Highlighter {
             System.out.println("Archive folder: "+fldr);
             String tmpDir = System.getProperty("java.io.tmpdir");
             int fi = 0;
-            System.out.println("Content: " + archive.getDoc(archive.docForId(testDocIds[0])));
+            System.out.println("Content: " + archive.getLuceneDoc(testDocIds[0]));
             for(String td: testDocIds) {
                 EmailDocument ed = archive.docForId(td);
                 String content = archive.getContents(ed,false);
                 Map<String, Archive.Entity> ewid = new LinkedHashMap<>();
-                Util.tokenize(archive.getDoc(ed).get("names"), Indexer.NAMES_FIELD_DELIMITER).forEach(t -> {
+                Util.tokenize(archive.getLuceneDoc(ed.getUniqueId()).get("names"), Indexer.NAMES_FIELD_DELIMITER).forEach(t -> {
                     if (t == null) {
                         log.warn("Found null content while parsing entity spans!!!");
                     }

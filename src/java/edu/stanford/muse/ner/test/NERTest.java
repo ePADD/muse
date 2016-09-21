@@ -764,6 +764,141 @@ public class NERTest {
         }
     }
 
+    public static void testDBpedia(NERModel nerModel){
+        //when testing remember to change
+        //1. lookup method, disable the lookup
+        System.err.println("DBpedia scoring check starts");
+        String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
+        //clear the cache
+        EmailUtils.dbpedia = null;
+        Map<String,String> dbpedia = EmailUtils.readDBpedia(1, twl);
+        //NOther == Not OTHER
+        //number of things shown (NON-OTHER) and number of things that should be shown
+        int ne = 0, neShown = 0, neShouldShown = 0;
+        //number of entries assigned to wrong type and number missed because they are assigned OTHER
+        int missAssigned=0, missSegmentation = 0, missNoEvidence = 0;
+        int correct = 0;
+        //these are the entries which are not completely tagged as OTHER by NER, but may have some segments that are not OTHER, hence visible
+        double CUTOFF = 0;
+        Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
+        Map<Short, Integer> freqs = new LinkedHashMap<>();
+        String[] badSuffixTypes = new String[]{"MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
+                "EthnicGroup","RadioStation|Broadcaster|Organisation", "MeanOfTransportation", "TelevisionShow|Work",
+                "Play|WrittenWork|Work","Language", "Book|WrittenWork|Work","Genre|TopicalConcept", "InformationAppliance|Device",
+                "SportsTeam|Organisation", "Eukaryote|Species","Software|Work", "TelevisionEpisode|Work", "Comic|WrittenWork|Work",
+                "Mayor", "Website|Work", "Cartoon|Work"
+        };
+        ol:
+        for(String entry: dbpedia.keySet()){
+            if(!entry.contains(" "))
+                continue;
+            String fullType = dbpedia.get(entry);
+            Short type = FeatureDictionary.codeType(dbpedia.get(entry));
+
+            if(fullType.equals("Agent"))
+                type = FeatureDictionary.PERSON;
+            else
+                for (String bst: badSuffixTypes)
+                    if(fullType.endsWith(bst))
+                        continue ol;
+
+            entry = EmailUtils.uncanonicaliseName(entry);
+            if(entry.length()>=15)
+                continue;
+            edu.stanford.muse.util.Span[] chunks = nerModel.find(entry);
+            Map<Short, Map<String,Double>> es = p.getFirst();
+            Map<Short, Map<String,Double>> temp = new LinkedHashMap<>();
+            for(Short t: es.keySet()) {
+                if(es.get(t).size()==0)
+                    continue;
+                temp.put(t, new LinkedHashMap<>());
+                for (String str : es.get(t).keySet())
+                    if(es.get(t).get(str)>CUTOFF)
+                        temp.get(t).put(str, es.get(t).get(str));
+            }
+            es = temp;
+
+            short assignedTo = type;
+            boolean shown = false;
+            //we should not bother about segmentation in the case of OTHER
+            if(!(es.containsKey(FeatureDictionary.OTHER) && es.size()==1)) {
+                shown = true;
+                boolean any;
+                if (type!=FeatureDictionary.OTHER && es.containsKey(type) && es.get(type).containsKey(entry))
+                    correct++;
+                else {
+                    any = false;
+                    boolean found = false;
+                    assignedTo = -1;
+                    for (Short t : es.keySet()) {
+                        if (es.get(t).containsKey(entry)) {
+                            found = true;
+                            assignedTo = t;
+                            break;
+                        }
+                        if (es.get(t).size() > 0)
+                            any = true;
+                    }
+                    if (found) {
+                        missAssigned++;
+                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + p.getFirst() + "--------");
+                    } else if (any) {
+                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + p.getFirst() + "--------");
+                        missSegmentation++;
+                    } else {
+                        missNoEvidence++;
+                        System.err.println("Not enough evidence for: " + entry + " - " + fullType);
+                    }
+                }
+            }
+            if(shown)
+                neShown++;
+            if(type!=FeatureDictionary.OTHER)
+                neShouldShown++;
+
+            if(ne++%100 == 0)
+                System.err.println("Done testing on "+ne+" of "+dbpedia.size());
+            if(!confMat.containsKey(type))
+                confMat.put(type, new LinkedHashMap<>());
+            if(!confMat.get(type).containsKey(assignedTo))
+                confMat.get(type).put(assignedTo, 0);
+            confMat.get(type).put(assignedTo, confMat.get(type).get(assignedTo)+1);
+
+            if(!freqs.containsKey(type))
+                freqs.put(type, 0);
+            freqs.put(type, freqs.get(type)+1);
+        }
+        List<Short> allTypes = new ArrayList<>();
+        for(Short type: confMat.keySet())
+            allTypes.add(type);
+        Collections.sort(allTypes);
+        allTypes.add((short)-1);
+        System.err.println("Tested on "+ne+" entries");
+        System.err.println("------------------------");
+        String ln = "  ";
+        for(Short type: allTypes)
+            ln += String.format("%5s",type);
+        System.err.println(ln);
+        for(Short t1: allTypes){
+            ln = String.format("%2s",t1);
+            for(Short t2: allTypes) {
+                if(confMat.containsKey(t1) && confMat.get(t1).containsKey(t2) && freqs.containsKey(t1))
+                    ln += String.format("%5s", new DecimalFormat("#.##").format((double)confMat.get(t1).get(t2)/freqs.get(t1)));//new DecimalFormat("#.##").format((double) confMat.get(t1).get(t2) / freqs.get(t1)));
+                else
+                    ln += String.format("%5s","-");
+            }
+            System.err.println(ln);
+        }
+        System.err.println("------------------------\n");
+        double precision = (double)(correct)/(neShown);
+        double recall = (double)correct/neShouldShown;
+        //miss and misAssigned are number of things we are missing we are missing, but for different reasons, miss is due to segmentation problem, assignment to OTHER; misAssigned is due to wrong type assignment
+        //visible = ne - number of entries that are assigned OTHER label and hence visible
+        System.err.println("Missed #"+missAssigned+" due to improper assignment\n#"+missSegmentation+"due to improper segmentation\n" +
+                "#"+missNoEvidence+" due to single word or no evidence");
+        System.err.println("Precision: "+precision+"\nRecall: "+recall);
+    }
+
     public static void main(String[] args){
         test();
     }

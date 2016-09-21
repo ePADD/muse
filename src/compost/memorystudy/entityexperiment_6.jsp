@@ -181,7 +181,7 @@
         }
         out.println ("</table>");
 //        String sent = "Rockwell International Corp.'s Tulsa unit said it signed a tentative agreement extending its contract with Boeing Co. to provide structural parts for Boeing's 747 jetliners";
-//        String[] tokens = NLPUtils.tokenise(sent);
+//        String[] tokens = NLPUtils.tokenize(sent);
 //        String[] tags = NLPUtils.posTag(tokens);
 //        String[] chunks = NLPUtils.chunker.chunk(tokens, tags);
 //        out.println((new ChunkSample(tokens, tags, chunks)).nicePrint());

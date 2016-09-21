@@ -100,6 +100,7 @@ public class Span implements java.io.Serializable {
         for (String fn : fldrs) {
             System.out.println("Folder: " + fn);
             java.io.File fldr = new java.io.File(fn);
+
             if (!fldr.exists())
                 fldr.mkdir();
         }

@@ -117,7 +117,11 @@
             if(di++>md)
                 break;
             //System.err.println("120");
+<<<<<<< HEAD
             Map<Short,Map<String,Double>> es = NER.getNames(archive.getDoc(doc), true);
+=======
+            Map<Short,Map<String,Double>> es = NER.getEntities(archive.getLuceneDoc(doc),true);
+>>>>>>> b3a728aa8d785479d355deb104428dabc9c87885
             //System.err.println("122");
             for(Short type: inc)
                 if(!exc.contains(type)){

@@ -105,7 +105,6 @@ public class Archive implements Serializable {
     // Archive struct. consider moving it elsewhere.
     List<MultiDoc> docClusters;
 
-
     protected static void readPresetQueries() {
         List<String> q = new ArrayList<>();
         String PRESET_QUERIES_FILE = "presetqueries.txt";
@@ -119,7 +118,9 @@ public class Archive implements Serializable {
                 File settingsDir = new File(edu.stanford.muse.Config.SETTINGS_DIR);
                 if (!settingsDir.exists()) {
                     log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
-                    settingsDir.mkdirs();
+                    boolean created = settingsDir.mkdirs();
+                    if(!created)
+                        log.warn("Cannot create settings dir: "+settingsDir);
                 }
 
                 try {
@@ -190,7 +191,7 @@ public class Archive implements Serializable {
         return indexer.docsForQuery(term, options);
     }
 
-    //query term can be ommitted if the querytype is PRESET_REGEX
+    //query term can be omitted if the querytype is PRESET_REGEX
     public Collection<Document> docsForQuery(int cluster, Indexer.QueryType qt) {
         Indexer.QueryOptions options = new Indexer.QueryOptions();
         options.setCluster(cluster);
@@ -275,7 +276,6 @@ public class Archive implements Serializable {
         public Map<Short, Integer> entityCounts;
         public int numPotentiallySensitiveMessages = -1;
         public Date firstDate, lastDate;
-        public int numLexicons = -1;
 
         private static String mergeField(String a, String b) {
             if (a == null)
@@ -836,7 +836,7 @@ public class Archive implements Serializable {
                 // Collections.sort(names);
                 // d.description = Util.join(names,
                 // Indexer.NAMES_FIELD_DELIMITER);
-                d.description = IndexUtils.retainOnlyNames(d.description, archive.getDoc(d));
+                d.description = IndexUtils.retainOnlyNames(d.description, archive.getLuceneDoc(d.getUniqueId()));
             }
         }
     }
@@ -1016,10 +1016,8 @@ public class Archive implements Serializable {
     }
 
     /**
-     * @return html for the given terms, with terms highlighted by the
-     * indexer.
-     * if IA_links is set, points links to the Internet archive's
-     * version of the page.
+     * @return html for the given terms, with terms highlighted by the indexer.
+     * if IA_links is set, points links to the Internet archive's version of the page.
      * docId is used to initialize a new view created by clicking on a link within this message,
      * date is used to create the link to the IA
      * @args ldoc - lucene doc corresponding to the content
@@ -1091,7 +1089,7 @@ public class Archive implements Serializable {
             entitiesWithId.put(acr,new Entity(acr, authorisedEntities==null?null:authorisedEntities.get(acr),types));
         });
 
-        //dont want more button anymore
+        //don't want "more" button anymore
         boolean overflow = false;
         String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
 
@@ -1103,24 +1101,20 @@ public class Archive implements Serializable {
         return new Pair<>(sb, overflow);
     }
 
-    public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs) {
-        return clustersForDocs(docs, MultiDoc.ClusteringType.MONTHLY);
-    }
     /* break up docs into clusters, based on existing docClusters
     * Note: Clustering Type MONTHLY and YEARLY not supported*/
     public List<MultiDoc> clustersForDocs(Collection<? extends Document> docs, MultiDoc.ClusteringType ct) {
         //TODO: whats the right thing to do when docClusters is null?
         if (docClusters == null || (ct == MultiDoc.ClusteringType.NONE)) {
-            List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
+            List<MultiDoc> new_mDocs = new ArrayList<>();
             MultiDoc md = new MultiDoc(0,"all");
-            for (Document d : docs) {
-                md.add(d);
-            }
+            docs.forEach(md::add);
+
             new_mDocs.add(md);
             return new_mDocs;
         }
 
-        Map<Document, Integer> map = new LinkedHashMap<Document, Integer>();
+        Map<Document, Integer> map = new LinkedHashMap<>();
         int i = 0;
         for (MultiDoc mdoc : docClusters) {
             for (Document d : mdoc.docs)
@@ -1128,9 +1122,8 @@ public class Archive implements Serializable {
             i++;
         }
 
-        List<MultiDoc> new_mDocs = new ArrayList<MultiDoc>();
-        for (@SuppressWarnings("unused")
-        MultiDoc md : docClusters)
+        List<MultiDoc> new_mDocs = new ArrayList<>();
+        for (MultiDoc md : docClusters)
             new_mDocs.add(null);
 
         for (Document d : docs) {
@@ -1144,7 +1137,7 @@ public class Archive implements Serializable {
             new_mDoc.add(d);
         }
 
-        List<MultiDoc> result = new ArrayList<MultiDoc>();
+        List<MultiDoc> result = new ArrayList<>();
         for (MultiDoc md : new_mDocs)
             if (md != null)
                 result.add(md);
@@ -1169,17 +1162,22 @@ public class Archive implements Serializable {
         return sb.toString();
     }
 
-    public org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
-        return indexer.getDoc(d);
+    //TODO retain only one of the two methods below
+    public org.apache.lucene.document.Document getLuceneDoc(String docId) throws IOException {
+        return indexer.getLDoc(docId);
+    }
+
+    public org.apache.lucene.document.Document getLuceneDoc(String docId, Set<String> fieldsToLoad) throws IOException {
+        return indexer.getLDoc(docId, fieldsToLoad);
     }
 
     private Set<String> getNames(edu.stanford.muse.index.Document d, Indexer.QueryType qt)
     {
         try {
-            return new LinkedHashSet<String>(getNamesForDocId(d.getUniqueId(), qt));
+            return new LinkedHashSet<>(getNamesForDocId(d.getUniqueId(), qt));
         } catch (Exception e) {
             Util.print_exception(e, log);
-            return new LinkedHashSet<String>();
+            return new LinkedHashSet<>();
         }
     }
 
@@ -1209,7 +1207,7 @@ public class Archive implements Serializable {
 
     //returns a map of names recognised by NER to frequency
     private Map<String, Integer> countNames() {
-        Map<String, Integer> name_count = new LinkedHashMap<String, Integer>();
+        Map<String, Integer> name_count = new LinkedHashMap<>();
         for (Document d : getAllDocs()) {
             Set<String> names = getNames(d, Indexer.QueryType.FULL);
             // log.info("Names = " + Util.joinSort(names, "|"));
@@ -1283,10 +1281,8 @@ public class Archive implements Serializable {
     }
 
     public void merge(Archive other) {
-        for (Document doc : other.getAllDocs()) {
-            if (!this.containsDoc(doc))
-                this.addDoc(doc, other.getContents(doc, /* originalContentOnly */false));
-        }
+        /* originalContentOnly */
+        other.getAllDocs().stream().filter(doc -> !this.containsDoc(doc)).forEach(doc -> this.addDoc(doc, other.getContents(doc, /* originalContentOnly */false)));
 
         addressBook.merge(other.addressBook);
         this.processingMetadata.merge(other.processingMetadata);
@@ -1383,7 +1379,7 @@ public class Archive implements Serializable {
 
     /**@return a list of names filtered to remove dictionary matches*/
     public Span[] getNamesOfATypeInDoc(edu.stanford.muse.index.Document d, boolean body, short type) throws IOException{
-        return getNamesOfATypeInLuceneDoc(getDoc(d), body, type);
+        return getNamesOfATypeInLuceneDoc(getLuceneDoc(d.getUniqueId()), body, type);
     }
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
@@ -1477,6 +1473,23 @@ public class Archive implements Serializable {
             names.add(p.getFirst());
 
         return Util.scrubNames(names);
+    }
+
+    //maps locId (int) to docId (edu.stanford.muse.index.Document) using indexer storage structures
+    public Integer getLDocIdForContentDocId(String docId){
+        return indexer.contentDocIds.entrySet().stream().filter(e->docId.equals(e.getValue())).findAny().map(e->e.getKey()).orElse(0);
+    }
+
+    public String getDocIdForContentLDocId(Integer ldocId){
+        return indexer.contentDocIds.get(ldocId);
+    }
+
+    public Integer getLDocIdForBlobDocId(String docId){
+        return indexer.blobDocIds.entrySet().stream().filter(e->docId.equals(e.getValue())).findAny().map(e->e.getKey()).orElse(0);
+    }
+
+    public String getDocIdForBlobLDocId(Integer ldocId){
+        return indexer.blobDocIds.get(ldocId);
     }
 
     public static void main(String[] args) {

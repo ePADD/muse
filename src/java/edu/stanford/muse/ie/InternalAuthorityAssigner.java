@@ -49,7 +49,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 	private static Log				log					= LogFactory.getLog(InternalAuthorityAssigner.class);
 
-	public Map<Short, Entities>		entitiesData		= new HashMap<Short, Entities>();
+	public Map<Short, Entities>		entitiesData		= new HashMap<>();
 
 	// frequency of a contact. ContactId->frequency
 	public Map<Integer, Integer>	contactFreq;
@@ -63,12 +63,12 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	boolean							cancel				= false;
 
 	public static InternalAuthorityAssigner load(Archive archive) {
-		InternalAuthorityAssigner aa = null;
+		InternalAuthorityAssigner aa;
 		String AUTHORITY_ASSIGNER_FILE = archive.baseDir + File.separator + Config.AUTHORITY_ASSIGNER_FILENAME;
 		if (new File(AUTHORITY_ASSIGNER_FILE).exists()) {
 			log.info("Reading InternalAuthorityAssigner object from file" + AUTHORITY_ASSIGNER_FILE);
 
-			ObjectInputStream ois = null;
+			ObjectInputStream ois;
 			try {
 				ois = new ObjectInputStream(new FileInputStream(AUTHORITY_ASSIGNER_FILE));
 				aa = (InternalAuthorityAssigner) ois.readObject();
@@ -101,11 +101,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 	/** Initializes the object */
 	public void initialize(Archive archive) {
-		//initiate KillPhrases to make sure the static methods are initiated.
-		//http://stackoverflow.com/questions/3499214/java-static-class-initialization
-		new KillPhrases();
-
-		contactFreq = new HashMap<Integer, Integer>();
+		contactFreq = new HashMap<>();
 		// collect all the entities of type person from all the docs
 		Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
 		long start_time = System.currentTimeMillis();
@@ -120,7 +116,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		if (cancel)
 			return;
 
-		Set<String> acronyms = new HashSet<String>();
+		Set<String> acronyms = new HashSet<>();
 
 		/*
 		 * There are two iterations on all docs, because the entities and their
@@ -147,7 +143,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			try {
 				//TODO: trying to get acronyms this way is a hack and inefficient
 				//Initialise a special reg exp for this task
-				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
+				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content);
 				if (pnames != null)
 					for (String name : pnames) {
 						String tc = FeatureGeneratorUtil.tokenFeature(name);
@@ -180,7 +176,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 			int freq = contactFreq.get(cid);
 			String dn = contacts.get(i).pickBestName();
-			if (dn == null || KillPhrases.killPhrases.contains(dn))
+			if (dn == null)
 				continue;
 			dn = dn.replaceAll("^\\s+|\\s+$", "");
 			if (dn.contains(" ")) {
@@ -197,8 +193,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			if (cancel)
 				return;
 		}
-
-		CharArraySet stopWordsSet = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
 
 		di = 0;
 		for (EmailDocument ed : docs) {
@@ -255,9 +249,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 				List<String> entities = allEntities.get(ei);
 				Short et = allTypes[ei];
 				for (String e : entities) {
-					if (KillPhrases.killPhrases.contains(e.toLowerCase()))
-						continue;
-
 					if (e != null && (et != EntityFeature.PERSON ||e.contains(" "))) {
 						Entities d = entitiesData.get(et);
 						String canonicalEntity = IndexUtils.canonicalizeEntity(e);
@@ -291,14 +282,13 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 		String AUTHORITY_ASSIGNER_FILE = archive.baseDir + File.separator + Config.AUTHORITY_ASSIGNER_FILENAME;
 		log.info("Writing InternalAuthorityAssigner object to file" + AUTHORITY_ASSIGNER_FILE);
-		ObjectOutputStream oos = null;
+		ObjectOutputStream oos ;
 		try {
 			String stats = "";
 			stats += "#People: " + this.entitiesData.get(EntityFeature.PERSON).pairs.size() + "\n";
 			stats += "#Correspondents: " + this.entitiesData.get(EntityFeature.CORRESPONDENT).pairs.size() + "\n";
 			stats += "#Places: " + this.entitiesData.get(EntityFeature.PLACE).pairs.size() + "\n";
 			stats += "#Orgs: " + this.entitiesData.get(EntityFeature.ORG).pairs.size();
-			System.err.println("Writing entities from file: " + AUTHORITY_ASSIGNER_FILE + "\n" + stats);
 			log.info("Writing entities from file: " + AUTHORITY_ASSIGNER_FILE + "\n" + stats);
 			oos = new ObjectOutputStream(new FileOutputStream(AUTHORITY_ASSIGNER_FILE));
 			oos.writeObject(this);
@@ -316,10 +306,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		boolean ret = control.checkIndex(archive, force);
 		control = null;
 		return ret;
-	}
-
-	public boolean checkFeaturesIndex(Archive archive) {
-		return checkFeaturesIndex(archive, false);
 	}
 
 	@Override

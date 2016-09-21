@@ -18,6 +18,10 @@
 <%@ page import="edu.stanford.muse.memory.MemoryStudy" %>
 <%@ page import="edu.stanford.muse.ner.dictionary.EnglishDictionary" %>
 <%@ page import="edu.stanford.muse.util.Span" %>
+<<<<<<< HEAD
+=======
+<%@ page import="java.util.stream.Collectors" %>
+>>>>>>> b3a728aa8d785479d355deb104428dabc9c87885
 <%@include file="../getArchive.jspf" %>
 
 <%!
@@ -238,11 +242,16 @@
 
             List<String> entities = new ArrayList<>();
             if(mode==null || !mode.equals("person")) {
+<<<<<<< HEAD
                 Span[] spans = archive.getAllNamesInDoc(doc, true);
                 for (Span sp : spans) {
                     if (sp.typeScore > CUTOFF)
                         entities.add(sp.text);
                 }
+=======
+                Span[] es = NER.getEntities(archive.getLuceneDoc(doc), true);
+                entities.addAll(Arrays.asList(es).stream().filter(s->s.typeScore>CUTOFF).map(s->s.text).collect(Collectors.toList()));
+>>>>>>> b3a728aa8d785479d355deb104428dabc9c87885
             }
             else{
                 //do not consider mailing lists
