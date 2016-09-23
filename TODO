@@ -1,0 +1,8 @@
+1. Ramp up and test from end-end the flow, the model, expansions etc.
+2. Add an interface for model editing.
+3. Make it possible to edit the model to servlet requests.
+4. Filter only high quality rules in the model.
+5. Measure coverage of models over DBpedia and a sample of Wikidata.
+6. Add README into ner package on how to use, setup, resource download, doc and instructions on reproducing results with CONLL and may be also coverage.
+7. Provide download link to list of rules.
+8. Complete drafting of paper, link and forward.

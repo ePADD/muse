@@ -611,6 +611,9 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     public static void main(String[] args) {
+        System.out.println("Resource files...");
+        Stream.of(Config.NER_RESOURCE_FILES).forEach(Object::toString);
+
         //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String modelFile = SequenceModel.modelFileName;
         if (fdw == null) {
@@ -961,7 +964,16 @@ public class SequenceModel implements NERModel, Serializable {
      */
     private static Map<String,String> readEntityList(String resourcePath) {
         Map<String,String> content = new LinkedHashMap<>();
-        BufferedReader br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(resourcePath)));
+        BufferedReader br;
+        try {
+            br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(resourcePath)));
+        }
+        //Not a big deal if one entity listing is missed
+        catch(Exception e){
+            Util.print_exception("Could not load resource:"+resourcePath, e, log);
+            return content;
+        }
+
         String line;
         try {
             while ((line = br.readLine()) != null){

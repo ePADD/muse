@@ -15,9 +15,7 @@ public class Config {
 
 	//Ideally Muse should not even have the concept of settings file, by default everything should be in the WEB-INF
 	public static String	SETTINGS_DIR		= System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-	public static String	FAST_FILE = SETTINGS_DIR + "cnameToFASTPersons.db.gz";
-
-	public static String	NER_MODEL_FILE, WORD_FEATURES;
+	public static String	FAST_FILE = SETTINGS_DIR + "cnameToFASTPersons.db.gz";;
 
 	public static String 	FAST_INDEX, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
 	public static String	FEATURES_INDEX;
@@ -35,7 +33,7 @@ public class Config {
 
 	static {
 		Properties props = new Properties();
-		String propFilename = SETTINGS_DIR + "config.properties";
+		String propFilename = SETTINGS_DIR + File.separator + "config.properties";
 		File f = new File(propFilename);
 		if (f.exists() && f.canRead())
 		{
@@ -54,9 +52,7 @@ public class Config {
 		AUTHORITIES_CSV_FILENAME	= props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
 		AUTHORITY_ASSIGNER_FILENAME	= props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
 		FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
-		NER_MODEL_FILE		= props.getProperty("NER_MODEL_FILE", "svm.model");
-		WORD_FEATURES		= props.getProperty("WORD_FEATURES", "WordFeatures.ser");
-        NER_RESOURCE_FILES = props.getProperty("NER_RESOURCE_FILES","").split(":::");
+	    NER_RESOURCE_FILES = props.getProperty("NER_RESOURCE_FILES","").split(":::");
         DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE","instance_types_2014-04.en.txt.bz2");
 		// set the int features
 		String s = props.getProperty("MAX_ENTITY_FEATURES"); if (s != null) { try { MAX_ENTITY_FEATURES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
