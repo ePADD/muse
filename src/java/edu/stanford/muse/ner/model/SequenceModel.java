@@ -4,8 +4,7 @@ import edu.stanford.muse.Config;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary.MU;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.POSTokenizer;
 import edu.stanford.muse.util.*;
@@ -33,7 +32,7 @@ import java.util.zip.GZIPOutputStream;
  * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
  */
 public class SequenceModel implements NERModel, Serializable {
-    public FeatureDictionary dictionary;
+    public FeatureUtils dictionary;
     public static String modelFileName = "SeqModel.ser.gz";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
@@ -41,20 +40,510 @@ public class SequenceModel implements NERModel, Serializable {
     public static FileWriter fdw = null;
     public static CICTokenizer tokenizer = new CICTokenizer();
     public Map<String, String> dbpedia;
-    public static Map<Short, Short[]>mappings = new LinkedHashMap<>();
 
-    static{
-        mappings.put(FeatureDictionary.PERSON, new Short[]{FeatureDictionary.PERSON});
-        mappings.put(FeatureDictionary.PLACE, new Short[]{FeatureDictionary.AIRPORT, FeatureDictionary.HOSPITAL,FeatureDictionary.BUILDING, FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.MOUNTAIN,
-                FeatureDictionary.ISLAND, FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE,
-                FeatureDictionary.THEATRE, FeatureDictionary.LIBRARY,FeatureDictionary.MONUMENT});
-        mappings.put(FeatureDictionary.ORGANISATION, new Short[]{FeatureDictionary.COMPANY,FeatureDictionary.UNIVERSITY, FeatureDictionary.ORGANISATION,
-                FeatureDictionary.AIRLINE, FeatureDictionary.GOVAGENCY, FeatureDictionary.AWARD, FeatureDictionary.LAWFIRM,
-                FeatureDictionary.PERIODICAL_LITERATURE
-        });
+    static boolean DEBUG = false;
+
+    //mixtures of the BMM model
+    public Map<String, MU> features = new LinkedHashMap<>();
+    //Keep the ref. to the gazette lists it is trained on so that we can lookup these when extracting entities.
+    public Map<String,String> gazettes;
+
+    public SequenceModel(Map<String,MU> features, Map<String,String> gazettes) {
+        this.features = features;
+        this.gazettes = gazettes;
     }
 
-    public SequenceModel() {}
+    //A training helper function for better organization, won't be serialized
+    static class Trainer {
+        Map<String, MU> features;
+        Map<String,String> gazettes;
+        Random rand = new Random(1);
+
+        public static List<String> ignoreDBpediaTypes = new ArrayList<>();
+        static{
+            //Do not expect that these ignore types will get rid of person names with any stop word in it.
+            //Consider this, the type dist. of person-like types with the stop word _of_ is
+            //10005 Person|Agent
+            //4765 BritishRoyalty|Royalty|Person|Agent
+            //2628 Noble|Person|Agent
+            //1150 Saint|Cleric|Person|Agent
+            //669 Monarch|Person|Agent
+            //668 OfficeHolder|Person|Agent
+            //627 ChristianBishop|Cleric|Person|Agent
+            //525 MilitaryPerson|Person|Agent
+            //249 SportsTeamMember|OrganisationMember|Person|Agent
+            //247 SoapCharacter|FictionalCharacter|Person|Agent
+            //158 FictionalCharacter|Person|Agent
+            //114 Pope|Cleric|Person|Agent
+            ignoreDBpediaTypes = Arrays.asList(
+                    "RecordLabel|Company|Organisation",
+                    "Band|Organisation",
+                    "Band|Group|Organisation",
+                    //Tokyo appears in 94 Album|MusicalWork|Work, 58 Film|Work, 57 City|Settlement|PopulatedPlace|Place
+                    //London appears in 192 Album|MusicalWork|Work, 123 Settlement|PopulatedPlace|Place
+                    //Pair in 130 Film|Work, 109 Album|MusicalWork|Work
+                    //Can you believe this?!
+                    "Album|MusicalWork|Work",
+                    "Film|Work",
+                    //This type is too noisy and contain titles like
+                    //Cincinatti Kids, FA_Youth_Cup_Finals, The Strongest (and other such team names)
+                    "OrganisationMember|Person",
+                    "PersonFunction",
+                    "GivenName",
+                    "Royalty|Person",
+                    //the following type has entities like "Cox_Broadcasting_Corp._v._Cohn", that may assign wrong type to tokens like corp., co., ltd.
+                    "SupremeCourtOfTheUnitedStatesCase|LegalCase|Case|UnitOfWork",
+                    //should be careful about Agent type, though it contains personal names it can also contain many non-personal entities
+                    "ComicsCharacter|FictionalCharacter|Person"
+            );
+        }
+
+        Trainer(Map<String, MU> features) {
+            this.features = features;
+        }
+
+        //Input is a token and returns the best type assignment for token
+        private Short getType(String token) {
+            MU mu = features.get(token);
+            if (mu == null) {
+                //log.warn("Token: "+token+" not initialised!!");
+                return NEType.Type.UNKNOWN_TYPE.getCode();
+            }
+            Short[] allTypes = NEType.getAllTypeCodes();
+            Short bestType = allTypes[rand.nextInt(allTypes.length)];
+            double bv = 0;
+
+            //We don't consider OTHER as even a type
+            for (Short type : allTypes) {
+                if (type != NEType.Type.OTHER.getCode()) {
+                    double val = mu.getLikelihoodWithType(type);
+                    if (val > bv) {
+                        bv = val;
+                        bestType = type;
+                    }
+                }
+            }
+            return bestType;
+        }
+
+        public Trainer(Map<String, String> gazettes, Map<String, Map<String, Float>> tokenPriors, int iter) {
+            this.features = new LinkedHashMap<>();
+            addGazz(gazettes, tokenPriors);
+            EM(gazettes, iter);
+        }
+
+        public SequenceModel getModel(){
+            return new SequenceModel(features, gazettes);
+        }
+
+        //initialize the mixtures
+        private void addGazz(Map<String, String> gazettes, Map<String, Map<String, Float>> tokenPriors) {
+            long start_time = System.currentTimeMillis();
+            long timeToComputeFeatures = 0, tms;
+            log.info("Analysing gazettes");
+
+            int g = 0, nume = 0;
+            final int gs = gazettes.size();
+            int gi = 0;
+            log.info(Util.getMemoryStats());
+            //The number of times a word appeared in a phrase of certain type
+            Map<String, Map<Short, Integer>> words = new LinkedHashMap<>();
+            log.info("Done loading DBpedia");
+            log.info(Util.getMemoryStats());
+            Map<String, Integer> wordFreqs = new LinkedHashMap<>();
+
+            for (String str : gazettes.keySet()) {
+                tms = System.currentTimeMillis();
+
+                String entityType = gazettes.get(str);
+                Short ct = NEType.parseDBpediaType(entityType).getCode();
+                if (ignoreDBpediaTypes.contains(entityType)) {
+                    continue;
+                }
+
+                String[] patts = FeatureUtils.getPatts(str);
+                for (String patt : patts) {
+                    if (!words.containsKey(patt))
+                        words.put(patt, new LinkedHashMap<>());
+                    if (!words.get(patt).containsKey(ct))
+                        words.get(patt).put(ct, 0);
+                    words.get(patt).put(ct, words.get(patt).get(ct) + 1);
+
+                    if (!wordFreqs.containsKey(patt))
+                        wordFreqs.put(patt, 0);
+                    wordFreqs.put(patt, wordFreqs.get(patt) + 1);
+                }
+
+                timeToComputeFeatures += System.currentTimeMillis() - tms;
+
+                if ((++gi) % 10000 == 0) {
+                    log.info("Analysed " + (gi) + " records of " + gs + " percent: " + (gi * 100 / gs) + "% in gazette: " + g);
+                    log.info("Time spent in computing features: " + timeToComputeFeatures);
+                }
+                nume++;
+            }
+            log.info("Done analyzing gazettes for frequencies");
+            log.info(Util.getMemoryStats());
+
+            /*
+            * Here is the histogram of frequencies of words from the 2014 dump of DBpedia
+            * To read -- there are 861K words that are seen just once.
+            * By ignoring words that are only seen once or twice we can reduce the number of mixtures by a factor of ~ 10
+            * PAIR<1 -- 861698>
+            * PAIR<2 -- 146458>
+            * PAIR<3 -- 60264>
+            * PAIR<4 -- 32683>
+            * PAIR<5 -- 21006>
+            * PAIR<6 -- 14361>
+            * PAIR<7 -- 10512>
+            * PAIR<8 -- 7865>
+            * PAIR<9 -- 6480>
+            * PAIR<10 -- 5327>
+            *
+            * Also, single character words, words with numbers (like jos%c3%a9), numbers (like 2008, 2014), empty tokens are ignored
+            */
+            log.info("Considered " + nume + " entities in " + gazettes.size() + " total entities");
+            log.info("Done analysing gazettes in: " + (System.currentTimeMillis() - start_time));
+            log.info("Initialising MUs");
+
+            int initAlpha = 0;
+            int wi = 0, ws = words.size();
+            int numIgnored = 0, numConsidered = 0;
+            for (String str : words.keySet()) {
+                float wordFreq = wordFreqs.get(str);
+                if (wordFreq < 3 || str.length() <= 1) {
+                    numIgnored++;
+                    continue;
+                }
+                boolean hasNumber = false;
+                for (char c : str.toCharArray())
+                    if (Character.isDigit(c)) {
+                        hasNumber = true;
+                        numIgnored++;
+                        break;
+                    }
+                if (hasNumber)
+                    continue;
+
+                numConsidered++;
+                if (features.containsKey(str))
+                    continue;
+                Map<Short, Pair<Float, Float>> priors = new LinkedHashMap<>();
+                for (Short type : NEType.getAllTypeCodes()) {
+                    if (words.get(str).containsKey(type))
+                        priors.put(type, new Pair<>((float) words.get(str).get(type), wordFreq));
+                    else
+                        priors.put(type, new Pair<>(0f, wordFreq));
+                }
+
+                if (DEBUG) {
+                    String ds = "";
+                    for (Short t : priors.keySet())
+                        ds += t + "<" + priors.get(t).first + "," + priors.get(t).second + "> ";
+                    log.info("Initialising: " + str + " with " + ds);
+                }
+                Map<String, Float> alpha = new LinkedHashMap<>();
+                float alpha_pi = 0;
+                if (str.length() > 2 && tokenPriors.containsKey(str)) {
+                    Map<String, Float> tps = tokenPriors.get(str);
+                    for (String gt : tps.keySet()) {
+                        //Music bands especially are noisy
+                        if (gt != null && !(ignoreDBpediaTypes.contains(gt) || gt.equals("Agent"))) {
+                            NEType.Type type = NEType.parseDBpediaType(gt);
+                            //all the albums, films etc.
+                            if ((type == null || type == NEType.Type.OTHER) && gt.endsWith("|Work"))
+                                continue;
+                            String[] features = new String[]{"T:" + type.getCode(), "L:NULL", "R:NULL", "SW:NULL"};
+                            for (String f : features) {
+                                if (!alpha.containsKey(f)) alpha.put(f, 0f);
+                                alpha.put(f, alpha.get(f) + tps.get(gt));
+                            }
+                            alpha_pi += tps.get(gt);
+                        }
+                    }
+                }
+                if (alpha.size() > 0)
+                    initAlpha++;
+                features.put(str, MU.initialize(str, new LinkedHashMap<>(), alpha, alpha_pi));
+                if (wi++ % 1000 == 0) {
+                    log.info("Done: " + wi + "/" + ws);
+                    if (wi % 10000 == 0)
+                        log.info(Util.getMemoryStats());
+                    ;
+                }
+            }
+            log.info("Considered: " + numConsidered + " mixtures and ignored " + numIgnored);
+            log.info("Initialised alpha for " + initAlpha + "/" + ws + " entries.");
+
+            this.gazettes = gazettes;
+        }
+
+        //just cleans up trailing numbers in the string
+        private static String cleanRoad(String title){
+            String[] words = title.split(" ");
+            String lw = words[words.length-1];
+            String ct = "";
+            boolean hasNumber = false;
+            for(Character c: lw.toCharArray())
+                if(c>='0' && c<='9') {
+                    hasNumber = true;
+                    break;
+                }
+            if(words.length == 1 || !hasNumber)
+                ct = title;
+            else{
+                for(int i=0;i<words.length-1;i++) {
+                    ct += words[i];
+                    if(i<words.length-2)
+                        ct += " ";
+                }
+            }
+            return ct;
+        }
+
+        /**
+         * We put phrases through some filters in order to avoid very noisy types
+         * These are the checks
+         * 1. Remove stuff in the brackets to get rid of disambiguation stuff
+         * 2. If the type is road, then we clean up trailing numbers
+         * 3. If the type is settlement then the title is written as "Berkeley,_California" which actually mean Berkeley_(California); so cleaning these too
+         * 4. We ignore certain noisy types. see ignoreDBpediaTypes
+         * 5. Ignores any single word names
+         * 6. If the type is person like but the phrase contains either "and" or "of", we filter this out.
+         * returns either the cleaned phrase or null if the phrase cannot be cleaned.
+         */
+        private String filterTitle(String phrase, String type) {
+            int cbi = phrase.indexOf(" (");
+            if (cbi >= 0)
+                phrase = phrase.substring(0, cbi);
+
+            if (type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place"))
+                phrase = cleanRoad(phrase);
+
+            //in places there are things like: Shaikh_Ibrahim,_Iraq
+            int idx;
+            if (type.endsWith("Settlement|PopulatedPlace|Place") && (idx = phrase.indexOf(", ")) >= 0)
+                phrase = phrase.substring(0, idx);
+
+            boolean allowed = true;
+            for (String it : ignoreDBpediaTypes)
+                if (type.contains(it)) {
+                    allowed = false;
+                    break;
+                }
+            if (!allowed)
+                return null;
+
+            //Do not consider single word names for training, the model has to be more complex than it is right now to handle these
+            if (!phrase.contains(" "))
+                return null;
+
+            if ((type.endsWith("Person") || type.equals("Agent")) && (phrase.contains(" and ") || phrase.contains(" of ") || phrase.contains(" on ") || phrase.contains(" in ")))
+                return null;
+            return phrase;
+        }
+
+        private double getIncompleteDateLogLikelihood(){
+            double ll = 0;
+            List<String> nsws = new ArrayList<>();
+            nsws.addAll(FeatureUtils.sws);
+            nsws.add("NULL");
+            String p[] = new String[]{"L:","R:","T:","SW:","DICT:"};
+            String[][] labels = new String[][]{MU.WORD_LABELS,MU.WORD_LABELS,MU.TYPE_LABELS,nsws.toArray(new String[nsws.size()]),MU.DICT_LABELS};
+            for(String mid: features.keySet()){
+                MU mu = features.get(mid);
+                for(int pi=0;pi<p.length;pi++) {
+                    for (String l : labels[pi]) {
+                        String f = p[pi]+l;
+                        String dim = f.substring(0, f.indexOf(':'));
+                        float alpha_k = 0, alpha_k0 = 0;
+                        if (mu.alpha.containsKey(f))
+                            alpha_k = mu.alpha.get(f);
+                        if (mu.alpha_0.containsKey(dim))
+                            alpha_k0 = mu.alpha_0.get(dim);
+
+                        int v = MU.getNumberOfSymbols(f);
+                        double val;
+                        Float freq = mu.muVectorPositive.get(f);
+                        val = ((freq == null ? 0 : freq) + MU.SMOOTH_PARAM + alpha_k) / (mu.numMixture + v*MU.SMOOTH_PARAM + alpha_k0);
+                        ll += Math.log(val) * ((freq == null ? 0 : freq) + alpha_k);
+                    }
+                }
+                ll += (mu.numMixture+mu.alpha_pi)*Math.log(mu.getPrior());
+            }
+            ll /= features.size();
+            System.out.println("ll: "+ll+" -- "+features.size());
+            return ll;
+        }
+
+        //the argument alpha fraction is required only for naming of the dumped model size
+        void EM(Map<String, String> gazettes, int iter) {
+            log.info("Performing EM on: #" + features.size() + " words");
+            double ll = getIncompleteDateLogLikelihood();
+            log.info("Start Data Log Likelihood: " + ll);
+            System.out.println("Start Data Log Likelihood: " + ll);
+            Map<String, MU> revisedMixtures = new LinkedHashMap<>();
+            int N = gazettes.size();
+            int wi;
+            for (int i = 0; i < iter; i++) {
+                wi = 0;
+                //computeTypePriors();
+                for (Map.Entry e : gazettes.entrySet()) {
+                    String phrase = (String) e.getKey();
+                    String dbpediaType = (String) e.getValue();
+                    phrase = filterTitle(phrase, dbpediaType);
+                    if (phrase == null)
+                        continue;
+
+                    if (wi++ % 1000 == 0)
+                        log.info("EM iteration: " + i + ", " + wi + "/" + N);
+
+                    NEType.Type type = NEType.parseDBpediaType(dbpediaType);
+                    float z = 0;
+                    //responsibilities
+                    Map<String, Float> gamma = new LinkedHashMap<>();
+                    //Word (sort of mixture identity) -> Features
+                    Map<String, List<String>> wfeatures = FeatureUtils.generateFeatures2(phrase, type.getCode());
+
+                    if (type != NEType.Type.OTHER) {
+                        for (String mi : wfeatures.keySet()) {
+                            if (wfeatures.get(mi) == null) {
+                                continue;
+                            }
+                            MU mu = features.get(mi);
+                            if (mu == null) {
+                                //log.warn("!!FATAL!! MU null for: " + mi + ", " + features.size());
+                                continue;
+                            }
+                            double d = mu.getLikelihood(wfeatures.get(mi)) * mu.getPrior();
+                            if (Double.isNaN(d))
+                                log.warn("score for: " + mi + " " + wfeatures.get(mi) + " is NaN");
+                            gamma.put(mi, (float) d);
+                            z += d;
+                        }
+                        if (z == 0) {
+                            if(log.isDebugEnabled())
+                                log.debug("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
+                            continue;
+                        }
+
+                        for (String g : gamma.keySet()) {
+                            gamma.put(g, gamma.get(g) / z);
+                        }
+                    } else {
+                        for (String mi : wfeatures.keySet())
+                            gamma.put(mi, 1.0f / wfeatures.size());
+                    }
+
+                    if (DEBUG) {
+                        for (String mi : wfeatures.keySet()) {
+                            log.info("MI:" + mi + ", " + gamma.get(mi) + ", " + wfeatures.get(mi));
+                            log.info(features.get(mi).toString());
+                        }
+                        log.info("EM iter: " + i + ", " + phrase + ", " + type + ", ct: " + type);
+                        log.info("-----");
+                    }
+
+                    for (String g : gamma.keySet()) {
+                        MU mu = features.get(g);
+                        //ignore this mixture if the effective number of times it is seen is less than 1 even with good evidence
+                        if (mu == null)//|| (mu.numSeen > 0 && (mu.numMixture + mu.alpha_pi) < 1))
+                            continue;
+                        if (!revisedMixtures.containsKey(g))
+                            revisedMixtures.put(g, new MU(g, mu.alpha, mu.alpha_pi));
+
+                        if (Double.isNaN(gamma.get(g)))
+                            log.error("Gamma NaN for MID: " + g);
+                        if (DEBUG)
+                            if (gamma.get(g) == 0)
+                                log.warn("!! Resp: " + 0 + " for " + g + " in " + phrase + ", " + type);
+                        //don't even update if the value is so low, that just adds meek affiliation with unrelated features
+                        if (gamma.get(g) > 1E-7)
+                            revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g));
+
+                    }
+                }
+                double change = 0;
+                for (String mi : features.keySet())
+                    if (revisedMixtures.containsKey(mi))
+                        change += revisedMixtures.get(mi).difference(features.get(mi));
+                change /= revisedMixtures.size();
+                log.info("Iter: " + i + ", change: " + change);
+                System.out.println("EM Iteration: " + i + ", change: " + change);
+                //incomplete data log likehood is better mesure than just the change in parameters
+                //i.e. P(X/\theta) = \sum\limits_{z}P(X,Z/\theta)
+                features = revisedMixtures;
+                ll = getIncompleteDateLogLikelihood();
+                log.info("Iter: " + i + ", Data Log Likelihood: " + ll);
+                System.out.println("EM Iteration: " + i + ", Data Log Likelihood: " + ll);
+
+                revisedMixtures = new LinkedHashMap<>();
+
+                try {
+                    if (i == (iter - 1)) {
+                        Short[] ats = NEType.getAllTypeCodes();
+                        //make cache dir if it does not exist
+                        String cacheDir = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache";
+                        if (!new File(cacheDir).exists()) {
+                            boolean mkdir = new File(cacheDir).mkdir();
+                            if (!mkdir)
+                                log.warn("Cannot create cache dir. " + cacheDir);
+                        }
+                        for (Short type : ats) {
+                            //FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
+                            FileWriter ffw = new FileWriter(cacheDir + File.separator + type + ".txt");
+                            Map<String, Double> sortScores = new LinkedHashMap<>();
+                            Map<String, Double> scores = new LinkedHashMap<>();
+                            for (String w : features.keySet()) {
+                                MU mu = features.get(w);
+                                double v1 = mu.getLikelihoodWithType(type) * (mu.numMixture / mu.numSeen);
+                                double v = v1 * Math.log(mu.numSeen);
+                                if (Double.isNaN(v)) {
+                                    sortScores.put(w, 0.0);
+                                    scores.put(w, 0.0);
+                                } else {
+                                    sortScores.put(w, v);
+                                    scores.put(w, v1);
+                                }
+                            }
+                            List<Pair<String, Double>> ps = Util.sortMapByValue(sortScores);
+                            for (Pair<String, Double> p : ps) {
+//                            if(type.equals(ats[0])){
+//                                fw.write(features.get(p.getFirst()).toString());
+//                                fw.write("========================\n");
+//                            }
+
+                                MU mu = features.get(p.getFirst());
+                                Short maxT = -1;
+                                double maxV = -1;
+                                for (Short t : ats) {
+                                    double d = mu.getLikelihoodWithType(t);
+                                    if (d > maxV) {
+                                        maxT = t;
+                                        maxV = d;
+                                    }
+                                }
+                                //only if both the below conditions are satisfied, this template will ever be seen in action
+                                if (maxT.equals(type) && scores.get(p.getFirst()) >= 0.001) {
+                                    ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
+                                    ffw.write(mu.prettyPrint());
+                                    ffw.write("========================\n");
+                                }
+                            }
+                            //fw.close();
+                            ffw.close();
+                        }
+                    }
+                    if (DEBUG && (i == 0 || i == 2 || i == 5 || i == 7 || i == 9)) {
+                        String mwl = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "experiment" + File.separator;
+                        String modelFile = mwl + "Iter_" + i + "-" + SequenceModel.modelFileName;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
     private static double getLikelihoodWithOther(String phrase, boolean other) {
         phrase = phrase.replaceAll("^\\W+|\\W+$", "");
@@ -135,7 +624,7 @@ public class SequenceModel implements NERModel, Serializable {
         vars.add("The "+phrase);
         String type;
         for(String var: vars) {
-            type = dictionary.gazettes.get(var.toLowerCase());
+            type = gazettes.get(var.toLowerCase());
             if(type!=null) {
                 log.debug("Found a match for: "+phrase+" -- "+type);
                 return type;
@@ -155,10 +644,10 @@ public class SequenceModel implements NERModel, Serializable {
     private Map<String, Pair<Short, Double>> seqLabel(String phrase) {
         Map<String, Pair<Short, Double>> segments = new LinkedHashMap<>();
         String dbpediaType = lookup(phrase);
-        Short ct = FeatureDictionary.codeType(dbpediaType);
+        NEType.Type type = NEType.parseDBpediaType(dbpediaType);
 
-        if (dbpediaType != null && ct >= 0 && (phrase.contains(" ") || dbpediaType.endsWith("Country|PopulatedPlace|Place"))) {
-            segments.put(phrase, new Pair<>(ct, 1.0));
+        if (dbpediaType != null && type != null && (phrase.contains(" ") || dbpediaType.endsWith("Country|PopulatedPlace|Place"))) {
+            segments.put(phrase, new Pair<>(type.getCode(), 1.0));
             return segments;
         }
 
@@ -199,14 +688,12 @@ public class SequenceModel implements NERModel, Serializable {
             if (token.length() != 2 || token.charAt(1) != '.')
                 token = token.replaceAll("^\\W+|\\W+$", "");
             token = token.toLowerCase();
-            FeatureDictionary.MU mu = dictionary.features.get(token);
+            MU mu = features.get(token);
             if (token.length() < 2 || mu == null || mu.numMixture == 0)
                 continue;
-            for (Short type : FeatureDictionary.allTypes) {
-                double val = mu.getLikelihoodWithType(type);
-                if (!candTypes.containsKey(type))
-                    candTypes.put(type, 0.0);
-                candTypes.put(type, candTypes.get(type) + val);
+            for (Short candType : NEType.getAllTypeCodes()) {
+                double val = mu.getLikelihoodWithType(candType);
+                candTypes.put(candType, candTypes.getOrDefault(candType, 0.0) + val);
             }
             List<Pair<Short, Double>> scands = Util.sortMapByValue(candTypes);
             int si = 0, MAX = 5;
@@ -216,7 +703,7 @@ public class SequenceModel implements NERModel, Serializable {
         }
         //This is just a standard dynamic programming algo. used in HMMs, with the difference that
         //at every word we are checking for the every possible segment (or chunk)
-        short OTHER = -2;
+        Short OTHER = NEType.Type.OTHER.getCode();
         cands.add(OTHER);
         Map<Integer, Triple<Double, Integer, Short>> tracks = new LinkedHashMap<>();
         Map<Integer,Integer> numSegmenation = new LinkedHashMap<>();
@@ -228,7 +715,7 @@ public class SequenceModel implements NERModel, Serializable {
             for (short t : cands) {
                 int tj = Math.max(ti - 6, 0);
                 //don't allow multi word phrases with these types
-                if (t == OTHER || t == FeatureDictionary.OTHER)
+                if (t == OTHER)
                     tj = ti;
                 for (; tj <= ti; tj++) {
                     double val = 1;
@@ -290,15 +777,14 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     private double getConditional(String phrase, Short type) {
-        Map<String, FeatureDictionary.MU> features = dictionary.features;
         Map<String, List<String>> tokenFeatures = dictionary.generateFeatures2(phrase, type);
         String[] tokens = phrase.split("\\s+");
-        if(FeatureDictionary.sws.contains(tokens[0]) || FeatureDictionary.sws.contains(tokens[tokens.length-1]))
+        if(FeatureUtils.sws.contains(tokens[0]) || FeatureUtils.sws.contains(tokens[tokens.length-1]))
             return 0;
 
         double sorg = 0;
         String dbpediaType = lookup(phrase);
-        short ct = FeatureDictionary.codeType(dbpediaType);
+        short ct = NEType.parseDBpediaType(dbpediaType).getCode();
 
         if(dbpediaType!=null && ct==type){
             if(dbpediaType.endsWith("Country|PopulatedPlace|Place"))
@@ -315,9 +801,12 @@ public class SequenceModel implements NERModel, Serializable {
                 continue;
 
             int THRESH = 0;
-            //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous, which could have appeared many times, but does not appear to have common template
+            //imposing the frequency constraint on numMixture instead of numSeen can benefit in weeding out terms that are ambiguous,
+            // which could have appeared many times, but does not appear to have common template
             //the check for "new" token is to reduce the noise coming from lowercase words starting with the word "new"
-            if (mu != null && ((type!=FeatureDictionary.PERSON && mu.numMixture>THRESH)||(type==FeatureDictionary.PERSON && mu.numMixture>0)) && !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
+            if (mu != null &&
+                    ((type!= NEType.Type.PERSON.getCode() && mu.numMixture>THRESH)||(type == NEType.Type.PERSON.getCode() && mu.numMixture>0)) &&
+                    !mid.equals("new") && !mid.equals("first") && !mid.equals("open"))
                 d = mu.getLikelihood(tokenFeatures.get(mid));
             else
                 //a likelihood that assumes nothing
@@ -354,7 +843,7 @@ public class SequenceModel implements NERModel, Serializable {
                     if(p.first<0)
                         continue;
 
-                    if(p.first!=FeatureDictionary.OTHER && p.second>0) {
+                    if(p.first!= NEType.Type.OTHER.getCode() && p.second>0) {
                         Span chunk = new Span(e, t.second + t.first.indexOf(e), t.second + t.first.indexOf(e) + e.length());
                         chunk.setType(p.first, new Float(p.second));
                         spans.add(chunk);
@@ -389,7 +878,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     //samples [fraction] fraction of entries from dictionary supplied and splices the supplied dict
-    public static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
+    private static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
         Map<String,String> dict1 = new LinkedHashMap<>(), dict2 = new LinkedHashMap<>();
         Random rand = new Random();
         for(String str: dict.keySet()){
@@ -432,10 +921,10 @@ public class SequenceModel implements NERModel, Serializable {
             if(!entry.contains(" "))
                 continue;
             String fullType = dbpedia.get(entry);
-            Short type = FeatureDictionary.codeType(dbpedia.get(entry));
+            Short type = NEType.parseDBpediaType(dbpedia.get(entry)).getCode();
 
             if(fullType.equals("Agent"))
-                type = FeatureDictionary.PERSON;
+                type = NEType.Type.PERSON.getCode();
             else
                 for (String bst: badSuffixTypes)
                     if(fullType.endsWith(bst))
@@ -463,10 +952,10 @@ public class SequenceModel implements NERModel, Serializable {
             short assignedTo = type;
             boolean shown = false;
             //we should not bother about segmentation in the case of OTHER
-            if(!(es.containsKey(FeatureDictionary.OTHER) && es.size()==1)) {
+            if(!(es.containsKey(NEType.Type.OTHER) && es.size()==1)) {
                 shown = true;
                 boolean any;
-                if (type!=FeatureDictionary.OTHER && es.containsKey(type) && es.get(type).containsKey(entry))
+                if (type!= NEType.Type.OTHER.getCode() && es.containsKey(type) && es.get(type).containsKey(entry))
                     correct++;
                 else {
                     any = false;
@@ -495,7 +984,7 @@ public class SequenceModel implements NERModel, Serializable {
             }
             if(shown)
                 neShown++;
-            if(type!=FeatureDictionary.OTHER)
+            if(type!= NEType.Type.OTHER.getCode())
                 neShouldShown++;
 
 
@@ -587,8 +1076,6 @@ public class SequenceModel implements NERModel, Serializable {
             Span[] spans = nerModel.find(content);
             for(Span sp: spans)
                 System.out.println(sp);
-            System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.PERSON, fdw));
-            System.err.println(nerModel.dictionary.getConditional("Robert Creeley", FeatureDictionary.OTHER, fdw));
             String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",
                     "New York International Airport", "Ramchandra Kripa, Mahishi Road"};
             for(String c: check) {
@@ -780,11 +1267,11 @@ public class SequenceModel implements NERModel, Serializable {
                     for (Span chunk: chunks){
                         String text = chunk.text;
                         Short type = chunk.type;
-                        Short coarseType = FeatureDictionary.getCoarseType(type);
+                        Short coarseType = NEType.getCoarseType(type).getCode();
                         String typeText;
-                        if (coarseType == FeatureDictionary.PERSON)
+                        if (coarseType == NEType.Type.PERSON.getCode())
                             typeText = "person";
-                        else if (coarseType == FeatureDictionary.PLACE)
+                        else if (coarseType == NEType.Type.PLACE.getCode())
                             typeText = "location";
                         else
                             typeText = "organization";
@@ -945,14 +1432,13 @@ public class SequenceModel implements NERModel, Serializable {
      * Use this method for training the default model
      * Training data should be a list of phrases and their types, the type should follow DBpedia ontology; specifically http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2
      * See epadd-settings/instance_types to understand the format better
-     * It is possible to relax the ontology constraint by changing the aTypes and ignoreTypes fields in FeatureDictionary appropriately
+     * It is possible to relax the ontology constraint by changing the aTypes and ignoreDBpediaTypes fields in FeatureDictionary appropriately
      * With tokenPriors it is possible to set initial beliefs, for example "Nokia" is a popular company; the first key in the map should be a single word token, the second map is the types and its affiliation for various types (DBpedia ontology again)
      * iter param is the number of EM iterations, any value >5 is observed to have no effect on performance with DBpedia as training data
      *  */
     public static SequenceModel train(Map<String,String> trainData, Map<String,Map<String,Float>> tokenPriors, int iter){
-        SequenceModel nerModel = new SequenceModel();
-        nerModel.dictionary = new FeatureDictionary(trainData, tokenPriors, iter);
-        return nerModel;
+        Trainer trainer = new Trainer(trainData, tokenPriors, iter);
+        return trainer.getModel();
     }
 
     /**

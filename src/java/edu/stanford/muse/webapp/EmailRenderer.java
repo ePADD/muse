@@ -2,7 +2,6 @@ package edu.stanford.muse.webapp;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
@@ -13,8 +12,8 @@ import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
@@ -492,11 +491,13 @@ public class EmailRenderer {
         Map<String, Archive.Entity> entitiesWithId = new HashMap<>();
         //we annotate three specially recognized types
         Map<Short,String> recMap = new HashMap<>();
-        recMap.put(FeatureDictionary.PERSON,"cp");recMap.put(FeatureDictionary.PLACE,"cl");recMap.put(FeatureDictionary.ORGANISATION,"co");
-        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(FeatureDictionary.getCoarseType(n.type)))
+        recMap.put(NEType.Type.PERSON.getCode(),"cp");
+        recMap.put(NEType.Type.PLACE.getCode(),"cl");
+        recMap.put(NEType.Type.ORGANISATION.getCode(),"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(NEType.getCoarseType(n.type)))
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
-                    types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
+                    types.add(recMap.get(NEType.getCoarseType(n.type)));
                     entitiesWithId.put(n.text, new Archive.Entity(n.text, null, types));
                 });
 

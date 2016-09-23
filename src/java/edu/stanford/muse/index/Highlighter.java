@@ -1,6 +1,7 @@
 package edu.stanford.muse.index;
 
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
@@ -519,11 +520,13 @@ public class Highlighter {
                     }
                     Set<String> types = new HashSet<>();
                     short type = Short.parseShort(fields[3]);
-                    for (short ct : SequenceModel.mappings.keySet())
-                        if (Arrays.asList(SequenceModel.mappings.get(ct)).contains(type)) {
-                            types.add(ct == FeatureDictionary.PERSON ? "cp" : ((ct == FeatureDictionary.PLACE) ? "cl" : "co"));
-                            break;
-                        }
+                    //for (short ct : SequenceModel.mappings.keySet())
+                    //    if (Arrays.asList(SequenceModel.mappings.get(ct)).contains(type)) {
+                          //  types.add(ct == FeatureUtils.PERSON ? "cp" : ((ct == FeatureUtils.PLACE) ? "cl" : "co"));
+                      //      break;
+                        //}
+                    short ct = NEType.getCoarseType(type).getCode();
+                    types.add(ct == NEType.Type.PERSON.getCode() ? "cp" : ((ct == NEType.Type.PLACE.getCode()) ? "cl" : "co"));
                     ewid.put(fields[0], new Archive.Entity(fields[0], null, types));
                 });
                 Set<String> termsToHighlight = new HashSet<>();

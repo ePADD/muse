@@ -1,7 +1,7 @@
 
 package edu.stanford.muse.ner.model;
 
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
 import edu.stanford.muse.ner.featuregen.FeatureVector;
 import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
@@ -26,7 +26,7 @@ import java.util.*;
  * (the confidence scores of regression model can be useful in segmentation)
  * */
 public class SVMModel implements NERModel, Serializable {
-    public FeatureDictionary dictionary;
+    public FeatureUtils dictionary;
     public FeatureGenerator[] fgs;
     public Map<Short, svm_model> models;
     public Tokenizer tokenizer;
@@ -78,8 +78,8 @@ public class SVMModel implements NERModel, Serializable {
                 //log.info("Name: "+name+", predict: "+v+", fv:"+wfv);
                 if (v > 0) {
                     //clean before passing for annotation.
-                    if(FeatureDictionary.PERSON == type) {
-                        Pair<String, Boolean> p1 = WordSurfaceFeature.checkAndStrip(name, FeatureDictionary.startMarkersForType.get(FeatureDictionary.PERSON), true, true);
+                    if(FeatureUtils.PERSON == type) {
+                        Pair<String, Boolean> p1 = WordSurfaceFeature.checkAndStrip(name, FeatureUtils.startMarkersForType.get(FeatureUtils.PERSON), true, true);
                         name = p1.getFirst();
                     }
                     if (DictUtils.tabooNames.contains(name.toLowerCase()) || DictUtils.hasOnlyCommonDictWords(name.toLowerCase())) {
@@ -109,7 +109,7 @@ public class SVMModel implements NERModel, Serializable {
                                     r = 0;
                                 else {
                                     Pair<Float, Float> p = new Pair<>(0.0f,0.0f);
-                                    FeatureDictionary.MU mu = dictionary.features.get(w);
+                                    MU mu = dictionary.features.get(w);
                                     p.first = mu.getLikelihoodWithType(type)*mu.getPrior();
                                     p.second = mu.numMixture;
                                     r = p.getFirst() / p.getSecond();

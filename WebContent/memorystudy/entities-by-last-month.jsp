@@ -11,7 +11,7 @@
 <%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
 <%@ page import="edu.stanford.muse.xword.Clue" %>
 <%@ page import="edu.stanford.muse.xword.ClueEvaluator" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureUtils" %>
 <%@ page import="javax.mail.Address" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
@@ -206,9 +206,9 @@
             ownerNames.add(str.toLowerCase());
         }
         //for(Short )
-        Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
-                FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE,FeatureDictionary.THEATRE,
-                FeatureDictionary.LIBRARY, FeatureDictionary.LAWFIRM, FeatureDictionary.GOVAGENCY};
+        Short[] itypes = new Short[]{FeatureUtils.BUILDING, FeatureUtils.PLACE, FeatureUtils.RIVER, FeatureUtils.ROAD, FeatureUtils.UNIVERSITY, FeatureUtils.MOUNTAIN, FeatureUtils.AIRPORT,
+                FeatureUtils.ISLAND, FeatureUtils.MUSEUM, FeatureUtils.BRIDGE, FeatureUtils.AIRLINE, FeatureUtils.THEATRE,
+                FeatureUtils.LIBRARY, FeatureUtils.LAWFIRM, FeatureUtils.GOVAGENCY};
         double CUTOFF = 0.001;
         archive.assignThreadIds();
         Lexicon lex = archive.getLexicon("default");

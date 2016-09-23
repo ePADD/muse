@@ -4,7 +4,7 @@
 <%@ page import="edu.stanford.muse.ner.model.BMMModel" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureUtils" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
 <%@ page import="java.io.FileWriter" %>
 <%@ page import="java.util.*" %>
@@ -32,17 +32,17 @@
     Map<String, Set<String>> all = new LinkedHashMap<>();
     FileWriter fw = new FileWriter(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"ner-benchmarks"+File.separator+"all-types.txt");
     Map<Short,String> desc = new LinkedHashMap<>();
-    desc.put(FeatureDictionary.DISEASE, "HEALTH");desc.put(FeatureDictionary.HOSPITAL,"HEALTH");
-    desc.put(FeatureDictionary.EVENT, "EVENT");
-    desc.put(FeatureDictionary.PERSON,"PERSON");
-    desc.put(FeatureDictionary.COMPANY,"COMPANY");desc.put(FeatureDictionary.LEGISLATURE,"COMPANY");
-    desc.put(FeatureDictionary.AIRPORT,"PLACE");desc.put(FeatureDictionary.PLACE,"PLACE");
-    desc.put(FeatureDictionary.RIVER,"NATURE");desc.put(FeatureDictionary.MOUNTAIN, "NATURE");
-    desc.put(FeatureDictionary.ROAD,"ROAD");
-    desc.put(FeatureDictionary.UNIVERSITY,"UNIVERSITY");//desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");
-    desc.put(FeatureDictionary.ORGANISATION,"ORGANISATION"); desc.put(FeatureDictionary.GOVAGENCY,"ORGANISATION");
-    desc.put(FeatureDictionary.AWARD,"AWARD");
-    desc.put(FeatureDictionary.MUSEUM,"BUILDING");desc.put(FeatureDictionary.BUILDING,"BUILDING");desc.put(FeatureDictionary.LIBRARY,"BUILDING");
+    desc.put(FeatureUtils.DISEASE, "HEALTH");desc.put(FeatureUtils.HOSPITAL,"HEALTH");
+    desc.put(FeatureUtils.EVENT, "EVENT");
+    desc.put(FeatureUtils.PERSON,"PERSON");
+    desc.put(FeatureUtils.COMPANY,"COMPANY");desc.put(FeatureUtils.LEGISLATURE,"COMPANY");
+    desc.put(FeatureUtils.AIRPORT,"PLACE");desc.put(FeatureUtils.PLACE,"PLACE");
+    desc.put(FeatureUtils.RIVER,"NATURE");desc.put(FeatureUtils.MOUNTAIN, "NATURE");
+    desc.put(FeatureUtils.ROAD,"ROAD");
+    desc.put(FeatureUtils.UNIVERSITY,"UNIVERSITY");//desc.put(FeatureDictionary.MILITARYUNIT,"MILITARYUNIT");
+    desc.put(FeatureUtils.ORGANISATION,"ORGANISATION"); desc.put(FeatureUtils.GOVAGENCY,"ORGANISATION");
+    desc.put(FeatureUtils.AWARD,"AWARD");
+    desc.put(FeatureUtils.MUSEUM,"BUILDING");desc.put(FeatureUtils.BUILDING,"BUILDING");desc.put(FeatureUtils.LIBRARY,"BUILDING");
 
     int di = 0, numSent = 0;
     Random rand = new Random();

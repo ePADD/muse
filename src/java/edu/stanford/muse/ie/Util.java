@@ -3,8 +3,8 @@ package edu.stanford.muse.ie;
 /**
  * @author viharipiratla
  */
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
@@ -243,11 +243,11 @@ public class Util {
 			return false;
 
 		int ti = 0;
-		if (FeatureDictionary.PERSON == type)
+		if (NEType.Type.PERSON.getCode() == type)
 			ti = 0;
-		else if (FeatureDictionary.PLACE == type)
+		else if (NEType.Type.PLACE.getCode() == type)
 			ti = 1;
-		else if (FeatureDictionary.ORGANISATION == type)
+		else if (NEType.Type.ORGANISATION.getCode() == type)
 			ti = 2;
 		Set<String> cws = readFileFromResource("dict.words.full");
 		Set<String> tcws = new HashSet<>();
@@ -342,7 +342,7 @@ public class Util {
         String[] words = phrase.split("\\s+");
         String acr = "";
         for (String word : words) {
-            if(FeatureDictionary.sws.contains(word) && considerStopWords) {
+            if(FeatureUtils.sws.contains(word) && considerStopWords) {
                 acr += word.charAt(0);
                 continue;
             }

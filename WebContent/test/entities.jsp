@@ -1,5 +1,5 @@
 <%@ page import="java.util.*" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureUtils" %>
 <%@ page import="edu.stanford.muse.webapp.JSPHelper" %>
 <%@ page import="edu.stanford.muse.index.Archive" %>
 <%@ page import="edu.stanford.muse.index.Document" %>
@@ -34,11 +34,11 @@
     }
 
     String cutoff = request.getParameter("cutoff");
-    Map<Short,String> desc = FeatureDictionary.desc;
+    Map<Short,String> desc = FeatureUtils.desc;
     if(cutoff==null||cutoff.equals("")){
         String options = "";
         options += "<option value='none'>NONE</option>";
-        for(Short t: FeatureDictionary.allTypes)
+        for(Short t: FeatureUtils.allTypes)
             options += "<option value='"+t+"'>"+desc.get(t)+"</option>";
         %>
         <html>
@@ -94,8 +94,8 @@
         List<Short> exc = new ArrayList<>(), inc = new ArrayList<>();
         if(incS==null) {
             List<Short> tmp = new ArrayList<>();
-            for(short t: FeatureDictionary.allTypes)
-                if(t!=FeatureDictionary.OTHER)
+            for(short t: FeatureUtils.allTypes)
+                if(t!= FeatureUtils.OTHER)
                     tmp.add(t);
             inc = tmp;
         }

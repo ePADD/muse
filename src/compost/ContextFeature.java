@@ -1,9 +1,7 @@
 package edu.stanford.muse.ner.featuregen;
 
 import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Triple;
 
-import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -15,9 +13,9 @@ public class ContextFeature extends FeatureGenerator {
     private static final long							serialVersionUID	= 1L;
 
     public ContextFeature(){
-        featureTypes.add(new Pair<String, Short>("position", FeatureDictionary.NOMINAL));
-        featureTypes.add(new Pair<String,Short>("bow",FeatureDictionary.NOMINAL));
-        featureTypes.add(new Pair<String,Short>("has-marker", FeatureDictionary.BOOLEAN));
+        featureTypes.add(new Pair<String, Short>("position", FeatureUtils.NOMINAL));
+        featureTypes.add(new Pair<String,Short>("bow", FeatureUtils.NOMINAL));
+        featureTypes.add(new Pair<String,Short>("has-marker", FeatureUtils.BOOLEAN));
     }
 
     private static void put(Map<String,List<String>> features, String dim, String val) {

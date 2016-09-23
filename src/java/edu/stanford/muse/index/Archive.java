@@ -21,7 +21,8 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
@@ -1076,11 +1077,11 @@ public class Archive implements Serializable {
         Map<String, Entity> entitiesWithId = new HashMap<>();
         //we annotate three specially recognized types
         Map<Short,String> recMap = new HashMap<>();
-        recMap.put(FeatureDictionary.PERSON,"cp");recMap.put(FeatureDictionary.PLACE,"cl");recMap.put(FeatureDictionary.ORGANISATION,"co");
-        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(FeatureDictionary.getCoarseType(n.type)))
+        recMap.put(NEType.Type.PERSON.getCode(),"cp");recMap.put(NEType.Type.PLACE.getCode(),"cl");recMap.put(NEType.Type.ORGANISATION.getCode(),"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(NEType.getCoarseType(n.type)))
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
-                    types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
+                    types.add(recMap.get(NEType.getCoarseType(n.type)));
                     entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities==null?null:authorisedEntities.get(n), types));
                 });
         acrs.forEach(acr->{
@@ -1399,7 +1400,7 @@ public class Archive implements Serializable {
 
     public Span[] getAllNamesMapToInDoc(edu.stanford.muse.index.Document d, boolean body, short coarseType) throws IOException{
         Span[] allNames = getAllNamesInDoc(d, body);
-        List<Span> req = Arrays.asList(allNames).stream().filter(n->FeatureDictionary.getCoarseType(n.type)==coarseType).collect(Collectors.toList());
+        List<Span> req = Arrays.asList(allNames).stream().filter(n-> NEType.getCoarseType(n.type).getCode()==coarseType).collect(Collectors.toList());
         return req.toArray(new Span[req.size()]);
     }
 

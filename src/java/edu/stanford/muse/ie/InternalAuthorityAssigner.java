@@ -7,8 +7,8 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.tokenizer.CICTokenizer;
 import edu.stanford.muse.ner.tokenizer.Tokenizer;
 import edu.stanford.muse.util.JSONUtils;
@@ -17,8 +17,6 @@ import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.analysis.core.StopAnalyzer;
-import org.apache.lucene.analysis.util.CharArraySet;
 
 import java.io.*;
 import java.util.*;
@@ -200,13 +198,13 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
             try {
                 Span[] names = archive.getAllNamesInDoc(ed, true);
                 people = Arrays.asList(names).stream()
-                        .filter(n -> FeatureDictionary.getCoarseType(n.type) == FeatureDictionary.PERSON)
+                        .filter(n -> n.type == NEType.Type.PERSON.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 places = Arrays.asList(names).stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.PLACE)
+                        .filter(n-> n.type == NEType.Type.PLACE.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 orgs = Arrays.asList(names).stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.ORGANISATION)
+                        .filter(n-> n.type == NEType.Type.ORGANISATION.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
             }catch(IOException ioe){
                 continue;

@@ -44,55 +44,55 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
     private static final long							serialVersionUID	= 1L;
 
     public WordSurfaceFeature(){
-        featureGens.add(new Pair<>("end-period", FeatureDictionary.BOOLEAN));
+        featureGens.add(new Pair<>("end-period", FeatureUtils.BOOLEAN));
         featureTypes.add(END_PERIOD);
-		featureGens.add(new Pair<>("contains-special", FeatureDictionary.BOOLEAN));
+		featureGens.add(new Pair<>("contains-special", FeatureUtils.BOOLEAN));
         featureTypes.add(CONTAINS_SPECIAL);
-		featureGens.add(new Pair<>("contains-marker", FeatureDictionary.BOOLEAN));
+		featureGens.add(new Pair<>("contains-marker", FeatureUtils.BOOLEAN));
         featureTypes.add(CONTAINS_MARKER);
-		featureGens.add(new Pair<>("contains-sw", FeatureDictionary.BOOLEAN));
+		featureGens.add(new Pair<>("contains-sw", FeatureUtils.BOOLEAN));
         featureTypes.add(CONTAINS_STOPWORD);
-		featureGens.add(new Pair<>("contains-period", FeatureDictionary.BOOLEAN));
+		featureGens.add(new Pair<>("contains-period", FeatureUtils.BOOLEAN));
         featureTypes.add(CONTAINS_PERIOD);
-		featureGens.add(new Pair<>("contains-dict", FeatureDictionary.BOOLEAN));
+		featureGens.add(new Pair<>("contains-dict", FeatureUtils.BOOLEAN));
         featureTypes.add(CONTAINS_DICT);
-		featureGens.add(new Pair<>("patt", FeatureDictionary.NOMINAL));
+		featureGens.add(new Pair<>("patt", FeatureUtils.NOMINAL));
         featureTypes.add(PATTERN);
-		featureGens.add(new Pair<>("suff", FeatureDictionary.NOMINAL));
+		featureGens.add(new Pair<>("suff", FeatureUtils.NOMINAL));
         featureTypes.add(SUFFIX);
-        featureGens.add(new Pair<>("words", FeatureDictionary.NOMINAL));
+        featureGens.add(new Pair<>("words", FeatureUtils.NOMINAL));
         featureTypes.add(WORDS);
-        featureGens.add(new Pair<>("pre", FeatureDictionary.NOMINAL));
+        featureGens.add(new Pair<>("pre", FeatureUtils.NOMINAL));
         featureTypes.add(PREFIX);
         //wordclass
-		featureGens.add(new Pair<>("wc", FeatureDictionary.NOMINAL));
+		featureGens.add(new Pair<>("wc", FeatureUtils.NOMINAL));
         featureTypes.add(WORD_CLASS);
 	}
 
     public WordSurfaceFeature (Set<String> featureTypes){
         this.featureTypes = featureTypes;
         if(featureTypes.contains(END_PERIOD))
-            featureGens.add(new Pair<String, Short>("end-period", FeatureDictionary.BOOLEAN));
+            featureGens.add(new Pair<String, Short>("end-period", FeatureUtils.BOOLEAN));
         if(featureTypes.contains(CONTAINS_SPECIAL))
-            featureGens.add(new Pair<String, Short>("contains-special", FeatureDictionary.BOOLEAN));
+            featureGens.add(new Pair<String, Short>("contains-special", FeatureUtils.BOOLEAN));
         if(featureTypes.contains(CONTAINS_MARKER))
-            featureGens.add(new Pair<String, Short>("contains-marker", FeatureDictionary.BOOLEAN));
+            featureGens.add(new Pair<String, Short>("contains-marker", FeatureUtils.BOOLEAN));
         if(featureTypes.contains(CONTAINS_STOPWORD))
-            featureGens.add(new Pair<String, Short>("contains-sw", FeatureDictionary.BOOLEAN));
+            featureGens.add(new Pair<String, Short>("contains-sw", FeatureUtils.BOOLEAN));
         if(featureTypes.contains(CONTAINS_PERIOD))
-            featureGens.add(new Pair<String, Short>("contains-period", FeatureDictionary.BOOLEAN));
+            featureGens.add(new Pair<String, Short>("contains-period", FeatureUtils.BOOLEAN));
         if(featureTypes.contains(CONTAINS_DICT))
-            featureGens.add(new Pair<String, Short>("contains-dict", FeatureDictionary.BOOLEAN));
+            featureGens.add(new Pair<String, Short>("contains-dict", FeatureUtils.BOOLEAN));
         if(featureTypes.contains(PATTERN))
-            featureGens.add(new Pair<String, Short>("patt", FeatureDictionary.NOMINAL));
+            featureGens.add(new Pair<String, Short>("patt", FeatureUtils.NOMINAL));
         if(featureTypes.contains(SUFFIX))
-            featureGens.add(new Pair<String, Short>("suff", FeatureDictionary.NOMINAL));
+            featureGens.add(new Pair<String, Short>("suff", FeatureUtils.NOMINAL));
         if(featureTypes.contains(WORDS))
-            featureGens.add(new Pair<String, Short>("words", FeatureDictionary.NOMINAL));
+            featureGens.add(new Pair<String, Short>("words", FeatureUtils.NOMINAL));
         if(featureTypes.contains(PREFIX))
-            featureGens.add(new Pair<String, Short>("pre", FeatureDictionary.NOMINAL));
+            featureGens.add(new Pair<String, Short>("pre", FeatureUtils.NOMINAL));
         if(featureTypes.contains(WORD_CLASS))
-            featureGens.add(new Pair<String, Short>("wc", FeatureDictionary.NOMINAL));
+            featureGens.add(new Pair<String, Short>("wc", FeatureUtils.NOMINAL));
     }
 
 	private static void put(Map<String,List<String>> features, String dim, String val) {
@@ -153,7 +153,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		String[] endMarkers = new String[]{};//FeatureDictionary.endMarkersForType.get(iType);
 		//thought this is efficient than name.matches as the regex of latter needs .* to be appended
 		//String temp = name.replaceAll(FeatureDictionary.MARKERS_PATT, "");
-		Pair<String,Boolean> p1 = checkAndStrip(name, startMarkers, true, FeatureDictionary.PERSON == iType);
+		Pair<String,Boolean> p1 = checkAndStrip(name, startMarkers, true, FeatureUtils.PERSON == iType);
 		Pair<String,Boolean> p2 = checkAndStrip(p1.getFirst(), endMarkers, false, false);
 		name = p2.getFirst();
 
@@ -278,7 +278,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 		/** Using patterns like this improved the accuracy in the case of orgs. */
 		//String t = null;
 		if(featureTypes.contains(WORDS)) {
-            String[] patts = FeatureDictionary.getPatts(name);
+            String[] patts = FeatureUtils.getPatts(name);
             for (String p : patts) {
                 put(features, "words", p);
             }
@@ -322,7 +322,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 	public static void main(String[] args) {
 		try {
 			WordSurfaceFeature wsf = new WordSurfaceFeature();
-            Map<String, List<String>> map = wsf.createFeatures("Sunday",FeatureDictionary.ORGANISATION);
+            Map<String, List<String>> map = wsf.createFeatures("Sunday", FeatureUtils.ORGANISATION);
             for(String k: map.keySet())
                 System.err.println(k+":"+new LinkedHashSet<>(map.get(k)));
             String mwl = System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator;

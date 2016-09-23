@@ -20,7 +20,7 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.QuotedPrintableCodec;
@@ -1528,16 +1528,6 @@ public class EmailUtils {
                 if (type.endsWith("|Person"))
                     numPersons++;
                 type = type.intern(); // type strings are repeated very often, so intern
-
-                boolean allowed = true;
-                //boolean allowed = DBpediaTypes.allowedTypes.contains(type);
-                for(String it: FeatureDictionary.ignoreTypes)
-                    if(type.endsWith(it)) {
-                        allowed = false;
-                        break;
-                    }
-                if(!allowed)
-                    continue;
 
 				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
 					//System.err.print("Cleaned: "+title);

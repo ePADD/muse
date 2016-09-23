@@ -5,9 +5,10 @@ import edu.stanford.muse.exceptions.CancelledException;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.model.DummyNERModel;
 import edu.stanford.muse.ner.model.NERModel;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -55,7 +56,7 @@ public class NER implements StatusProvider {
         //a map of entity-type key and value list of entities
         public void update(Span[] names) {
             Arrays.asList(names).forEach(sp->{
-                short ct = FeatureDictionary.getCoarseType(sp.type);
+                short ct = NEType.getTypeForCode(sp.type).getCode();
                 if(!all.containsKey(sp.type))
                     all.put(sp.type, new LinkedHashSet<>());
                 all.get(sp.type).add(sp.text);
@@ -236,11 +237,11 @@ public class NER implements StatusProvider {
 
             Map<Short, Integer> counts = new LinkedHashMap<>();
             Map<Short, Integer> countsT = new LinkedHashMap<>();
-            Arrays.asList(names).stream().map(sp->FeatureDictionary.getCoarseType(sp.type)).forEach(s->counts.put(s,counts.getOrDefault(s,0)+1));
-            Arrays.asList(namesT).stream().map(sp->FeatureDictionary.getCoarseType(sp.type)).forEach(s->countsT.put(s,countsT.getOrDefault(s,0)+1));
-            ps += counts.getOrDefault(FeatureDictionary.PERSON, 0) + countsT.getOrDefault(FeatureDictionary.PERSON, 0);
-            ls += counts.getOrDefault(FeatureDictionary.PLACE, 0) + countsT.getOrDefault(FeatureDictionary.PLACE, 0);
-            os += counts.getOrDefault(FeatureDictionary.ORGANISATION, 0) + countsT.getOrDefault(FeatureDictionary.ORGANISATION, 0);
+            Arrays.asList(names).stream().map(sp-> NEType.getCoarseType(sp.type).getCode()).forEach(s->counts.put(s,counts.getOrDefault(s,0)+1));
+            Arrays.asList(namesT).stream().map(sp-> NEType.getCoarseType(sp.type).getCode()).forEach(s->countsT.put(s,countsT.getOrDefault(s,0)+1));
+            ps += counts.getOrDefault(NEType.Type.PERSON.getCode(), 0) + countsT.getOrDefault(NEType.Type.PERSON.getCode(), 0);
+            ls += counts.getOrDefault(NEType.Type.PLACE.getCode(), 0) + countsT.getOrDefault(NEType.Type.PLACE.getCode(), 0);
+            os += counts.getOrDefault(NEType.Type.ORGANISATION.getCode(), 0) + countsT.getOrDefault(NEType.Type.ORGANISATION.getCode(), 0);
 
             snoTime += System.currentTimeMillis() - st;
             st = System.currentTimeMillis();

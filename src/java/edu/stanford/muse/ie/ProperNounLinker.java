@@ -7,14 +7,12 @@ import edu.stanford.muse.index.*;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 
 import edu.stanford.muse.util.Span;
-import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.webapp.SimpleSessions;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
@@ -188,7 +186,7 @@ public class ProperNounLinker {
             return true;
 
         //there is no point moving forward if this is the case
-        if (FeatureDictionary.sws.contains(c1.toLowerCase()) || FeatureDictionary.sws.contains(c2.toLowerCase()))
+        if (FeatureUtils.sws.contains(c1.toLowerCase()) || FeatureUtils.sws.contains(c2.toLowerCase()))
             return false;
 
         c1 = flipComma(c1);
@@ -457,7 +455,7 @@ public class ProperNounLinker {
                 try {
                     ldoc = archive.getLuceneDoc(docId, fieldsToLoad);
                 }catch(IOException e){
-                    edu.stanford.muse.util.Util.print_exception("Failed to fetch lucene doc for doc id: "+docId, e, log);
+                    edu.stanford.muse.util.Util.print_exception("Failed to fetch lucene doc for doc id: " + docId, e, log);
                     continue;
                 }
                 ldocTime += System.currentTimeMillis() - st1;
@@ -471,7 +469,7 @@ public class ProperNounLinker {
                 List<String> hpeople = ed.getAllNames();
                 for (String hp : hpeople) {
                     Span s = new Span(hp, -1, -1);
-                    s.setType(FeatureDictionary.PERSON, 1.0f);
+                    s.setType(NEType.Type.PERSON.getCode(), 1.0f);
                     names.add(s);
                 }
 

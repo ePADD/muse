@@ -6,8 +6,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import edu.stanford.muse.Config;
@@ -15,9 +14,7 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
@@ -39,12 +36,6 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Data structure to represent features of an entity mention in archive
@@ -418,13 +409,13 @@ public class EntityFeature implements StatusProvider, Serializable {
                     continue;
                 }
                 List<String> entities = names.stream()
-                        .filter(n -> FeatureDictionary.getCoarseType(n.type) == FeatureDictionary.PERSON)
+                        .filter(n -> n.type == NEType.Type.PERSON.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 List<String> places = names.stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.PLACE)
+                        .filter(n-> n.type == NEType.Type.PLACE.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 List<String> orgs = names.stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.ORGANISATION)
+                        .filter(n-> n.type == NEType.Type.ORGANISATION.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
 				if (entities != null)
 					c1 += entities.size();
