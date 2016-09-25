@@ -27,7 +27,7 @@ import java.io.FileWriter;
 /**
  * Created by viharipiratla on 22/05/15.
  *
- * Finds an optimisation expression over segmentation features for proper segmentation of names*/
+ * Finds an optimisation expression over segmentation mixtures for proper segmentation of names*/
 public class WordSegmenter {
     static Log log					= LogFactory.getLog(WordSegmenter.class);
     public static class SegmentationModel{
@@ -97,10 +97,10 @@ public class WordSegmenter {
             return -1;
         double v = 0;
         v = features[2]*100 + features[0]*10 + features[1];
-//        v += features[0] * coeffs[0];
-//        v += features[1] * coeffs[1];
-//        v += features[2] * coeffs[2];
-//        //v *= features[1];
+//        v += mixtures[0] * coeffs[0];
+//        v += mixtures[1] * coeffs[1];
+//        v += mixtures[2] * coeffs[2];
+//        //v *= mixtures[1];
         return v;
     }
 
@@ -108,7 +108,7 @@ public class WordSegmenter {
         //params \mu1, \mu2, \mu3 in x1*svm_confidence + x2*number_of_documents(phrase) + x3*exp(length_of_phrase)
         svm_model svmModel;
         FeatureUtils wfs;
-        //features -> target value
+        //mixtures -> target value
         List<Pair<List<double[]>,Integer>> in;
         double[] means ;
         List<Pair<String,String>> tdata;

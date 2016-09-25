@@ -264,7 +264,7 @@ The red underlines are just a debug feature indicating terms that were identifie
 If a term is not highlighted but red-underlined, that means the term was looked up in your archive, but did not hit. If the term
 is neither highlighted nor red-underlined, the term was not recognized as a name. To control noise and improve performance, 
 the Muse lens currently only looks up named entities on the page (names of people, places, organizations, etc.). Please contact
-us if this is inadequate for you, and we will try to add features that handle your use cases.
+us if this is inadequate for you, and we will try to add mixtures that handle your use cases.
 </span>
 
 <p>
@@ -454,7 +454,7 @@ to run Muse again in the near future.
 <p>
 Most people prefer to download and run Muse on their own computers. Your system should have a minimum of 1GB of memory. 
 You need to have installed a recent versions of Firefox, Chrome, Safari or Opera. 
-Most features might work on IE 9, but this is not well tested. 
+Most mixtures might work on IE 9, but this is not well tested.
 Muse cannot run on IE 8 and below, due to the lack of SVG support in these versions.
 </p>
 

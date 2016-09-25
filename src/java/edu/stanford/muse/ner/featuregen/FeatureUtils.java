@@ -66,8 +66,8 @@ public class FeatureUtils implements Serializable {
     }
 
     /**
-     * A generative function, that takes the phrase and generates features.
-     * requires mixtures as a parameter, because some of the features depend on this
+     * A generative function, that takes the phrase and generates mixtures.
+     * requires mixtures as a parameter, because some of the mixtures depend on this
      * Given an input phrase returns the context of each of the words in the phrase
      * Mr. Robert Creeley, PERSON => {mr.:[L:NULL,R:robert,R:creeley,T:PERSON,DICT:false,SW:false],
      *                                robert:[L:mr.,R:Creeley,T:PERSON,SW:false,DICT:false],
@@ -84,7 +84,7 @@ public class FeatureUtils implements Serializable {
 
         //scrapped position label (i.e. in the beginning, middle, end) feature for these reasons:
         //1. It is un-normalized, the possible labels are not equally likely
-        //2. The left and right features already hold the position info. very tightly
+        //2. The left and right mixtures already hold the position info. very tightly
         for(int pi = 0; pi<patts.length; pi++){
             if(sws.contains(patts[pi].toLowerCase()))
                 continue;
@@ -92,7 +92,7 @@ public class FeatureUtils implements Serializable {
                 String word = words[wi];
                 //Generally entries contain only one stop word per phrase, so not bothering which one
                 //index>0 check to avoid considering 'A' and 'The' in the beginning
-                if(wi>0 && sws.contains(word) && !(wi<words.length-1 && patts[pi].equals(word.toLowerCase()+" "+words[wi+1].toLowerCase())) && !(words[wi-1].toLowerCase()+" "+word.toLowerCase()).equals(patts[pi])) {
+                if(wi>0 && sws.contains(word.toLowerCase()) && !(wi<words.length-1 && patts[pi].equals(word.toLowerCase()+" "+words[wi+1].toLowerCase())) && !(words[wi-1].toLowerCase()+" "+word.toLowerCase()).equals(patts[pi])) {
                     sw = word;
                     break;
                 }
@@ -135,7 +135,7 @@ public class FeatureUtils implements Serializable {
         return mixtureFeatures;
     }
 
-    /**If the phrase is of OTHER type, then consider no chunks and emit features for every word*/
+    /**If the phrase is of OTHER type, then consider no chunks and emit mixtures for every word*/
     public static Map<String,List<String>> generateFeatures2(String phrase, Short type){
         Map<String,List<String>> features = new LinkedHashMap<>();
         if(type == NEType.Type.OTHER.getCode()){

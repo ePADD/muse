@@ -56,33 +56,33 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
     //how useful is "on" in the stop words list
     //Consecutive capital words are allowed to be separated by these words, so this list is more restrictive than general stop words list
-	static List<String> stopWords =  Arrays.asList(
+    static List<String> stopWords =  Arrays.asList(
             "and","for","a","the","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"/*John den Braber*/
     );
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     static {
-		initPattern();
-	}
+        initPattern();
+    }
 
-	static void initPattern() {
+    static void initPattern() {
         //This def. of a word that can appear in person or non-person names
-		String nameP = "[A-Z][A-Za-z0-9'\\-\\.]*";
+        String nameP = "[A-Z][A-Za-z0-9'\\-\\.]*";
         //these are the chars that are allowed to appear between words in the chunk
-		//comma is a terrible character to allow, it sometimes crawls in the full list an entity is part of.
-		String allowedCharsOther = "\\s&'";
+        //comma is a terrible character to allow, it sometimes crawls in the full list an entity is part of.
+        String allowedCharsOther = "\\s&'";
         //allowedCharsPerson = "\\s";
 
-		StringBuilder sp = new StringBuilder("");
-		int i = 0;
-		for (String stopWord : stopWords) {
-			sp.append(stopWord);
-			if (i++ < (stopWords.size() - 1))
-				sp.append("|");
-		}
-		String stopWordsPattern = "(" + sp.toString() + ")";
+        StringBuilder sp = new StringBuilder("");
+        int i = 0;
+        for (String stopWord : stopWords) {
+            sp.append(stopWord);
+            if (i++ < (stopWords.size() - 1))
+                sp.append("|");
+        }
+        String stopWordsPattern = "(" + sp.toString() + ")";
 
         //defines the number of occurrences of allowed chars between words
         String recur = "{1,3}";
@@ -90,14 +90,14 @@ public class CICTokenizer implements Tokenizer, Serializable {
         //Hence we do another level of tokenisation with the pattern below
         multipleStopWordPattern = Pattern.compile("(\\s|^)("+stopWordsPattern+"["+allowedCharsOther+"]"+recur+"){2,}|(['-\\.]{2,})|'s(\\s|$)");
 
-		//[\"'_:\\s]*
-		//number of times special chars between words can recur
-		String nps = "(" + nameP + "([" + allowedCharsOther + "]" + recur + "(" + nameP + "[" + allowedCharsOther + "]" + recur + "|(" + stopWordsPattern + "[" + allowedCharsOther + "]" + recur + "))*" + nameP + ")?)";
-		entityPattern = Pattern.compile(nps);
-		NER.log.info("EP: " + nps);
-		//allow comma only once after the first word
-		//nps = "(" + nameP + "([" + allowedCharsPerson + ",]" + recur + "(" + nameP + "[" + allowedCharsPerson + "]" + recur + ")*" + nameP + ")?)";
-		//personNamePattern = Pattern.compile(nps);
+        //[\"'_:\\s]*
+        //number of times special chars between words can recur
+        String nps = "(" + nameP + "([" + allowedCharsOther + "]" + recur + "(" + nameP + "[" + allowedCharsOther + "]" + recur + "|(" + stopWordsPattern + "[" + allowedCharsOther + "]" + recur + "))*" + nameP + ")?)";
+        entityPattern = Pattern.compile(nps);
+        NER.log.info("EP: " + nps);
+        //allow comma only once after the first word
+        //nps = "(" + nameP + "([" + allowedCharsPerson + ",]" + recur + "(" + nameP + "[" + allowedCharsPerson + "]" + recur + ")*" + nameP + ")?)";
+        //personNamePattern = Pattern.compile(nps);
     }
 
     public static void setStopWords(List<String> stopWords){
@@ -109,34 +109,34 @@ public class CICTokenizer implements Tokenizer, Serializable {
      * {@inheritDoc}
      * */
     @Override
-	public List<Triple<String, Integer, Integer>> tokenize(String content) {
-		List<Triple<String, Integer, Integer>> matches = new ArrayList<>();
-		if (content == null)
-			return matches;
+    public List<Triple<String, Integer, Integer>> tokenize(String content) {
+        List<Triple<String, Integer, Integer>> matches = new ArrayList<>();
+        if (content == null)
+            return matches;
 
-		if (entityPattern == null) {
-			initPattern();
-		}
-		Pattern namePattern = entityPattern;
+        if (entityPattern == null) {
+            initPattern();
+        }
+        Pattern namePattern = entityPattern;
 
-		//we need a proper sentence splitter, as some of the names can contain period.
-		String[] lines = content.split("\\n");
-		//don't change the length of the content, so that the offsets are not messed up.
-		content = "";
-		for (String line : lines) {
-			//for very short lines, new line is used as a sentence breaker.
-			if (line.length() < 40)
-				content += line + "%";
-			else
-				content += line + " ";
-		}
+        //we need a proper sentence splitter, as some of the names can contain period.
+        String[] lines = content.split("\\n");
+        //don't change the length of the content, so that the offsets are not messed up.
+        content = "";
+        for (String line : lines) {
+            //for very short lines, new line is used as a sentence breaker.
+            if (line.length() < 40)
+                content += line + "%";
+            else
+                content += line + " ";
+        }
 
-		Span[] sentenceSpans = NLPUtils.tokenizeSentenceAsSpan(content);
+        Span[] sentenceSpans = NLPUtils.tokenizeSentenceAsSpan(content);
         assert sentenceSpans != null;
 
         for (Span sentenceSpan : sentenceSpans) {
-          	int sentenceStartOffset = sentenceSpan.getStart();
-			String sent = sentenceSpan.getCoveredText(content).toString();
+            int sentenceStartOffset = sentenceSpan.getStart();
+            String sent = sentenceSpan.getCoveredText(content).toString();
             //TODO: sometimes these long sentences are actually long list of names, which we cannot afford to lose.
             //Is there an easy way to test with the sentence is good or bad quickly and easy way to tokenize it further if it is good?
             //Sometimes there can be junk in the content such as a byte code or a randomly long string of characters,
@@ -144,23 +144,23 @@ public class CICTokenizer implements Tokenizer, Serializable {
             if(sent.length()>=2000)
                 continue;
 
-			Matcher m = namePattern.matcher(sent);
-			while (m.find()) {
-				if (m.groupCount() > 0) {
-					String name = m.group(1);
-					int start = m.start(1) + sentenceStartOffset, end = m.end(1) + sentenceStartOffset;
-					//if the length is less than 3, accept only if it is all capitals.
-					if (name.length() < 3) {
-						String tt = FeatureGeneratorUtil.tokenFeature(name);
+            Matcher m = namePattern.matcher(sent);
+            while (m.find()) {
+                if (m.groupCount() > 0) {
+                    String name = m.group(1);
+                    int start = m.start(1) + sentenceStartOffset, end = m.end(1) + sentenceStartOffset;
+                    //if the length is less than 3, accept only if it is all capitals.
+                    if (name.length() < 3) {
+                        String tt = FeatureGeneratorUtil.tokenFeature(name);
                         if (tt.equals("ac")) {
                             //this list contains many single-word bad names like Jan, Feb, Mon, Tue, etc.
                             if(DictUtils.tabooNames.contains(name.toLowerCase())) {
                                 continue;
                             }
-							matches.add(new Triple<>(name, start, end));
+                            matches.add(new Triple<>(name, start, end));
                         }
-					}
-					else {
+                    }
+                    else {
                         //further cleaning to remove "'s" pattern
                         //@TODO: Can these "'s" be put to a good use? Right now, we are just tokenizing on them
                         String[] tokens = clean(name);
@@ -184,11 +184,11 @@ public class CICTokenizer implements Tokenizer, Serializable {
                             matches.add(new Triple<>(canonicalize(token), s, s + token.length()));
                         }
                     }
-				}
-			}
-		}
-		return matches;
-	}
+                }
+            }
+        }
+        return matches;
+    }
 
     /**
      * <ul>
@@ -378,7 +378,8 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 "That was one hell of a Series!",
                 "I am from India said No one.",
                 "Rachel and I went for a date in the imaginary land of geeks.",
-                "I'm the one invited."
+                "I'm the one invited.",
+                "Shares in Slough , which earlier announced a 14 percent rise in first-half pretax profit to 37.4 million stg , climbed nearly six percent , or 14p to 250 pence at 1009 GMT , while British Land added 12-1 / 2p to 468p , Land Securities rose 5-1 / 2p to 691p and Hammerson was 8p higher at 390 ."
         };
         String[][] tokens = new String[][]{
                 new String[]{"Information Retrieval","Christopher Manning"},
@@ -441,11 +442,12 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 new String[]{"REBECCA HALL"},
                 new String[]{},
                 new String[]{"Royal Meteorological Institute","RMT","Brussels"},
-                new String[]{"Danish","ISS","ISS Inc","Canadian","Aaxis Limited"},
-                new String[]{},
+                new String[]{"Danish","ISS","ISS Inc","Canadian","Wednesday","Aaxis Limited"},
+                new String[]{"Series"},
                 new String[]{"India"},
                 new String[]{"Rachel"},
-                new String[]{}
+                new String[]{},
+                new String[]{ "Shares in Slough","GMT", "British Land", "Land Securities","Hammerson"}
         };
         for(int ci=0;ci<contents.length;ci++){
             String content = contents[ci];
@@ -460,17 +462,17 @@ public class CICTokenizer implements Tokenizer, Serializable {
                 }
             if(cics.size()!=ts.size() || missing) {
                 String str = "------------\n" +
-                             "Test failed!\n" +
-                             "Content: "+content+"\n"+
-                             "Expected tokens: "+ts+"\n"+
-                             "Found: "+cics+"\n";
+                        "Test failed!\n" +
+                        "Content: "+content+"\n"+
+                        "Expected tokens: "+ts+"\n"+
+                        "Found: "+cics+"\n";
                 System.err.println(str);
             }
         }
         System.out.println("All tests done!");
     }
 
-	public static void main(String[] args) {
-		test();
-	}
+    public static void main(String[] args) {
+        test();
+    }
 }

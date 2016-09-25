@@ -42,7 +42,7 @@ public class GroupUtils {
 		return pairs;
 	}
 	
-	/** computes affinity based on last name and org. in email domain. in future, could consider other features like
+	/** computes affinity based on last name and org. in email domain. in future, could consider other mixtures like
 	 * topics associated with the person. */
 	public static Map<String, Map<String, Float>> computeAffinityMap(Collection<Contact> contacts)
 	{

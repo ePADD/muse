@@ -60,7 +60,7 @@ public class Archive implements Serializable {
     public static final String INDEXES_SUBDIR = "indexes";
     public static final String SESSIONS_SUBDIR = "sessions"; // original idea was that there would be different sessions on the same archive (index). but in practice we only have one session
     public static final String LEXICONS_SUBDIR = "lexicons";
-    public static final String FEATURES_SUBDIR = "features";
+    public static final String FEATURES_SUBDIR = "mixtures";
     public static final String IMAGES_SUBDIR = "images";
 
     public static String[] LEXICONS =  new String[]{"default.english.lex.txt"}; // this is the default, for Muse. EpaddIntializer will set it differently. don't make it final
@@ -1082,7 +1082,7 @@ public class Archive implements Serializable {
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
                     types.add(recMap.get(NEType.getCoarseType(n.type)));
-                    entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities==null?null:authorisedEntities.get(n), types));
+                    entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities == null ? null : authorisedEntities.get(n), types));
                 });
         acrs.forEach(acr->{
             Set<String> types = new HashSet<>();

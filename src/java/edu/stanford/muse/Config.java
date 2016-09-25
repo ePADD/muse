@@ -47,14 +47,14 @@ public class Config {
 				e.printStackTrace();
 			}
 		}
-		FEATURES_INDEX = props.getProperty("FEATURES_INDEX", "features");
+		FEATURES_INDEX = props.getProperty("FEATURES_INDEX", "mixtures");
 		AUTHORITIES_FILENAME		= props.getProperty("AUTHORITIES_FILENAME", "authorities.ser");
 		AUTHORITIES_CSV_FILENAME	= props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
 		AUTHORITY_ASSIGNER_FILENAME	= props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
 		FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
 	    NER_RESOURCE_FILES = props.getProperty("NER_RESOURCE_FILES","").split(":::");
         DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE","instance_types_2014-04.en.txt.bz2");
-		// set the int features
+		// set the int mixtures
 		String s = props.getProperty("MAX_ENTITY_FEATURES"); if (s != null) { try { MAX_ENTITY_FEATURES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
 		s = props.getProperty("MAX_TRY_TO_RESOLVE_NAMES"); if (s != null) { try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
 		s = props.getProperty("MAX_DOCS_PER_QUERY"); if (s != null) { try { MAX_DOCS_PER_QUERY = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }

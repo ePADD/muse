@@ -7,7 +7,7 @@ import java.util.*;
 /**
  * Created by viharipiratla on 27/05/15.
  *
- * All features that depend on context should go here*/
+ * All mixtures that depend on context should go here*/
 public class ContextFeature extends FeatureGenerator {
     List<Pair<String,Short>> featureTypes = new ArrayList<Pair<String, Short>>();
     private static final long							serialVersionUID	= 1L;

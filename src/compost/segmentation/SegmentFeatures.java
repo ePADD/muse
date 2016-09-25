@@ -10,7 +10,7 @@ import libsvm.svm_node;
 /**
  * Created by viharipiratla on 22/05/15.
  *
- * Creates features for segmentation
+ * Creates mixtures for segmentation
  */
 public class SegmentFeatures {
     public static String MARKERS_PATT = "^([Dd]ear|[Hh]i|[hH]ello|[Mm]r|[Mm]rs|[Mm]iss|[Ss]ir|[Mm]adam|[Dd]r\\.|[Pp]rof\\.)\\W+";
@@ -33,7 +33,7 @@ public class SegmentFeatures {
 //            if(gazz.containsKey(phrase))
 //                numMatches++;
 //        //direct match to gazette?
-//        features[2] = (double)numMatches/2;
+//        mixtures[2] = (double)numMatches/2;
         phrase = IndexUtils.stripExtraSpaces(phrase);
         int c = 0;
         if(wfs.counts.containsKey(phrase))

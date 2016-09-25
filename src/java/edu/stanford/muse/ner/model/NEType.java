@@ -34,13 +34,8 @@ public class NEType {
             GOVAGENCY(22, ORGANISATION),AWARD(27, ORGANISATION),
             LEGISLATURE(32,ORGANISATION),LAWFIRM(34, ORGANISATION),
             DISEASE(36, ORGANISATION),EVENT(37, ORGANISATION),
-        //any other valid type that is not one of types above
-        MISC(38, null),
-        //no idea of type or if token belongs to an entity or not
-        UNKNOWN_TYPE(-10, null),
-        //to tag non-entity tokens
-        OTHER(-2, null);
-
+        //any other type that is not one of types above
+        OTHER(38, null);
         private short code;
         private Type parent;
 
@@ -110,7 +105,7 @@ public class NEType {
         //the loop codes the string type that may look like "University|EducationalInstitution|Organisation|Agent" into the most specific type by looking at the biggest to smallest prefix.
         outer:
         for(int ti=0;ti<fs.length;ti++) {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             for(int tj=ti;tj<fs.length;tj++) {
                 sb.append(fs[tj]);
                 if(tj<fs.length-1)
@@ -131,7 +126,7 @@ public class NEType {
     }
 
     public static Type getTypeForCode(short c){
-        Type type = Stream.of(getAllTypes()).filter(t->t.getCode()==c).findAny().orElse(Type.UNKNOWN_TYPE);
+        Type type = Stream.of(getAllTypes()).filter(t->t.getCode()==c).findAny().orElse(Type.OTHER);
         if(type.getCode()!=c)
             log.warn("Unknown code: "+c);
         return type;
@@ -150,5 +145,9 @@ public class NEType {
 
     public static NEType.Type getCoarseType(Short ct){
         return getCoarseType(getTypeForCode(ct));
+    }
+
+    public static void main(String[] args) {
+        Stream.of(Type.values()).forEach(System.out::println);
     }
 }

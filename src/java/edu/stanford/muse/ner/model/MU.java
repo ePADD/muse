@@ -148,8 +148,8 @@ public class MU implements Serializable {
         return 0;
     }
 
-    //features also include the type of the phrase
-    //returns P(features/this-mixture)
+    //mixtures also include the type of the phrase
+    //returns P(mixtures/this-mixture)
     public double getLikelihood(List<String> features) {
         double p = 1.0;
 
@@ -202,8 +202,8 @@ public class MU implements Serializable {
     }
 
     /**Maximization step in EM update,
-     * @param resp - responsibility of this mixture in explaining the type and features
-     * @param features - set of all *relevant* features to this mixture*/
+     * @param resp - responsibility of this mixture in explaining the type and mixtures
+     * @param features - set of all *relevant* mixtures to this mixture*/
     public void add(Float resp, List<String> features) {
         //if learn is set to false, ignore all the observations
         if (Float.isNaN(resp))
@@ -226,8 +226,8 @@ public class MU implements Serializable {
         }
 
         for (String f : features) {
-            if(f.equals("L:"+ NEType.Type.UNKNOWN_TYPE)) f = "L:"+type;
-            if(f.equals("R:"+ NEType.Type.UNKNOWN_TYPE)) f = "R:"+type;
+            if(f.equals("L:"+SequenceModel.UNKNOWN_TYPE)) f = "L:"+type;
+            if(f.equals("R:"+SequenceModel.UNKNOWN_TYPE)) f = "R:"+type;
             float fraction = 1;
             if(f.startsWith("L:")) fraction = 1.0f/numLeft;
             if(f.startsWith("R:")) fraction = 1.0f/numRight;

@@ -44,7 +44,7 @@ public class SVMModel implements NERModel, Serializable {
         //check if the model is initialised
 		if (fdw == null) {
 			try {
-				fdw = new FileWriter(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache" + File.separator + "features.dump"));
+				fdw = new FileWriter(new File(System.getProperty("user.home")+File.separator+"epadd-ner"+File.separator+"cache" + File.separator + "mixtures.dump"));
 			} catch (Exception e) {
             }
 		}
@@ -174,7 +174,7 @@ public class SVMModel implements NERModel, Serializable {
 //    }
 //
 //    public FeatureVector getVector(String cname, Short iType) {
-//        Map<String, List<String>> features = FeatureGenerator.generateFeatures(cname, null, null, iType, null);
-//        return new FeatureVector(this, iType, null, features);
+//        Map<String, List<String>> mixtures = FeatureGenerator.generateFeatures(cname, null, null, iType, null);
+//        return new FeatureVector(this, iType, null, mixtures);
 //    }
 }

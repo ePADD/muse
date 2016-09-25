@@ -38,7 +38,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 
 /**
- * Data structure to represent features of an entity mention in archive
+ * Data structure to represent mixtures of an entity mention in archive
  * TODO: move checkindex, index and indexExists to different class.
  */
 public class EntityFeature implements StatusProvider, Serializable {
@@ -286,7 +286,7 @@ public class EntityFeature implements StatusProvider, Serializable {
 		return doc;
 	}
 
-	/** Cleans the features directory */
+	/** Cleans the mixtures directory */
 	public void clean(Archive archive) {
 		String iDir = getFeaturesDir(archive);
 		File f = new File(iDir);
@@ -332,7 +332,7 @@ public class EntityFeature implements StatusProvider, Serializable {
 				w.addDocument(doc);
 				if (c % 1000 == 0) {
 					JSPHelper.log.info("Extracted and wrote doc for: " + c + " of " + features.keySet().size());
-					status = "Indexed " + c + "/" + features.size() + " features";
+					status = "Indexed " + c + "/" + features.size() + " mixtures";
 					pctComplete = ((double) c * 50) / ((double) features.size()) + 50;
 				}
 				c++;

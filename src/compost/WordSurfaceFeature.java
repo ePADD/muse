@@ -12,10 +12,10 @@ import java.util.*;
 // @TODO: Good to have segmentation too.
 // For example: "Clemens Hall" recognized with good confidence should segment out the entity in phrase like: "Party in Clemens Hall"
 /**
- * All lexical and morphological features (surface features) which do not depend on the context, should go here
+ * All lexical and morphological mixtures (surface mixtures) which do not depend on the context, should go here
  * @note: keep the feature generation very clean and efficient, dont use regular expressions anywhere as that goes a long way
  *
- * Ideally this should contain more manipulatable features, each type in different class, but that leads to a lot of fragmentation
+ * Ideally this should contain more manipulatable mixtures, each type in different class, but that leads to a lot of fragmentation
  *
  * END_PERIOD [BOOLEAN] - signals if the phrase ends with a period
  * CONTAINS_SPECIAL [BOOLEAN] - if the phrase has a special character
@@ -28,7 +28,7 @@ import java.util.*;
  * PREFIX [NOMINAL] - prefix of every word in the phrase
  * WORDS [NOMINAL][TYPE SPECIFIC] - every word in the phrase
  * emitted words may differ depending on the entity type of interest. For organisations this feature generates
- * features that preserve the position. For example "The National Park"[ORG] -> "The*", "*National*", "*Park"
+ * mixtures that preserve the position. For example "The National Park"[ORG] -> "The*", "*National*", "*Park"
  * WORD_CLASS [NOMINAL] - generic word class of the phrase, very similar to OpenNLP wordclass feature
  */
 public class WordSurfaceFeature extends FeatureGenerator implements Serializable{
@@ -166,7 +166,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
         }
 
 		if(featureTypes.contains(WORD_CLASS)) {
-            //word features.
+            //word mixtures.
             String tc = FeatureGeneratorUtil.tokenFeature(name);
             put(features, "wc", tc);
             //System.err.println("Word class: " + tc + " for: " + name + "\t" + t);
@@ -293,7 +293,7 @@ public class WordSurfaceFeature extends FeatureGenerator implements Serializable
 //		//Person, Org and Geographic
 //		wf.put("pfreq", "" + freqs);
 
-		//Stats for orgs without the first and last words as features and with first and last word counts respectively are
+		//Stats for orgs without the first and last words as mixtures and with first and last word counts respectively are
 		//Accuracy:0.6, Recall:0.775, F1:0.6763636363636363
 		//Accuracy:0.6382978723404256, Recall:0.675, F1:0.6561360874848117
 		//The decrease in recall could be because of bad segmentation. Even though the model is trained on "National Park Service", could not recognise "The National Park Service"

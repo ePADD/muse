@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 /**
  * This class contains pre-processing computations for assign-authorities.jsp
  * and entity resolutions in the browse page (with expandname.jsp).
- * Map<String, EntityFeature> features; This is the crucial object that contains
+ * Map<String, EntityFeature> mixtures; This is the crucial object that contains
  * the co-occurring entities and (co-)occurring email addresses. It can consume
  * lot of space if not capped properly.
  * 
@@ -39,8 +39,8 @@ import java.util.stream.Collectors;
  * 3. call checkFeaturesIndex(Archive) finally
  * 4. Call isCancelled to check if the object is properly initiated,
  *
- * The size of this features index created by this class generally as big as emails index,
- * that is odd, TODO: try to bring down the size of the features index
+ * The size of this mixtures index created by this class generally as big as emails index,
+ * that is odd, TODO: try to bring down the size of the mixtures index
  */
 public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	private static final long		serialVersionUID	= 1L;
@@ -300,7 +300,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	/** force- force creation of new index */
 	public boolean checkFeaturesIndex(Archive archive, boolean force) {
 		control = new EntityFeature();
-		//check features index.
+		//check mixtures index.
 		boolean ret = control.checkIndex(archive, force);
 		control = null;
 		return ret;

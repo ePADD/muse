@@ -440,11 +440,11 @@ public class JSPHelper {
 //                    assignauthorities = null;
 //                boolean success = assignauthorities.checkFeaturesIndex(archive, true);
 //                if (!success) {
-//                    log.warn("Could not build context features for entities");
+//                    log.warn("Could not build context mixtures for entities");
 //                } else
-//                    log.info("Successfully built context features for entities");
+//                    log.info("Successfully built context mixtures for entities");
                 } catch (Exception e) {
-                    log.warn("Exception while building context features", e);
+                    log.warn("Exception while building context mixtures", e);
                 }
             }
         }
