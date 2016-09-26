@@ -1,6 +1,7 @@
 package edu.stanford.muse.ner.model;
 
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
 
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
  * This model returns all pseudo proper nouns in the content and hence generally is a super-set of all the possible entities in the content
  */
 public class DummyNERModel implements NERModel{
-    CICTokenizer tokenizer = new CICTokenizer();
+    Tokenizer tokenizer = new CICTokenizer();
     public Span[] find (String content) {
         // collect all pseudo proper nouns
         List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content);
@@ -21,5 +22,10 @@ public class DummyNERModel implements NERModel{
         List<Span> chunks = pns.stream().map(pn -> new Span(pn.getFirst(), pn.getSecond(), pn.getThird())).collect(Collectors.toList());
 
         return chunks.toArray(new Span[chunks.size()]);
+    }
+
+    @Override
+    public void setTokenizer(Tokenizer tokenizer) {
+        this.tokenizer = tokenizer;
     }
 }

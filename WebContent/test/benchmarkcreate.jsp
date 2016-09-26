@@ -10,7 +10,7 @@
 <%@ page import="java.util.*" %>
 <%@ page import="edu.stanford.muse.util.*" %>
 <%@ page import="opennlp.tools.util.Span" %>
-<%@ page import="edu.stanford.muse.ner.tokenizer.POSTokenizer" %>
+<%@ page import="edu.stanford.muse.ner.tokenize.POSTokenizer" %>
 <%
     Archive archive = JSPHelper.getArchive(request.getSession());
     List<Document> docs = archive.getAllDocs();

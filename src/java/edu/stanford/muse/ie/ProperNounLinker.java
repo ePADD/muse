@@ -95,7 +95,7 @@ public class ProperNounLinker {
     static Set<String> nonAcronymWords(String phrase) {
         String[] tokens = phrase.split("\\s+");
         Set<String> naw = new LinkedHashSet<>();
-        //the pattern below should pick up all the extra chars that CIC tokenizer allows in the name, else may end up classifying Non-consecutive and Non-profit as a valid merge
+        //the pattern below should pick up all the extra chars that CIC tokenize allows in the name, else may end up classifying Non-consecutive and Non-profit as a valid merge
         Pattern p = Pattern.compile("[A-Z][a-z']+");
         for (String tok : tokens) {
             Matcher m = p.matcher(tok);

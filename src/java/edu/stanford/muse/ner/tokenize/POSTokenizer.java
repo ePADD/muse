@@ -1,4 +1,4 @@
-package edu.stanford.muse.ner.tokenizer;
+package edu.stanford.muse.ner.tokenize;
 
 import edu.stanford.muse.util.NLPUtils;
 import edu.stanford.muse.util.Pair;
@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * Created by vihari on 09/10/15.
  *
- * A tokenizer based on POS tagging */
+ * A tokenize based on POS tagging */
 public class POSTokenizer implements Tokenizer{
     final static int MAX_SENT_LENGTH = 500;
 

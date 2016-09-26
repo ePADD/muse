@@ -1,24 +1,18 @@
 package edu.stanford.muse.ner.model;
 
 import edu.stanford.muse.Config;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureUtils;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.ner.tokenizer.POSTokenizer;
+import edu.stanford.muse.ner.model.test.SequenceModelTest;
+import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.*;
-import opennlp.tools.formats.Conll03NameSampleStream;
-import opennlp.tools.namefind.NameSample;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
-import java.text.DecimalFormat;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -37,9 +31,8 @@ public class SequenceModel implements NERModel, Serializable {
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
-    public static FileWriter fdw = null;
-    public static CICTokenizer tokenizer = new CICTokenizer();
-    public Map<String, String> dbpedia;
+    private static FileWriter fdw = null;
+    protected static Tokenizer tokenizer = new CICTokenizer();
 
     static boolean DEBUG = false;
     protected static short UNKNOWN_TYPE = -10;
@@ -56,14 +49,18 @@ public class SequenceModel implements NERModel, Serializable {
         this.gazettes = gazettes;
     }
 
+    @Override
+    public void setTokenizer(Tokenizer tokenizer){
+        this.tokenizer = tokenizer;
+    }
+
     //A training helper function for better organization, won't be serialized
     static class Trainer {
         Map<String, MU> mixtures;
         Map<String,String> gazettes;
 
-        public static List<String> ignoreDBpediaTypes = new ArrayList<>();
+        static List<String> ignoreDBpediaTypes = new ArrayList<>();
         static{
-            //Do not expect that these ignore types will get rid of person names with any stop word in it.
             //Consider this, the type dist. of person-like types with the stop word _of_ is
             //10005 Person|Agent
             //4765 BritishRoyalty|Royalty|Person|Agent
@@ -100,7 +97,7 @@ public class SequenceModel implements NERModel, Serializable {
             );
         }
 
-        public Trainer(Map<String, String> gazettes, Map<String, Map<String, Float>> tokenPriors, int iter) {
+        Trainer(Map<String, String> gazettes, Map<String, Map<String, Float>> tokenPriors, int iter) {
             this.mixtures = new LinkedHashMap<>();
             log.info("Initializing the model with gazettes");
             log.info(Util.getMemoryStats());
@@ -110,7 +107,7 @@ public class SequenceModel implements NERModel, Serializable {
             EM(gazettes, iter);
         }
 
-        public SequenceModel getModel(){
+        SequenceModel getModel(){
             return new SequenceModel(mixtures, gazettes);
         }
 
@@ -379,7 +376,7 @@ public class SequenceModel implements NERModel, Serializable {
 
         //an approximate measure for sigma(P(x;theta)) over all the observations
         double getIncompleteDataLogLikelihood(){
-            double ll = gazettes.entrySet().stream()
+            return gazettes.entrySet().stream()
                     .filter(e->rand.nextInt(10)==1)
                     .mapToDouble(e->{
                         String phrase = e.getKey();
@@ -397,7 +394,6 @@ public class SequenceModel implements NERModel, Serializable {
                         else
                             return Math.log(llv);
                     }).average().orElse(0);
-            return ll;
         }
 
         //the argument alpha fraction is required only for naming of the dumped model size
@@ -854,8 +850,11 @@ public class SequenceModel implements NERModel, Serializable {
     public Span[] find (String content){
         List<Span> spans = new ArrayList<>();
 
-        String[] sents = NLPUtils.tokenizeSentence(content);
-        for(String sent: sents) {
+        opennlp.tools.util.Span[] sentSpans = NLPUtils.tokenizeSentenceAsSpan(content);
+        for(opennlp.tools.util.Span sentSpan: sentSpans) {
+            String sent = sentSpan.getCoveredText(content).toString();
+            int sstart = sentSpan.getStart();
+
             List<Triple<String, Integer, Integer>> toks = tokenizer.tokenize(sent);
             for (Triple<String, Integer, Integer> t : toks) {
                 //this should never happen
@@ -870,7 +869,7 @@ public class SequenceModel implements NERModel, Serializable {
                         continue;
 
                     if(!p.first.equals(NEType.Type.OTHER.getCode()) && p.second>0) {
-                        Span chunk = new Span(e, t.second + t.first.indexOf(e), t.second + t.first.indexOf(e) + e.length());
+                        Span chunk = new Span(e, sstart + t.second + t.first.indexOf(e), sstart + t.second + t.first.indexOf(e) + e.length());
                         chunk.setType(p.first, new Float(p.second));
                         spans.add(chunk);
                     }
@@ -900,199 +899,6 @@ public class SequenceModel implements NERModel, Serializable {
         } catch (Exception e) {
             Util.print_exception("Exception while trying to load model from: " + modelPath, e, log);
             return null;
-        }
-    }
-
-    //samples [fraction] fraction of entries from dictionary supplied and splices the supplied dict
-    private static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
-        Map<String,String> dict1 = new LinkedHashMap<>(), dict2 = new LinkedHashMap<>();
-        Random rand = new Random();
-        for(String str: dict.keySet()){
-            if(rand.nextFloat()<fraction){
-                dict1.put(str, dict.get(str));
-            }else{
-                dict2.put(str, dict.get(str));
-            }
-        }
-        System.err.println("Sliced " + dict.size() + " entries into " + dict1.size() + " and " + dict2.size());
-        return new Pair<>(dict1, dict2);
-    }
-
-    public static void testDBpedia(NERModel nerModel){
-        //when testing remember to change
-        //1. lookup method, disable the lookup
-        System.err.println("DBpedia scoring check starts");
-        String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-        //clear the cache
-        EmailUtils.dbpedia = null;
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1, twl);
-        //NOther == Not OTHER
-        //number of things shown (NON-OTHER) and number of things that should be shown
-        int ne = 0, neShown = 0, neShouldShown = 0;
-        //number of entries assigned to wrong type and number missed because they are assigned OTHER
-        int missAssigned=0, missSegmentation = 0, missNoEvidence = 0;
-        int correct = 0;
-        //these are the entries which are not completely tagged as OTHER by NER, but may have some segments that are not OTHER, hence visible
-        double CUTOFF = 0;
-        Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
-        Map<Short, Integer> freqs = new LinkedHashMap<>();
-        String[] badSuffixTypes = new String[]{"MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
-                "EthnicGroup","RadioStation|Broadcaster|Organisation", "MeanOfTransportation", "TelevisionShow|Work",
-                "Play|WrittenWork|Work","Language", "Book|WrittenWork|Work","Genre|TopicalConcept", "InformationAppliance|Device",
-                "SportsTeam|Organisation", "Eukaryote|Species","Software|Work", "TelevisionEpisode|Work", "Comic|WrittenWork|Work",
-                "Mayor", "Website|Work", "Cartoon|Work"
-        };
-        ol:
-        for(String entry: dbpedia.keySet()){
-            if(!entry.contains(" "))
-                continue;
-            String fullType = dbpedia.get(entry);
-            Short type = NEType.parseDBpediaType(dbpedia.get(entry)).getCode();
-
-            if(fullType.equals("Agent"))
-                type = NEType.Type.PERSON.getCode();
-            else
-                for (String bst: badSuffixTypes)
-                    if(fullType.endsWith(bst))
-                        continue ol;
-
-            entry = EmailUtils.uncanonicaliseName(entry);
-            if(entry.length()>=15)
-                continue;
-            Span[] spans = nerModel.find(entry);
-            Map<Short, Map<String,Float>> es = new LinkedHashMap<>();
-            for(Span sp: Arrays.asList(spans))
-                es.getOrDefault(sp.type,new LinkedHashMap<>()).put(sp.text,sp.typeScore);
-            Map<Short, Map<String,Float>> temp = new LinkedHashMap<>();
-
-            for(Short t: es.keySet()) {
-                if(es.get(t).size()==0)
-                    continue;
-                temp.put(t, new LinkedHashMap<>());
-                for (String str : es.get(t).keySet())
-                    if(es.get(t).get(str)>CUTOFF)
-                        temp.get(t).put(str, es.get(t).get(str));
-            }
-            es = temp;
-
-            short assignedTo = type;
-            boolean shown = false;
-            //we should not bother about segmentation in the case of OTHER
-            if(!(es.containsKey(NEType.Type.OTHER.getCode()) && es.size()==1)) {
-                shown = true;
-                boolean any;
-                if (!type.equals(NEType.Type.OTHER.getCode()) && es.containsKey(type) && es.get(type).containsKey(entry))
-                    correct++;
-                else {
-                    any = false;
-                    boolean found = false;
-                    assignedTo = -1;
-                    for (Short t : es.keySet()) {
-                        if (es.get(t).containsKey(entry)) {
-                            found = true;
-                            assignedTo = t;
-                            break;
-                        }
-                        if (es.get(t).size() > 0)
-                            any = true;
-                    }
-                    if (found) {
-                        missAssigned++;
-                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + "--------");
-                    } else if (any) {
-                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + "--------");
-                        missSegmentation++;
-                    } else {
-                        missNoEvidence++;
-                        System.err.println("Not enough evidence for: " + entry + " - " + fullType);
-                    }
-                }
-            }
-            if(shown)
-                neShown++;
-            if(type!= NEType.Type.OTHER.getCode())
-                neShouldShown++;
-
-
-            if(ne++%100 == 0)
-                System.err.println("Done testing on "+ne+" of "+dbpedia.size());
-            if(!confMat.containsKey(type))
-                confMat.put(type, new LinkedHashMap<>());
-            if(!confMat.get(type).containsKey(assignedTo))
-                confMat.get(type).put(assignedTo, 0);
-            confMat.get(type).put(assignedTo, confMat.get(type).get(assignedTo)+1);
-
-            if(!freqs.containsKey(type))
-                freqs.put(type, 0);
-            freqs.put(type, freqs.get(type)+1);
-        }
-        List<Short> allTypes = new ArrayList<>();
-        for(Short type: confMat.keySet())
-            allTypes.add(type);
-        Collections.sort(allTypes);
-        allTypes.add((short)-1);
-        System.err.println("Tested on "+ne+" entries");
-        System.err.println("------------------------");
-        String ln = "  ";
-        for(Short type: allTypes)
-            ln += String.format("%5s",type);
-        System.err.println(ln);
-        for(Short t1: allTypes){
-            ln = String.format("%2s",t1);
-            for(Short t2: allTypes) {
-                if(confMat.containsKey(t1) && confMat.get(t1).containsKey(t2) && freqs.containsKey(t1))
-                    ln += String.format("%5s", new DecimalFormat("#.##").format((double)confMat.get(t1).get(t2)/freqs.get(t1)));//new DecimalFormat("#.##").format((double) confMat.get(t1).get(t2) / freqs.get(t1)));
-                else
-                    ln += String.format("%5s","-");
-            }
-            System.err.println(ln);
-        }
-        System.err.println("------------------------\n");
-        double precision = (double)(correct)/(neShown);
-        double recall = (double)correct/neShouldShown;
-        //miss and misAssigned are number of things we are missing we are missing, but for different reasons, miss is due to segmentation problem, assignment to OTHER; misAssigned is due to wrong type assignment
-        //visible = ne - number of entries that are assigned OTHER label and hence visible
-        System.err.println("Missed #"+missAssigned+" due to improper assignment\n#"+missSegmentation+"due to improper segmentation\n" +
-                "#"+missNoEvidence+" due to single word or no evidence");
-        System.err.println("Precision: "+precision+"\nRecall: "+recall);
-    }
-
-    public static void test2(SequenceModel nerModel){
-        try {
-            String content = "Bob,\n" +
-                    "Are you back from Maine: how is your sister?\n" +
-                    "One piece of business: the edition from Tamarind Insititute has not\n" +
-                    "arrived here. Do you know of some delay, or should I just get on the matter\n" +
-                    "my self.\n" +
-                    "I think you knew that ND was to publish the Duncan/Levertov letters,\n" +
-                    "but when the book got too big they were happy enough not to do it. Last week\n" +
-                    "the volume was accepted by the editorial board at Stanford Univ. Press. It\n" +
-                    "all comes out as a fine collaboration with Al Gelpi, half the letters here,\n" +
-                    "half the letters at Stanford. Out in about a year, so I am told. To replace\n" +
-                    "the ND book I have given them another book called \"Robert Duncan's Ezra\n" +
-                    "Pound,\" which has both sides of the correspondence in a narrative with other\n" +
-                    "docs. Plus poems and unpublished essays. Then a new edtion of Letters, RD\n" +
-                    "title, from a small press in St Louis. I've finished the Olson/Duncan\n" +
-                    "letters, but am now struggling with the transcriptions of RD lectures of CO.\n" +
-                    "They so resist being reading texts. I'll have more on that soon. Letters and\n" +
-                    "Lectures to go to Wisconsin. Or, the snow at Christmas kept me off the\n" +
-                    "streets and at my desk. In that sense it was a moral snow.\n" +
-                    "If you're in Buffalo could you stand a stop after work?\n" +
-                    "My best, " +
-                    "National Bank some. National Kidney Foundation some . University Commencement.\n" +
-                    "Address of Amuse Labs.OUT HOUSE, 19/1, Ramchandra Kripa, Mahishi Road, Malmaddi Dharwad.Address of US stay.483, Fulton Street, Palo Alto";
-            System.err.println("Tokens: "+new POSTokenizer().tokenize(content));
-
-            Span[] spans = nerModel.find(content);
-            for(Span sp: spans)
-                System.out.println(sp);
-            String[] check = new String[]{"California State Route 1", "New York Times", "Goethe Institute of Prague", "Venice high school students","Denver International Airport",
-                    "New York International Airport", "Ramchandra Kripa, Mahishi Road"};
-            for(String c: check) {
-                System.err.println(c + ", " + nerModel.seqLabel(c));
-            }
-        }catch(Exception e){
-            e.printStackTrace();
         }
     }
 
@@ -1126,331 +932,16 @@ public class SequenceModel implements NERModel, Serializable {
         return pageLengths;
     }
 
-    //we are missing F.C's like F.C. La Valletta
     /**
-     * Tested on 28th Jan. 2016 on what is believed to be the testa.dat file of original CONLL.
-     * I procured this data-set from a prof's (UMass Prof., don't remember the name) home page where he provided the test files for a homework, guess who topped the assignment :)
-     * (So, don't use this data to report results at any serious venue)
-     * The results on multi-word names is as follows.
-     * Note that the test only considered PERSON, LOCATION and ORG; Also, it does not distinguish between the types because the type assigned by Sequence Labeler is almost always right. And, importantly this will avoid any scuffle over the mapping from fine-grained type to the coarse types.
-     *  -------------
-     *  Found: 8861 -- Total: 7781 -- Correct: 6675
-     *  Precision: 0.75330096
-     *  Recall: 0.8578589
-     *  F1: 0.80218726
-     *  ------------
-     * I went through 2691 sentences of which only 200 had any unrecognised entities and identified various sources of error.
-     * The sources of missing names are as follows in decreasing order of their contribution (approximately), I have put some examples with the sources. The example phrases are recognized as one chunk with a type.
-     * Obviously, this list is not exhaustive, USE IT WITH CAUTION!
-     *  1. Bad segmentation -- which is minor for ePADD and depends on training data and principles.
-     *     For example: "Overseas Development Minister <PERSON>Lynda Chalker</PERSON>",Czech <PERSON>Daniel Vacek</PERSON>, "Frenchman <PERSON>Cedric Pioline</PERSON>"
-     *     "President <PERSON>Nelson Mandela</PERSON>","<BANK>Reserve Bank of India</BANK> Governor <PERSON>Chakravarty Rangarajan</PERSON>"
-     *     "Third-seeded <PERSON>Wayne Ferreira</PERSON>",
-     *     Hong Kong Newsroom -- we got only Hong Kong, <BANK>Hong Kong Interbank</BANK> Offered Rate, Privately-owned <BANK>Bank Duta</BANK>
-     *     [SERIOUS]
-     *  2. Bad training data -- since our training data (DBpedia instances) contain phrases like "of Romania" a lot
-     *     Ex: <PERSON>Yayuk Basuki</PERSON> of Indonesia, <PERSON>Karim Alami</PERSON> of Morocc
-     *     This is also leading to errors like when National Bank of Holand is segmented as National Bank
-     *     [SERIOUS]
-     *  3. Some unknown names, mostly personal -- we see very weird names in CONLL; Hopefully, we can avoid this problem in ePADD by considering the address book of the archive.
-     *     Ex: NOVYE ATAGI, Hans-Otto Sieg, NS Kampfruf, Marie-Jose Perec, Billy Mayfair--Paul Goydos--Hidemichi Tanaki
-     *     we miss many (almost all) names of the form "M. Dowman" because of uncommon or unknown last name.
-     *  4. Bad segmentation due to limitations of CIC
-     *     Ex: Hassan al-Turabi, National Democratic party, Department of Humanitarian affairs, Reserve bank of India, Saint of the Gutters, Queen of the South, Queen's Park
-     *  5. Very Long entities -- we refrain from seq. labelling if the #tokens>7
-     *     Ex: National Socialist German Workers ' Party Foreign Organisation
-     *  6. We are missing OCEANs?!
-     *     Ex: Atlantic Ocean, Indian Ocean
-     *  7. Bad segments -- why are some segments starting with weird chars like '&'
-     *     Ex: Goldman Sachs & Co Wertpapier GmbH -> {& Co Wertpapier GmbH, Goldman Sachs}
-     *  8. We are missing Times of London?! We get nothing that contains "Newsroom" -- "Amsterdam Newsroom", "Hong Kong News Room"
-     *     Why are we getting "Students of South Korea" instead of "South Korea"?
-     *
-     * 1/50th on only MWs
-     * 13 Feb 13:24:54 BMMModel INFO  - -------------
-     * 13 Feb 13:24:54 BMMModel INFO  - Found: 4238 -- Total: 4236 -- Correct: 3242 -- Missed due to wrong type: 358
-     * 13 Feb 13:24:54 BMMModel INFO  - Precision: 0.7649835
-     * 13 Feb 13:24:54 BMMModel INFO  - Recall: 0.7653447
-     * 13 Feb 13:24:54 BMMModel INFO  - F1: 0.765164
-     * 13 Feb 13:24:54 BMMModel INFO  - ------------
-     *
-     * Best performance on CONLL testa full, model trained on entire DBpedia.
-     * 4 Feb 00:41:34 BMMModel INFO  - -------------
-     * 14 Feb 00:41:34 BMMModel INFO  - Found: 6707 -- Total: 7219 -- Correct: 4988 -- Missed due to wrong type: 1150
-     * 14 Feb 00:41:34 BMMModel INFO  - Precision: 0.7437006
-     * 14 Feb 00:41:34 BMMModel INFO  - Recall: 0.69095445
-     * 14 Feb 00:41:34 BMMModel INFO  - F1: 0.71635795
-     * 14 Feb 00:41:34 BMMModel INFO  - ------------
-     *
-     * Best performance on testa with [ignore segmentation] and single word with CONLL data is
-     * 25 Sep 13:27:03 SequenceModel INFO  - -------------
-     * 25 Sep 13:27:03 SequenceModel INFO  - Found: 4117 -- Total: 4236 -- Correct: 3368 -- Missed due to wrong type: 266
-     * 25 Sep 13:27:03 SequenceModel INFO  - Precision: 0.8180714
-     * 25 Sep 13:27:03 SequenceModel INFO  - Recall: 0.7950897
-     * 25 Sep 13:27:03 SequenceModel INFO  - F1: 0.80641687
-     * 25 Sep 13:27:03 SequenceModel INFO  - ------------
-     *
-     * on testa, ignoring segmentation, any number of words and ignoring segmentation
-     * 25 Sep 20:35:18 SequenceModel INFO  - -------------
-     * 25 Sep 20:35:18 SequenceModel INFO  - Found: 5997 -- Total: 7219 -- Correct: 4764 -- Missed due to wrong type: 918
-     * 25 Sep 20:35:18 SequenceModel INFO  - Precision: 0.7943972
-     * 25 Sep 20:35:18 SequenceModel INFO  - Recall: 0.6599252
-     * 25 Sep 20:35:18 SequenceModel INFO  - F1: 0.7209444
-     * 25 Sep 20:35:18 SequenceModel INFO  - ------------
-     *
-     * on testa, *not* ignoring segmentation (exact match), any number of words
-     * 25 Sep 17:23:14 SequenceModel INFO  - -------------
-     * 25 Sep 17:23:14 SequenceModel INFO  - Found: 6006 -- Total: 7219 -- Correct: 4245 -- Missed due to wrong type: 605
-     * 25 Sep 17:23:14 SequenceModel INFO  - Precision: 0.7067932
-     * 25 Sep 17:23:14 SequenceModel INFO  - Recall: 0.5880316
-     * 25 Sep 17:23:14 SequenceModel INFO  - F1: 0.6419659
-     * 25 Sep 17:23:14 SequenceModel INFO  - ------------
-     *
-     * on testa, exact matches, multi-word names
-     * 25 Sep 17:28:04 SequenceModel INFO  - -------------
-     * 25 Sep 17:28:04 SequenceModel INFO  - Found: 4117 -- Total: 4236 -- Correct: 3096 -- Missed due to wrong type: 183
-     * 25 Sep 17:28:04 SequenceModel INFO  - Precision: 0.7520039
-     * 25 Sep 17:28:04 SequenceModel INFO  - Recall: 0.7308782
-     * 25 Sep 17:28:04 SequenceModel INFO  - F1: 0.74129057
-     * 25 Sep 17:28:04 SequenceModel INFO  - ------------
-     *
-     * With a model that is not trained on CONLL lists
-     * On testa, ignoring segmentation, any number of words.
-     * Sep 19:22:26 SequenceModel INFO  - -------------
-     * 25 Sep 19:22:26 SequenceModel INFO  - Found: 6129 -- Total: 7219 -- Correct: 4725 -- Missed due to wrong type: 964
-     * 25 Sep 19:22:26 SequenceModel INFO  - Precision: 0.7709251
-     * 25 Sep 19:22:26 SequenceModel INFO  - Recall: 0.6545228
-     * 25 Sep 19:22:26 SequenceModel INFO  - F1: 0.7079712
-     * 25 Sep 19:22:26 SequenceModel INFO  - ------------
-     * */
-    public static void test(SequenceModel seqModel, boolean verbose) {
-        try {
-            InputStream in = new FileInputStream(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "ner-benchmarks" + File.separator + "umasshw" + File.separator + "testaspacesep.txt"));
-            //7==0111 PER, LOC, ORG
-            Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
-            Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(), wrongType = new LinkedHashSet<>();
-            Multimap<String, String> matchMap = ArrayListMultimap.create();
-            Map<String, String> foundTypes = new LinkedHashMap<>(), benchmarkTypes = new LinkedHashMap<>();
-
-            //only multi-word are considered
-            boolean onlyMW = false;
-            //use ignoreSegmentation=true only with onlyMW=true it is not tested otherwise
-            boolean ignoreSegmentation = true;
-            NameSample sample = sampleStream.read();
-            CICTokenizer tokenizer = new CICTokenizer();
-            while (sample != null) {
-                String[] words = sample.getSentence();
-                String sent = "";
-                for (String s : words)
-                    sent += s + " ";
-                sent = sent.substring(0, sent.length() - 1);
-
-                Map<String, String> names = new LinkedHashMap<>();
-                opennlp.tools.util.Span[] nspans = sample.getNames();
-                for (opennlp.tools.util.Span nspan : nspans) {
-                    String n = "";
-                    for (int si = nspan.getStart(); si < nspan.getEnd(); si++) {
-                        if (si < words.length - 1 && words[si + 1].equals("'s"))
-                            n += words[si];
-                        else
-                            n += words[si] + " ";
-                    }
-                    if (n.endsWith(" "))
-                        n = n.substring(0, n.length() - 1);
-                    if (!onlyMW || n.contains(" "))
-                        names.put(n, nspan.getType());
-                }
-                Span[] chunks = seqModel.find(sent);
-                Map<String, String> foundSample = new LinkedHashMap<>();
-                if (chunks != null)
-                    for (Span chunk : chunks) {
-                        String text = chunk.text;
-                        Short type = chunk.type;
-                        if(type == NEType.Type.DISEASE.getCode() || type == NEType.Type.EVENT.getCode() || type == NEType.Type.AWARD.getCode())
-                            continue;
-
-                        Short coarseType = NEType.getCoarseType(type).getCode();
-                        String typeText;
-                        if (coarseType == NEType.Type.PERSON.getCode())
-                            typeText = "person";
-                        else if (coarseType == NEType.Type.PLACE.getCode())
-                            typeText = "location";
-                        else
-                            typeText = "organization";
-                        double s = chunk.typeScore;
-                        if (s > 0 && (!onlyMW || text.contains(" ")))
-                            foundSample.put(text, typeText);
-                    }
-
-                Set<String> foundNames = new LinkedHashSet<>();
-                Map<String, String> localMatchMap = new LinkedHashMap<>();
-                for (Map.Entry<String, String> entry : foundSample.entrySet()) {
-                    foundTypes.put(entry.getKey(), entry.getValue());
-                    boolean foundEntry = false;
-                    String foundType = null;
-                    for (String name : names.keySet()) {
-                        String cname = EmailUtils.uncanonicaliseName(name).toLowerCase();
-                        String ek = EmailUtils.uncanonicaliseName(entry.getKey()).toLowerCase();
-                        if (cname.equals(ek) || (ignoreSegmentation && ((cname.startsWith(ek + " ") || cname.endsWith(" " + ek) || ek.startsWith(cname + " ") || ek.endsWith(" " + cname))))) {
-                            foundEntry = true;
-                            foundType = names.get(name);
-                            matchMap.put(entry.getKey(), name);
-                            localMatchMap.put(entry.getKey(), name);
-                            break;
-                        }
-                    }
-
-                    if (foundEntry) {
-                        if (entry.getValue().equals(foundType)) {
-                            foundNames.add(entry.getKey());
-                            correct.add(entry.getKey());
-                        } else {
-                            wrongType.add(entry.getKey());
-                        }
-                    }
-                }
-
-                if (verbose) {
-                    log.info("CIC tokens: " + tokenizer.tokenizeWithoutOffsets(sent));
-                    log.info(chunks);
-                    String fn = "Found names:";
-                    for (String f : foundNames)
-                        fn += f + "[" + foundSample.get(f) + "] with " + localMatchMap.get(f) + "--";
-                    if (fn.endsWith("--"))
-                        log.info(fn);
-
-                    String extr = "Extra names: ";
-                    for (String f : foundSample.keySet())
-                        if (!localMatchMap.containsKey(f))
-                            extr += f + "[" + foundSample.get(f) + "]--";
-                    if (extr.endsWith("--"))
-                        log.info(extr);
-                    String miss = "Missing names: ";
-                    for (String name : names.keySet())
-                        if (!localMatchMap.values().contains(name))
-                            miss += name + "[" + names.get(name) + "]--";
-                    if (miss.endsWith("--"))
-                        log.info(miss);
-
-                    String misAssign = "Mis-assigned Types: ";
-                    for (String f : foundSample.keySet())
-                        if (matchMap.containsKey(f)) {
-                            //this can happen since matchMap is a global var. and an entity that is tagged in one place is untagged in other
-                            //if (names.get(matchMap.get(f)) == null)
-                            //  log.warn("This is not expected: " + f + " in matchMap not found names -- " + names);
-                            if (names.get(matchMap.get(f)) != null && !names.get(matchMap.get(f)).equals(foundSample.get(f)))
-                                misAssign += f + "[" + foundSample.get(f) + "] Expected [" + names.get(matchMap.get(f)) + "]--";
-                        }
-                    if (misAssign.endsWith("--"))
-                        log.info(misAssign);
-
-                    log.info(sent + "\n------------------");
-                }
-                for (String name : names.keySet())
-                    benchmarkTypes.put(name, names.get(name));
-
-                real.addAll(names.keySet());
-                found.addAll(foundSample.keySet());
-                sample = sampleStream.read();
-            }
-            float prec = (float) correct.size() / (float) found.size();
-            float recall = (float) correct.size() / (float) real.size();
-            if (verbose) {
-                log.info("----Correct names----");
-                for (String str : correct)
-                    log.info(str + " with " + new LinkedHashSet<>(matchMap.get(str)));
-                log.info("----Missed names----");
-                real.stream().filter(str -> !matchMap.values().contains(str)).forEach(log::info);
-                log.info("---Extra names------");
-                found.stream().filter(str -> !matchMap.keySet().contains(str)).forEach(log::info);
-
-                log.info("---Assigned wrong type------");
-                for (String str : wrongType) {
-                    Set<String> bMatches = new LinkedHashSet<>(matchMap.get(str));
-                    for (String bMatch : bMatches) {
-                        String ft = foundTypes.get(str);
-                        String bt = benchmarkTypes.get(bMatch);
-                        if (!ft.equals(bt))
-                            log.info(str + "[" + ft + "] expected " + bMatch + "[" + bt + "]");
-                    }
-                }
-            }
-
-            log.info("-------------");
-            log.info("Found: " + found.size() + " -- Total: " + real.size() + " -- Correct: " + correct.size() + " -- Missed due to wrong type: " + (wrongType.size()));
-            log.info("Precision: " + prec);
-            log.info("Recall: " + recall);
-            log.info("F1: " + (2 * prec * recall / (prec + recall)));
-            log.info("------------");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    static void testParams(){
-        float alphas[] = new float[]{1.0f/5};//new float[]{0, 1.0f/50, 1.0f/5, 1.0f/2, 1.0f, 5f};
-        int emIters[] = new int[]{9};//new int[]{0,2,5,7,9};
-        int numIter = 1;
-        String expFolder = "experiment";
-        String resultsFile = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"paramResults.txt";
-        //flush the previous results
-        try{new FileOutputStream(resultsFile);}catch(IOException e){e.printStackTrace();}
-        String oldName = modelFileName;
-        for(float alpha: alphas) {
-            SequenceModel.modelFileName = "ALPHA_"+alpha+"-"+oldName;
-            String modelFile = expFolder + File.separator + "Iter_" + emIters[emIters.length - 1] + SequenceModel.modelFileName;
-            try {
-                if (!new File(modelFile).exists()) {
-                    PrintStream def = System.out;
-                    System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
-                    System.out.println("------------------\n" +
-                            "Alpha fraction: " + alpha + " -- # Iterations: " + numIter);
-                    train(alpha, numIter);
-                    System.setOut(def);
-                }
-                for (int emIter : emIters) {
-                    modelFile = expFolder + File.separator + "Iter_" + emIter + "-" + SequenceModel.modelFileName;
-                    SequenceModel seqModel = loadModel(modelFile);
-                    PrintStream def = System.out;
-                    System.setOut(new PrintStream(new FileOutputStream(resultsFile, true)));
-                    System.out.println("------------------\n" +
-                            "Alpha fraction: " + alpha + " -- Iteration: " + (emIter + 1));
-                    test(seqModel, false);
-                    System.setOut(def);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        modelFileName = oldName;
-    }
-
-    /**
-     * A low level train interface for experimentation and extension over the default model.
-     * Use this method for training the default model
-     * Training data should be a list of phrases and their types, the type should follow DBpedia ontology; specifically http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2
-     * See epadd-settings/instance_types to understand the format better
-     * It is possible to relax the ontology constraint by changing the aTypes and ignoreDBpediaTypes fields in FeatureDictionary appropriately
-     * With tokenPriors it is possible to set initial beliefs, for example "Nokia" is a popular company; the first key in the map should be a single word token, the second map is the types and its affiliation for various types (DBpedia ontology again)
-     * iter param is the number of EM iterations, any value >5 is observed to have no effect on performance with DBpedia as training data
-     *  */
-    public static SequenceModel train(Map<String,String> trainData, Map<String,Map<String,Float>> tokenPriors, int iter){
-        log.info("Initializing trainer");
-        log.info(Util.getMemoryStats());
-        Trainer trainer = new Trainer(trainData, tokenPriors, iter);
-        return trainer.getModel();
-    }
-
-    /**
-     * Use this routine to read any entity list, the resource is expected to be a plain text file
-     * the lines in the resource should be two fields separated by ' ', the first field should be the title and second it's type.
-     * The type of the resource should follow the style of DBpedia types in our generated instance file, see aTypes field in FeatureDictionary for more info.
-     * for example, a building type should be expanded to "Building|ArchitecturalStructure|Place"
+     * Use this routine to read an external gazette list, the resource is expected to be a plain text file
+     * the lines in the file should be two fields separated by ' ' (space), the first field should be the title and second it's type.
+     * The type of the resource should follow the style of DBpedia types in our generated instance file, see NEType.dbpediaTypesMap for more info.
+     * for example, a type annotation for building should look like "Building|ArchitecturalStructure|Place"
      * The spaces in the title, ie. the first entry should be replaced by '_'
      */
     private static Map<String,String> readEntityList(String resourcePath) {
         Map<String,String> content = new LinkedHashMap<>();
-          BufferedReader br;
+        BufferedReader br;
         try {
             br = new BufferedReader(new InputStreamReader(Config.getResourceAsStream(resourcePath)));
         }
@@ -1483,16 +974,32 @@ public class SequenceModel implements NERModel, Serializable {
         return content;
     }
 
-    private static SequenceModel train(float alpha, int emIter){
+    /**
+     * A low level train interface for experimentation and extension over the default model.
+     * Use this method for training the default model
+     * Training data should be a list of phrases and their types, the type should follow DBpedia ontology; specifically http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2
+     * See epadd-settings/instance_types to understand the format better
+     * It is possible to relax the ontology constraint by changing the aTypes and ignoreDBpediaTypes fields in FeatureDictionary appropriately
+     * With tokenPriors it is possible to set initial beliefs, for example "Nokia" is a popular company; the first key in the map should be a single word token, the second map is the types and its affiliation for various types (DBpedia ontology again)
+     * iter param is the number of EM iterations, any value >5 is observed to have no effect on performance with DBpedia as training data
+     *  */
+    private static SequenceModel train(Map<String,String> trainData, Map<String,Map<String,Float>> tokenPriors, int iter){
+        log.info("Initializing trainer");
+        log.info(Util.getMemoryStats());
+        Trainer trainer = new Trainer(trainData, tokenPriors, iter);
+        return trainer.getModel();
+    }
+
+    public static SequenceModel train(float alpha, int emIter){
         Map<String,String> tdata = EmailUtils.readDBpedia();
         //also include CONLL lists
-//        String resources[] = Config.NER_RESOURCE_FILES;
-//        for(String rsrc: resources) {
-//            //DBpedia has a finer type, respect it.
-//            Map<String,String> map = readEntityList(rsrc);
-//            for(Map.Entry<String,String> e: map.entrySet())
-//                    tdata.putIfAbsent(e.getKey(),e.getValue());
-//        }
+        String resources[] = Config.NER_RESOURCE_FILES;
+        for(String rsrc: resources) {
+            //DBpedia has a finer type, respect it.
+            Map<String,String> map = readEntityList(rsrc);
+            for(Map.Entry<String,String> e: map.entrySet())
+                    tdata.putIfAbsent(e.getKey(),e.getValue());
+        }
 
         //page lengths from wikipedia
         Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
@@ -1514,7 +1021,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     /**
      * Trains a SequenceModel with default parameters*/
-    public static SequenceModel trainSeqModel() {
+    public static SequenceModel train() {
         long st = System.currentTimeMillis();
         SequenceModel model = train(0.2f, 5);
         try {
@@ -1524,15 +1031,11 @@ public class SequenceModel implements NERModel, Serializable {
             e.printStackTrace();
         }
         long et = System.currentTimeMillis();
-        log.info("Trained and dumped model in "+((et-st)/1000)+"s");
+        log.info("Trained and dumped model in "+((et-st)/60000)+" minutes.");
         return model;
     }
 
     static void loadAndTestNERModel(){
-        System.out.println("Resource files...");
-        Stream.of(Config.NER_RESOURCE_FILES).forEach(Object::toString);
-
-        //Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/5);
         String modelFile = SequenceModel.modelFileName;
         if (fdw == null) {
             try {
@@ -1542,41 +1045,22 @@ public class SequenceModel implements NERModel, Serializable {
             }
         }
         System.err.println("Loading model...");
-        SequenceModel nerModel = null;
+        SequenceModel nerModel;
         log.info(Util.getMemoryStats());
         try {
             nerModel = SequenceModel.loadModel(modelFile);
+            if(nerModel==null)
+                nerModel = train();
+
+            log.info(Util.getMemoryStats());
+            //SequenceModelTest.testCONLL(nerModel);
+            log.info(Util.getMemoryStats());
         } catch (IOException e) {
             e.printStackTrace();
         }
-        log.info(Util.getMemoryStats());
-        if (nerModel == null)
-            nerModel = trainSeqModel();
-
-        if (nerModel != null) {
-            Stream.of(nerModel.find("We are traveling to Vietnam the next summer and will come to New York (NYC) soon")).forEach(sp -> System.out.println(sp.toString()));
-            Stream.of(nerModel.find("Mr. HariPrasad was present.")).map(Object::toString).forEach(System.out::println);
-            Stream.of(nerModel.find("A book named Information Retrieval by Christopher Manning")).map(Object::toString).forEach(System.out::println);
-        }
-        log.info(Util.getMemoryStats());
-//        test2(nerModel);
-        test(nerModel, false);
-        String phrase = "Keane Inc";
-        System.out.println(nerModel.seqLabel(phrase));
-        System.out.println(nerModel.getConditional(phrase,NEType.Type.COMPANY.getCode()));
-        System.out.println(nerModel.getConditional(phrase, NEType.Type.PERSON.getCode()));
     }
 
     public static void main(String[] args) {
         loadAndTestNERModel();
-//        Map<String,String> places = readEntityList("CONLL/lists/ePADD.ned.list.LOC");
-//        Map<String,String> orgs = readEntityList("CONLL/lists/ePADD.ned.list.ORG");
-//        Map<String,String> people = readEntityList("CONLL/lists/ePADD.ned.list.PER");
-//        System.out.println("Places");
-//        places.entrySet().stream().limit(10).map(e->e.getKey()+" "+NEType.parseDBpediaType(e.getValue())).forEach(System.out::println);
-//        System.out.println("===========\nORGS");
-//        orgs.entrySet().stream().limit(10).map(e->e.getKey()+" "+NEType.parseDBpediaType(e.getValue())).forEach(System.out::println);
-//        System.out.println("===========\nPEOPLE");
-//        people.entrySet().stream().limit(10).map(e->e.getKey()+" "+NEType.parseDBpediaType(e.getValue())).forEach(System.out::println);
     }
 }

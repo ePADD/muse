@@ -221,7 +221,7 @@ public class Highlighter {
             contents = annotateSensitive(contents, preHighlightTag, postHighlightTag);
         }
 
-        //entitiesid stuff is already canonicalized with tokenizer used with analyzer
+        //entitiesid stuff is already canonicalized with tokenize used with analyzer
         if (entitiesWithId != null)
             hyperlinkTerms.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
 

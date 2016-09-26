@@ -5,7 +5,7 @@ import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.featuregen.FeatureGenerator;
 import edu.stanford.muse.ner.featuregen.FeatureVector;
 import edu.stanford.muse.ner.featuregen.WordSurfaceFeature;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;

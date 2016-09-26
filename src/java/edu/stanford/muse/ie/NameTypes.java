@@ -2,8 +2,8 @@ package edu.stanford.muse.ie;
 
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
@@ -84,7 +84,7 @@ public class NameTypes {
 			i++;
 			String id = ed.getUniqueId();
 			//String content = archive.getContents(ed, false);
-			//Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
+			//Set<String> pnames = tokenize.tokenizeWithoutOffsets(content, true);
 			//Note that archive.getAllNames does not fetch the corr. names, but NER names.
             List<String> pnames = ed.getAllNames();
             List<String> names = new ArrayList<String>();

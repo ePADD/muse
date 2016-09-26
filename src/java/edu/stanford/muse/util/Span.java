@@ -26,6 +26,13 @@ public class Span implements java.io.Serializable {
         this.end = end;
     }
 
+    public Span(String chunk, int start, int end, short type) {
+        this.text = chunk;
+        this.start = start;
+        this.end = end;
+        this.type = type;
+    }
+
     public void setType(short type, float score) {
         this.type = type;
         this.typeScore = score;

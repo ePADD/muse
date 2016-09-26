@@ -1,4 +1,4 @@
-package edu.stanford.muse.ner.tokenizer;
+package edu.stanford.muse.ner.tokenize;
 
 import edu.stanford.muse.util.Triple;
 

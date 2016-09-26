@@ -30,7 +30,7 @@ import org.apache.lucene.util.Version;
  * except that this uses StandardNumberTokenizer instead of StandardTokenizer to
  * emit consecutive numbers as one token..
  * Could n't extend EnglishAnanlyzer as it is defined final.
- * Why is there no analyzer routine that takes tokenizer as input
+ * Why is there no analyzer routine that takes tokenize as input
  * Change the implementation, either extend or use derogation.
  */
 public class EnglishNumberAnalyzer extends StopwordAnalyzerBase {
