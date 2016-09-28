@@ -1,5 +1,6 @@
 package edu.stanford.muse.ner.model;
 
+import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureUtils;
@@ -51,12 +52,13 @@ public class SequenceModel implements NERModel, Serializable {
 
     @Override
     public void setTokenizer(Tokenizer tokenizer){
-        this.tokenizer = tokenizer;
+        SequenceModel.tokenizer = tokenizer;
     }
 
     //A training helper function for better organization, won't be serialized
     static class Trainer {
         Map<String, MU> mixtures;
+        //Map<String,Map<String,Float>> muPriors;
         Map<String,String> gazettes;
 
         static List<String> ignoreDBpediaTypes = new ArrayList<>();
@@ -99,6 +101,7 @@ public class SequenceModel implements NERModel, Serializable {
 
         Trainer(Map<String, String> gazettes, Map<String, Map<String, Float>> tokenPriors, int iter) {
             this.mixtures = new LinkedHashMap<>();
+            //this.muPriors = new LinkedHashMap<>();
             log.info("Initializing the model with gazettes");
             log.info(Util.getMemoryStats());
             addGazz(gazettes, tokenPriors);
@@ -213,8 +216,8 @@ public class SequenceModel implements NERModel, Serializable {
                         ds += t + "<" + priors.get(t).first + "," + priors.get(t).second + "> ";
                     log.info("Initialising: " + str + " with " + ds);
                 }
+                int num = 0;
                 Map<String, Float> alpha = new LinkedHashMap<>();
-                float alpha_pi = 0;
                 if (str.length() > 2 && tokenPriors.containsKey(str)) {
                     Map<String, Float> tps = tokenPriors.get(str);
                     for (String gt : tps.keySet()) {
@@ -229,14 +232,15 @@ public class SequenceModel implements NERModel, Serializable {
                             for (String f : features) {
                                 alpha.put(f, alpha.getOrDefault(f, 0f) + tps.get(gt));
                             }
-                            alpha_pi += tps.get(gt);
+                            num += tps.get(gt);
                         }
                     }
                 }
                 if (alpha.size() > 0)
                     initAlpha++;
-                //TODO: clean the MU initialize interface
-                mixtures.put(str, MU.initialize(str, new LinkedHashMap<>(), alpha, alpha_pi));
+                //initializing teh mixture with this world knowledge can help the mixture assign itself the right types and move in right direction
+                mixtures.put(str, new MU(str,alpha,num));
+                //muPriors.put(str, alpha);
                 if (wi++ % 1000 == 0) {
                     log.info("Done: " + wi + "/" + ws);
                     if (wi % 10000 == 0)
@@ -377,6 +381,7 @@ public class SequenceModel implements NERModel, Serializable {
         //an approximate measure for sigma(P(x;theta)) over all the observations
         double getIncompleteDataLogLikelihood(){
             return gazettes.entrySet().stream()
+                    //.parallel()
                     .filter(e->rand.nextInt(10)==1)
                     .mapToDouble(e->{
                         String phrase = e.getKey();
@@ -385,7 +390,7 @@ public class SequenceModel implements NERModel, Serializable {
                         double llv = midFeatures.entrySet().stream().mapToDouble(mf->{
                             MU mu = mixtures.get(mf.getKey());
                             if(mu!=null){
-                                return mu.getLikelihood(mf.getValue())*mu.getPrior();
+                                return mu.getLikelihood(mf.getValue())*SequenceModel.getPrior(mu, mixtures);
                             }
                             return 0;
                         }).sum();
@@ -406,6 +411,7 @@ public class SequenceModel implements NERModel, Serializable {
             int N = gazettes.size();
             int wi;
             for (int i = 0; i < iter; i++) {
+                log.info(Util.getMemoryStats());
                 wi = 0;
                 for (Map.Entry e : gazettes.entrySet()) {
                     String phrase = (String) e.getKey();
@@ -434,14 +440,14 @@ public class SequenceModel implements NERModel, Serializable {
                                 //log.warn("!!FATAL!! MU null for: " + mi + ", " + mixtures.size());
                                 continue;
                             }
-                            double d = mu.getLikelihood(wfeatures.get(mi)) * mu.getPrior();
+                            double d = mu.getLikelihood(wfeatures.get(mi)) * SequenceModel.getPrior(mu, mixtures);
                             if (Double.isNaN(d))
                                 log.warn("score for: " + mi + " " + wfeatures.get(mi) + " is NaN");
                             gamma.put(mi, (float) d);
                             z += d;
                         }
                         if (z == 0) {
-                            if(DEBUG)
+                            if (DEBUG)
                                 log.info("!!!FATAL!!! Skipping: " + phrase + " as none took responsibility");
                             continue;
                         }
@@ -478,7 +484,7 @@ public class SequenceModel implements NERModel, Serializable {
                                 log.warn("!! Resp: " + 0 + " for " + g + " in " + phrase + ", " + type);
                         //don't even update if the value is so low, that just adds meek affiliation with unrelated mixtures
                         if (gamma.get(g) > 1E-7)
-                            revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g));
+                            revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g));// muPriors.get(g));
 
                     }
                 }
@@ -526,6 +532,14 @@ public class SequenceModel implements NERModel, Serializable {
             }
         }
         return bestType;
+    }
+
+    private static double getPrior(MU mu, Map<String,MU> mixtures){
+        return mu.getNumSeenEffective()/mixtures.size();
+    }
+
+    private double getPrior(MU mu){
+        return mu.getNumSeenEffective()/mixtures.size();
     }
 
     /**
@@ -578,10 +592,12 @@ public class SequenceModel implements NERModel, Serializable {
                     p *= 1.0 / Double.MAX_VALUE;
                 continue;
             }
-            Map<String, Pair<Integer, Integer>> map = EnglishDictionary.getDictStats();
-            Pair<Integer, Integer> pair = map.get(token);
+            //Map<String,Pair<Integer,Integer>> map = EnglishDictionary.getDictStats();
+            //Pair<Integer,Integer> pair = map.get(token);
+            Multimap<String, Pair<String, Integer>> map = EnglishDictionary.getTagDictionary();//getDictStats();
+            Collection<Pair<String, Integer>> pairs = map.get(token);
 
-            if (pair == null) {
+            if (pairs == null) {
                 //log.warn("Dictionary does not contain: " + token);
                 if (orig.length() == 0) {
                     if (nonNoun)
@@ -602,8 +618,11 @@ public class SequenceModel implements NERModel, Serializable {
                 }
                 continue;
             }
-            double v = (double) pair.getFirst() / (double) pair.getSecond();
-            if (v > 0.25) {
+            //double v = (double) pair.getFirst() / (double) pair.getSecond();
+            double v = pairs.stream().filter(pair->pair.first.startsWith("NN")||pair.first.startsWith("JJ")).mapToDouble(pair->pair.second).sum();
+            v /= pairs.stream().mapToDouble(pair->pair.second).sum();
+            //if (v > 0.25) {
+            if(v > 0.25) {
                 if (nonNoun)
                     return 1.0 / Double.MAX_VALUE;
                 else
@@ -837,7 +856,7 @@ public class SequenceModel implements NERModel, Serializable {
             double freq = 0;
             if (d > 0) {
                 if (mixtures.get(mid) != null)
-                    freq = mixtures.get(mid).getPrior();
+                    freq = getPrior(mixtures.get(mid));
                 val *= freq;
                 //System.out.println("phrase:"+phrase+" type: "+type+" mid: "+mid+" val: "+val+":::mixtures: "+mixtures.get(mid));
             }
@@ -851,6 +870,7 @@ public class SequenceModel implements NERModel, Serializable {
         List<Span> spans = new ArrayList<>();
 
         opennlp.tools.util.Span[] sentSpans = NLPUtils.tokenizeSentenceAsSpan(content);
+        assert sentSpans!=null;
         for(opennlp.tools.util.Span sentSpan: sentSpans) {
             String sent = sentSpan.getCoveredText(content).toString();
             int sstart = sentSpan.getStart();
@@ -990,8 +1010,31 @@ public class SequenceModel implements NERModel, Serializable {
         return trainer.getModel();
     }
 
+    public static SequenceModel train(Map<String,String> tdata){
+        log.info(Util.getMemoryStats());
+
+        float alpha = 0.2f;
+        //page lengths from wikipedia
+        Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
+        //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
+        Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
+        //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
+        for(String tok: pageLens.keySet()) {
+            Map<String,Float> tmp =  new LinkedHashMap<>();
+            Map<String,Integer> tpls = pageLens.get(tok);
+            for(String page: tpls.keySet()) {
+                String type = tdata.get(page.toLowerCase());
+                tmp.put(type, tpls.get(page)*alpha/1000f);
+            }
+            tokenPriors.put(tok, tmp);
+        }
+        log.info("Initialized "+tokenPriors.size()+" token priors.");
+        Trainer trainer = new Trainer(tdata, tokenPriors, 5);
+        return trainer.getModel();
+    }
+
     public static SequenceModel train(float alpha, int emIter){
-        Map<String,String> tdata = EmailUtils.readDBpedia();
+        Map<String,String> tdata = EmailUtils.readDBpedia(0.2f,null);
         //also include CONLL lists
         String resources[] = Config.NER_RESOURCE_FILES;
         for(String rsrc: resources) {
@@ -1023,7 +1066,7 @@ public class SequenceModel implements NERModel, Serializable {
      * Trains a SequenceModel with default parameters*/
     public static SequenceModel train() {
         long st = System.currentTimeMillis();
-        SequenceModel model = train(0.2f, 5);
+        SequenceModel model = train(0.2f, 2);
         try {
             model.writeModel(new File(Config.SETTINGS_DIR+File.separator+modelFileName));
         } catch(IOException e){
@@ -1053,7 +1096,10 @@ public class SequenceModel implements NERModel, Serializable {
                 nerModel = train();
 
             log.info(Util.getMemoryStats());
-            //SequenceModelTest.testCONLL(nerModel);
+            SequenceModelTest.ParamsCONLL params = new SequenceModelTest.ParamsCONLL();
+            params.onlyMultiWord = true;
+            params.ignoreSegmentation = true;
+            SequenceModelTest.testCONLL(nerModel, false, params);
             log.info(Util.getMemoryStats());
         } catch (IOException e) {
             e.printStackTrace();

@@ -24,7 +24,7 @@ public class MU implements Serializable {
     static String[] WORD_LABELS = new String[NEType.getAllTypes().length+1];
     static String[] TYPE_LABELS = new String[NEType.getAllTypes().length];
     static String[] BOOLEAN_VARIABLES = new String[]{"Y","N"};
-    static String[] DICT_LABELS = BOOLEAN_VARIABLES,ADJ_LABELS = BOOLEAN_VARIABLES, ADV_LABELS = BOOLEAN_VARIABLES,PREP_LABELS = BOOLEAN_VARIABLES,V_LABELS = BOOLEAN_VARIABLES,PN_LABELS = BOOLEAN_VARIABLES;
+    static String[] DICT_LABELS = BOOLEAN_VARIABLES;
     static{
         NEType.Type[] allTypes = NEType.getAllTypes();
         for(int i=0;i< allTypes.length;i++)
@@ -57,27 +57,12 @@ public class MU implements Serializable {
     static float SMOOTH_PARAM = 0.2f;
 
     public static double getMaxEntProb(){
-        return (1.0/ MU.WORD_LABELS.length)*(1.0/ MU.WORD_LABELS.length)*(1.0/ MU.TYPE_LABELS.length)*(1.0/ MU.ADJ_LABELS.length)*(1.0/ MU.ADV_LABELS.length)*(1.0/ MU.DICT_LABELS.length)*(1.0/ MU.PREP_LABELS.length)*(1.0/ MU.V_LABELS.length)*(1.0/ MU.PN_LABELS.length);
+        return (1.0/ MU.WORD_LABELS.length)*(1.0/ MU.WORD_LABELS.length)*(1.0/ MU.TYPE_LABELS.length)*(1.0/ MU.DICT_LABELS.length)*(1.0/(FeatureUtils.sws.size()+1));
     }
 
     //Since we depend on tags of the neighbouring tokens in a big way, we initialize so that the mixture likelihood with type is more precise.
     //and the likelihood with all the other types to be equally likely
     //alpha is the parameter related to dirichlet prior, though the param is called alpha it is treated like alpha-1; See paper for more details
-    public static MU initialize(String word, Map<Short, Pair<Float, Float>> initialParams, Map<String, Float> alpha, float alpha_pi){
-        float s2 = 0;
-        MU mu = new MU(word, alpha, alpha_pi);
-        for(Short type: initialParams.keySet()) {
-            mu.muVectorPositive.put("T:"+type, initialParams.get(type).first);
-            s2 = initialParams.get(type).second;
-        }
-
-        //initially don't assume anything about gammas and pi's
-        mu.numMixture = s2;
-        mu.numSeen = s2;
-        mu.alpha = alpha;
-        return mu;
-    }
-
     private void initialize(String id, Map<String, Float> alpha, float alpha_pi) {
         muVectorPositive = new LinkedHashMap<>();
         this.alpha = alpha;
@@ -90,6 +75,7 @@ public class MU implements Serializable {
                     alpha_0.put(dim, 0f);
                 alpha_0.put(dim, alpha_0.get(dim) + alpha.get(val));
             }
+            alpha.entrySet().forEach(e->muVectorPositive.put(e.getKey(),e.getValue()));
         }
         this.numMixture = 0;
         this.numSeen = 0;
@@ -103,10 +89,10 @@ public class MU implements Serializable {
         for(String tl: TYPE_LABELS) {
             if(("T:"+tl).equals(typeLabel)) {
                 float alpha_k = 0, alpha_k0 = 0;
-                if(alpha.containsKey("T:"+tl)) {
-                    alpha_k = alpha.get("T:" + tl);
-                    alpha_k0 = alpha_0.get("T");
-                }
+//                if(alpha.containsKey("T:"+tl)) {
+//                    alpha_k = alpha.get("T:" + tl);
+//                    alpha_k0 = alpha_0.get("T");
+//                }
 
                 if(muVectorPositive.containsKey(typeLabel)) {
                     p1 = muVectorPositive.get(typeLabel);
@@ -164,13 +150,13 @@ public class MU implements Serializable {
         for (String f : features) {
             String dim = f.substring(0,f.indexOf(':'));
             float alpha_k = 0, alpha_k0 = 0;
-            if(alpha.containsKey(f))
-                alpha_k = alpha.get(f);
-            if(alpha_0.containsKey(dim))
-                alpha_k0 = alpha_0.get(dim);
-            if(alpha_k>alpha_k0){
-                log.error("ALPHA initialisation wrong for: "+id+" -- "+alpha+" -- "+alpha_0);
-            }
+//            if(alpha.containsKey(f))
+//                alpha_k = alpha.get(f);
+//            if(alpha_0.containsKey(dim))
+//                alpha_k0 = alpha_0.get(dim);
+//            if(alpha_k>alpha_k0){
+//                log.error("ALPHA initialisation wrong for: "+id+" -- "+alpha+" -- "+alpha_0);
+//            }
             int v = getNumberOfSymbols(f);
             double val;
             Float freq = muVectorPositive.get(f);
@@ -192,13 +178,13 @@ public class MU implements Serializable {
     }
 
     //where N is the total number of observations, for normalization
-    public float getPrior(){
+    public float getNumSeenEffective(){
         if(numSeen == 0) {
             //two symbols here SEEN and UNSEEN, hence the smoothing; the prior here makes no sense, but code never reaches here...
             //log.warn("FATAL!!! Number of times this mixture is seen is zero, that can't be true!!!");
             return 1.0f;
         }
-        return (numMixture+alpha_pi)/(numSeen+alpha_pi);
+        return (numMixture);///(numSeen+alpha_pi);
     }
 
     /**Maximization step in EM update,
@@ -234,7 +220,10 @@ public class MU implements Serializable {
             if (!muVectorPositive.containsKey(f)) {
                 muVectorPositive.put(f, 0.0f);
             }
-            muVectorPositive.put(f, muVectorPositive.get(f) + fraction*resp);
+            String dim = f.substring(0,f.indexOf(':'));
+            float alpha_k = alpha.getOrDefault(f,0f);
+            float alpha_k0 = alpha_0.getOrDefault(dim,0f);
+            muVectorPositive.put(f, muVectorPositive.get(f) + ((fraction+alpha_k)/(alpha_k0+1))*resp);
         }
     }
 
@@ -314,13 +303,8 @@ public class MU implements Serializable {
                     d = p[i].replaceAll(":","") + "[" + labels[i][l] + "]";
 
                 String dim = p[i].substring(0,p[i].length()-1);
-                float alpha_k = 0, alpha_k0 = 0;
-                if(alpha.containsKey(k))
-                    alpha_k = alpha.get(k);
-                if(alpha_0.containsKey(dim))
-                    alpha_k0 = alpha_0.get(dim);
                 if(muVectorPositive.get(k) != null) {
-                    some.put(d, (muVectorPositive.get(k)+alpha_k) / (numMixture+alpha_k0));
+                    some.put(d, (muVectorPositive.get(k)) / (numMixture));
                 }
                 else
                     some.put(d, 0.0f);

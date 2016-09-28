@@ -2,6 +2,7 @@ package edu.stanford.muse.ner.model.test;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.model.SequenceModel;
@@ -9,6 +10,7 @@ import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
+import edu.stanford.muse.util.Util;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameSample;
 import org.apache.commons.logging.Log;
@@ -20,6 +22,8 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import static org.junit.Assert.*;
 
@@ -33,8 +37,8 @@ public class SequenceModelTest {
         enum TEST{
             testa,testb
         }
-        TEST testType;
-        boolean ignoreSegmentation, onlyMultiWord;
+        public TEST testType;
+        public boolean ignoreSegmentation, onlyMultiWord;
 
         public ParamsCONLL(){
             testType = TEST.testa;
@@ -110,14 +114,6 @@ public class SequenceModelTest {
      * 13 Feb 13:24:54 BMMModel INFO  - F1: 0.765164
      * 13 Feb 13:24:54 BMMModel INFO  - ------------
      *
-     * Best performance on CONLL testa full, model trained on entire DBpedia.
-     * 4 Feb 00:41:34 BMMModel INFO  - -------------
-     * 14 Feb 00:41:34 BMMModel INFO  - Found: 6707 -- Total: 7219 -- Correct: 4988 -- Missed due to wrong type: 1150
-     * 14 Feb 00:41:34 BMMModel INFO  - Precision: 0.7437006
-     * 14 Feb 00:41:34 BMMModel INFO  - Recall: 0.69095445
-     * 14 Feb 00:41:34 BMMModel INFO  - F1: 0.71635795
-     * 14 Feb 00:41:34 BMMModel INFO  - ------------
-     *
      * Best performance on testa with [ignore segmentation] and single word with CONLL data is
      * 25 Sep 13:27:03 SequenceModel INFO  - -------------
      * 25 Sep 13:27:03 SequenceModel INFO  - Found: 4117 -- Total: 4236 -- Correct: 3368 -- Missed due to wrong type: 266
@@ -125,15 +121,7 @@ public class SequenceModelTest {
      * 25 Sep 13:27:03 SequenceModel INFO  - Recall: 0.7950897
      * 25 Sep 13:27:03 SequenceModel INFO  - F1: 0.80641687
      * 25 Sep 13:27:03 SequenceModel INFO  - ------------
-     *
-     * on testa, ignoring segmentation, any number of words and ignoring segmentation
-     * 25 Sep 20:35:18 SequenceModel INFO  - -------------
-     * 25 Sep 20:35:18 SequenceModel INFO  - Found: 5997 -- Total: 7219 -- Correct: 4764 -- Missed due to wrong type: 918
-     * 25 Sep 20:35:18 SequenceModel INFO  - Precision: 0.7943972
-     * 25 Sep 20:35:18 SequenceModel INFO  - Recall: 0.6599252
-     * 25 Sep 20:35:18 SequenceModel INFO  - F1: 0.7209444
-     * 25 Sep 20:35:18 SequenceModel INFO  - ------------
-     *
+     **
      * on testa, *not* ignoring segmentation (exact match), any number of words
      * 25 Sep 17:23:14 SequenceModel INFO  - -------------
      * 25 Sep 17:23:14 SequenceModel INFO  - Found: 6006 -- Total: 7219 -- Correct: 4245 -- Missed due to wrong type: 605
@@ -158,6 +146,22 @@ public class SequenceModelTest {
      * 25 Sep 19:22:26 SequenceModel INFO  - Recall: 0.6545228
      * 25 Sep 19:22:26 SequenceModel INFO  - F1: 0.7079712
      * 25 Sep 19:22:26 SequenceModel INFO  - ------------
+     *
+     * testa -- model trained on CONLL, ignore segmenatation, any phrase
+     * 26 Sep 20:23:58 SequenceModelTest INFO  - -------------
+     * Found: 6391 -- Total: 7219 -- Correct: 4900 -- Missed due to wrong type: 987
+     * Precision: 0.7667032
+     * Recall: 0.67876434
+     * F1: 0.7200588
+     * ------------
+     *
+     * testb -- model trained on CONLL, ignore segmenatation, any phrase
+     * 26 Sep 20:24:01 SequenceModelTest INFO  - -------------
+     * Found: 2198 -- Total: 2339 -- Correct: 1597 -- Missed due to wrong type: 425
+     * Precision: 0.7265696
+     * Recall: 0.68277043
+     * F1: 0.7039894
+     * ------------
      * */
     public static PerfStats testCONLL(SequenceModel seqModel, boolean verbose, ParamsCONLL params) {
         PerfStats stats = new PerfStats();
@@ -167,7 +171,7 @@ public class SequenceModelTest {
             //use ignoreSegmentation=true only with onlyMW=true it is not tested otherwise
             boolean ignoreSegmentation = params.ignoreSegmentation;
             String test = params.testType.toString();
-            InputStream in = new FileInputStream(new File(System.getProperty("user.home") + File.separator + "epadd-ner" + File.separator + "ner-benchmarks" + File.separator + "umasshw" + File.separator + test + "spacesep.txt"));
+            InputStream in = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
             //7==0111 PER, LOC, ORG
             Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
             Set<String> correct = new LinkedHashSet<>(), found = new LinkedHashSet<>(), real = new LinkedHashSet<>(), wrongType = new LinkedHashSet<>();
@@ -204,7 +208,7 @@ public class SequenceModelTest {
                     for (Span chunk : chunks) {
                         String text = chunk.text;
                         Short type = chunk.type;
-                        if(type == NEType.Type.DISEASE.getCode() || type == NEType.Type.EVENT.getCode() || type == NEType.Type.AWARD.getCode())
+                        if (type == NEType.Type.DISEASE.getCode() || type == NEType.Type.EVENT.getCode() || type == NEType.Type.AWARD.getCode())
                             continue;
 
                         Short coarseType = NEType.getCoarseType(type).getCode();
@@ -416,9 +420,9 @@ public class SequenceModelTest {
                     new Span[]{
                             new Span("National Bank", 0, 13, NEType.Type.COMPANY.getCode()),
                             new Span("National Kidney Foundation", 20, 46, NEType.Type.COMPANY.getCode()),
-                            //new Span("Amuse Labs", 79 + 11, 79 + 11 + 10, NEType.Type.COMPANY.getCode()),
+                            //new Span("Amuse Labs", , , NEType.Type.COMPANY.getCode()),
                             new Span("Mahishi Road", 137, 149, NEType.Type.ROAD.getCode()),
-                            //new Span("Dharwad", 79 + 80, 79 + 87, NEType.Type.PLACE.getCode()),
+                            //new Span("Dharwad", , , NEType.Type.PLACE.getCode()),
                             new Span("Fulton Street", 194, 207, NEType.Type.PLACE.getCode()),
                             new Span("Palo Alto", 209, 218, NEType.Type.PLACE.getCode()),
                     }));
@@ -512,14 +516,10 @@ public class SequenceModelTest {
         return new Pair<>(dict1, dict2);
     }
 
-    public static void testOnDBpedia(NERModel nerModel){
+    public static void testOnDBpedia(NERModel nerModel, Map<String,String> dbpediaTestSplit){
         //when testing remember to change
         //1. lookup method, disable the lookup
         System.err.println("DBpedia scoring check starts");
-        String twl = System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"SeqModel-test.en.txt.bz2";
-        //clear the cache
-        EmailUtils.dbpedia = null;
-        Map<String,String> dbpedia = EmailUtils.readDBpedia(1, twl);
         //NOther == Not OTHER
         //number of things shown (NON-OTHER) and number of things that should be shown
         int ne = 0, neShown = 0, neShouldShown = 0;
@@ -537,11 +537,11 @@ public class SequenceModelTest {
                 "Mayor", "Website|Work", "Cartoon|Work"
         };
         ol:
-        for(String entry: dbpedia.keySet()){
+        for(String entry: dbpediaTestSplit.keySet()){
             if(!entry.contains(" "))
                 continue;
-            String fullType = dbpedia.get(entry);
-            Short type = NEType.parseDBpediaType(dbpedia.get(entry)).getCode();
+            String fullType = dbpediaTestSplit.get(entry);
+            Short type = NEType.parseDBpediaType(dbpediaTestSplit.get(entry)).getCode();
 
             if(fullType.equals("Agent"))
                 type = NEType.Type.PERSON.getCode();
@@ -555,8 +555,10 @@ public class SequenceModelTest {
                 continue;
             Span[] spans = nerModel.find(entry);
             Map<Short, Map<String,Float>> es = new LinkedHashMap<>();
-            for(Span sp: Arrays.asList(spans))
-                es.getOrDefault(sp.type,new LinkedHashMap<>()).put(sp.text,sp.typeScore);
+            for(Span sp: Arrays.asList(spans)) {
+                if(!es.containsKey(sp.type)) es.put(sp.type, new LinkedHashMap<>());
+                es.get(sp.type).put(sp.text, sp.typeScore);
+            }
             Map<Short, Map<String,Float>> temp = new LinkedHashMap<>();
 
             for(Short t: es.keySet()) {
@@ -609,7 +611,7 @@ public class SequenceModelTest {
 
 
             if(ne++%100 == 0)
-                System.err.println("Done testing on "+ne+" of "+dbpedia.size());
+                System.err.println("Done testing on " + ne + " of " + dbpediaTestSplit.size());
             if(!confMat.containsKey(type))
                 confMat.put(type, new LinkedHashMap<>());
             if(!confMat.get(type).containsKey(assignedTo))
@@ -633,7 +635,7 @@ public class SequenceModelTest {
             ln = String.format("%2s",t1);
             for(Short t2: allTypes) {
                 if(confMat.containsKey(t1) && confMat.get(t1).containsKey(t2) && freqs.containsKey(t1))
-                    ln += String.format("%5s", new DecimalFormat("#.##").format((double)confMat.get(t1).get(t2)/freqs.get(t1)));//new DecimalFormat("#.##").format((double) confMat.get(t1).get(t2) / freqs.get(t1)));
+                    ln += String.format("%5s", new DecimalFormat("#.##").format((double)confMat.get(t1).get(t2)/freqs.get(t1)));
                 else
                     ln += String.format("%5s","-");
             }
@@ -647,5 +649,55 @@ public class SequenceModelTest {
         System.err.println("Missed #"+missAssigned+" due to improper assignment\n#"+missSegmentation+"due to improper segmentation\n" +
                 "#"+missNoEvidence+" due to single word or no evidence");
         System.err.println("Precision: "+precision+"\nRecall: "+recall);
+    }
+
+    static void writeToDir(Pair<Map<String,String>,Map<String,String>> trainTest, String dirName){
+        try {
+            FileOutputStream fos = new FileOutputStream(dirName + File.separator + "trainTestDBpedia.ser.gz");
+            GZIPOutputStream gos = new GZIPOutputStream(fos);
+            ObjectOutputStream oos = new ObjectOutputStream(gos);
+            oos.writeObject(trainTest);
+            oos.close();
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    static Pair<Map<String,String>,Map<String,String>> readFromDir(String dirName){
+        try {
+            //the buffer size can be much higher than default 512 for GZIPInputStream
+            ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(dirName+File.separator+"trainTestDBpedia.ser.gz")));
+            Pair<Map<String,String>,Map<String,String>> model = (Pair<Map<String,String>,Map<String,String>>) ois.readObject();
+            ois.close();
+            return model;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    static void testOnDbpediaHelper(){
+        SequenceModel model;
+        try {
+            String modelName = "dbpediaTest"+File.separator+"SeqModel-80.ser.gz";
+            model = SequenceModel.loadModel(modelName);
+            Pair<Map<String,String>,Map<String,String>> trainTestSplit;
+            if(model == null) {
+                trainTestSplit = split(EmailUtils.readDBpedia(),0.8f);
+                model = SequenceModel.train(trainTestSplit.first);
+                model.writeModel(new File(Config.SETTINGS_DIR+File.separator+modelName));
+                writeToDir(trainTestSplit,Config.SETTINGS_DIR+File.separator+"dbpediaTest");
+            }
+            else{
+                trainTestSplit = readFromDir(Config.SETTINGS_DIR+File.separator+"dbpediaTest");
+            }
+            testOnDBpedia(model,trainTestSplit.second);
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args){
+        testOnDbpediaHelper();
     }
 }

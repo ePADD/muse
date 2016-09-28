@@ -1,6 +1,5 @@
 package edu.stanford.muse.wpmine;
 
-import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.model.NEType;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
@@ -149,7 +148,7 @@ public class DBpediaTypeParser {
             System.out.println(NEType.getTypeForCode(type) + " : "+typeTitles.get(type).size());
     }
 
-    //The first argument should be the full path to the DBpedia instance file resource (for ex: http://data.dws.informatik.uni-mannheim.de/dbpedia/2014/en/instance_types_en.nt.bz2), the second argument should point to the DBpedia ontology file (for ex: http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2)
+    //The first argument should be the full path to the DBpedia instance file resource (for ex: instance_types_en.nt.bz2 from http://data.dws.informatik.uni-mannheim.de/dbpedia/2014/en/instance_types_en.nt.bz2), the second argument should point to the DBpedia ontology file (for ex: dbpedia_2015-04.nt.bz2 from http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2)
     //third arg: folder to output the post-processed file in
     public static void main(String[] args){
         //String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
