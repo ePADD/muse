@@ -58,7 +58,7 @@ public class SequenceModel implements NERModel, Serializable {
     //A training helper function for better organization, won't be serialized
     static class Trainer {
         Map<String, MU> mixtures;
-        //Map<String,Map<String,Float>> muPriors;
+        Map<String,Map<String,Float>> muPriors;
         Map<String,String> gazettes;
 
         static List<String> ignoreDBpediaTypes = new ArrayList<>();
@@ -101,7 +101,7 @@ public class SequenceModel implements NERModel, Serializable {
 
         Trainer(Map<String, String> gazettes, Map<String, Map<String, Float>> tokenPriors, int iter) {
             this.mixtures = new LinkedHashMap<>();
-            //this.muPriors = new LinkedHashMap<>();
+            this.muPriors = new LinkedHashMap<>();
             log.info("Initializing the model with gazettes");
             log.info(Util.getMemoryStats());
             addGazz(gazettes, tokenPriors);
@@ -239,8 +239,8 @@ public class SequenceModel implements NERModel, Serializable {
                 if (alpha.size() > 0)
                     initAlpha++;
                 //initializing teh mixture with this world knowledge can help the mixture assign itself the right types and move in right direction
-                mixtures.put(str, new MU(str,alpha,num));
-                //muPriors.put(str, alpha);
+                mixtures.put(str, new MU(str,alpha));
+                muPriors.put(str, alpha);
                 if (wi++ % 1000 == 0) {
                     log.info("Done: " + wi + "/" + ws);
                     if (wi % 10000 == 0)
@@ -475,7 +475,7 @@ public class SequenceModel implements NERModel, Serializable {
                         if (mu == null)//|| (mu.numSeen > 0 && (mu.numMixture + mu.alpha_pi) < 1))
                             continue;
                         if (!revisedMixtures.containsKey(g))
-                            revisedMixtures.put(g, new MU(g, mu.alpha, mu.alpha_pi));
+                            revisedMixtures.put(g, new MU(g, muPriors.get(g)));
 
                         if (Double.isNaN(gamma.get(g)))
                             log.error("Gamma NaN for MID: " + g);
@@ -484,7 +484,7 @@ public class SequenceModel implements NERModel, Serializable {
                                 log.warn("!! Resp: " + 0 + " for " + g + " in " + phrase + ", " + type);
                         //don't even update if the value is so low, that just adds meek affiliation with unrelated mixtures
                         if (gamma.get(g) > 1E-7)
-                            revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g));// muPriors.get(g));
+                            revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), muPriors.get(g));
 
                     }
                 }
@@ -1034,7 +1034,7 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     public static SequenceModel train(float alpha, int emIter){
-        Map<String,String> tdata = EmailUtils.readDBpedia(0.2f,null);
+        Map<String,String> tdata = EmailUtils.readDBpedia();
         //also include CONLL lists
         String resources[] = Config.NER_RESOURCE_FILES;
         for(String rsrc: resources) {
@@ -1097,8 +1097,6 @@ public class SequenceModel implements NERModel, Serializable {
 
             log.info(Util.getMemoryStats());
             SequenceModelTest.ParamsCONLL params = new SequenceModelTest.ParamsCONLL();
-            params.onlyMultiWord = true;
-            params.ignoreSegmentation = true;
             SequenceModelTest.testCONLL(nerModel, false, params);
             log.info(Util.getMemoryStats());
         } catch (IOException e) {

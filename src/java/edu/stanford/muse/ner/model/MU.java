@@ -39,21 +39,14 @@ public class MU implements Serializable {
     //feature and the value, for example: <"LEFT: and",200>
     //indicates if the values are final or if they have to be learned
     public Map<String,Float> muVectorPositive;
-    //Dirichlet prior for this mixture
-    //just leave this object empty if you do not want to use
-    public Map<String,Float> alpha;
-    //accumulated sum across each feature type e.g. "T","L","R" etc.
-    public Map<String,Float> alpha_0;
-    public float alpha_pi = 0;
-    //number of times this mixture is probabilistically seen, is summation(gamma*x_k)
     public float numMixture;
     //total number of times, this mixture is considered
     public float numSeen;
-    public MU(String id, Map<String, Float> alpha, float alpha_pi) {
-        initialize(id, alpha, alpha_pi);
+    public MU(String id, Map<String, Float> initialParams) {
+        initialize(id, initialParams);
     }
     //Smooth param alpha is chosen based on alpha*35(ie. number of types) = an evidence number you can trust.
-    //with 0.2 it is 0.2*35=7
+    //with 0.2 it is 0.2*35=7; If the token has appeared at least seven times, I can start believing
     static float SMOOTH_PARAM = 0.2f;
 
     public static double getMaxEntProb(){
@@ -63,22 +56,15 @@ public class MU implements Serializable {
     //Since we depend on tags of the neighbouring tokens in a big way, we initialize so that the mixture likelihood with type is more precise.
     //and the likelihood with all the other types to be equally likely
     //alpha is the parameter related to dirichlet prior, though the param is called alpha it is treated like alpha-1; See paper for more details
-    private void initialize(String id, Map<String, Float> alpha, float alpha_pi) {
+    private void initialize(String id, Map<String, Float> initialParams) {
         muVectorPositive = new LinkedHashMap<>();
-        this.alpha = alpha;
-        this.alpha_pi = alpha_pi;
-        alpha_0 = new LinkedHashMap<>();
-        if (alpha != null) {
-            for(String val: alpha.keySet()) {
-                String dim = val.substring(0, val.indexOf(':'));
-                if(!alpha_0.containsKey(dim))
-                    alpha_0.put(dim, 0f);
-                alpha_0.put(dim, alpha_0.get(dim) + alpha.get(val));
-            }
-            alpha.entrySet().forEach(e->muVectorPositive.put(e.getKey(),e.getValue()));
-        }
         this.numMixture = 0;
         this.numSeen = 0;
+        if (initialParams != null) {
+            initialParams.entrySet().forEach(e->muVectorPositive.put(e.getKey(),e.getValue()));
+            numMixture = (float)initialParams.entrySet().stream().filter(e->e.getKey().startsWith("T:")).mapToDouble(e->e.getValue()).sum();
+            numSeen = numMixture;
+        }
         this.id = id;
     }
 
@@ -88,20 +74,15 @@ public class MU implements Serializable {
 
         for(String tl: TYPE_LABELS) {
             if(("T:"+tl).equals(typeLabel)) {
-                float alpha_k = 0, alpha_k0 = 0;
-//                if(alpha.containsKey("T:"+tl)) {
-//                    alpha_k = alpha.get("T:" + tl);
-//                    alpha_k0 = alpha_0.get("T");
-//                }
 
                 if(muVectorPositive.containsKey(typeLabel)) {
                     p1 = muVectorPositive.get(typeLabel);
                     p2 = numMixture;
-                    return (p1 + SMOOTH_PARAM + alpha_k) / (p2 + NEType.getAllTypes().length*SMOOTH_PARAM + alpha_k0);
+                    return (p1 + SMOOTH_PARAM) / (p2 + NEType.getAllTypes().length*SMOOTH_PARAM);
                 }
                 //its possible that a mixture has never seen certain types
                 else
-                    return (SMOOTH_PARAM + alpha_k)/(numMixture + NEType.getAllTypes().length*SMOOTH_PARAM + alpha_k0);
+                    return (SMOOTH_PARAM)/(numMixture + NEType.getAllTypes().length*SMOOTH_PARAM);
             }
         }
         log.warn("!!!FATAL: Unknown type label: " + typeLabel + "!!!");
@@ -148,19 +129,10 @@ public class MU implements Serializable {
         }
         //numLeft and numRight will always be greater than 0
         for (String f : features) {
-            String dim = f.substring(0,f.indexOf(':'));
-            float alpha_k = 0, alpha_k0 = 0;
-//            if(alpha.containsKey(f))
-//                alpha_k = alpha.get(f);
-//            if(alpha_0.containsKey(dim))
-//                alpha_k0 = alpha_0.get(dim);
-//            if(alpha_k>alpha_k0){
-//                log.error("ALPHA initialisation wrong for: "+id+" -- "+alpha+" -- "+alpha_0);
-//            }
             int v = getNumberOfSymbols(f);
             double val;
             Float freq = muVectorPositive.get(f);
-            val = ((freq==null?0:freq) + SMOOTH_PARAM + alpha_k) / (numMixture + v*SMOOTH_PARAM + alpha_k0);
+            val = ((freq==null?0:freq) + SMOOTH_PARAM) / (numMixture + v*SMOOTH_PARAM);
 
             if (Double.isNaN(val)) {
                 log.warn("Found a NaN here: " + f + " " + muVectorPositive.get(f) + ", " + numMixture + ", " + val);
@@ -190,7 +162,7 @@ public class MU implements Serializable {
     /**Maximization step in EM update,
      * @param resp - responsibility of this mixture in explaining the type and mixtures
      * @param features - set of all *relevant* mixtures to this mixture*/
-    public void add(Float resp, List<String> features) {
+    public void add(Float resp, List<String> features, Map<String,Float> alpha) {
         //if learn is set to false, ignore all the observations
         if (Float.isNaN(resp))
             log.warn("Responsibility is NaN for: " + features);
@@ -210,6 +182,13 @@ public class MU implements Serializable {
             else if(f.startsWith("R:"))
                 numRight++;
         }
+        Map<String,Float> alpha_0 = new LinkedHashMap<>();
+        for(String val: alpha.keySet()) {
+            String dim = val.substring(0, val.indexOf(':'));
+            if(!alpha_0.containsKey(dim))
+                alpha_0.put(dim, 0f);
+            alpha_0.put(dim, alpha_0.get(dim) + alpha.get(val));
+        }
 
         for (String f : features) {
             if(f.equals("L:"+SequenceModel.UNKNOWN_TYPE)) f = "L:"+type;
@@ -223,7 +202,10 @@ public class MU implements Serializable {
             String dim = f.substring(0,f.indexOf(':'));
             float alpha_k = alpha.getOrDefault(f,0f);
             float alpha_k0 = alpha_0.getOrDefault(dim,0f);
-            muVectorPositive.put(f, muVectorPositive.get(f) + ((fraction+alpha_k)/(alpha_k0+1))*resp);
+            assert alpha_k0>=alpha_k;
+            //for left and right semantic type: we are supposed to add to numMixture numLeft or numRight times.
+            // Instead we correct for that by multiplying the numerator with 1/numLeft or 1/numRight
+            muVectorPositive.put(f, muVectorPositive.get(f) + (fraction*(1+alpha_k)/(1+alpha_k0))*resp);
         }
     }
 
@@ -266,14 +248,9 @@ public class MU implements Serializable {
             for(int l=0;l<labels[i].length;l++) {
                 String d = p[i] + labels[i][l];
                 String dim = p[i].substring(0,p[i].length()-1);
-                float alpha_k = 0, alpha_k0 = 0;
-                if(alpha.containsKey(d))
-                    alpha_k = alpha.get(d);
-                if(alpha_0.containsKey(dim))
-                    alpha_k0 = alpha_0.get(dim);
 
                 Float v = muVectorPositive.get(d);
-                some.put(d, (((v==null)?0:v)+alpha_k) / (numMixture+alpha_k0));
+                some.put(d, (((v==null)?0:v)) / (numMixture));
             }
             List<Pair<String,Float>> smap;
             smap = Util.sortMapByValue(some);
@@ -282,8 +259,6 @@ public class MU implements Serializable {
             str += "\n";
         }
         str += "NM:"+numMixture+", NS:"+numSeen+"\n";
-        str += "Alphas "+alpha + " -- "+alpha_0+"\n";
-        str += "PI ALPHA: "+alpha_pi+"\n";
         return str;
     }
 
@@ -302,7 +277,6 @@ public class MU implements Serializable {
                 else
                     d = p[i].replaceAll(":","") + "[" + labels[i][l] + "]";
 
-                String dim = p[i].substring(0,p[i].length()-1);
                 if(muVectorPositive.get(k) != null) {
                     some.put(d, (muVectorPositive.get(k)) / (numMixture));
                 }
