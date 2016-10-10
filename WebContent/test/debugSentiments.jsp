@@ -101,7 +101,7 @@
 		String text = archive.getContents(d, true);
 		NER.printSentencesWithWords(text, words);
 	}
-	NER.printStats();
+	NER.computeWordToFreq();
 	*/
 	/*
 	Map<Integer, Integer>[] map = Sentiments.debugEmotions(driver.indexer, (List) list);
