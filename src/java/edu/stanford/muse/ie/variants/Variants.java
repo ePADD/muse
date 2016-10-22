@@ -32,10 +32,10 @@ public class Variants {
 
     static {
         try {
-            InputStream is = Config.getResourceAsStream("stop.words.new");
+            InputStream is = Config.getResourceAsStream("stop.words.full"); // can change this to stop.words.new if we want to
             stopWords = DictUtils.readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
             is.close();
-        } catch (IOException ioe) {
+        } catch (Exception ioe) {
             Util.print_exception("Error reading stop words file", ioe, log);
         }
     }
@@ -58,6 +58,7 @@ public class Variants {
 
     public Variants(InputStream is) throws IOException {
         List<String> lines = Util.getLinesFromInputStream(is, true);
+        // each line is of the form: robert = bob = bobby (robert is canonical)
         for (String line : lines) {
             StringTokenizer st = new StringTokenizer(line, ", ="); //allow comma, equals, space and tabs
             if (!st.hasMoreTokens())
@@ -268,7 +269,7 @@ public class Variants {
             List<String> tokens = Util.tokenize(s);
             Set<String> variantTokens = new LinkedHashSet<>(tokens);
             for (String t : tokens) {
-                Collection<String> tokenVariants = nameVariants.getCanonicalVariants(t);
+                Collection<String> tokenVariants = nameVariants.getVariants(t);
                 variantTokens.addAll(tokenVariants);
             }
 

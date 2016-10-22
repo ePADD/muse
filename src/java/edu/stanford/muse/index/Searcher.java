@@ -206,6 +206,7 @@ public class Searcher {
 
     private static Set<EmailDocument> updateForCorrespondents(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
 
+        // TOFIX: need to handle multiple contacts
         {
             // legacy support for the old browse page, which uses a query based on contact #
             String contactIdStr = getParam(params, "contact");

@@ -22,7 +22,7 @@ public class Config {
 	public static String    MODELS_FOLDER       = "models";
 	public static String    CACHE_FOLDER        = "cache";
 	public static String 	FAST_INDEX, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
-	public static String	FEATURES_INDEX, TABOO_FILE;
+	public static String	FEATURES_INDEX, TABOO_FILE = "kill.txt";
 
 	//this is the folder name that contains the cache for internal authority assignment
 	public static int		MAX_ENTITY_FEATURES			= 200;
@@ -32,8 +32,13 @@ public class Config {
 	public static Boolean 	OPENNLP_NER = false;
 
 	static {
+		String settingsDirFromProps = System.getProperty("epadd.settings.dir");
+		if (!Util.nullOrEmpty(settingsDirFromProps))
+			SETTINGS_DIR = settingsDirFromProps;
+
 		Properties props = new Properties();
 		String propFilename = SETTINGS_DIR + "config.properties";
+
 		File f = new File(propFilename);
 		if (f.exists() && f.canRead())
 		{
@@ -47,14 +52,11 @@ public class Config {
 				e.printStackTrace();
 			}
 		}
-		TABOO_FILE = props.getProperty("TABOO_FILE", SETTINGS_DIR + File.separator + "kill.txt");
 		FEATURES_INDEX = props.getProperty("FEATURES_INDEX", "features");
 		AUTHORITIES_FILENAME		= props.getProperty("AUTHORITIES_FILENAME", "authorities.ser");
 		AUTHORITIES_CSV_FILENAME	= props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
 		AUTHORITY_ASSIGNER_FILENAME	= props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
 		FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
-		NER_MODEL_FILE		= props.getProperty("NER_MODEL_FILE", "svm.model");
-		WORD_FEATURES		= props.getProperty("WORD_FEATURES", "WordFeatures.ser");
 
 		// set the int features
 		String s = props.getProperty("MAX_ENTITY_FEATURES"); if (s != null) { try { MAX_ENTITY_FEATURES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
@@ -70,7 +72,7 @@ public class Config {
 	 * First looks in settings folder, then on classpath (e.g. inside war).
 	 * typically for the */
 	public static InputStream getResourceAsStream(String path) {
-		File f = new File(SETTINGS_DIR + File.separator+ path.replaceAll("/", "\\"+File.separator));
+		File f = new File(SETTINGS_DIR + File.separator + path.replaceAll("/", "\\" + File.separator));
 		if (f.exists()) {
 			if (f.canRead()) {
 				log.info ("Reading resource " + path + " from " + f.getAbsolutePath());
