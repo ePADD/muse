@@ -1159,12 +1159,16 @@ public class AddressBook implements Serializable {
             ci.verify();
     }
 
+    public JSONArray getCountsAsJson(Collection<EmailDocument> docs) {
+        return getCountsAsJson(docs, false /* we don't want to exceptOwner */);
+    }
+
     /**
      * used primarily by correspondents.jsp
      * // dumps the contacts in docs, and sorts according to sent/recd/mentions
      * // returns an array of (json array of 5 elements:[name, in, out, mentions, url])
      */
-    public JSONArray getCountsAsJson(Collection<EmailDocument> docs) {
+    public JSONArray getCountsAsJson(Collection<EmailDocument> docs, boolean exceptOwner) {
         Contact ownContact = getContactForSelf();
         List<Contact> allContacts = sortedContacts((Collection) docs);
         Map<Contact, Integer> contactInCount = new LinkedHashMap<Contact, Integer>(), contactOutCount = new LinkedHashMap<Contact, Integer>(), contactMentionCount = new LinkedHashMap<Contact, Integer>();
@@ -1215,6 +1219,9 @@ public class AddressBook implements Serializable {
 
         int count = 0;
         for (Contact c : allContacts) {
+            if (c == ownContact && exceptOwner)
+                continue;
+
             //	out.println("<tr><td class=\"search\" title=\"" + c.toTooltip().replaceAll("\"", "").replaceAll("'", "") + "\">");
             int contactId = getContactId(c);
             //	out.println ("<a style=\"text-decoration:none;color:inherit;\" href=\"browse?contact=" + contactId + "\">");

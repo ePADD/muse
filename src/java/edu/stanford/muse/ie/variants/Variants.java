@@ -49,7 +49,7 @@ public class Variants {
     }
 
     public Variants() throws IOException {
-        this(Config.getResourceAsStream("variant-names.txt"));
+        this(Config.getResourceAsStream("name-variants.txt"));
     }
 
     public Variants(String filename) throws IOException {

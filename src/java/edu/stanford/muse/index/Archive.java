@@ -19,6 +19,7 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
+import edu.stanford.muse.ie.AuthorisedAuthorities;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureDictionary;
@@ -37,6 +38,7 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Core data structure that represents an archive. Conceptually, an archive is a
@@ -1477,6 +1479,78 @@ public class Archive implements Serializable {
             names.add(p.getFirst());
 
         return Util.scrubNames(names);
+    }
+
+    public String getAuthoritiesAsCSV() throws IOException {
+        String csv = AuthorisedAuthorities.getAuthoritiesAsCSV(this);
+        return csv;
+    }
+
+
+    /** transfers actions from one archive to another */
+    public String transferActionsFrom(String otherArchiveDir) throws ClassNotFoundException, IOException {
+        String file = otherArchiveDir + File.separator + SESSIONS_SUBDIR + File.separator + "default.archive.v1"; // note that is v1!
+
+        ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(file)));
+        Object discard = ois.readObject();
+
+        Archive otherArchive = (Archive)ois.readObject();
+        LinkedHashMap otherMap = new LinkedHashMap();
+        Iterator nMatched = otherArchive.allDocs.iterator();
+
+        while(nMatched.hasNext()) {
+            Document nChanged = (Document)nMatched.next();
+            EmailDocument ed = (EmailDocument)nChanged;
+            if(ed.date != null && !ed.date.equals(EmailFetcherThread.INVALID_DATE)) {
+                String d = ed.getSignature();
+                otherMap.put(d, ed);
+            }
+        }
+
+        int var15 = 0;
+        int var16 = 0;
+        Iterator var17 = this.allDocs.iterator();
+
+        while(var17.hasNext()) {
+            Document var18 = (Document)var17.next();
+            EmailDocument ed1 = (EmailDocument)var18;
+            String edSig = ed1.getSignature();
+            EmailDocument otherEd = (EmailDocument)otherMap.get(edSig);
+            if(otherEd != null) {
+                ++var15;
+                boolean changed = false;
+                if(otherEd.doNotTransfer != ed1.doNotTransfer) {
+                    ed1.doNotTransfer = otherEd.doNotTransfer;
+                    changed = true;
+                }
+
+                if(otherEd.transferWithRestrictions != ed1.transferWithRestrictions) {
+                    ed1.transferWithRestrictions = otherEd.transferWithRestrictions;
+                    changed = true;
+                }
+
+                if(otherEd.reviewed != ed1.reviewed) {
+                    ed1.reviewed = otherEd.reviewed;
+                    changed = true;
+                }
+
+                if(otherEd.addedToCart != ed1.addedToCart) {
+                    ed1.addedToCart = otherEd.addedToCart;
+                    changed = true;
+                }
+
+                if(otherEd.comment != null && !otherEd.comment.equals(ed1.comment)) {
+                    ed1.comment = otherEd.comment;
+                    changed = true;
+                }
+
+                if(changed) {
+                    ++var16;
+                }
+            }
+        }
+
+        return "Changes applied to " + Util.pluralize(var16, "message") + " from " + "archive format v1 (" + Util.pluralize(otherArchive.allDocs.size(), "message") + ") in " + otherArchiveDir + " to current archive in format v2 (" + Util.pluralize(this.allDocs.size(), "message") + "). " + Util.pluralize(var15, "message") + " matched";
     }
 
     public static void main(String[] args) {

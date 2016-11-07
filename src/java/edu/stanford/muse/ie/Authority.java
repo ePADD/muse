@@ -14,10 +14,10 @@ public class Authority implements Serializable {
 	public String				name;
 	//all the links to external database
 	//dbId -> dbType
-	public Map<String, Short>	sources;
+	private Map<String, Short>	sources; // this is id -> type. @Vihari, why isn't it type -> id?
     public static short			FAST				= 0, DBPEDIA = 1, VIAF = 2, LOC_SUBJECT = 3, LOC_NAME = 4, FREEBASE = 5, GEO_NAMES = 6;
-    public static  String[]		types				= new String[] { "fast", "dbpedia", "viaf", "locSubject", "locName", "freebase", "geonames" };
-    public static Log log						= LogFactory.getLog(Authority.class);
+    public static String[]		types				= new String[] { "fast", "dbpedia", "viaf", "locSubject", "locName", "freebase", "geonames" };
+    public static Log 			log					= LogFactory.getLog(Authority.class);
     public static String        sep = ":::";
 
 
@@ -27,7 +27,7 @@ public class Authority implements Serializable {
 	public Authority(String name, String[] ids, String[] dbTypes) {
         //geo names -> http://sws.geonames.org/
         this.name = name;
-		sources = new HashMap<String, Short>();
+		sources = new HashMap<>();
 		if (ids == null || dbTypes == null) {
 			log.warn("Improper params to add authority! Either of ids or dbTypes field supplied is null! Returning");
 			return;
@@ -50,6 +50,19 @@ public class Authority implements Serializable {
 			}
 			sources.put(ids[i], typeIdx);
 		}
+	}
+
+	/** @vihari needless function, only because the "sources" were stored backward! */
+	public Map<Short, String> getTypeToId() {
+		Map<String, Short> idToType = sources;
+		Map<Short, String> typeToId = new HashMap<>(); // inverted map
+		if (idToType == null) {
+			log.warn("sources:  null for " + this.name);
+		} else {
+			for (String s : idToType.keySet())
+				typeToId.put(idToType.get(s), s);
+		}
+		return typeToId;
 	}
 
 	public String toHTMLString() {
