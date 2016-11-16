@@ -2,6 +2,8 @@ package edu.stanford.muse.webapp;
 
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.email.MuseEmailFetcher;
+import edu.stanford.muse.ie.AuthorisedAuthorities;
+import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Archive.ProcessingMetadata;
 import edu.stanford.muse.index.Document;
@@ -219,6 +221,7 @@ public class SimpleSessions {
         // re-open for reading
 		archive.openForRead();
 
+        // note: no need of saving archive authorities separately -- they are already saved as part of the archive object
 		return true;
 	}
 
@@ -226,7 +229,9 @@ public class SimpleSessions {
 	// this map stores the directory -> archive mapping.
 	static LinkedHashMap<String, WeakReference<Archive>> globaldirToArchiveMap = new LinkedHashMap<String, WeakReference<Archive>>();
 	static LinkedHashMap<String, Integer> globaldirToLoadCountMap = new LinkedHashMap<String, Integer>();
-	/** loads an archive from the given directory. always re-uses archive objects loaded from the same directory.
+
+	/** VIP method. Should be the single place to load an archive from disk.
+     * loads an archive from the given directory. always re-uses archive objects loaded from the same directory.
 	 * this is fine when:
 	 * - running single-user
 	 * - running discovery mode epadd, since a single archive should be loaded only once.
@@ -272,6 +277,7 @@ public class SimpleSessions {
 					return null;
 				}
 				a.setBaseDir(baseDir);
+                // no need to read archive authorizedauthorities, they will be loaded on demand from the legacy authorities.ser file
 				globaldirToArchiveMap.put(archiveFile, new WeakReference<Archive>(a));
 				return a;
 			}

@@ -30,6 +30,7 @@ public class ModeConfig
 	// archive vs. restricted archive, server-hosted vs desktop
 
 	static {
+		// note: this will be overridden by epadd.properties
 		if (System.getProperty("muse.mode.public") != null || System.getProperty("epadd.mode.discovery") != null)
 			mode = Mode.DISCOVERY;
 		else if (System.getProperty("muse.mode.server") != null)

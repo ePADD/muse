@@ -46,36 +46,5 @@ public class AuthorisedAuthorities {
 		return cnameToDefiniteID;
 	}
 
-	/** returns a string with the definite authorities in a CSV format. */
-	public static String getAuthoritiesAsCSV (Archive archive) throws IOException {
-		Map<String, Authority> nameToId = getAuthorisedAuthorities(archive);
-		if (Util.nullOrEmpty(nameToId)) {
-			log.warn ("trying to export authority records, when none exist!");
-			return "";
-		}
 
-		StringWriter sw = new StringWriter();
-		CSVWriter writer = new CSVWriter(sw, ',', '"', '\n');
-
-		// write the header line: "name, fast, viaf, " etc.
-		List<String> line = new ArrayList<>();
-		line.add("name");
-		for (String type : Authority.types)
-			line.add(type);
-		writer.writeNext(line.toArray(new String[line.size()]));
-
-		// write the records
-		for (Authority auth : cnameToDefiniteID.values()) {
-			line = new ArrayList<>();
-			Map<Short, String> typeToId = auth.getTypeToId();
-
-			line.add(EmailUtils.uncanonicaliseName(auth.name));
-			for (short i = 0; i < Authority.types.length; i++)
-				line.add(typeToId.get(i));
-			writer.writeNext(line.toArray(new String[line.size()]));
-		}
-		writer.close();
-		String csv = sw.toString();
-		return csv;
-	}
 }

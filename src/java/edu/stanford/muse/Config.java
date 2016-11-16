@@ -1,6 +1,7 @@
 package edu.stanford.muse;
 
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.ModeConfig;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -100,6 +101,19 @@ public class Config {
 		s = props.getProperty("OPENNLP_NER");
 		if (!Util.nullOrEmpty(s))
 			OPENNLP_NER = Boolean.parseBoolean(s);
+
+		String mode = props.getProperty("epadd.mode");
+		if ("appraisal".equalsIgnoreCase(mode))
+			ModeConfig.mode = ModeConfig.Mode.APPRAISAL;
+		else if ("processing".equalsIgnoreCase(mode))
+			ModeConfig.mode = ModeConfig.Mode.PROCESSING;
+		else if ("discovery".equalsIgnoreCase(mode))
+			ModeConfig.mode = ModeConfig.Mode.DISCOVERY;
+		else if ("delivery".equalsIgnoreCase(mode))
+			ModeConfig.mode = ModeConfig.Mode.DELIVERY;
+		else if (mode != null)
+			log.warn ("Invalid value for epadd.mode: " + mode);
+		// if null or invalid, we'll leave epadd.mode in APPRAISAL which is the default
 	}
 
 	/** reads a resource with the given offset path. Path components are always separated by forward slashes, just like resource paths in Java.

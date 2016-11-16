@@ -1001,7 +1001,7 @@ public class Util
 	/** if num > 1, pluralizes the desc. will also commatize the num if needed. */
 	public static String pluralize(int x, String desc)
 	{
-		return Util.commatize(x) + " " + desc + ((x > 1) ? "s" : "");
+		return Util.commatize(x) + " " + desc + ((x != 1) ? "s" : ""); // want plural even if x is 0, e.g. "0 messages"
 	}
 
 	public static String approximateTimeLeft(long sec)
