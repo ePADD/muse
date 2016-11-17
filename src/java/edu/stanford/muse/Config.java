@@ -81,7 +81,7 @@ public class Config {
         REPO_DIR_DELIVERY = BASE_DIR + java.io.File.separator + "epadd-delivery";
 
         // set up epadd stuff
-        admin = props.getProperty("admin", "NOT SET");
+        admin = props.getProperty("admin", "Peter Chan, pchan3@stanford.edu");
         holder = props.getProperty("holder", "NOT SET");
         holderContact = props.getProperty("holderContact", "NOT SET");
         holderReadingRoom = props.getProperty("holderReadingRoom", "NOT SET");
@@ -114,11 +114,20 @@ public class Config {
 		else if (mode != null)
 			log.warn ("Invalid value for epadd.mode: " + mode);
 		// if null or invalid, we'll leave epadd.mode in APPRAISAL which is the default
+        log.info ("-------------Begin Configuration block -----------------");
+        log.info ("ePADD base dir = " + BASE_DIR);
+        log.info ("ePADD settings dir = " + SETTINGS_DIR);
+        log.info ("ePADD mode = " + ModeConfig.mode);
+        log.info ("FAST index = " + FAST_INDEX);
+        log.info ("FAST file = " + FAST_FILE);
+        log.info ("Admin = " + admin);
+        // add more things here if needed
+        log.info ("-------------End Configuration block -----------------");
 	}
 
 	/** reads a resource with the given offset path. Path components are always separated by forward slashes, just like resource paths in Java.
-	 * First looks in settings folder, then on classpath (e.g. inside war).
-	 * typically for the */
+	 * First looks in settings folder, then on classpath (e.g. inside war's WEB-INF/classes).
+	 **/
 	public static InputStream getResourceAsStream(String path) {
 		File f = new File(SETTINGS_DIR + File.separator + path.replaceAll("/", "\\" + File.separator));
 		if (f.exists()) {
@@ -132,7 +141,7 @@ public class Config {
 				}
 			}
 			else
-				log.warn ("Sorry, file exists but cannot read it: " + f.getAbsolutePath());
+				log.warn ("Sorry, resource file exists but cannot read it: " + f.getAbsolutePath());
 		}
 
 		InputStream is = Config.class.getClassLoader().getResourceAsStream(path);
