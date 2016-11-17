@@ -1063,10 +1063,10 @@ public class IndexUtils {
 				Set<Document> docsForTag = tagToDocs.get(tag);
 				docsForTag.retainAll(docSet);
 				unannotatedDocs.removeAll(docsForTag);
-				tagItems.add(new DetailedFacetItem(tag, tag, new ArrayList<Document>(docsForTag), "annotation", tag));
+				tagItems.add(new DetailedFacetItem(tag, tag, new HashSet<Document>(docsForTag), "annotation", tag));
 			}
 			if (unannotatedDocs.size() > 0)
-				tagItems.add(new DetailedFacetItem("none", "none", new ArrayList<Document>(unannotatedDocs), "annotation", "" /* empty value for annotation */));
+				tagItems.add(new DetailedFacetItem("none", "none", new HashSet<Document>(unannotatedDocs), "annotation", "" /* empty value for annotation */));
 
 			if (tagItems.size() > 1)
 				facetMap.put("annotations", tagItems);

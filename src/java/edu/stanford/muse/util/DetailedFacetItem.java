@@ -16,13 +16,15 @@
 package edu.stanford.muse.util;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import edu.stanford.muse.index.Document;
 
 public class DetailedFacetItem implements Comparable<DetailedFacetItem>
 {
-	final public List<Document> docs;
+	final public Set<Document> docs; // this has to be a set, to avoid double-counting
 	final public String name;
 	final public String description;
 	final public String messagesURL;
@@ -38,10 +40,10 @@ public class DetailedFacetItem implements Comparable<DetailedFacetItem>
 		this(name, description, null, paramName, paramValue);
 	}
 	
-	public DetailedFacetItem(String name, String description, List<Document> docs, String paramName, String paramValue)
+	public DetailedFacetItem(String name, String description, Set<Document> docs, String paramName, String paramValue)
 	{
 		this.name = name; this.description = description;
-		this.docs = docs == null ? new ArrayList<Document>() : docs;
+		this.docs = docs == null ? new HashSet<>() : docs;
 		this.paramName = paramName;
 		this.paramValue = paramValue;
 		this.messagesURL = paramName + "=" + Util.URLEncode(paramValue);
@@ -49,8 +51,8 @@ public class DetailedFacetItem implements Comparable<DetailedFacetItem>
 
 	public void addDoc(Document d) 
 	{
-		if (d != null) 
-			docs.add(d); 
+		if (d != null)
+            docs.add(d);
 	}
 	
 	public int totalCount()	{ return docs.size(); }
