@@ -636,7 +636,40 @@ public class EmailDocument extends DatedDocument implements Serializable
 
 		return result.toString();
 	}
-	
+
+	public String getSignature() {
+		StringBuilder sb = new StringBuilder();
+		StringBuilder timeSB = new StringBuilder();
+		Formatter formatter = new Formatter(timeSB);
+		if (this.date != null) {
+			GregorianCalendar cc = new GregorianCalendar();
+			cc.setTime(this.date);
+			formatter.format("%02d:%02d", new Object[]{Integer.valueOf(cc.get(11)), Integer.valueOf(cc.get(12))});
+			sb.append("Date: " + cc.get(5) + " " + CalendarUtil.getDisplayMonth(cc) + " " + cc.get(1) + " " + timeSB + "\n");
+		}
+
+		formatter.close();
+		sb.append("From: " + this.getFromString() + "\n");
+		sb.append("To: " + this.getToString() + "\n");
+		String cc1 = this.getCcString();
+		if(!Util.nullOrEmpty(cc1)) {
+			sb.append("Cc: " + cc1 + "\n");
+		}
+
+		String bcc = this.getBccString();
+		if(!Util.nullOrEmpty(bcc)) {
+			sb.append("Bcc: " + bcc + "\n");
+		}
+
+		if(this.description == null) {
+			this.description = "<None>";
+		}
+
+		sb.append("Subject: " + this.description + "\n");
+		sb.append("\n");
+		return sb.toString();
+	}
+
 	/** recompute own email addrs, and then all the contacts. to be done after fetching all messages */
 	public static AddressBook buildAddressBook(Collection<EmailDocument> docs, Collection<String> ownAddrs, Collection<String> ownNames)
 	{

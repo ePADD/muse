@@ -569,7 +569,7 @@ public class Util
 				break;
 			line = line.trim();
 
-			if (ignoreCommentLines && (line.charAt(0) == '#'))
+			if (ignoreCommentLines && (line.length() == 0 || line.charAt(0) == '#'))
 				continue;
 
 			result.add(line);
@@ -1001,7 +1001,7 @@ public class Util
 	/** if num > 1, pluralizes the desc. will also commatize the num if needed. */
 	public static String pluralize(int x, String desc)
 	{
-		return Util.commatize(x) + " " + desc + ((x > 1) ? "s" : "");
+		return Util.commatize(x) + " " + desc + ((x != 1) ? "s" : ""); // want plural even if x is 0, e.g. "0 messages"
 	}
 
 	public static String approximateTimeLeft(long sec)
@@ -2669,6 +2669,7 @@ public class Util
 		return count;
 	}
 
+	private static Pattern spacePattern = Pattern.compile ("[\\s\\xA0]+");
 	/** replaces sequences of space chars with one space */
 	public static String canonicalizeSpaces(String s)
 	{
@@ -2677,7 +2678,7 @@ public class Util
 		// http://stackoverflow.com/questions/1702601/unidentified-whitespace-character-in-java
 		if (s == null)
 			return s;
-		return s.replaceAll("[\\s\\xA0]+", " ");
+		return spacePattern.matcher(s).replaceAll(" ");
 	}
 
 	/**

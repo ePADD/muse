@@ -15,10 +15,14 @@
  */
 package edu.stanford.muse.index;
 
+import au.com.bytecode.opencsv.CSVWriter;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
+import edu.stanford.muse.ie.AuthorisedAuthorities;
+import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.featuregen.FeatureUtils;
@@ -27,6 +31,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.io.FileUtils;
@@ -38,6 +43,7 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Core data structure that represents an archive. Conceptually, an archive is a
@@ -85,6 +91,7 @@ public class Archive implements Serializable {
     private Set<FolderInfo> fetchedFolderInfos = new LinkedHashSet<FolderInfo>();    // keep this private since its updated in a controlled way
     transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
     public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();
+    private Map<String, Authority> cnameToAuthority;
     Map<String, NameInfo> nameMap;
 
     public ProcessingMetadata processingMetadata = new ProcessingMetadata();
@@ -92,6 +99,57 @@ public class Archive implements Serializable {
     public List<FetchStats> allStats = new ArrayList<FetchStats>(); // multiple stats because usually there is 1 per import
 
     public String archiveTitle; // this is the name of this archive
+
+    public synchronized Map<String, Authority> getAuthorities() {
+        if (cnameToAuthority != null)
+            return cnameToAuthority;
+        String filename = this.baseDir + java.io.File.separator + Config.AUTHORITIES_FILENAME;
+        try {
+            cnameToAuthority = (Map<String, Authority>) Util.readObjectFromFile(filename);
+        } catch (Exception e) {
+            log.info ("No authorities file: " + filename);
+            cnameToAuthority = new LinkedHashMap<>();
+        }
+        AuthorisedAuthorities.cnameToDefiniteID = cnameToAuthority;
+        return cnameToAuthority;
+    }
+
+    /** returns a string with the definite authorities in a CSV format. */
+    public String getAuthoritiesAsCSV () throws IOException {
+        Map<String, Authority> nameToId = getAuthorities();
+        if (Util.nullOrEmpty(nameToId)) {
+            log.warn ("trying to export authority records, when none exist!");
+            return "";
+        }
+
+        StringWriter sw = new StringWriter();
+        CSVWriter writer = new CSVWriter(sw, ',', '"', '\n');
+
+        // write the header line: "name, fast, viaf, " etc.
+        List<String> line = new ArrayList<>();
+        line.add("name");
+        for (String type : Authority.types)
+            line.add(type);
+        writer.writeNext(line.toArray(new String[line.size()]));
+
+        // write the records
+        for (Authority auth : nameToId.values()) {
+            line = new ArrayList<>();
+            Map<Short, String> typeToId = auth.getTypeToId();
+
+            line.add(EmailUtils.uncanonicaliseName(auth.name));
+            for (short i = 0; i < Authority.types.length; i++)
+                line.add(typeToId.get(i));
+            writer.writeNext(line.toArray(new String[line.size()]));
+        }
+        writer.close();
+        String csv = sw.toString();
+        return csv;
+    }
+
+    public synchronized void setAuthorities(Map<String, Authority> authorities) {
+        cnameToAuthority = authorities;
+    }
 
     /*
      * baseDir is used loosely... it may not be fully reliable, e.g. when the
@@ -432,10 +490,15 @@ public class Archive implements Serializable {
         addressBook = null;
     }
 
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
     /*
-	 * should happen rarely, only while exporting session. fragile operation,
-	 * make sure blobStore etc are updated consistently
-	 */
+         * should happen rarely, only while exporting session. fragile operation,
+         * make sure blobStore etc are updated consistently
+         */
     public void setAllDocs(List<Document> docs) {
         log.info("Updating archive's alldocs to new list of " + docs.size() + " docs");
         allDocs = docs;
@@ -1489,8 +1552,98 @@ public class Archive implements Serializable {
         return indexer.blobDocIds.entrySet().stream().filter(e->docId.equals(e.getValue())).findAny().map(e->e.getKey()).orElse(0);
     }
 
-    public String getDocIdForBlobLDocId(Integer ldocId){
+    public String getDocIdForBlobLDocId(Integer ldocId) {
         return indexer.blobDocIds.get(ldocId);
+    }
+
+    /** transfers actions from one archive to another. returns user-displayable status message */
+    public String transferActionsFrom(String otherArchiveDir) throws ClassNotFoundException, IOException {
+        String file = otherArchiveDir + File.separator + SESSIONS_SUBDIR + File.separator + "default.archive.v1"; // note that is v1!
+
+        if (!new File(file).exists()) {
+            return "Error: no archive found in " + file;
+        }
+
+        ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(file)));
+        Object discard = ois.readObject();
+
+        Archive otherArchive = (Archive)ois.readObject();
+        LinkedHashMap otherMap = new LinkedHashMap();
+        Iterator nMatched = otherArchive.allDocs.iterator();
+
+        while(nMatched.hasNext()) {
+            Document nChanged = (Document)nMatched.next();
+            EmailDocument ed = (EmailDocument)nChanged;
+            if(ed.date != null && !ed.date.equals(EmailFetcherThread.INVALID_DATE)) {
+                String d = ed.getSignature();
+                otherMap.put(d, ed);
+            }
+        }
+
+        int matchedMessages = 0;
+        int changedMessages = 0;
+        Iterator it = this.allDocs.iterator();
+
+        while(it.hasNext()) {
+            Document d = (Document) it.next();
+            EmailDocument ed1 = (EmailDocument)d;
+            String edSig = ed1.getSignature();
+            EmailDocument otherEd = (EmailDocument)otherMap.get(edSig);
+            if(otherEd != null) {
+                ++matchedMessages;
+                boolean changed = false;
+                if(otherEd.doNotTransfer != ed1.doNotTransfer) {
+                    ed1.doNotTransfer = otherEd.doNotTransfer;
+                    changed = true;
+                }
+
+                if(otherEd.transferWithRestrictions != ed1.transferWithRestrictions) {
+                    ed1.transferWithRestrictions = otherEd.transferWithRestrictions;
+                    changed = true;
+                }
+
+                if(otherEd.reviewed != ed1.reviewed) {
+                    ed1.reviewed = otherEd.reviewed;
+                    changed = true;
+                }
+
+                if(otherEd.addedToCart != ed1.addedToCart) {
+                    ed1.addedToCart = otherEd.addedToCart;
+                    changed = true;
+                }
+
+                if(otherEd.comment != null && !otherEd.comment.equals(ed1.comment)) {
+                    ed1.comment = otherEd.comment;
+                    changed = true;
+                }
+
+                if(changed) {
+                    ++changedMessages;
+                }
+            }
+        }
+
+        // transfer authorities
+        String authorityTransferStatus = "";
+
+        try {
+            Map<String, Authority> existingMap = getAuthorities();
+            int existingSize = (Util.nullOrEmpty(existingMap)) ? 0 : existingMap.size();
+
+            Map<String, Authority> otherAuthorities = otherArchive.getAuthorities();
+            if (!Util.nullOrEmpty(otherAuthorities)) {
+                // may be better to add to the existing map? what to do if there are conflicts?
+                this.setAuthorities(otherAuthorities);
+                authorityTransferStatus += otherAuthorities.size() + " authorities transferred, overwriting " + existingSize + " existing authorities";
+            }
+        } catch (Exception e2) { Util.print_exception("Unable to read existing authorities file", e2, log); }
+
+        log.info ("Authority transfer status: " + authorityTransferStatus);
+        return "Changes applied to " + Util.pluralize(changedMessages, "message") + " from " + "archive format v1 ("
+                + Util.pluralize(otherArchive.allDocs.size(), "message") + ") in " + otherArchiveDir
+                + " to current archive in format v2 (" + Util.pluralize(this.allDocs.size(), "message") + ").\n"
+                + Util.pluralize(matchedMessages, "message") + " matched"
+                + "\n" + authorityTransferStatus;
     }
 
     public static void main(String[] args) {

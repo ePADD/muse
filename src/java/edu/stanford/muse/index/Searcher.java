@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Created by hangal on 6/22/16.
+ * Advanced search functions
  */
 public class Searcher {
     private static Log log = LogFactory.getLog(Searcher.class);
@@ -203,32 +203,40 @@ public class Searcher {
         return result;
     }
 
-
-    private static Set<EmailDocument> updateForCorrespondents(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
-
-        {
-            // legacy support for the old browse page, which uses a query based on contact #
-            String contactIdStr = getParam(params, "contact");
-            int contactId = -1;
-            try { contactId = Integer.parseInt(contactIdStr); } catch (NumberFormatException nfe) { }
-            if (contactId >= 0) {
-                Contact c = ab.getContact(contactId);
-                String name = c.pickBestName();
-                params.put("correspondent", name);
-                params.put("correspondentTo", "on");
-                params.put("correspondentFrom", "on");
-                params.put("correspondentCc", "on");
-                params.put("correspondentBcc", "on");
-            }
+    /** used by facets, correspondents table, etc */
+    private static Set<EmailDocument> updateForContactId(Set<EmailDocument> docs, AddressBook ab, String cid) {
+        String correspondentName = null;
+        int contactId = -1;
+        try { contactId = Integer.parseInt(cid); } catch (NumberFormatException nfe) { }
+        if (contactId >= 0) {
+            Contact c = ab.getContact(contactId);
+            String name = c.pickBestName();
+            correspondentName = name;
         }
+        return updateForCorrespondents (docs, ab, correspondentName, true, true, true, true); // for contact id, all the 4 fields - to/from/cc/bcc are enabled
+    }
 
-        Set<EmailDocument> result = new LinkedHashSet<>();
+    /** version of updateForCorrespondents which reads from params. correspondent name can have the OR separator */
+    private static Set<EmailDocument> updateForCorrespondents(Set<EmailDocument> docs, AddressBook ab, Multimap<String, String> params) {
+
         String correspondentsStr = getParam(params, "correspondent");
+        boolean checkToField = "on".equals(getParam(params, "correspondentTo"));
+        boolean checkFromField = "on".equals(getParam(params, "correspondentFrom"));
+        boolean checkCcField = "on".equals(getParam(params, "correspondentCc"));
+        boolean checkBccField = "on".equals(getParam(params, "correspondentBcc"));
+
         if (Util.nullOrEmpty(correspondentsStr))
             return docs;
+
+        return updateForCorrespondents(docs, ab, correspondentsStr, checkToField, checkFromField, checkCcField, checkBccField);
+    }
+
+    private static Set<EmailDocument> updateForCorrespondents(Set<EmailDocument> docs, AddressBook ab, String correspondentsStr, boolean checkToField, boolean checkFromField, boolean checkCcField, boolean checkBccField) {
+
+        Set<EmailDocument> result = new LinkedHashSet<>();
+        Set<Contact> searchedContacts = new LinkedHashSet<>();
         Set<String> correspondents = splitFieldForOr(correspondentsStr);
 
-        Set<Contact> searchedContacts = new LinkedHashSet<>();
         for (String s : correspondents) {
             Contact c = ab.lookupByEmailOrName(s);
             if (c != null)
@@ -238,13 +246,13 @@ public class Searcher {
         for (EmailDocument ed : docs) {
 
             Set<InternetAddress> addressesInMessage = new LinkedHashSet<>(); // only lookup the fields (to/cc/bcc/from) that have been enabled
-            if ("on".equals(getParam(params, "correspondentTo")) && !Util.nullOrEmpty(ed.to))
+            if (checkToField && !Util.nullOrEmpty(ed.to))
                 addressesInMessage.addAll((List) Arrays.asList(ed.to));
-            if ("on".equals(getParam(params, "correspondentFrom")) && !Util.nullOrEmpty(ed.from))
+            if (checkFromField && !Util.nullOrEmpty(ed.from))
                 addressesInMessage.addAll((List) Arrays.asList(ed.from));
-            if ("on".equals(getParam(params, "correspondentCc")) && !Util.nullOrEmpty(ed.cc))
+            if (checkCcField && !Util.nullOrEmpty(ed.cc))
                 addressesInMessage.addAll((List) Arrays.asList(ed.cc));
-            if ("on".equals(getParam(params, "correspondentBcc")) && !Util.nullOrEmpty(ed.bcc))
+            if (checkBccField && !Util.nullOrEmpty(ed.bcc))
                 addressesInMessage.addAll((List) Arrays.asList(ed.bcc));
 
             for (InternetAddress a : addressesInMessage) {
@@ -589,7 +597,15 @@ public class Searcher {
         }
 
         // resultDocs = (Collection) updateForEntities((Collection) resultDocs, params);
-        resultDocs = (Set) updateForCorrespondents(archive.addressBook, (Set) resultDocs, params);
+        resultDocs = (Set) updateForCorrespondents((Set) resultDocs, archive.addressBook, params);
+
+        // contactIds are used for facets and from correspondents page etc.
+        Collection<String> contactIds = params.get("contact");
+        if (!Util.nullOrEmpty(contactIds)) {
+            for (String cid : contactIds)
+                resultDocs = (Set) updateForContactId((Set) resultDocs, archive.addressBook, cid);
+        }
+
         resultDocs = (Set) updateForMailingListState(archive.addressBook, (Set) resultDocs, params);
         resultDocs = (Set) updateForEmailDirection(archive.addressBook, (Set) resultDocs, params);
 

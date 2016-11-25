@@ -20,7 +20,9 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ie.variants.Variants;
+
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.net.QuotedPrintableCodec;
@@ -1215,6 +1217,8 @@ public class EmailUtils {
 		}
 
 		Collections.sort(tokens);
+		// to be enabled for version 3
+//        tokens = tokens.stream().map(Variants.nameVariants::getCanonicalVariant).collect(Collectors.toList());
 
 		// cat all the tokens, one space in between, no space at the end
 		String cname = Util.join(tokens, " ");
