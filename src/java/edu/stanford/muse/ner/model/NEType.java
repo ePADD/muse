@@ -15,7 +15,7 @@ public class NEType {
     static Log log = LogFactory.getLog(NEType.class);
 
     /**
-     * DO NOT change the code for the types.
+     * DO NOT change the code (that is the number assigned to each type) for the types.
      * For compactness, the codes are stored, such as in index.
      * Changing the codes may give unexpected results.
      * If changed, then revert to the values in the commit of the previous release -- muse commit: 52aab037434ab6883759eaf108ca70fe0a259473

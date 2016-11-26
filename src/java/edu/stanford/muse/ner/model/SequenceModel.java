@@ -13,7 +13,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.util.*;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -318,35 +320,39 @@ public class SequenceModel implements NERModel, Serializable {
             return phrase;
         }
 
-        private static void writeRulesToCache(Map<String,MU> features) {
+        private static void writeModelAsRules(Map<String,MU> features) {
             try {
                 NEType.Type[] ats = NEType.getAllTypes();
                 //make cache dir if it does not exist
-                String cacheDir = System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache";
-                if (!new File(cacheDir).exists()) {
-                    boolean mkdir = new File(cacheDir).mkdir();
-                    if (!mkdir)
-                        log.warn("Cannot create cache dir. " + cacheDir);
+                String rulesDir = Config.SETTINGS_DIR + File.separator + "rules";
+                if (!new File(rulesDir).exists()) {
+                    boolean mkdir = new File(rulesDir).mkdir();
+                    if (!mkdir) {
+                        log.fatal("Cannot create rules dir. " + rulesDir + "\n" +
+                                "Please make sure you have access rights and enough disk space\n" +
+                                "Cannot proceed, exiting....");
+                        return;
+                    }
                 }
                 for (NEType.Type et: ats) {
                     short type = et.getCode();
                     //FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
-                    FileWriter ffw = new FileWriter(cacheDir + File.separator + et + ".txt");
-                    Map<String, Double> sortScores = new LinkedHashMap<>();
+                    Writer ffw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(rulesDir + File.separator + et + ".txt"), "UTF-8"));
+                    Map<String, Double> scoreForSort = new LinkedHashMap<>();
                     Map<String, Double> scores = new LinkedHashMap<>();
                     for (String w : features.keySet()) {
                         MU mu = features.get(w);
                         double v1 = mu.getLikelihoodWithType(type) * (mu.numMixture / mu.numSeen);
                         double v = v1 * Math.log(mu.numSeen);
                         if (Double.isNaN(v)) {
-                            sortScores.put(w, 0.0);
-                            scores.put(w, 0.0);
+                            scoreForSort.put(w, 0.0);
+                            scores.put(w, v1);
                         } else {
-                            sortScores.put(w, v);
+                            scoreForSort.put(w, v);
                             scores.put(w, v1);
                         }
                     }
-                    List<Pair<String, Double>> ps = Util.sortMapByValue(sortScores);
+                    List<Pair<String, Double>> ps = Util.sortMapByValue(scoreForSort);
                     for (Pair<String, Double> p : ps) {
                         MU mu = features.get(p.getFirst());
                         Short maxT = -1;
@@ -360,7 +366,7 @@ public class SequenceModel implements NERModel, Serializable {
                             }
                         }
                         //only if both the below conditions are satisfied, this template will ever be seen in action
-                        if (maxT.equals(type) && scores.get(p.getFirst()) >= 0.001) {
+                        if (maxT.equals(type)) { //&& scores.get(p.getFirst()) >= 0.001) {
                             ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
                             ffw.write(mu.prettyPrint());
                             ffw.write("========================\n");
@@ -505,7 +511,7 @@ public class SequenceModel implements NERModel, Serializable {
                 revisedMixtures = new LinkedHashMap<>();
 
                 if(i==iter-1)
-                    writeRulesToCache(mixtures);
+                    writeModelAsRules(mixtures);
             }
         }
     }
@@ -908,6 +914,27 @@ public class SequenceModel implements NERModel, Serializable {
         oos.close();
     }
 
+    public static synchronized SequenceModel loadModelFromRules(String rulesDirName) throws IOException{
+        File rulesDir = new File(rulesDirName);
+        if(!rulesDir.exists()) {
+            log.fatal("The supplied directory: "+rulesDirName+" does not exist!\n" +
+                    "Cannot continue, exiting....");
+            return null;
+        }
+        else{
+            List<String> files = Arrays.asList(rulesDir.list());
+            NEType.Type[] alltypes = NEType.getAllTypes();
+            Stream<NEType.Type> notFound = Stream.of(alltypes).filter(t->!files.contains(t.name()));
+            if(notFound.findAny().isPresent()) {
+                notFound.forEach(t -> log.warn("Did not find " + t.name() + " in the rules dir: " + rulesDirName));
+                log.warn("Some types not found in the directory supplied.\n" +
+                        "Perhaps a version mismatch or the folder is corrupt!\n" +
+                        "Be warned, I will see what I can do.");
+            }
+        }
+        return null;
+    }
+
     public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
         ObjectInputStream ois;
         try {
@@ -954,7 +981,7 @@ public class SequenceModel implements NERModel, Serializable {
 
     /**
      * Use this routine to read an external gazette list, the resource is expected to be a plain text file
-     * the lines in the file should be two fields separated by ' ' (space), the first field should be the title and second it's type.
+     * the lines in the file should be two fields separated by ' ' (space), the first field should be the title and second: its type.
      * The type of the resource should follow the style of DBpedia types in our generated instance file, see NEType.dbpediaTypesMap for more info.
      * for example, a type annotation for building should look like "Building|ArchitecturalStructure|Place"
      * The spaces in the title, ie. the first entry should be replaced by '_'

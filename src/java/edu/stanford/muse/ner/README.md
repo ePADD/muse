@@ -13,12 +13,12 @@ All the resource files are expected in a format explained in `Training-data form
 Once the properties file is edited as required, open your terminal `Applications>Utilities>Terminal.app` and run the following command
 <br>
 * if you have access to the *muse standalone jar*<br>
->java -Xmx3g -jar [ABSOLUTE PATH TO MUSE STANDALONE JAR] edu.stanford.muse.ner.model.BMMModel  
+>java -Xmx3g -jar [ABSOLUTE PATH TO MUSE STANDALONE JAR] edu.stanford.muse.ner.model.SequenceModel  
 
 * if you only have access to the *epadd standalone jar*<br>
 >jar xvf [ABSOLUTE PATH TO EPADD STANDALONE JAR] epadd.war<br>
 >jar xvf epadd.war WEB-INF/lib/muse-1.0.0-SNAPSHOT-classes.jar<br>
->java -Xmx3g -jar WEB-INF/lib/muse-1.0.0-SNAPSHOT-classes.jar edu.stanford.muse.ner.model.BMMModel<br>
+>java -Xmx3g -jar WEB-INF/lib/muse-1.0.0-SNAPSHOT-classes.jar edu.stanford.muse.ner.model.SequenceModel<br>
 
 Once the training is launched, it will take 30-50 minutes depending on the hardware. The model will be written to `HOME/epadd-settings/SeqModel.ser.gz`, check the modified date of the model to make sure the same. 
 

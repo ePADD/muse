@@ -31,7 +31,7 @@ public class Config {
     public static String 	FAST_INDEX, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
     
     //List of resource file that the NER model is trained on
-    public static String[] NER_RESOURCE_FILES;
+    public static String[] NER_RESOURCE_FILES = new String[0];
     public static String DBPEDIA_INSTANCE_FILE;
     
     public static String	FEATURES_INDEX, TABOO_FILE = "kill.txt";
@@ -48,7 +48,7 @@ public class Config {
 
     static {
         Properties props = new Properties();
-	
+
         File f = new File(EPADD_PROPS_FILE);
         if (f.exists() && f.canRead()) {
             log.info("Reading configuration from: " + EPADD_PROPS_FILE);
@@ -70,7 +70,7 @@ public class Config {
             SETTINGS_DIR = DEFAULT_SETTINGS_DIR;
 
         // set up base_dir and its subdirs
-        BASE_DIR = System.getProperty("epadd.base.dir");
+        String BASE_DIR = System.getProperty("epadd.base.dir");
         if (Util.nullOrEmpty(BASE_DIR))
             BASE_DIR = props.getProperty("epadd.base.dir");
         if (Util.nullOrEmpty(BASE_DIR))
@@ -88,44 +88,67 @@ public class Config {
         holderReadingRoom = props.getProperty("holderReadingRoom", "NOT SET");
 
         FEATURES_INDEX = props.getProperty("FEATURES_INDEX", "features");
-	
-	AUTHORITIES_FILENAME		= props.getProperty("AUTHORITIES_FILENAME", "authorities.ser");
-	AUTHORITIES_CSV_FILENAME	= props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
-	AUTHORITY_ASSIGNER_FILENAME	= props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
-	FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
-	NER_RESOURCE_FILES = props.getProperty("NER_RESOURCE_FILES","").split(":::");
-        DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE","instance_types_2014-04.en.txt.bz2");
-		// set the int mixtures
-	String s = props.getProperty("MAX_ENTITY_FEATURES"); if (s != null) { try { MAX_ENTITY_FEATURES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
-	s = props.getProperty("MAX_TRY_TO_RESOLVE_NAMES"); if (s != null) { try { MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
-	s = props.getProperty("MAX_DOCS_PER_QUERY"); if (s != null) { try { MAX_DOCS_PER_QUERY = Integer.parseInt(s); } catch (Exception e) { Util.print_exception(e, log); } }
-	
-	s = props.getProperty("OPENNLP_NER");
-	if (!Util.nullOrEmpty(s))
-	    OPENNLP_NER = Boolean.parseBoolean(s);
-	
-	String mode = props.getProperty("epadd.mode");
-	if ("appraisal".equalsIgnoreCase(mode))
-	    ModeConfig.mode = ModeConfig.Mode.APPRAISAL;
-	else if ("processing".equalsIgnoreCase(mode))
-	    ModeConfig.mode = ModeConfig.Mode.PROCESSING;
-	else if ("discovery".equalsIgnoreCase(mode))
-	    ModeConfig.mode = ModeConfig.Mode.DISCOVERY;
-	else if ("delivery".equalsIgnoreCase(mode))
-	    ModeConfig.mode = ModeConfig.Mode.DELIVERY;
-	else if (mode != null)
-	    log.warn ("Invalid value for epadd.mode: " + mode);
-	// if null or invalid, we'll leave epadd.mode in APPRAISAL which is the default
-        log.info ("-------------Begin Configuration block -----------------");
-        log.info ("ePADD base dir = " + BASE_DIR);
-        log.info ("ePADD settings dir = " + SETTINGS_DIR);
-        log.info ("ePADD mode = " + ModeConfig.mode);
-        log.info ("FAST index = " + FAST_INDEX);
-        log.info ("FAST file = " + FAST_FILE);
-        log.info ("Admin = " + admin);
+
+        AUTHORITIES_FILENAME = props.getProperty("AUTHORITIES_FILENAME", "authorities.ser");
+        AUTHORITIES_CSV_FILENAME = props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
+        AUTHORITY_ASSIGNER_FILENAME = props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
+        FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
+        String rsrcField = props.getProperty("NER_RESOURCE_FILES", "CONLL/lists/epadd.ned.list.LOC::CONLL/lists/epadd.ned.list.PER::CONLL/lists/epadd.ned.list.ORG");
+        if (rsrcField != null && rsrcField.length() > 0)
+            NER_RESOURCE_FILES = rsrcField.split("::");
+        DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE", "instance_types_2014-04.en.txt.bz2");
+        // set the int mixtures
+        String s = props.getProperty("MAX_ENTITY_FEATURES");
+        if (s != null) {
+            try {
+                MAX_ENTITY_FEATURES = Integer.parseInt(s);
+            } catch (Exception e) {
+                Util.print_exception(e, log);
+            }
+        }
+        s = props.getProperty("MAX_TRY_TO_RESOLVE_NAMES");
+        if (s != null) {
+            try {
+                MAX_TRY_TO_RESOLVE_NAMES = Integer.parseInt(s);
+            } catch (Exception e) {
+                Util.print_exception(e, log);
+            }
+        }
+        s = props.getProperty("MAX_DOCS_PER_QUERY");
+        if (s != null) {
+            try {
+                MAX_DOCS_PER_QUERY = Integer.parseInt(s);
+            } catch (Exception e) {
+                Util.print_exception(e, log);
+            }
+        }
+
+        s = props.getProperty("OPENNLP_NER");
+        if (!Util.nullOrEmpty(s))
+            OPENNLP_NER = Boolean.parseBoolean(s);
+
+        String mode = props.getProperty("epadd.mode");
+        if ("appraisal".equalsIgnoreCase(mode))
+            ModeConfig.mode = ModeConfig.Mode.APPRAISAL;
+        else if ("processing".equalsIgnoreCase(mode))
+            ModeConfig.mode = ModeConfig.Mode.PROCESSING;
+        else if ("discovery".equalsIgnoreCase(mode))
+            ModeConfig.mode = ModeConfig.Mode.DISCOVERY;
+        else if ("delivery".equalsIgnoreCase(mode))
+            ModeConfig.mode = ModeConfig.Mode.DELIVERY;
+        else if (mode != null)
+            log.warn("Invalid value for epadd.mode: " + mode);
+        // if null or invalid, we'll leave epadd.mode in APPRAISAL which is the default
+        log.info("-------------Begin Configuration block -----------------");
+        log.info("ePADD base dir = " + BASE_DIR);
+        log.info("ePADD settings dir = " + SETTINGS_DIR);
+        log.info("ePADD mode = " + ModeConfig.mode);
+        log.info("FAST index = " + FAST_INDEX);
+        log.info("FAST file = " + FAST_FILE);
+        log.info("Admin = " + admin);
         // add more things here if needed
-        log.info ("-------------End Configuration block -----------------");
-	}
+        log.info("-------------End Configuration block -----------------");
+    }
 
 	/** reads a resource with the given offset path. Path components are always separated by forward slashes, just like resource paths in Java.
 	 * First looks in settings folder, then on classpath (e.g. inside war's WEB-INF/classes).

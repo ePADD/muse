@@ -15,7 +15,7 @@ public class Authority implements Serializable {
 	public String				name;
 	//all the links to external database
 	//dbId -> dbType
-	private Map<String, Short>	sources; // this is id -> type. @Vihari, why isn't it type -> id?
+	public Map<String, Short>	sources; // this is id -> type. @Vihari, why isn't it type -> id?
     public static short			FAST				= 0, DBPEDIA = 1, VIAF = 2, LOC_SUBJECT = 3, LOC_NAME = 4, FREEBASE = 5, GEO_NAMES = 6;
     public static String[]		types				= new String[] { "fast", "dbpedia", "viaf", "locSubject", "locName", "freebase", "geonames" };
     public static Log 			log					= LogFactory.getLog(Authority.class);

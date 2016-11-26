@@ -20,7 +20,6 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ie.variants.Variants;
 
 import org.apache.commons.codec.DecoderException;
