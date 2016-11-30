@@ -149,5 +149,6 @@ public class NEType {
 
     public static void main(String[] args) {
         Stream.of(Type.values()).forEach(System.out::println);
+        System.out.println(Type.valueOf("LIBRARY"));
     }
 }

@@ -401,7 +401,7 @@ public class JSPHelper {
 
         //perform entity IE related tasks only if the message text is available
         if (downloadMessageText) {
-            String modelFile = SequenceModel.modelFileName;
+            String modelFile = SequenceModel.MODEL_FILENAME;
             NERModel nerModel = (SequenceModel) session.getAttribute("ner");
             session.setAttribute("statusProvider", new StaticStatusProvider("Loading NER sequence model from resource: " + modelFile + "..."));
             try {

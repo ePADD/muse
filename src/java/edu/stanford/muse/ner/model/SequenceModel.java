@@ -9,12 +9,13 @@ import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.*;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
+import org.apache.commons.io.IOExceptionWithCause;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
-import java.nio.charset.Charset;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -30,7 +31,8 @@ import java.util.zip.GZIPOutputStream;
  * for example a model trained on one-fifth of DBPedia instance types, that is 300K entries assigns 3E-7 score to {Sudheendra Hangal, PERSON}, which is understandable since the DBpedia list contains only one entry with Sudheendra
  */
 public class SequenceModel implements NERModel, Serializable {
-    public static String modelFileName = "SeqModel.ser.gz";
+    public static String MODEL_FILENAME = "SeqModel.ser.gz";
+    public static String GAZETTE_FILE = "gazettes.ser.gz";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
@@ -55,6 +57,66 @@ public class SequenceModel implements NERModel, Serializable {
     @Override
     public void setTokenizer(Tokenizer tokenizer){
         SequenceModel.tokenizer = tokenizer;
+    }
+
+    private static void writeModelAsRules(SequenceModel model) {
+        try {
+            NEType.Type[] ats = NEType.getAllTypes();
+            //make cache dir if it does not exist
+            String rulesDir = Config.SETTINGS_DIR + File.separator + "rules";
+            if (!new File(rulesDir).exists()) {
+                boolean mkdir = new File(rulesDir).mkdir();
+                if (!mkdir) {
+                    log.fatal("Cannot create rules dir. " + rulesDir + "\n" +
+                            "Please make sure you have access rights and enough disk space\n" +
+                            "Cannot proceed, exiting....");
+                    return;
+                }
+            }
+            writeObjectAsSerGZ(model.gazettes, rulesDir+File.separator+SequenceModel.GAZETTE_FILE);
+            Map<String, MU> features = model.mixtures;
+            for (NEType.Type et: ats) {
+                short type = et.getCode();
+                //FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
+                Writer ffw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(rulesDir + File.separator + et + ".txt")));
+                Map<String, Double> scoreForSort = new LinkedHashMap<>();
+                Map<String, Double> scores = new LinkedHashMap<>();
+                for (String w : features.keySet()) {
+                    MU mu = features.get(w);
+                    double v1 = mu.getLikelihoodWithType(type) * (mu.numMixture / mu.numSeen);
+                    double v = v1 * Math.log(mu.numSeen);
+                    if (Double.isNaN(v)) {
+                        scoreForSort.put(w, 0.0);
+                        scores.put(w, v1);
+                    } else {
+                        scoreForSort.put(w, v);
+                        scores.put(w, v1);
+                    }
+                }
+                List<Pair<String, Double>> ps = Util.sortMapByValue(scoreForSort);
+                for (Pair<String, Double> p : ps) {
+                    MU mu = features.get(p.getFirst());
+                    Short maxT = -1;
+                    double maxV = -1;
+                    for (NEType.Type et1: ats) {
+                        short t = et1.getCode();
+                        double d = mu.getLikelihoodWithType(t);
+                        if (d > maxV) {
+                            maxT = t;
+                            maxV = d;
+                        }
+                    }
+                    //only if both the below conditions are satisfied, this template will ever be seen in action
+                    if (maxT.equals(type)) { //&& scores.get(p.getFirst()) >= 0.001) {
+                        ffw.write(mu.prettyPrint());
+                        ffw.write("========================\n");
+                    }
+                }
+                ffw.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     //A training helper function for better organization, won't be serialized
@@ -218,7 +280,6 @@ public class SequenceModel implements NERModel, Serializable {
                         ds += t + "<" + priors.get(t).first + "," + priors.get(t).second + "> ";
                     log.info("Initialising: " + str + " with " + ds);
                 }
-                int num = 0;
                 Map<String, Float> alpha = new LinkedHashMap<>();
                 if (str.length() > 2 && tokenPriors.containsKey(str)) {
                     Map<String, Float> tps = tokenPriors.get(str);
@@ -234,7 +295,6 @@ public class SequenceModel implements NERModel, Serializable {
                             for (String f : features) {
                                 alpha.put(f, alpha.getOrDefault(f, 0f) + tps.get(gt));
                             }
-                            num += tps.get(gt);
                         }
                     }
                 }
@@ -318,65 +378,6 @@ public class SequenceModel implements NERModel, Serializable {
             if ((type.endsWith("Person") || type.equals("Agent")) && (phrase.contains(" and ") || phrase.contains(" of ") || phrase.contains(" on ") || phrase.contains(" in ")))
                 return null;
             return phrase;
-        }
-
-        private static void writeModelAsRules(Map<String,MU> features) {
-            try {
-                NEType.Type[] ats = NEType.getAllTypes();
-                //make cache dir if it does not exist
-                String rulesDir = Config.SETTINGS_DIR + File.separator + "rules";
-                if (!new File(rulesDir).exists()) {
-                    boolean mkdir = new File(rulesDir).mkdir();
-                    if (!mkdir) {
-                        log.fatal("Cannot create rules dir. " + rulesDir + "\n" +
-                                "Please make sure you have access rights and enough disk space\n" +
-                                "Cannot proceed, exiting....");
-                        return;
-                    }
-                }
-                for (NEType.Type et: ats) {
-                    short type = et.getCode();
-                    //FileWriter fw = new FileWriter(cacheDir + File.separator + "em.dump." + type + "." + i);
-                    Writer ffw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(rulesDir + File.separator + et + ".txt"), "UTF-8"));
-                    Map<String, Double> scoreForSort = new LinkedHashMap<>();
-                    Map<String, Double> scores = new LinkedHashMap<>();
-                    for (String w : features.keySet()) {
-                        MU mu = features.get(w);
-                        double v1 = mu.getLikelihoodWithType(type) * (mu.numMixture / mu.numSeen);
-                        double v = v1 * Math.log(mu.numSeen);
-                        if (Double.isNaN(v)) {
-                            scoreForSort.put(w, 0.0);
-                            scores.put(w, v1);
-                        } else {
-                            scoreForSort.put(w, v);
-                            scores.put(w, v1);
-                        }
-                    }
-                    List<Pair<String, Double>> ps = Util.sortMapByValue(scoreForSort);
-                    for (Pair<String, Double> p : ps) {
-                        MU mu = features.get(p.getFirst());
-                        Short maxT = -1;
-                        double maxV = -1;
-                        for (NEType.Type et1: ats) {
-                            short t = et1.getCode();
-                            double d = mu.getLikelihoodWithType(t);
-                            if (d > maxV) {
-                                maxT = t;
-                                maxV = d;
-                            }
-                        }
-                        //only if both the below conditions are satisfied, this template will ever be seen in action
-                        if (maxT.equals(type)) { //&& scores.get(p.getFirst()) >= 0.001) {
-                            ffw.write("Token: " + EmailUtils.uncanonicaliseName(p.getFirst()) + "\n");
-                            ffw.write(mu.prettyPrint());
-                            ffw.write("========================\n");
-                        }
-                    }
-                    ffw.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
 
         Map<String,List<String>> genFeatures(String phrase, short type){
@@ -511,7 +512,7 @@ public class SequenceModel implements NERModel, Serializable {
                 revisedMixtures = new LinkedHashMap<>();
 
                 if(i==iter-1)
-                    writeModelAsRules(mixtures);
+                    writeModelAsRules(getModel());
             }
         }
     }
@@ -905,34 +906,71 @@ public class SequenceModel implements NERModel, Serializable {
         return spans.toArray(new Span[spans.size()]);
     }
 
+    public synchronized void writeModel(String fileName) throws IOException{
+        writeObjectAsSerGZ(this, fileName);
+    }
+
     //writes a .ser.gz file to the file passed in args.
-    public synchronized void writeModel(File modelFile) throws IOException{
-        FileOutputStream fos = new FileOutputStream(modelFile);
+    static void writeObjectAsSerGZ(Object o, String fileName) throws IOException{
+        FileOutputStream fos = new FileOutputStream(new File(fileName));
         GZIPOutputStream gos = new GZIPOutputStream(fos);
         ObjectOutputStream oos = new ObjectOutputStream(gos);
-        oos.writeObject(this);
+        oos.writeObject(o);
         oos.close();
     }
 
-    public static synchronized SequenceModel loadModelFromRules(String rulesDirName) throws IOException{
-        File rulesDir = new File(rulesDirName);
-        if(!rulesDir.exists()) {
-            log.fatal("The supplied directory: "+rulesDirName+" does not exist!\n" +
+    public static synchronized SequenceModel loadModelFromRules(String rulesDirName) throws IOException {
+        String rulesDir = Config.DEFAULT_SETTINGS_DIR+File.separator+rulesDirName;
+        if (!new File(rulesDir).exists()) {
+            log.fatal("The supplied directory: " + rulesDirName + " does not exist!\n" +
                     "Cannot continue, exiting....");
             return null;
         }
-        else{
-            List<String> files = Arrays.asList(rulesDir.list());
-            NEType.Type[] alltypes = NEType.getAllTypes();
-            Stream<NEType.Type> notFound = Stream.of(alltypes).filter(t->!files.contains(t.name()));
-            if(notFound.findAny().isPresent()) {
-                notFound.forEach(t -> log.warn("Did not find " + t.name() + " in the rules dir: " + rulesDirName));
-                log.warn("Some types not found in the directory supplied.\n" +
-                        "Perhaps a version mismatch or the folder is corrupt!\n" +
-                        "Be warned, I will see what I can do.");
-            }
+        List<String> files = Arrays.asList(new File(rulesDir).list());
+        NEType.Type[] alltypes = NEType.getAllTypes();
+         List<NEType.Type> notFound = Stream.of(alltypes).filter(t -> !files.contains(t.name()+".txt")).collect(Collectors.toList());
+        if (notFound.size()>0) {
+            notFound.forEach(t -> log.warn("Did not find " + t.name() + " in the rules dir: " + rulesDirName));
+            log.warn("Some types not found in the directory supplied.\n" +
+                    "Perhaps a version mismatch or the folder is corrupt!\n" +
+                    "Be warned, I will see what I can do.");
         }
-        return null;
+        Map<String, String> gazette = loadGazette(rulesDirName);
+        Map<String, MU> mixtures = new LinkedHashMap<>();
+        List<String> classes = Stream.of(NEType.Type.values()).map(NEType.Type::toString).collect(Collectors.toList());
+        files.stream().filter(f->f.endsWith(".txt") && classes.contains(f.substring(0, f.length()-4))).forEach(f -> {
+            try {
+                LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new FileInputStream(rulesDir + File.separator + f)));
+                String line;
+                List<String> lines_MU = new ArrayList<>();
+                while ((line = lnr.readLine()) != null) {
+                    //This marks the end of one MU block in the rules file
+                    if (line.startsWith("==")) {
+                        MU mu = MU.parseFromText(lines_MU.toArray(new String[lines_MU.size()]));
+                        if (mu != null)
+                            mixtures.put(mu.id, mu);
+                        lines_MU.clear();
+                    } else
+                        lines_MU.add(line);
+                }
+            } catch (IOException ie) {
+                log.warn("Could not read file: " + f + " from " + rulesDirName, ie);
+            }
+        });
+        return new SequenceModel(mixtures, gazette);
+    }
+
+    public static synchronized Map<String,String> loadGazette(String modelDirName){
+        ObjectInputStream ois;
+        try {
+            ois = new ObjectInputStream(new GZIPInputStream(Config.getResourceAsStream(modelDirName + File.separator + GAZETTE_FILE)));
+            Map<String,String> model = (Map<String, String>) ois.readObject();
+            ois.close();
+            return model;
+        } catch (Exception e) {
+            Util.print_exception("Exception while trying to load gazette from: " + modelDirName, e, log);
+            return null;
+        }
     }
 
     public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
@@ -949,7 +987,6 @@ public class SequenceModel implements NERModel, Serializable {
         }
     }
 
-    //TODO: Add to the project the code that produces this file
     //returns token -> {redirect (can be the same as token), page length of the page it redirects to}
     static Map<String,Map<String,Integer>> getTokenTypePriors(){
         Map<String,Map<String,Integer>> pageLengths = new LinkedHashMap<>();
@@ -1095,7 +1132,7 @@ public class SequenceModel implements NERModel, Serializable {
         long st = System.currentTimeMillis();
         SequenceModel model = train(0.2f, 2);
         try {
-            model.writeModel(new File(Config.SETTINGS_DIR+File.separator+modelFileName));
+            model.writeModel(Config.SETTINGS_DIR+File.separator+ MODEL_FILENAME);
         } catch(IOException e){
             log.warn("Unable to write model to disk");
             e.printStackTrace();
@@ -1106,7 +1143,6 @@ public class SequenceModel implements NERModel, Serializable {
     }
 
     static void loadAndTestNERModel(){
-        String modelFile = SequenceModel.modelFileName;
         if (fdw == null) {
             try {
                 fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "mixtures.dump"));
@@ -1118,7 +1154,7 @@ public class SequenceModel implements NERModel, Serializable {
         SequenceModel nerModel;
         log.info(Util.getMemoryStats());
         try {
-            nerModel = SequenceModel.loadModel(modelFile);
+            nerModel = SequenceModel.loadModelFromRules("rules");
             if(nerModel==null)
                 nerModel = train();
 
@@ -1126,6 +1162,7 @@ public class SequenceModel implements NERModel, Serializable {
             SequenceModelTest.ParamsCONLL params = new SequenceModelTest.ParamsCONLL();
             SequenceModelTest.testCONLL(nerModel, false, params);
             log.info(Util.getMemoryStats());
+            SequenceModel.writeModelAsRules(nerModel);
         } catch (IOException e) {
             e.printStackTrace();
         }

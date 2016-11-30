@@ -1,6 +1,7 @@
 package edu.stanford.muse.ner.model;
 
 import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
@@ -11,6 +12,8 @@ import java.text.DecimalFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Features for a word that corresponds to a mixture
@@ -42,6 +45,11 @@ public class MU implements Serializable {
     public float numMixture;
     //total number of times, this mixture is considered
     public float numSeen;
+
+    public MU(String id){
+        initialize(id, null);
+    }
+
     public MU(String id, Map<String, Float> initialParams) {
         initialize(id, initialParams);
     }
@@ -263,10 +271,11 @@ public class MU implements Serializable {
     }
 
     public String prettyPrint(){
-        String str = "";
         String p[] = new String[]{"L:","R:","T:","SW:","DICT:"};
         String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS, FeatureUtils.sws.toArray(new String[FeatureUtils.sws.size()]),DICT_LABELS};
-        str += "ID: " + id + "\n";
+        StringBuilder sb = new StringBuilder();
+        sb.append("Token: " + EmailUtils.uncanonicaliseName(id) + "\n");
+        sb.append("ID: " + id + "\n");
         for(int i=0;i<labels.length;i++) {
             Map<String,Float> some = new LinkedHashMap<>();
             for(int l=0;l<labels[i].length;l++) {
@@ -287,15 +296,81 @@ public class MU implements Serializable {
             smap = Util.sortMapByValue(some);
             int numF = 0;
             for(Pair<String,Float> pair: smap) {
-                if(numF>=3 || pair.getSecond()<=0)
+                if(numF>=5 || pair.getSecond()<=0)
                     break;
 
-                str += pair.getFirst() + ":" + new DecimalFormat("#.##").format(pair.getSecond()) + ":::";
+                //new DecimalFormat("#.####").format(
+                sb.append(pair.getFirst() + ":" + pair.getSecond() + ":::");
                 numF++;
             }
-            str += "\n";
+            sb.append("\n");
         }
-        str += "Evidence: "+numSeen+"\n";
-        return str;
+        sb.append("Active Evidence: "+numMixture+"\n");
+        sb.append("Evidence: "+numSeen+"\n");
+        return sb.toString();
+    }
+
+    /**To parse what is printed with prettyPrint routine*/
+    public static MU parseFromText(String[] lines){
+        if(lines == null || lines.length<8){
+            log.warn("unexpected number of lines in the parse text!!! Please make sure the model is compatible with the version of software.\n" +
+                    "Expected exactly 8 lines "+(lines==null?("passed null object"):", found: "+lines.length+" lines")+"\n"+
+                    "Cannot continue... returning null");
+            return null;
+        }
+
+        String id = lines[1].substring(4);
+        MU mu = new MU(id);
+        //System.out.println("Parsing...");
+        //Stream.of(lines).forEach(System.out::println);
+        String p[] = new String[]{"L:","R:","T:","SW:","DICT:"};
+        IntStream.range(0, p.length).forEach(i->{
+            //continue if the line is empty
+            if (lines[2+i].length() > 0) {
+                String[] fields = lines[2 + i].split(":::");
+                Stream.of(fields).forEach(f -> {
+                    String[] ov = f.split(":");
+                    if (ov.length == 2) {
+                        String o = ov[0];
+                        o = o.replace("[", ":");
+                        o = o.replace("]", "");
+                        if (o.endsWith(":EMPTY"))
+                            o = o.replace(":EMPTY", ":NULL");
+
+                        if(i<3){
+                            String[] fs = o.split(":");
+                            if(fs.length!=2)
+                                System.out.println("Bad line: "+lines[2+i]+" {"+o+","+f+"}");
+                            if(!fs[1].equals("NULL")) {
+                                short type_code = NEType.Type.valueOf(fs[1]).getCode();
+                                o = fs[0] + ":" + type_code;
+                            }
+                        }
+
+                        try {
+                            float v = Float.parseFloat(ov[1]);
+                            mu.muVectorPositive.put(o, v);
+                        }catch(NumberFormatException ne){
+                            log.warn("Unrecognizable line: " + lines[2+i] + " found while parsing.");
+                        }
+                    }
+                    else
+                        log.warn("Suspicious field: "+f+" while parsing line: "+lines[2 + i]);
+                });
+            } else{
+                mu.muVectorPositive.put(p[i]+"NULL", 1f);
+            }
+        });
+        mu.numMixture = Float.parseFloat(lines[2 + p.length].substring("Active Evidence: ".length()));
+        mu.numSeen = Float.parseFloat(lines[2 + p.length + 1].substring("Evidence: ".length()));
+
+        //make sure the features are normalized
+        IntStream.range(0, p.length).forEach(i->{
+            float tot = mu.muVectorPositive.entrySet().stream().filter(e->e.getKey().startsWith(p[i])).map(Map.Entry::getValue).reduce(Float::sum).orElse(1E-8f);
+            mu.muVectorPositive.entrySet().stream().filter(e->e.getKey().startsWith(p[i])).forEach(e->{
+                mu.muVectorPositive.put(e.getKey(), (e.getValue()*mu.numMixture)/tot);
+            });
+        });
+        return mu;
     }
 }
