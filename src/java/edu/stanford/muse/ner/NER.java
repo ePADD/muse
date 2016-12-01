@@ -212,10 +212,6 @@ public class NER implements StatusProvider {
             String content = archive.getContents(ldoc, false);
             String title = archive.getTitle(ldoc);
             //original content is substring of content;
-            if (di == 0 && !(nerModel instanceof DummyNERModel)) { // no need to load dbpedia for dummy model
-                status = "Loading DBpedia into memory...";
-                EmailUtils.readDBpedia();
-            }
 
             Span[] names = nerModel.find(content);
             Span[] namesT = nerModel.find(title);

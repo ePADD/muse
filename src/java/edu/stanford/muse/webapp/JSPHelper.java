@@ -410,7 +410,7 @@ public class JSPHelper {
                     nerModel = new DummyNERModel();
                 } else {
                     log.info("Loading NER sequence model from: " + modelFile + " ...");
-                    nerModel = SequenceModel.loadModel(modelFile);
+                    nerModel = SequenceModel.loadModelFromRules(SequenceModel.RULES_DIRNAME);
                 }
             } catch (IOException e) {
                 Util.print_exception("Could not load the sequence model from: " + modelFile, e, log);

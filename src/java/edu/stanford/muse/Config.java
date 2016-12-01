@@ -93,9 +93,9 @@ public class Config {
         AUTHORITIES_CSV_FILENAME = props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
         AUTHORITY_ASSIGNER_FILENAME = props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
         FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
-        String rsrcField = props.getProperty("NER_RESOURCE_FILES", "CONLL/lists/epadd.ned.list.LOC::CONLL/lists/epadd.ned.list.PER::CONLL/lists/epadd.ned.list.ORG");
+        String rsrcField = props.getProperty("NER_RESOURCE_FILE", "CONLL/lists/ePADD.ned.list.LOC:::CONLL/lists/ePADD.ned.list.PER:::CONLL/lists/ePADD.ned.list.ORG");
         if (rsrcField != null && rsrcField.length() > 0)
-            NER_RESOURCE_FILES = rsrcField.split("::");
+            NER_RESOURCE_FILES = rsrcField.split(":::");
         DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE", "instance_types_2014-04.en.txt.bz2");
         // set the int mixtures
         String s = props.getProperty("MAX_ENTITY_FEATURES");

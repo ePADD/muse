@@ -1140,11 +1140,13 @@ public class Archive implements Serializable {
         Map<String, Entity> entitiesWithId = new HashMap<>();
         //we annotate three specially recognized types
         Map<Short,String> recMap = new HashMap<>();
-        recMap.put(NEType.Type.PERSON.getCode(),"cp");recMap.put(NEType.Type.PLACE.getCode(),"cl");recMap.put(NEType.Type.ORGANISATION.getCode(),"co");
-        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(NEType.getCoarseType(n.type)))
+        recMap.put(NEType.Type.PERSON.getCode(),"cp");
+        recMap.put(NEType.Type.PLACE.getCode(),"cl");
+        recMap.put(NEType.Type.ORGANISATION.getCode(),"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(NEType.getCoarseType(n.type).getCode()))
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
-                    types.add(recMap.get(NEType.getCoarseType(n.type)));
+                    types.add(recMap.get(NEType.getCoarseType(n.type).getCode()));
                     entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities == null ? null : authorisedEntities.get(n), types));
                 });
         acrs.forEach(acr->{

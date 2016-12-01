@@ -1,8 +1,6 @@
 package edu.stanford.muse.index;
 
-import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.model.NEType;
-import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.ModeConfig;
@@ -39,7 +37,7 @@ import java.util.stream.Collectors;
  * Given the content, terms to highlight, terms to hyperlink and entities in the doc, it generates the HTML of the content with highlights and hyperlinks.
  * Bugs
  * 1. while highlighting preset query -- a regexp like: \d{3}-\d{2}-\d{4} highlights 022-29), 1114 as <B>022-29), 11</B>14.
- *      This is due to improper offsets in tokenstream or could be because lucene highlighter is considering endoffset like startoffset+token.length()
+ *      This is due to improper offsets in token stream or could be because lucene highlighter is considering endoffset like startoffset+token.length()
  */
 public class Highlighter {
     static Log log = LogFactory.getLog(Highlighter.class);
