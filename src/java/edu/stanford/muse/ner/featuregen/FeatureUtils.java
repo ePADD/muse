@@ -110,7 +110,6 @@ public class FeatureUtils implements Serializable {
             if(pi+1 == patts.length)
                 features.add("R:NULL");
 
-            //This feature is redundant if the pattern itself has
             features.add("SW:" + sw);
             features.add("T:" + type);
             //boolean containsAdj = false, containsAdv = false, containsVerb = false, containsPrep = false, containsPronoun = false;
@@ -164,6 +163,6 @@ public class FeatureUtils implements Serializable {
         }
         for(NEType.Type t: NEType.getAllTypes())
             System.out.println(t+" -- "+NEType.getCoarseType(t));
-
+        System.out.println(generateFeatures("Fulton Street", NEType.Type.PLACE.getCode()));
     }
 }

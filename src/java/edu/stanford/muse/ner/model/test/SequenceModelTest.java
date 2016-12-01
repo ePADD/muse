@@ -437,7 +437,7 @@ public class SequenceModelTest {
     public void test() {
         SequenceModel model;
         try {
-            model = SequenceModel.loadModel(SequenceModel.MODEL_FILENAME);
+            model = SequenceModel.loadModelFromRules(SequenceModel.RULES_DIRNAME);
             testCommon(model);
 
             ParamsCONLL params = new ParamsCONLL();

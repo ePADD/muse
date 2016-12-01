@@ -33,6 +33,7 @@ import java.util.zip.GZIPOutputStream;
 public class SequenceModel implements NERModel, Serializable {
     public static String MODEL_FILENAME = "SeqModel.ser.gz";
     public static String GAZETTE_FILE = "gazettes.ser.gz";
+    public static String RULES_DIRNAME = "rules";
     private static final long serialVersionUID = 1L;
     static Log log = LogFactory.getLog(SequenceModel.class);
     //public static final int MIN_NAME_LENGTH = 3, MAX_NAME_LENGTH = 100;
@@ -107,7 +108,8 @@ public class SequenceModel implements NERModel, Serializable {
                         }
                     }
                     //only if both the below conditions are satisfied, this template will ever be seen in action
-                    if (maxT.equals(type)) { //&& scores.get(p.getFirst()) >= 0.001) {
+                    //some mixtures may have very low evidence that their "numMixture" is 0, there is just no point dumping them
+                    if (maxT.equals(type) && mu.numMixture>0) { //&& scores.get(p.getFirst()) >= 0.001) {
                         ffw.write(mu.prettyPrint());
                         ffw.write("========================\n");
                     }
@@ -1130,7 +1132,7 @@ public class SequenceModel implements NERModel, Serializable {
      * Trains a SequenceModel with default parameters*/
     public static SequenceModel train() {
         long st = System.currentTimeMillis();
-        SequenceModel model = train(0.2f, 2);
+        SequenceModel model = train(0.2f, 3);
         try {
             model.writeModel(Config.SETTINGS_DIR+File.separator+ MODEL_FILENAME);
         } catch(IOException e){
@@ -1162,7 +1164,6 @@ public class SequenceModel implements NERModel, Serializable {
             SequenceModelTest.ParamsCONLL params = new SequenceModelTest.ParamsCONLL();
             SequenceModelTest.testCONLL(nerModel, false, params);
             log.info(Util.getMemoryStats());
-            SequenceModel.writeModelAsRules(nerModel);
         } catch (IOException e) {
             e.printStackTrace();
         }

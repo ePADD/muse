@@ -9,9 +9,11 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -272,7 +274,10 @@ public class MU implements Serializable {
 
     public String prettyPrint(){
         String p[] = new String[]{"L:","R:","T:","SW:","DICT:"};
-        String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS, FeatureUtils.sws.toArray(new String[FeatureUtils.sws.size()]),DICT_LABELS};
+        List<String> swLabels = new ArrayList<>();
+        swLabels.addAll(FeatureUtils.sws);
+        swLabels.add("NULL");
+        String[][] labels = new String[][]{WORD_LABELS,WORD_LABELS,TYPE_LABELS, swLabels.toArray(new String[swLabels.size()]), DICT_LABELS};
         StringBuilder sb = new StringBuilder();
         sb.append("Token: " + EmailUtils.uncanonicaliseName(id) + "\n");
         sb.append("ID: " + id + "\n");
@@ -296,11 +301,10 @@ public class MU implements Serializable {
             smap = Util.sortMapByValue(some);
             int numF = 0;
             for(Pair<String,Float> pair: smap) {
-                if(numF>=5 || pair.getSecond()<=0)
+                if(numF>5 || pair.getSecond()<=0)
                     break;
 
-                //new DecimalFormat("#.####").format(
-                sb.append(pair.getFirst() + ":" + pair.getSecond() + ":::");
+                sb.append(pair.getFirst() + ":" + new DecimalFormat("#.####").format(pair.getSecond()) + ":::");
                 numF++;
             }
             sb.append("\n");
@@ -367,9 +371,24 @@ public class MU implements Serializable {
         //make sure the features are normalized
         IntStream.range(0, p.length).forEach(i->{
             float tot = mu.muVectorPositive.entrySet().stream().filter(e->e.getKey().startsWith(p[i])).map(Map.Entry::getValue).reduce(Float::sum).orElse(1E-8f);
-            mu.muVectorPositive.entrySet().stream().filter(e->e.getKey().startsWith(p[i])).forEach(e->{
-                mu.muVectorPositive.put(e.getKey(), (e.getValue()*mu.numMixture)/tot);
-            });
+            if(tot>0)
+                mu.muVectorPositive.entrySet().stream().filter(e->e.getKey().startsWith(p[i])).forEach(e->{
+                    mu.muVectorPositive.put(e.getKey(), (e.getValue()*mu.numMixture)/tot);
+                });
+            //This is the case where all the features of certain type are set to 0; for example: affiliation with any type to the left is set to 0, possibly deliberate
+            else{
+                List<String> rkeys = mu.muVectorPositive.keySet().stream().filter(k -> k.startsWith(p[i])).collect(Collectors.toList());
+                rkeys.stream().forEach(k -> mu.muVectorPositive.remove(k));
+                if(i==0||i==1||i==3)
+                    mu.muVectorPositive.put(p[i]+"NULL",1f);
+                else if(i==2) {
+                    log.error("Mixture with ID: "+mu.id+" is not associated with any type, generally the case of bad model editing!!!\n" +
+                            "Since the problem is only with one of many mixtures, this is not fatal, but may affect performance... continuing");
+                    mu.muVectorPositive.put(p[i]+NEType.Type.PERSON.getCode(), 1f);
+                }
+                else if(i==4)
+                    mu.muVectorPositive.put(p[i]+"N",1f);
+            }
         });
         return mu;
     }
