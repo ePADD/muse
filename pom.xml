@@ -92,5 +92,10 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <resources>
+      <resource>
+	<directory>WebContent/WEB-INF/classes</directory>
+      </resource>
+    </resources>
   </build>
 </project>
