@@ -47,6 +47,9 @@ public class Config {
 
 	static {
         Properties props = new Properties();
+		String propsFile = System.getProperty("epadd.properties");
+		if (propsFile != null)
+			EPADD_PROPS_FILE = propsFile;
 
         File f = new File(EPADD_PROPS_FILE);
         if (f.exists() && f.canRead()) {
@@ -61,17 +64,19 @@ public class Config {
             log.warn("ePADD properties file " + EPADD_PROPS_FILE + " does not exist or is not readable");
         }
 
+        for (String key: props.stringPropertyNames()) {
+			String val = System.getProperty (key);
+			if (val != null && val.length() > 0)
+				props.setProperty(key, val);
+		}
+
         // set up settings_dir
-        SETTINGS_DIR = System.getProperty("epadd.settings.dir");
-        if (Util.nullOrEmpty(SETTINGS_DIR))
-            SETTINGS_DIR = props.getProperty("epadd.settings.dir");
+		SETTINGS_DIR = props.getProperty("epadd.settings.dir");
         if (Util.nullOrEmpty(SETTINGS_DIR))
             SETTINGS_DIR = DEFAULT_SETTINGS_DIR;
 
         // set up base_dir and its subdirs
-        BASE_DIR = System.getProperty("epadd.base.dir");
-        if (Util.nullOrEmpty(BASE_DIR))
-            BASE_DIR = props.getProperty("epadd.base.dir");
+		BASE_DIR = props.getProperty("epadd.base.dir");
         if (Util.nullOrEmpty(BASE_DIR))
             BASE_DIR = DEFAULT_BASE_DIR;
 
