@@ -796,6 +796,16 @@ public class Util
 		return null;
 	}
 
+	public static Pair<String, String> splitIntoFileBaseAndExtension (String filename) {
+		String[] parts = filename.split ("\\.(?=[^\\.]+$)"); // see http://stackoverflow.com/questions/4545937/java-splitting-the-filename-into-a-base-and-extension
+		if (parts.length == 0)
+			return new Pair<>("", "");
+		else if (parts.length == 1)
+			return new Pair<>(parts[0], "");
+		else
+			return new Pair<>(parts[0], parts[1]);
+	}
+
 	private static void testGetExtension()
 	{
 		ASSERT(getExtension(".cshrc") == null);

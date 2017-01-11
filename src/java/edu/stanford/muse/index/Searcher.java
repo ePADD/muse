@@ -10,12 +10,19 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.mail.internet.InternetAddress;
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -47,16 +54,49 @@ public class Searcher {
             };
 */
 
-    public static Pair<Collection<Document>, Collection<Blob>> searchDocs (Archive archive, HttpServletRequest request, boolean or_not_and) throws UnsupportedEncodingException {
-        Multimap<String, String> params = LinkedHashMultimap.create();
-        Enumeration<String> paramNames = request.getParameterNames();
+    public static Pair<Collection<Document>, Collection<Blob>> searchDocs (Archive archive, HttpServletRequest request, boolean or_not_and) throws IOException, FileUploadException {
 
-        while (paramNames.hasMoreElements()) {
-            String param = paramNames.nextElement();
-            String[] vals = request.getParameterValues(param);
-            if (vals != null)
-                for (String val : vals)
-                    params.put(param, JSPHelper.convertRequestParamToUTF8(val));
+        Multimap<String, String> params = LinkedHashMultimap.create();
+        if (true) { /* (request.getParameter ("adv-search") != null) { */
+            // regular file encoding
+            Enumeration<String> paramNames = request.getParameterNames();
+
+            while (paramNames.hasMoreElements()) {
+                String param = paramNames.nextElement();
+                String[] vals = request.getParameterValues(param);
+                if (vals != null)
+                    for (String val : vals)
+                        params.put(param, JSPHelper.convertRequestParamToUTF8(val));
+            }
+        } else {
+            List<FileItem> items = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
+            for (FileItem item : items) {
+                if (item.isFormField()) {
+                    // Process regular form field (input type="text|radio|checkbox|etc", select, etc).
+                    String fieldName = item.getFieldName();
+                    String fieldValue = item.getString();
+                    params.put(fieldName, fieldValue);
+                    // ... (do your job here)
+                } else {
+                    // Process form file field (input type="file").
+                    String fieldName = item.getFieldName();
+                    if (!"emailAddressList".equals(item.getFieldName()))
+                        continue;
+                    List<String> emailAddresses = Util.getLinesFromInputStream(item.getInputStream(), true /* ignore comment lines */);
+                    if (emailAddresses != null)
+                        params.put("emailAddressList", String.join(";", emailAddresses));
+                }
+            }
+        }
+        // if email address list is provided, OVERWRITE correspondent paramater with it.
+        try {
+            List<String> emailAddressesfromEmailAddressList = readEmailAddressList(request);
+            if (emailAddressesfromEmailAddressList != null) {
+                String emailAddressesAsString = String.join(";", emailAddressesfromEmailAddressList);
+                params.put("correspondent", emailAddressesAsString);
+            }
+        } catch (Exception e) {
+            Util.print_exception ("Error parsing email address list in searcher", e, log);
         }
         return selectDocsAndBlobs(archive, params);
     }
@@ -214,6 +254,27 @@ public class Searcher {
             correspondentName = name;
         }
         return updateForCorrespondents (docs, ab, correspondentName, true, true, true, true); // for contact id, all the 4 fields - to/from/cc/bcc are enabled
+    }
+
+    /** returns names read from email address list file, if provided. returns null if none provided */
+    private static List<String> readEmailAddressList(HttpServletRequest request) throws FileUploadException, IOException {
+
+        // Create a new file upload handler
+        ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory());
+        if (!upload.isMultipartContent(request))
+            return null;
+
+        List<FileItem> items = upload.parseRequest(request);
+        for (FileItem item : items)
+        {
+            if (!"emailAddressList".equals(item.getFieldName()))
+                continue;
+
+            List<String> emailAddresses = Util.getLinesFromInputStream(item.getInputStream(), true /* ignore comment lines */);
+            return emailAddresses;
+        }
+
+        return null;
     }
 
     /** version of updateForCorrespondents which reads from params. correspondent name can have the OR separator */
