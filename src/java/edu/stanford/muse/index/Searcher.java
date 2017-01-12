@@ -2,6 +2,7 @@ package edu.stanford.muse.index;
 
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
@@ -10,6 +11,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
+import org.apache.commons.collections4.map.LinkedMap;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
  */
 public class Searcher {
     private static Log log = LogFactory.getLog(Searcher.class);
+    private static final long KB = 1024;
 
     /*
     private static String[] paramNames = new String[]{
@@ -329,6 +332,23 @@ public class Searcher {
         return result;
     }
 
+    private static Set<EmailDocument> updateForDocId (Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+
+        Collection<String> docIds = params.get("docId");
+        if (Util.nullOrEmpty(docIds))
+            return docs;
+
+        Set<EmailDocument> resultDocs = new LinkedHashSet<>();
+
+        for (String docId: docIds) {
+            EmailDocument ed = archive.docForId (docId);
+            if (ed != null)
+                resultDocs.add(archive.docForId(docId));
+        }
+
+        return resultDocs;
+    }
+
     private static Set<EmailDocument> updateForMailingListState(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
         String mailingListState = getParam(params, "mailingListState");
         if ("either".equals(mailingListState) || Util.nullOrEmpty(mailingListState))
@@ -439,6 +459,25 @@ public class Searcher {
         return result;
     }
 
+    /** this method is a little more specific than attachmentFilename, which only matches the real filename.
+     * it matches a specific attachment, including its numeric blobstore prefix.
+     * used when finding message(s) belonging to image wall
+     */
+    private static Set<EmailDocument> updateForAttachmentNames(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+        // this code was taken from old JSPHelper searcher
+        try {
+            Collection<String> attachmentTailsList = params.get("attachment");
+            if (Util.nullOrEmpty(attachmentTailsList))
+                return docs;
+            String[] attachmentTails = attachmentTailsList.toArray(new String[attachmentTailsList.size()]);
+            attachmentTails = JSPHelper.convertRequestParamsToUTF8(attachmentTails);
+            Collection<Blob> blobsForAttachments = IndexUtils.getBlobsForAttachments(docs, attachmentTails, archive.blobStore);
+            Collection<EmailDocument> docsForAttachments = EmailUtils.getDocsForAttachments((Collection) docs, blobsForAttachments);
+            return new LinkedHashSet<>(docsForAttachments);
+        } catch (Exception e)  { Util.print_exception ("Error processing attachment names in search", e, log); }
+        return docs;
+    }
+
     private static Set<DatedDocument> updateForDateRange(Set<DatedDocument> docs, Multimap<String, String> params) {
         String start = getParam(params, "startDate"), end = getParam(params, "endDate");
         if (Util.nullOrEmpty(start) && Util.nullOrEmpty(end))
@@ -480,7 +519,6 @@ public class Searcher {
      */
     private static Pair<Set<EmailDocument>, Set<Blob>> updateForAttachments(Set<EmailDocument> docs, Multimap<String, String> params) {
 
-        long KB = 1024;
 
         String neededFilesize = getParam(params, "attachmentFilesize");
         String neededFilename = getParam(params, "attachmentFilename");
@@ -560,6 +598,7 @@ public class Searcher {
                 // 3. size matches?
                 long size = b.getSize();
 
+                /*
                 // these attachmentFilesizes parameters are hardcoded -- could make it more flexible if needed in the future
                 // "1".."5" are the only valid filesizes. If none of these, this parameter not set and we can include the blob
                 if ("1".equals(neededFilesize) || "2".equals(neededFilesize) || "3".equals(neededFilesize) ||"4".equals(neededFilesize) ||"5".equals(neededFilesize)) { // any other value, we ignore this param
@@ -568,10 +607,11 @@ public class Searcher {
                             ("3".equals(neededFilesize) && size >= 20 * KB && size <= 100 * KB) ||
                             ("4".equals(neededFilesize) && size >= 100 * KB && size <= 2 * KB * KB) ||
                             ("5".equals(neededFilesize) && size >= 2 * KB * KB);
-                    if (!include)
-                        continue;
                 }
-
+                */
+                boolean include = filesizeCheck (neededFilesize, size);
+                if (!include)
+                    continue;
                 // if we reached here, all conditions must be satisfied
                 resultDocs.add(ed);
                 resultBlobs.add(b);
@@ -579,6 +619,109 @@ public class Searcher {
         }
 
         return new Pair<>(resultDocs, resultBlobs);
+    }
+
+    /** returns true if the filesize satisfies the constraint. neededFileSize is as defined in the adv. search form */
+    private static boolean filesizeCheck (String neededFilesize, long size) {
+        // these attachmentFilesizes parameters are hardcoded -- could make it more flexible if needed in the future
+        // "1".."5" are the only valid filesizes. If none of these, this parameter not set and we can include the blob
+        if ("1".equals(neededFilesize) || "2".equals(neededFilesize) || "3".equals(neededFilesize) || "4".equals(neededFilesize) || "5".equals(neededFilesize)) { // any other value, we ignore this param
+            boolean include = ("1".equals(neededFilesize) && size < 5 * KB) ||
+                    ("2".equals(neededFilesize) && size >= 5 * KB && size <= 20 * KB) ||
+                    ("3".equals(neededFilesize) && size >= 20 * KB && size <= 100 * KB) ||
+                    ("4".equals(neededFilesize) && size >= 100 * KB && size <= 2 * KB * KB) ||
+                    ("5".equals(neededFilesize) && size >= 2 * KB * KB);
+            return include;
+        }
+        return true;
+    }
+
+    private static Set<DatedDocument> filterDocsByDate (HttpServletRequest request, Set<DatedDocument> docs) {
+        String start = request.getParameter("startDate"), end = request.getParameter ("endDate");
+
+        if (Util.nullOrEmpty(start) && Util.nullOrEmpty(end))
+            return docs;
+
+        int startYear = -1, startMonth = -1, startDate = -1, endYear = -1, endMonth = -1, endDate = -1;
+        if (!Util.nullOrEmpty(start) || !Util.nullOrEmpty(end)) {
+            try {
+                List<String> startTokens = Util.tokenize(start, "-");
+                startYear = Integer.parseInt(startTokens.get(0));
+                startMonth = Integer.parseInt(startTokens.get(1));
+                startDate = Integer.parseInt(startTokens.get(2));
+            } catch (Exception e) {
+                Util.print_exception("Invalid start date: " + start, e, JSPHelper.log);
+                return docs;
+            }
+
+            try {
+                List<String> endTokens = Util.tokenize(end, "-");
+                endYear = Integer.parseInt(endTokens.get(0));
+                endMonth = Integer.parseInt(endTokens.get(1));
+                endDate = Integer.parseInt(endTokens.get(2));
+            } catch (Exception e) {
+                Util.print_exception("Invalid end date: " + end, e, JSPHelper.log);
+                return docs;
+            }
+        }
+        return new LinkedHashSet<>(IndexUtils.selectDocsByDateRange((Collection) docs, startYear, startMonth, startDate, endYear, endMonth, endDate));
+    }
+
+    /** this map is used only by attachments page right now, not advanced search. TODO: make adv. search page also use it */
+   public static List<Pair<Blob, EmailDocument>> selectBlobs (Archive archive, HttpServletRequest request) {
+        Collection<Document> docs = archive.getAllDocs();
+
+        String neededFilesize = request.getParameter ("attachmentFilesize");
+        String extensions[] = request.getParameterValues("attachmentExtension");
+        Set<String> extensionsToMatch = new LinkedHashSet<>(); // should also have lower-case strings, no "." included
+
+        if (!Util.nullOrEmpty(extensions)) {
+            extensionsToMatch = new LinkedHashSet<>();
+            for (String s: extensions)
+                extensionsToMatch.add (s.trim().toLowerCase());
+        }
+
+        // or given extensions with extensions due to attachment type
+        String types[] = request.getParameterValues ("attachmentType"); // this will have more semicolon separated extensions
+        if (!Util.nullOrEmpty(types)) {
+            for (String t: types) {
+                String exts = Config.attachmentTypeToExtensions.get(t);
+                if (exts == null)
+                    continue;
+                String[] components = exts.split (";");
+                for (String c: components) {
+                    extensionsToMatch.add (c);
+                }
+            }
+        }
+
+        List<Pair<Blob, EmailDocument>> allAttachments = new ArrayList<>();
+
+        Collection<EmailDocument> eDocs = (Collection) filterDocsByDate (request, new HashSet<>((Collection) docs));
+        for (EmailDocument doc : eDocs) {
+            List<Blob> blob = doc.attachments;
+            if (blob != null)
+                for (Blob b: blob) {
+                    if (!Searcher.filesizeCheck (neededFilesize, b.getSize()))
+                        continue;
+
+                    if (!(Util.nullOrEmpty (extensionsToMatch))) {
+                        Pair<String, String> pair = Util.splitIntoFileBaseAndExtension(b.getName());
+                        String ext = pair.getSecond();
+                        if (ext == null)
+                            continue;
+                        ext = ext.toLowerCase();
+                        if (!extensionsToMatch.contains (ext))
+                            continue;
+                    }
+
+                    // ok, we've survived all filters, add b
+                    allAttachments.add(new Pair<>(b, doc));
+                }
+        }
+
+        Collections.reverse (allAttachments); // reverse, so most recent attachment is first
+        return allAttachments;
     }
 
     private static Set<Document> updateForLexicons(Archive archive, Set<Document> docs, Multimap<String, String> params) {
@@ -604,11 +747,6 @@ public class Searcher {
      * handle query for term, sentiment, person, attachment, docNum, timeCluster
      * etc
      * note: date range selection is always ANDed
-     * if only_apply_to_filtered_docs, looks at emailDocs, i.e. ones selected by
-     * the current filter (if there is one)
-     * if !only_apply_to_filtered_docs, looks at all docs in archive
-     * note: only_apply_to_filtered_docs == true is not honored by lucene lookup
-     * by term (callers need to filter by themselves)
      * note2: performance can be improved. e.g., if in AND mode, searches that
      * iterate through documents such as
      * selectDocByTag, getBlobsForAttachments, etc., can take the intermediate
@@ -642,12 +780,11 @@ public class Searcher {
             resultBlobs = p.getSecond();
         }
 
-        // attachments
-        // Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachmentType((Set) resultDocs, resultBlobs, params);
-        // p = updateForAttachmentName((Set) p.first, p.second, params);
-        // p = updateForAttachmentSize((Set) p.first, p.second, params);
         Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachments((Set) resultDocs, params);
+
         resultDocs = (Set) p.getFirst();
+        resultDocs = (Set) updateForAttachmentNames (archive, (Set) resultDocs, params); // for exact names -- when clicking on image in attachment wall or listing
+
         // resultBlobs will be a *union* (not intersection) of blobs that hit above (in text search) and these blobs that satisfy other criteria
         // resultBlobs are really used for highlighting the attachment
         if (p.getSecond() != null) {
@@ -666,6 +803,8 @@ public class Searcher {
             for (String cid : contactIds)
                 resultDocs = (Set) updateForContactId((Set) resultDocs, archive.addressBook, cid);
         }
+
+        resultDocs = (Set) updateForDocId(archive, (Set) resultDocs, params); // for clicking on message in attachment listing
 
         resultDocs = (Set) updateForMailingListState(archive.addressBook, (Set) resultDocs, params);
         resultDocs = (Set) updateForEmailDirection(archive.addressBook, (Set) resultDocs, params);

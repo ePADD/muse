@@ -9,6 +9,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class Config {
@@ -47,6 +49,7 @@ public class Config {
     public static String DEFAULT_BASE_DIR = System.getProperty("user.home");
 
     public static String DEFAULT_LEXICON = "general";
+    public static final Map<String, String> attachmentTypeToExtensions = new LinkedHashMap<>();
 
     static {
         Properties props = new Properties();
@@ -145,6 +148,17 @@ public class Config {
             ModeConfig.mode = ModeConfig.Mode.DELIVERY;
         else if (mode != null)
             log.warn("Invalid value for epadd.mode: " + mode);
+
+        attachmentTypeToExtensions.put("graphics", "jpg;png;gif;bmp");
+        attachmentTypeToExtensions.put("document", "doc;docx;pages");
+        attachmentTypeToExtensions.put("presentation", "ppt;pptx;key");
+        attachmentTypeToExtensions.put("spreadsheet", "xls;xlsx;numbers");
+        attachmentTypeToExtensions.put("internet", "htm;html;css;js");
+        attachmentTypeToExtensions.put("compressed", "zip;7z;tar;tgz");
+        attachmentTypeToExtensions.put("video", "mp3;ogg");
+        attachmentTypeToExtensions.put("audio", "avi;mp4");
+        attachmentTypeToExtensions.put("database", "fmp;db;mdb;accdb");
+
         // if null or invalid, we'll leave epadd.mode in APPRAISAL which is the default
         log.info("-------------Begin Configuration block -----------------");
         log.info("ePADD base dir = " + BASE_DIR);
