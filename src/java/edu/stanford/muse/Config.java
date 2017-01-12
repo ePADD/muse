@@ -13,7 +13,7 @@ import java.util.Properties;
 
 public class Config {
 	public static Log log = LogFactory.getLog(Config.class);
-    public static String	admin, holder, holderContact, holderReadingRoom;
+    public static String admin, holder, holderContact, holderReadingRoom;
 
     /* default location for dir under which archives are imported/stored. Should not end in File.separator */
     public final static String	REPO_DIR_APPRAISAL;
@@ -45,6 +45,8 @@ public class Config {
     public static String EPADD_PROPS_FILE = System.getProperty("user.home") + File.separator + "epadd.properties";
     public static String DEFAULT_SETTINGS_DIR = System.getProperty("user.home") + File.separator + "epadd-settings";
     public static String DEFAULT_BASE_DIR = System.getProperty("user.home");
+
+    public static String DEFAULT_LEXICON = "general";
 
     static {
         Properties props = new Properties();
@@ -121,6 +123,11 @@ public class Config {
             } catch (Exception e) {
                 Util.print_exception(e, log);
             }
+        }
+
+        s = props.getProperty("epadd.default.lexicon");
+        if (s != null) {
+            DEFAULT_LEXICON = s;
         }
 
         s = props.getProperty("OPENNLP_NER");
