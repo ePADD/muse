@@ -22,26 +22,28 @@ public class NEType {
      * https://github.com/ePADD/muse/commits/master
      * */
     public enum Type{
-        PERSON(0, null),
-        PLACE(3, null),
-            BUILDING(2, PLACE),RIVER(4, PLACE),ROAD(5, PLACE),
-            MOUNTAIN(9, PLACE),AIRPORT(10, PLACE),ISLAND(17, PLACE),
-            MUSEUM(18, PLACE),BRIDGE(19, PLACE),HOSPITAL(25, PLACE),
-            THEATRE(31, PLACE),LIBRARY(33, PLACE),MONUMENT(35, PLACE),
-        ORGANISATION(11, null),
-            COMPANY(1, ORGANISATION),UNIVERSITY(7, ORGANISATION),
-            PERIODICAL_LITERATURE(13, ORGANISATION),AIRLINE(20, ORGANISATION),
-            GOVAGENCY(22, ORGANISATION),AWARD(27, ORGANISATION),
-            LEGISLATURE(32,ORGANISATION),LAWFIRM(34, ORGANISATION),
-            DISEASE(36, ORGANISATION),EVENT(37, ORGANISATION),
+        PERSON(0, null, "Person"),
+        PLACE(3, null, "Place"),
+            BUILDING(2, PLACE, "Building"),RIVER(4, PLACE, "River"),ROAD(5, PLACE, "Road"),
+            MOUNTAIN(9, PLACE, "Mountain"),AIRPORT(10, PLACE, "Airport"),ISLAND(17, PLACE, "Island"),
+            MUSEUM(18, PLACE, "Museum"), BRIDGE(19, PLACE, "Bridge"), HOSPITAL(25, PLACE, "Hospital"),
+            THEATRE(31, PLACE, "Theater"),LIBRARY(33, PLACE, "Library"),MONUMENT(35, PLACE, "Monument"),
+        ORGANISATION(11, null, "Organisation"),
+            COMPANY(1, ORGANISATION, "Company"),UNIVERSITY(7, ORGANISATION, "University"),
+            PERIODICAL_LITERATURE(13, ORGANISATION, "Periodical Literature"),AIRLINE(20, ORGANISATION, "Airline"),
+            GOVAGENCY(22, ORGANISATION, "Government Agency"),AWARD(27, ORGANISATION, "Award"),
+            LEGISLATURE(32,ORGANISATION, "Legislature"),LAWFIRM(34, ORGANISATION, "Law firm"),
+            DISEASE(36, ORGANISATION, "Disease"),EVENT(37, ORGANISATION, "Event"),
         //any other type that is not one of types above
-        OTHER(38, null);
+        OTHER(38, null, "Other");
         private short code;
         private Type parent;
+        private String displayName; // end-user friendly name
 
-        Type(int code, Type parent) {
+        Type(int code, Type parent, String displayName) {
             this.code = (short)code;
             this.parent = parent;
+            this.displayName = displayName;
         }
 
         public short getCode(){
@@ -52,6 +54,9 @@ public class NEType {
             return parent;
         }
 
+        public String getDisplayName(){
+            return displayName;
+        }
     }
 
     static Map<Type, String[]> dbpediaTypesMap = new LinkedHashMap<>();

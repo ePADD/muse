@@ -16,6 +16,8 @@
 package edu.stanford.muse.index;
 
 import au.com.bytecode.opencsv.CSVWriter;
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
@@ -25,13 +27,11 @@ import edu.stanford.muse.ie.AuthorisedAuthorities;
 import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
-import edu.stanford.muse.webapp.JSPHelper;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.io.FileUtils;
@@ -294,6 +294,7 @@ public class Archive implements Serializable {
     }
 
     public EmailDocument docForId(String id){ return indexer.docForId(id);}
+
 
     public static class Entity {
         public Map<String, Short> ids;
@@ -1269,6 +1270,42 @@ public class Archive implements Serializable {
             }
         }
         return allEntities;
+    }
+
+    transient private Multimap<Short, Document> entityTypeToDocs = LinkedHashMultimap.create(); // entity type code -> docs containing it
+    private synchronized void computeEntityTypeToDocMap() {
+        if (entityTypeToDocs != null)
+            return;
+        entityTypeToDocs = LinkedHashMultimap.create();
+        for(Document doc: this.getAllDocs()){
+            Span[] es = this.getEntitiesInDoc(doc,true);
+            Set<Short> seenInThisDoc = new LinkedHashSet<>(); // type -> docs: one value should contain a doc only once
+
+            double theta = 0.001;
+            for(Span sp: es) {
+                if (sp.typeScore < theta)
+                    continue;
+                if (seenInThisDoc.contains (sp.type))
+                    continue;
+                seenInThisDoc.add (sp.type);
+
+                entityTypeToDocs.put (sp.type, doc);
+            }
+        }
+    }
+
+    public synchronized Collection<Document> getDocsWithEntityType(short code) {
+        return entityTypeToDocs.get (code);
+    }
+
+    public synchronized Set<NEType.Type> getEntityTypes() {
+        Set<NEType.Type> result = new LinkedHashSet<>();
+
+        computeEntityTypeToDocMap();
+        for (short t: entityTypeToDocs.keys()) {
+            result.add (NEType.getTypeForCode(t));
+        }
+        return result;
     }
 
     //returns a map of names recognised by NER to frequency

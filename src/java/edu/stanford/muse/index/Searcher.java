@@ -11,6 +11,7 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
+import groovy.lang.StringWriterIOException;
 import org.apache.commons.collections4.map.LinkedMap;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
@@ -459,6 +460,23 @@ public class Searcher {
         return result;
     }
 
+    private static Set<EmailDocument> updateForEntityTypes(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+        String val = getParam(params, "entityType");
+        if (Util.nullOrEmpty(val))
+            return docs;
+
+        Set<String> neededTypes = splitFieldForOr(val);
+
+        Set<Document> docsWithNeededTypes = new LinkedHashSet<>();
+        for (String type: neededTypes) {
+            short code = Short.parseShort(type);
+            docsWithNeededTypes.addAll(archive.getDocsWithEntityType(code));
+        }
+
+        docs.retainAll(docsWithNeededTypes);
+        return docs;
+   }
+
     /** this method is a little more specific than attachmentFilename, which only matches the real filename.
      * it matches a specific attachment, including its numeric blobstore prefix.
      * used when finding message(s) belonging to image wall
@@ -816,6 +834,7 @@ public class Searcher {
         resultDocs = (Set) updateForDateRange((Set) resultDocs, params);
         resultDocs = (Set) updateForLexicons(archive, resultDocs, params);
         resultDocs = (Set) updateForEntities(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
+        resultDocs = (Set) updateForEntityTypes(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
 
         // now only keep blobs that belong to resultdocs
 
