@@ -135,7 +135,8 @@ public class EmailRenderer {
 						html.append(" reviewed=\"true\"");
 					if (d instanceof EmailDocument && ((EmailDocument) d).addedToCart)
 						html.append(" addToCart=\"true\"");
-					html.append(" pageId='" + pageNum++ + "' docId='" + d.getUniqueId() + "'></div>\n");
+					if (d instanceof EmailDocument)
+						html.append(" pageId='" + pageNum++ + "' " + " signature='" + Util.hash (((EmailDocument) d).getSignature()) + "' docId='" + d.getUniqueId() + "'></div>\n");
 				}
 
 				html.append("</div>"); // document
@@ -506,7 +507,7 @@ public class EmailRenderer {
 		result.append(x);
 		result.append("</b>\n");
 		result.append("\n</td></tr>\n");
-
+		result.append ("\n" + style + "ID: " + "</td><td>" + Util.hash (ed.getSignature()) + "</td></tr>");
 		result.append("</table>\n"); // end docheader table
 
 		if (ModeConfig.isPublicMode())
