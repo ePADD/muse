@@ -1,3 +1,4 @@
+/out
 /build
 /target
 /assembly
@@ -65,7 +66,6 @@ Thumbs.db
 #git files#
 #####################
 *.iml
-*.txt
 *.json
 *.git
 /target

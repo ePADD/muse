@@ -1,5 +1,12 @@
 package edu.stanford.muse.ie;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import edu.stanford.muse.Config;
@@ -7,9 +14,7 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
@@ -32,14 +37,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.*;
-import java.util.stream.Collectors;
-
 /**
- * Data structure to represent features of an entity mention in archive
+ * Data structure to represent mixtures of an entity mention in archive
  * TODO: move checkindex, index and indexExists to different class.
  */
 public class EntityFeature implements StatusProvider, Serializable {
@@ -80,8 +79,8 @@ public class EntityFeature implements StatusProvider, Serializable {
 
 	public EntityFeature(String name, short type) {
 		this.name = name;
-		this.cooccuringEntities = new HashMap<String, Integer>();
-		this.emailAddresses = new HashMap<String, Integer>();
+		this.cooccuringEntities = new HashMap<>();
+		this.emailAddresses = new HashMap<>();
 		this.type = type;
 	}
 
@@ -287,7 +286,7 @@ public class EntityFeature implements StatusProvider, Serializable {
 		return doc;
 	}
 
-	/** Cleans the features directory */
+	/** Cleans the mixtures directory */
 	public void clean(Archive archive) {
 		String iDir = getFeaturesDir(archive);
 		File f = new File(iDir);
@@ -333,7 +332,7 @@ public class EntityFeature implements StatusProvider, Serializable {
 				w.addDocument(doc);
 				if (c % 1000 == 0) {
 					JSPHelper.log.info("Extracted and wrote doc for: " + c + " of " + features.keySet().size());
-					status = "Indexed " + c + "/" + features.size() + " features";
+					status = "Indexed " + c + "/" + features.size() + " mixtures";
 					pctComplete = ((double) c * 50) / ((double) features.size()) + 50;
 				}
 				c++;
@@ -410,13 +409,13 @@ public class EntityFeature implements StatusProvider, Serializable {
                     continue;
                 }
                 List<String> entities = names.stream()
-                        .filter(n -> FeatureDictionary.getCoarseType(n.type) == FeatureDictionary.PERSON)
+                        .filter(n -> n.type == NEType.Type.PERSON.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 List<String> places = names.stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.PLACE)
+                        .filter(n-> n.type == NEType.Type.PLACE.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 List<String> orgs = names.stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.ORGANISATION)
+                        .filter(n-> n.type == NEType.Type.ORGANISATION.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
 				if (entities != null)
 					c1 += entities.size();
@@ -545,9 +544,9 @@ public class EntityFeature implements StatusProvider, Serializable {
 			log.info("Name: " + name + ", on normalisation gave null. Returning!");
 			return null;
 		}
-		IndexReader reader = null;
-		IndexSearcher searcher = null;
-		Set<EntityFeature> efs = new HashSet<EntityFeature>();
+		IndexReader reader;
+		IndexSearcher searcher;
+		Set<EntityFeature> efs = new HashSet<>();
 		try {
 			reader = DirectoryReader.open(FSDirectory.open(new File(iDir)));
 			searcher = new IndexSearcher(reader);

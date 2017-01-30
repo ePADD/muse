@@ -43,7 +43,7 @@ public class Entities implements Serializable, StatusProvider {
 		}
 	}
 
-	//consult features index for entity features. this class contains very sparse representation of all entities mentioned in the email.
+	//consult mixtures index for entity mixtures. this class contains very sparse representation of all entities mentioned in the email.
 	//pairs -> list of <name, frequency> pairs.
 	//canonicaltooriginal -> map from canonical name to original name.
 	//counts -> map from canonical name to frequency. 

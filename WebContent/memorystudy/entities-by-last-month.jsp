@@ -11,7 +11,7 @@
 <%@ page import="edu.stanford.muse.xword.ArchiveCluer" %>
 <%@ page import="edu.stanford.muse.xword.Clue" %>
 <%@ page import="edu.stanford.muse.xword.ClueEvaluator" %>
-<%@ page import="edu.stanford.muse.ner.featuregen.FeatureDictionary" %>
+<%@ page import="edu.stanford.muse.ner.featuregen.FeatureUtils" %>
 <%@ page import="javax.mail.Address" %>
 <%@ page import="edu.stanford.muse.email.Contact" %>
 <%@ page import="edu.stanford.muse.ner.model.NERModel" %>
@@ -202,9 +202,6 @@
             ownerNames.add(str.toLowerCase());
         }
         //for(Short )
-        Short[] itypes = new Short[]{FeatureDictionary.BUILDING,FeatureDictionary.PLACE, FeatureDictionary.RIVER, FeatureDictionary.ROAD, FeatureDictionary.UNIVERSITY, FeatureDictionary.MOUNTAIN, FeatureDictionary.AIRPORT,
-                FeatureDictionary.ISLAND,FeatureDictionary.MUSEUM, FeatureDictionary.BRIDGE, FeatureDictionary.AIRLINE,FeatureDictionary.THEATRE,
-                FeatureDictionary.LIBRARY, FeatureDictionary.LAWFIRM, FeatureDictionary.GOVAGENCY};
         double CUTOFF = 0.001;
         archive.assignThreadIds();
         Lexicon lex = archive.getLexicon("default");

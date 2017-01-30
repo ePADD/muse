@@ -24,7 +24,7 @@ For RubyGems, the `gemdir` of the current RVM-selected Ruby is cached based on t
 ## Why is `s3_cache.py` necessary?
 `s3_cache.py` is used to speed up Bootstrap's Travis builds. Installing npm packages and RubyGems used to take up a significant fraction of our total build times. Also, at the time that `s3_cache.py` was written, npm was occasionally unreliable.
 
-Travis does offer built-in caching on their paid plans, but this do-it-ourselves S3 solution is significantly cheaper since we only need caching and not Travis' other paid features.
+Travis does offer built-in caching on their paid plans, but this do-it-ourselves S3 solution is significantly cheaper since we only need caching and not Travis' other paid mixtures.
 
 
 ## Setup

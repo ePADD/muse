@@ -2,7 +2,7 @@ package edu.stanford.muse.ner.segmentation;
 
 import com.google.gson.Gson;
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.featuregen.FeatureVector;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
@@ -27,7 +27,7 @@ import java.io.FileWriter;
 /**
  * Created by viharipiratla on 22/05/15.
  *
- * Finds an optimisation expression over segmentation features for proper segmentation of names*/
+ * Finds an optimisation expression over segmentation mixtures for proper segmentation of names*/
 public class WordSegmenter {
     static Log log					= LogFactory.getLog(WordSegmenter.class);
     public static class SegmentationModel{
@@ -40,7 +40,7 @@ public class WordSegmenter {
             this.coeffs = coeffs;
         }
 
-        public Pair<String,String> segment(String cicname, FeatureDictionary wfs, svm_model svmModel){
+        public Pair<String,String> segment(String cicname, FeatureUtils wfs, svm_model svmModel){
             String bestName = null, debugStr = "";
             double maxVal = -1;
             Set<String> substrs = IndexUtils.computeAllSubstrings(cicname);
@@ -97,23 +97,23 @@ public class WordSegmenter {
             return -1;
         double v = 0;
         v = features[2]*100 + features[0]*10 + features[1];
-//        v += features[0] * coeffs[0];
-//        v += features[1] * coeffs[1];
-//        v += features[2] * coeffs[2];
-//        //v *= features[1];
+//        v += mixtures[0] * coeffs[0];
+//        v += mixtures[1] * coeffs[1];
+//        v += mixtures[2] * coeffs[2];
+//        //v *= mixtures[1];
         return v;
     }
 
     public static class SegmentationFunction implements MultivariateFunction {
         //params \mu1, \mu2, \mu3 in x1*svm_confidence + x2*number_of_documents(phrase) + x3*exp(length_of_phrase)
         svm_model svmModel;
-        FeatureDictionary wfs;
-        //features -> target value
+        FeatureUtils wfs;
+        //mixtures -> target value
         List<Pair<List<double[]>,Integer>> in;
         double[] means ;
         List<Pair<String,String>> tdata;
 
-        public SegmentationFunction(svm_model svmModel, FeatureDictionary wfs){
+        public SegmentationFunction(svm_model svmModel, FeatureUtils wfs){
             this.svmModel = svmModel;
             this.wfs = wfs;
             this.in = new ArrayList<Pair<List<double[]>,Integer>>();
@@ -237,7 +237,7 @@ public class WordSegmenter {
     }
 
     @Deprecated
-    public WordSegmenter(Set<Map<String,String>> gazettes, FeatureDictionary wfs, svm_model model){
+    public WordSegmenter(Set<Map<String,String>> gazettes, FeatureUtils wfs, svm_model model){
         int MAX_NAMES = Integer.MAX_VALUE;
         List<double[]> xL = new ArrayList<double[]>();
         List<Double> yL = new ArrayList<Double>();
@@ -245,7 +245,7 @@ public class WordSegmenter {
         int i=0,pi=0,ni=0;
         for(String cicname: wfs.counts.keySet()){
             //TODO: review the next line
-            FeatureVector wfv = wfs.getVector(cicname, FeatureDictionary.PERSON);
+            FeatureVector wfv = wfs.getVector(cicname, FeatureUtils.PERSON);
             svm_node[] sx = wfv.getSVMNode();
             double v = svm.svm_predict(model,sx);
             if(v>0) {
@@ -348,11 +348,11 @@ public class WordSegmenter {
 //        return "some";
 //    }
 
-    public static SegmentationModel train(svm_model svmModel, FeatureDictionary wfs, Set<Map<String,String>> gazzs){
+    public static SegmentationModel train(svm_model svmModel, FeatureUtils wfs, Set<Map<String,String>> gazzs){
         int numGood = 0;
         SegmentationFunction sfunction = new SegmentationFunction(svmModel, wfs);
         List<String> markers = Arrays.asList("dear","hi","hello","mr","mrs","miss","sir","madam","dr.","prof");
-        String[] aTypes = FeatureDictionary.aTypes.get(FeatureDictionary.PERSON);
+        String[] aTypes = FeatureUtils.aTypes.get(FeatureUtils.PERSON);
         //iterate over cicnames to find names that are super strings of names in gazettes
         for(String cicname: wfs.counts.keySet()){
             cicname = IndexUtils.stripExtraSpaces(cicname);
@@ -396,7 +396,7 @@ public class WordSegmenter {
     }
 
     //tries to build a model if the model is not found in the specified loacation
-    public static SegmentationModel loadModel(String fullPath,String type, svm_model svmModel, FeatureDictionary wfs, Set<Map<String,String>> gazzs){
+    public static SegmentationModel loadModel(String fullPath,String type, svm_model svmModel, FeatureUtils wfs, Set<Map<String,String>> gazzs){
         try{
             FileReader fr = new FileReader(new File(fullPath+File.separator+type+"_"+SegmentationModel.modelFileName));
             Gson gson = new Gson();

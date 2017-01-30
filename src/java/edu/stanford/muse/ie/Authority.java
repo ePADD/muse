@@ -5,25 +5,22 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
-// This is a generic authority class to represent an entity found in a database.
+/**
+ *  A generic authority class to represent various authority records found for an element.
+ */
 public class Authority implements Serializable {
     private static final long	serialVersionUID	= 1L;
 	public String				name;
 	//all the links to external database
 	//dbId -> dbType
-	private Map<String, Short>	sources; // this is id -> type. @Vihari, why isn't it type -> id?
+	public Map<String, Short>	sources; // this is id -> type. @Vihari, why isn't it type -> id?
     public static short			FAST				= 0, DBPEDIA = 1, VIAF = 2, LOC_SUBJECT = 3, LOC_NAME = 4, FREEBASE = 5, GEO_NAMES = 6;
     public static String[]		types				= new String[] { "fast", "dbpedia", "viaf", "locSubject", "locName", "freebase", "geonames" };
     public static Log 			log					= LogFactory.getLog(Authority.class);
     public static String        sep = ":::";
 
-
-    /**
-	 * @TODO Add export to csv function
-	 */
 	public Authority(String name, String[] ids, String[] dbTypes) {
         //geo names -> http://sws.geonames.org/
         this.name = name;
@@ -74,7 +71,7 @@ public class Authority implements Serializable {
        // short[] dbs = new short[]{Authority.FAST, Authority.FREEBASE, Authority.DBPEDIA, Authority.VIAF, Authority.LOC_NAME, Authority.LOC_SUBJECT, Authority.GEO_NAMES};
         //TODO: make the sources be printed in a pre-defined order
         for (String id : sources.keySet()) {
-			String dType = null;
+			String dType;
 			String link = null;
 			short dbType = sources.get(id);
 			if (dbType == Authority.DBPEDIA) {
@@ -109,7 +106,7 @@ public class Authority implements Serializable {
                 log.warn("Unknown type: " + dbType + " found in sources of: " + name);
                 continue;
             }
-			if (!link.equals(""))
+			if (link!=null && !link.equals(""))
 				sourceStr += "<span class=\"authority-id\" <a href='" + link + "'>" + dType + ":" + id + "</a></span>&nbsp&nbsp";
 			else
 				sourceStr += dType + ":" + id + "&nbsp&nbsp";

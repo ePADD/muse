@@ -30,7 +30,7 @@ import org.apache.lucene.util.Version;
  * except that this uses StandardNumberTokenizer instead of StandardTokenizer to
  * emit consecutive numbers as one token..
  * Could n't extend EnglishAnanlyzer as it is defined final.
- * Why is there no analyzer routine that takes tokenizer as input
+ * Why is there no analyzer routine that takes tokenize as input
  * Change the implementation, either extend or use derogation.
  */
 public class EnglishNumberAnalyzer extends StopwordAnalyzerBase {
@@ -127,6 +127,14 @@ public class EnglishNumberAnalyzer extends StopwordAnalyzerBase {
                 return new TokenStreamComponents(source, result);
 			}
 		};
+        //Cheat sheet on how different analyzers work
+        //Standard Analyzer tokenizes phrase like: "W.S. Merwin" into "w.s" and "merwin"
+        //Simple Analyzer "w", "s", "merwin"
+        //WhiteSpaceAnalyzer: "W.S." and "Merwin"
+        //EnglishAnalyzer "w." and "merwin" (because of stop words filter)
+        // of all Simple Analyzer has more predictable behavior
+        //also want the stop words to be highlighted
+        //new SimpleAnalyzer(lv);
         String text = ".... .........,\n" +
               "\n" +
               "   ....... .. ... ... ............ .... ... ... ..../Buffalo's ........\n" +

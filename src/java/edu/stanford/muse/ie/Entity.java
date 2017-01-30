@@ -6,8 +6,8 @@ import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.index.Indexer;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
@@ -605,7 +605,7 @@ public class Entity extends EntityFeature {
 				String content = archive.getContents(ed, true);
 				Set<String> entities = null;
 				try {
-					entities = tokenizer.tokenizeWithoutOffsets(content, true);
+					entities = tokenizer.tokenizeWithoutOffsets(content);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -755,7 +755,7 @@ public class Entity extends EntityFeature {
 		for (edu.stanford.muse.index.Document cdoc : cdocs) {
 			String content = archive.getContents(cdoc, false);
 			try {
-				Set<String> es = tokenizer.tokenizeWithoutOffsets(content, true);
+				Set<String> es = tokenizer.tokenizeWithoutOffsets(content);
 				for (String e : es) {
 					if (!ents.containsKey(e))
 						ents.put(e, 0);

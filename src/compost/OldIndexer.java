@@ -378,7 +378,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		StringBuilder result = new StringBuilder();
 		BufferedReader br = new BufferedReader(new StringReader(text));
 
-		// stopper for the tokenizer when we meet a line that needs to be ignored
+		// stopper for the tokenize when we meet a line that needs to be ignored
 		String stopper = " . ";
 
 		while (true)

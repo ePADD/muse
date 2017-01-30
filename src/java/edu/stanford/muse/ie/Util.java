@@ -3,8 +3,8 @@ package edu.stanford.muse.ie;
 /**
  * @author viharipiratla
  */
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
@@ -33,7 +33,7 @@ public class Util {
 	 * @return score of the Wikipedia page and summary text of entities upon
 	 *         which the Wikipedia page is scored.
 	 * @bug revision: original name should not contribute to the score.
-	 * @bug? this method only looks for two consecutive words in a phrase, for
+	 * @bug this method only looks for two consecutive words in a phrase, for
 	 *       example for the phrase: (expansion of NHPRC) it only looks at
 	 *       combinations: NH, HP, PR, RC, hence counting it 4 times instead of
 	 *       once. The reason for a matching method like this is: it captured
@@ -174,8 +174,7 @@ public class Util {
 
 	//TODO: ideally kill phrases class should be doing all this.
 	static Log						log								= LogFactory.getLog(Util.class);
-	static Map<String, Set<String>>	files							= new LinkedHashMap<String, Set<String>>();
-	static String					COMMON_WORDS_FILE				= edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "kill.txt";
+	static Map<String, Set<String>>	files							= new LinkedHashMap<>();
 	//order person, location, org
 	static String[]					TYPE_SPECIFIC_COMMON_WORDS_FILE	= new String[] { edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "per-kill.txt", edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "loc-kill.txt", edu.stanford.muse.Config.SETTINGS_DIR + File.separator + "org-kill.txt" };
 
@@ -244,11 +243,11 @@ public class Util {
 			return false;
 
 		int ti = 0;
-		if (FeatureDictionary.PERSON == type)
+		if (NEType.Type.PERSON.getCode() == type)
 			ti = 0;
-		else if (FeatureDictionary.PLACE == type)
+		else if (NEType.Type.PLACE.getCode() == type)
 			ti = 1;
-		else if (FeatureDictionary.ORGANISATION == type)
+		else if (NEType.Type.ORGANISATION.getCode() == type)
 			ti = 2;
 		Set<String> cws = readFileFromResource("dict.words.full");
 		Set<String> tcws = new HashSet<>();
@@ -343,7 +342,7 @@ public class Util {
         String[] words = phrase.split("\\s+");
         String acr = "";
         for (String word : words) {
-            if(FeatureDictionary.sws.contains(word) && considerStopWords) {
+            if(FeatureUtils.sws.contains(word) && considerStopWords) {
                 acr += word.charAt(0);
                 continue;
             }

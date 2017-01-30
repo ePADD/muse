@@ -90,7 +90,7 @@ path {
 				</p>
 
 				<p>
-				The Discovery Module displays summary metadata extracted from email collections held by Special Collections &amp; University Archives. This metadata includes: collection extent, monthly summaries of frequently used terms, named entities, subjects, and correspondents. The module also features visualizations of entities and correspondents.
+				The Discovery Module displays summary metadata extracted from email collections held by Special Collections &amp; University Archives. This metadata includes: collection extent, monthly summaries of frequently used terms, named entities, subjects, and correspondents. The module also mixtures visualizations of entities and correspondents.
 				</p>
 
 				<p>

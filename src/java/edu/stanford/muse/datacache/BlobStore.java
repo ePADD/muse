@@ -21,6 +21,7 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.*;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,7 +36,7 @@ public class BlobStore implements Serializable {
 
     // mapping of each data item to a data id
     protected Map<Blob, Integer> id_map = new LinkedHashMap<Blob, Integer>();
-    protected Map<Blob, URL> urlMap = new LinkedHashMap<Blob, URL>();
+    protected Map<Blob, URL> urlMap = new LinkedHashMap<Blob, URL>(); // -- seems this is not really used
     // data id's are just assigned sequentially starting from 0
     protected int next_data_id = 0;
 
@@ -264,6 +265,7 @@ public class BlobStore implements Serializable {
         oos.writeObject(id_map);
         oos.writeObject(views);
         oos.writeInt(next_data_id);
+        oos.flush();
     }
 
     protected synchronized void unpack_from_stream (ObjectInputStream ois) throws IOException, ClassNotFoundException
@@ -481,19 +483,26 @@ public class BlobStore implements Serializable {
         }
     }
 
-    private String createBlobCopy(Blob b, String tmp_filename) throws IOException {
-        // create a copy of the image first in tmp_filename
+    /* copy blob to filePath */
+    public String createBlobCopy(Blob b, String filePath) throws IOException {
+        // create a copy of the image first in filePath
         InputStream is = null;
         String url = this.get_URL(b);
         url = url.replace("%", "%25");
 
         try {
-            is = new URL(url).openStream();
-        } catch (MalformedURLException me) {
-            Util.report_exception_and_rethrow(me, log);
+            URL u = new URL(url);
+            if ("file".equalsIgnoreCase(u.getProtocol())) {
+                File f = new File (dir + File.separator + full_filename(b));
+                is = new FileInputStream (f);
+            } else {
+                is = new URL(url).openStream();
+            }
+        } catch (MalformedURLException e) {
+            Util.report_exception_and_rethrow(e, log);
         }
 
-        Util.copy_stream_to_file(is, tmp_filename);
+        Util.copy_stream_to_file(is, filePath);
         return url;
     }
 

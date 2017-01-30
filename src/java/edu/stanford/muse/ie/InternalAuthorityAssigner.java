@@ -7,18 +7,15 @@ import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.ner.tokenizer.Tokenizer;
+import edu.stanford.muse.ner.model.NEType;
+import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.lucene.analysis.core.StopAnalyzer;
-import org.apache.lucene.analysis.util.CharArraySet;
 
 import java.io.*;
 import java.util.*;
@@ -27,7 +24,7 @@ import java.util.stream.Collectors;
 /**
  * This class contains pre-processing computations for assign-authorities.jsp
  * and entity resolutions in the browse page (with expandname.jsp).
- * Map<String, EntityFeature> features; This is the crucial object that contains
+ * Map<String, EntityFeature> mixtures; This is the crucial object that contains
  * the co-occurring entities and (co-)occurring email addresses. It can consume
  * lot of space if not capped properly.
  * 
@@ -41,15 +38,15 @@ import java.util.stream.Collectors;
  * 3. call checkFeaturesIndex(Archive) finally
  * 4. Call isCancelled to check if the object is properly initiated,
  *
- * The size of this features index created by this class generally as big as emails index,
- * that is odd, TODO: try to bring down the size of the features index
+ * The size of this mixtures index created by this class generally as big as emails index,
+ * that is odd, TODO: try to bring down the size of the mixtures index
  */
 public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	private static final long		serialVersionUID	= 1L;
 
 	private static Log				log					= LogFactory.getLog(InternalAuthorityAssigner.class);
 
-	public Map<Short, Entities>		entitiesData		= new HashMap<Short, Entities>();
+	public Map<Short, Entities>		entitiesData		= new HashMap<>();
 
 	// frequency of a contact. ContactId->frequency
 	public Map<Integer, Integer>	contactFreq;
@@ -63,12 +60,12 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	boolean							cancel				= false;
 
 	public static InternalAuthorityAssigner load(Archive archive) {
-		InternalAuthorityAssigner aa = null;
+		InternalAuthorityAssigner aa;
 		String AUTHORITY_ASSIGNER_FILE = archive.baseDir + File.separator + Config.AUTHORITY_ASSIGNER_FILENAME;
 		if (new File(AUTHORITY_ASSIGNER_FILE).exists()) {
 			log.info("Reading InternalAuthorityAssigner object from file" + AUTHORITY_ASSIGNER_FILE);
 
-			ObjectInputStream ois = null;
+			ObjectInputStream ois;
 			try {
 				ois = new ObjectInputStream(new FileInputStream(AUTHORITY_ASSIGNER_FILE));
 				aa = (InternalAuthorityAssigner) ois.readObject();
@@ -101,11 +98,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 	/** Initializes the object */
 	public void initialize(Archive archive) {
-		//initiate KillPhrases to make sure the static methods are initiated.
-		//http://stackoverflow.com/questions/3499214/java-static-class-initialization
-		new KillPhrases();
-
-		contactFreq = new HashMap<Integer, Integer>();
+		contactFreq = new HashMap<>();
 		// collect all the entities of type person from all the docs
 		Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
 		long start_time = System.currentTimeMillis();
@@ -120,7 +113,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		if (cancel)
 			return;
 
-		Set<String> acronyms = new HashSet<String>();
+		Set<String> acronyms = new HashSet<>();
 
 		/*
 		 * There are two iterations on all docs, because the entities and their
@@ -147,7 +140,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			try {
 				//TODO: trying to get acronyms this way is a hack and inefficient
 				//Initialise a special reg exp for this task
-				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content, true);
+				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content);
 				if (pnames != null)
 					for (String name : pnames) {
 						String tc = FeatureGeneratorUtil.tokenFeature(name);
@@ -180,7 +173,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 			int freq = contactFreq.get(cid);
 			String dn = contacts.get(i).pickBestName();
-			if (dn == null || KillPhrases.killPhrases.contains(dn))
+			if (dn == null)
 				continue;
 			dn = dn.replaceAll("^\\s+|\\s+$", "");
 			if (dn.contains(" ")) {
@@ -198,21 +191,19 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 				return;
 		}
 
-		CharArraySet stopWordsSet = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
-
 		di = 0;
 		for (EmailDocument ed : docs) {
 			List<String> people, orgs, places;
             try {
                 Span[] names = archive.getAllNamesInDoc(ed, true);
                 people = Arrays.asList(names).stream()
-                        .filter(n -> FeatureDictionary.getCoarseType(n.type) == FeatureDictionary.PERSON)
+                        .filter(n -> n.type == NEType.Type.PERSON.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 places = Arrays.asList(names).stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.PLACE)
+                        .filter(n-> n.type == NEType.Type.PLACE.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
                 orgs = Arrays.asList(names).stream()
-                        .filter(n->FeatureDictionary.getCoarseType(n.type)==FeatureDictionary.ORGANISATION)
+                        .filter(n-> n.type == NEType.Type.ORGANISATION.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
             }catch(IOException ioe){
                 continue;
@@ -255,9 +246,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 				List<String> entities = allEntities.get(ei);
 				Short et = allTypes[ei];
 				for (String e : entities) {
-					if (KillPhrases.killPhrases.contains(e.toLowerCase()))
-						continue;
-
 					if (e != null && (et != EntityFeature.PERSON ||e.contains(" "))) {
 						Entities d = entitiesData.get(et);
 						String canonicalEntity = IndexUtils.canonicalizeEntity(e);
@@ -291,14 +279,13 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 		String AUTHORITY_ASSIGNER_FILE = archive.baseDir + File.separator + Config.AUTHORITY_ASSIGNER_FILENAME;
 		log.info("Writing InternalAuthorityAssigner object to file" + AUTHORITY_ASSIGNER_FILE);
-		ObjectOutputStream oos = null;
+		ObjectOutputStream oos ;
 		try {
 			String stats = "";
 			stats += "#People: " + this.entitiesData.get(EntityFeature.PERSON).pairs.size() + "\n";
 			stats += "#Correspondents: " + this.entitiesData.get(EntityFeature.CORRESPONDENT).pairs.size() + "\n";
 			stats += "#Places: " + this.entitiesData.get(EntityFeature.PLACE).pairs.size() + "\n";
 			stats += "#Orgs: " + this.entitiesData.get(EntityFeature.ORG).pairs.size();
-			System.err.println("Writing entities from file: " + AUTHORITY_ASSIGNER_FILE + "\n" + stats);
 			log.info("Writing entities from file: " + AUTHORITY_ASSIGNER_FILE + "\n" + stats);
 			oos = new ObjectOutputStream(new FileOutputStream(AUTHORITY_ASSIGNER_FILE));
 			oos.writeObject(this);
@@ -312,14 +299,10 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	/** force- force creation of new index */
 	public boolean checkFeaturesIndex(Archive archive, boolean force) {
 		control = new EntityFeature();
-		//check features index.
+		//check mixtures index.
 		boolean ret = control.checkIndex(archive, force);
 		control = null;
 		return ret;
-	}
-
-	public boolean checkFeaturesIndex(Archive archive) {
-		return checkFeaturesIndex(archive, false);
 	}
 
 	@Override

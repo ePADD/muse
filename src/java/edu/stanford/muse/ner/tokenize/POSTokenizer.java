@@ -1,24 +1,23 @@
-package edu.stanford.muse.ner.tokenizer;
+package edu.stanford.muse.ner.tokenize;
 
-import com.google.gson.Gson;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.util.NLPUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Triple;
 import opennlp.tools.util.Span;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.util.*;
 
 /**
  * Created by vihari on 09/10/15.
  *
- * A tokenizer based on POS tagging */
-public class POSTokenizer {
+ * A tokenize based on POS tagging */
+public class POSTokenizer implements Tokenizer{
     final static int MAX_SENT_LENGTH = 500;
+
+    /**
+     * {@inheritDoc}
+     * */
+    @Override
     public List<Triple<String, Integer, Integer>> tokenize(String content){
         Span[] sents = NLPUtils.sentenceDetector.sentPosDetect(content);
         List<Triple<String, Integer, Integer>> ret = new ArrayList<>();
@@ -82,14 +81,6 @@ public class POSTokenizer {
         return ret;
     }
 
-    public Set<String> tokenizeWithoutOffsets(String content, Short type){
-        List<Triple<String,Integer,Integer>> tokensWithOffsets = tokenize(content);
-        Set<String> tokens = new LinkedHashSet<>();
-        for(Triple<String,Integer,Integer> t: tokensWithOffsets)
-            tokens.add(t.first);
-        return tokens;
-    }
-
     public static void main(String[] args) {
         String content = "..................  Zuckerberg Giving $100 Million Gift to Newark Schools By " +
                 "RICHARD PREZ-PEA A gift from Mark Zuckerberg, the chief executive of  Facebook " +
@@ -101,6 +92,5 @@ public class POSTokenizer {
             if(!content.substring(t.getSecond(),t.getThird()).equals(t.getFirst()))
                 System.err.println("Mismatch for: "+t);
         }
-        //System.err.println("PNS: "+NLPUtils.getAllProperNouns(content));
     }
 }

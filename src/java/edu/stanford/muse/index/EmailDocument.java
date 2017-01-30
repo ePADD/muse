@@ -50,6 +50,7 @@ public class EmailDocument extends DatedDocument implements Serializable
     public static final int RECEIVED_MASK = 2;
 
 	public String folderName, emailSource;
+	public Set<String> folderNames = new LinkedHashSet<>(), emailSources = new LinkedHashSet<>(); // email can now belong to multiple folders, folderName field also maintained for backward compatibility
 	public Address[] to, from, cc, bcc;
 	
 	public String messageID;

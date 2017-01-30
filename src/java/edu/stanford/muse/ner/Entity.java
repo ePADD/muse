@@ -3,7 +3,7 @@ package edu.stanford.muse.ner;
 /**
  * Created by vihari on 23/10/15.
  */
-public class Entity{
+public class Entity {
     public String entity;
     public double score;
     public int freq;

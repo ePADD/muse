@@ -7,9 +7,6 @@
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
 <%@page language="java" import="edu.stanford.muse.util.*"%>
-<%@page language="java" import="edu.stanford.muse.datacache.*"%>
-<%@page language="java" import="java.awt.image.*"%>
-<%@page language="java" import="javax.imageio.*"%>
 
 <%@include file="getArchive.jspf" %>
 	
@@ -44,6 +41,7 @@
 	GroupAssigner groupAssigner = archive.groupAssigner;
 	String datasetName = String.format("docset-%08x", EmailUtils.rng.nextInt());
 	DataSet dataset = new DataSet (docs, archive, datasetName, null /* highlightTerms */, null, null);
+
 	session.setAttribute(datasetName, dataset);
 	List<LinkInfo> links = EmailUtils.getLinksForDocs(docs);
 	for (LinkInfo li : links)

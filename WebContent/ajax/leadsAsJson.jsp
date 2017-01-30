@@ -7,7 +7,7 @@
 <%@page language="java" import="edu.stanford.muse.lens.*"%>
 <%@page language="java" import="edu.stanford.muse.index.*"%>
 <%@page language="java" import="java.util.Calendar"%>
-<%@page language="java" import="java.text.SimpleDateFormat"%>
+<%@page language="java" import="java.text.SimpleDateFormat"%><%@ page import="java.util.stream.Collectors"%>
 <%//Archive needs to be loaded since NER is archive dependant%>
 <%@include file="../getArchive.jspf" %>
 <%@include file="../getNERModel.jspf" %>
@@ -41,11 +41,9 @@ try {
 	}
 
 	List<Pair<String,Float>> names = new ArrayList<Pair<String,Float>>();
-	List<Pair<String,Integer>> namesFromArchive = null;
 	Map<String, Float> termFreqMap = new LinkedHashMap<String, Float>();
 	List<JSONObject> list=null;
 	
-	boolean normalizeByLength = request.getParameter("normalizeByLength") != null;
 	long ner_start_millis = System.currentTimeMillis();
 
 	//names = NER.namesFromText(text, true, NER.defaultTokenTypeWeights, normalizeByLength, 1);
@@ -56,6 +54,7 @@ try {
 	        names.add(new Pair<>(sp.text,new Float(1.0)));
 	    }
 	}
+
 	//names = POS.namesFromPOS(text);
 	long ner_end_millis = System.currentTimeMillis();
 	JSPHelper.log.info("NER time " + (ner_end_millis - ner_start_millis) + " ms");

@@ -1,6 +1,6 @@
 # Intro.js
 
-> Better introductions for websites and features with a step-by-step guide for your projects.
+> Better introductions for websites and mixtures with a step-by-step guide for your projects.
 
 
 ## How to use

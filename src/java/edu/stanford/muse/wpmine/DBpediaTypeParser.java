@@ -1,6 +1,6 @@
 package edu.stanford.muse.wpmine;
 
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.model.NEType;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.commons.logging.Log;
@@ -128,9 +128,9 @@ public class DBpediaTypeParser {
                 if(type == null)
                     continue;
                 uniqetitles.add(title);
-                Short ct = FeatureDictionary.codeType(type);
+                Short ct = NEType.parseDBpediaType(type).getCode();
                 if(!typeTitles.containsKey(ct))
-                    typeTitles.put(ct, new LinkedHashSet<String>());
+                    typeTitles.put(ct, new LinkedHashSet<>());
                 typeTitles.get(ct).add(title);
 
                 if (lnr.getLineNumber() % 10000 == 0)
@@ -145,15 +145,15 @@ public class DBpediaTypeParser {
         System.out.println("Total number of types in DBpedia ontology: "+allTypes.size());
         System.out.println(typesFile+" contains "+nlines+" lines and "+uniqetitles.size()+" unique titles");
         for(Short type: typeTitles.keySet())
-            System.out.println(FeatureDictionary.desc.get(type) + " : "+typeTitles.get(type).size());
+            System.out.println(NEType.getTypeForCode(type) + " : "+typeTitles.get(type).size());
     }
 
+    //The first argument should be the full path to the DBpedia instance file resource (for ex: instance_types_en.nt.bz2 from http://data.dws.informatik.uni-mannheim.de/dbpedia/2014/en/instance_types_en.nt.bz2), the second argument should point to the DBpedia ontology file (for ex: dbpedia_2015-04.nt.bz2 from http://downloads.dbpedia.org/2015-04/dbpedia_2015-04.nt.bz2)
+    //third arg: folder to output the post-processed file in
     public static void main(String[] args){
-//        Map<String,String> ontology = parseOntology("dbpedia_2015-04.nt.bz2");
-//        for(String str: ontology.keySet())
-//            System.err.println(str+" : "+ontology.get(str));
-        String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
-        //parse(fldr+"instance_types_2014-04.en.nt.bz2", fldr+"dbpedia_2015-04.nt.bz2", System.getProperty("user.home")+File.separator+"epadd-settings"+File.separator+"resources"+File.separator);
-        printStats(fldr + "instance_types_2014-04.en.nt.bz2", fldr + "dbpedia_2015-04.nt.bz2");
+        //String fldr = System.getProperty("user.home")+File.separator+"epadd-data"+File.separator;
+        //fldr+"instance_types_2014-04.en.nt.bz2",fldr+"dbpedia_2015-04.nt.bz2"
+        parse(args[0], args[1], args[2]);
+        printStats(args[0], args[1]);
     }
 }

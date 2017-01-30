@@ -1,7 +1,6 @@
 package edu.stanford.muse.index;
 
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.model.SequenceModel;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.ModeConfig;
@@ -38,7 +37,7 @@ import java.util.stream.Collectors;
  * Given the content, terms to highlight, terms to hyperlink and entities in the doc, it generates the HTML of the content with highlights and hyperlinks.
  * Bugs
  * 1. while highlighting preset query -- a regexp like: \d{3}-\d{2}-\d{4} highlights 022-29), 1114 as <B>022-29), 11</B>14.
- *      This is due to improper offsets in tokenstream or could be because lucene highlighter is considering endoffset like startoffset+token.length()
+ *      This is due to improper offsets in token stream or could be because lucene highlighter is considering endoffset like startoffset+token.length()
  */
 public class Highlighter {
     static Log log = LogFactory.getLog(Highlighter.class);
@@ -220,7 +219,7 @@ public class Highlighter {
             contents = annotateSensitive(contents, preHighlightTag, postHighlightTag);
         }
 
-        //entitiesid stuff is already canonicalized with tokenizer used with analyzer
+        //entitiesid stuff is already canonicalized with tokenize used with analyzer
         if (entitiesWithId != null)
             hyperlinkTerms.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
 
@@ -231,7 +230,6 @@ public class Highlighter {
         //should preserve order so that highlight terms are seen before hyperlink
         Set<String> allTerms = new LinkedHashSet<>();
         allTerms.addAll(highlightTerms);
-        allTerms.addAll(hyperlinkTerms);
 
 		/*
 		 * We ant to assign order in which terms are highlighted or hyperlinked.
@@ -258,6 +256,7 @@ public class Highlighter {
             for (String substr : substrs) {
                 if(at.equals(substr) || at.equals("\""+substr+"\""))
                     continue;
+
                 boolean match = catchTerms.contains(substr.toLowerCase());
                 int val = match?Integer.MAX_VALUE:substr.length();
                 //remove it from terms to be annotated.
@@ -291,6 +290,7 @@ public class Highlighter {
 //        String result = contents;
         String result = highlightBatch(contents, highlightTerms.toArray(new String[highlightTerms.size()]), preHighlightTag, postHighlightTag);
         result = highlightBatch(result, hyperlinkTerms.toArray(new String[hyperlinkTerms.size()]), preHyperlinkTag, postHyperlinkTag);
+
 //        System.out.println("Terms to highlight: " + termsToHighlight);
 //        System.out.println("Terms to hyperlink: "+termsToHyperlink);
 //        System.out.println("order: "+order);
@@ -500,12 +500,12 @@ public class Highlighter {
             System.out.println("Archive folder: "+fldr);
             String tmpDir = System.getProperty("java.io.tmpdir");
             int fi = 0;
-            System.out.println("Content: " + archive.getDoc(archive.docForId(testDocIds[0])));
+            System.out.println("Content: " + archive.getLuceneDoc(testDocIds[0]));
             for(String td: testDocIds) {
                 EmailDocument ed = archive.docForId(td);
                 String content = archive.getContents(ed,false);
                 Map<String, Archive.Entity> ewid = new LinkedHashMap<>();
-                Util.tokenize(archive.getDoc(ed).get("names"), Indexer.NAMES_FIELD_DELIMITER).forEach(t -> {
+                Util.tokenize(archive.getLuceneDoc(ed.getUniqueId()).get("names"), Indexer.NAMES_FIELD_DELIMITER).forEach(t -> {
                     if (t == null) {
                         log.warn("Found null content while parsing entity spans!!!");
                     }
@@ -518,11 +518,13 @@ public class Highlighter {
                     }
                     Set<String> types = new HashSet<>();
                     short type = Short.parseShort(fields[3]);
-                    for (short ct : SequenceModel.mappings.keySet())
-                        if (Arrays.asList(SequenceModel.mappings.get(ct)).contains(type)) {
-                            types.add(ct == FeatureDictionary.PERSON ? "cp" : ((ct == FeatureDictionary.PLACE) ? "cl" : "co"));
-                            break;
-                        }
+                    //for (short ct : SequenceModel.mappings.keySet())
+                    //    if (Arrays.asList(SequenceModel.mappings.get(ct)).contains(type)) {
+                          //  types.add(ct == FeatureUtils.PERSON ? "cp" : ((ct == FeatureUtils.PLACE) ? "cl" : "co"));
+                      //      break;
+                        //}
+                    short ct = NEType.getCoarseType(type).getCode();
+                    types.add(ct == NEType.Type.PERSON.getCode() ? "cp" : ((ct == NEType.Type.PLACE.getCode()) ? "cl" : "co"));
                     ewid.put(fields[0], new Archive.Entity(fields[0], null, types));
                 });
                 Set<String> termsToHighlight = new HashSet<>();

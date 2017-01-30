@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 
+/**
+ * A language related util class, created so as to be able to easily expand to other languages by just creating and using a similar dictionary for the language*/
 public class EnglishDictionary {
     static String adverbsFile = "dictionaries/en-pure-adv.txt";
     static String adjFile = "dictionaries/en-pure-adj.txt";
@@ -20,7 +22,8 @@ public class EnglishDictionary {
     static String prepFile = "dictionaries/en-prepositions.txt";
     static String pronounFile = "dictionaries/en-pronouns.txt";
     static String abbFile = "dictionaries/en-abbreviations.txt";
-    static String fullDictFile = "dict.words.full.safe";
+    static String tagDictFile = "dictionaries/ANC-written-count.txt";
+    static String fullDictFile = "dict.words.full";
     static String dictStatsFile = "stats.txt";
     static String commonNamesFile = "firstNames.txt";
 
@@ -28,10 +31,12 @@ public class EnglishDictionary {
 
     static Set<String> adverbs, adjectives, verbs, prepositions, pronouns, dictionary, commonNames;
     static Multimap<String,String> abbDict;
+    static Multimap<String,Pair<String,Integer>> tagDict;
     //word -> <#capitalised,#total>
     static Map<String,Pair<Integer,Integer>> dictStats;
     public static List<String> stopWords = Arrays.asList("but", "be", "with", "such", "then", "for", "no", "will", "not", "are", "and", "their", "if", "this", "on", "into", "a", "there", "in", "that", "they", "was", "it", "an", "the", "as", "at", "these", "to", "of" );
-    public static List<String> personTitles = Arrays.asList("mr.", "mr", "ms.", "ms", "mrs.", "mrs", "dr.", "dr", "prof.", "prof");
+    public static List<String> separatingStopWords = Arrays.asList("for", "and", "on", "a", "in", "an", "the", "at", "to", "of" );
+    public static List<String> personTitles = Arrays.asList("mr.", "mr", "ms.", "ms", "mrs.", "mrs", "dr.", "dr", "prof.", "prof","dean", "president", "provost","pm","amb.");
     public static List<String> articles = Arrays.asList("the","a","an");
 
     /**
@@ -63,7 +68,7 @@ public class EnglishDictionary {
 
     public static Set<String> getDict(){
         if(dictionary==null){
-            dictionary = readFile(fullDictFile);
+            dictionary = getCanonicalizedEntriesInFile(fullDictFile);
             log.info("Read: "+dictionary.size()+" entries from "+fullDictFile);
             return dictionary;
         }
@@ -72,7 +77,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopPronouns(){
         if(pronouns==null) {
-            pronouns = readFile(pronounFile);
+            pronouns = getCanonicalizedEntriesInFile(pronounFile);
             log.info("Read "+pronouns.size()+" entries from "+pronounFile);
             return pronouns;
         }
@@ -81,7 +86,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopAdverbs(){
         if(adverbs==null) {
-            adverbs = readFile(adverbsFile);
+            adverbs = getCanonicalizedEntriesInFile(adverbsFile);
             log.info("Read "+adverbs.size()+" entries from "+adverbsFile);
             return adverbs;
         }
@@ -90,7 +95,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopAdjectives(){
         if(adjectives == null){
-            adjectives = readFile(adjFile);
+            adjectives = getCanonicalizedEntriesInFile(adjFile);
             log.info("Read "+adjectives.size()+" entries from "+adjFile);
             return adjectives;
         }
@@ -99,7 +104,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopVerbs(){
         if(verbs == null){
-            verbs = readFile(verbsFile);
+            verbs = getCanonicalizedEntriesInFile(verbsFile);
             log.info("Read "+verbs.size()+" entries from "+verbsFile);
             return verbs;
         }
@@ -108,7 +113,7 @@ public class EnglishDictionary {
 
     public static Set<String> getTopPrepositions(){
         if(prepositions == null){
-            prepositions = readFile(prepFile);
+            prepositions = getCanonicalizedEntriesInFile(prepFile);
             log.info("Read "+prepositions.size()+" entries from "+prepFile);
             return prepositions;
         }
@@ -118,7 +123,7 @@ public class EnglishDictionary {
     //This has nothing to do with English Dictionary though.
     public static Set<String> getCommonNames(){
         if(commonNames == null){
-            Set<String> entries = readFile(commonNamesFile);
+            Set<String> entries = getCanonicalizedEntriesInFile(commonNamesFile);
             commonNames = new LinkedHashSet<>();
             for(String str: entries) {
                 //may contain some unicode chars
@@ -241,7 +246,7 @@ public class EnglishDictionary {
                     if(!exp.contains("("))
                         abbDict.put(abbr.toLowerCase(), exp.toLowerCase());
                     else{
-                        if(exp.contains(" (") || exp.indexOf(")")==-1){
+                        if(exp.contains(" (") || !exp.contains(")")){
                             log.warn("The entry: "+exp+" in Line: "+line+" not properly cleaned!\nFile: "+abbFile);
                             continue;
                         }
@@ -267,15 +272,42 @@ public class EnglishDictionary {
             while ((line=br.readLine())!=null){
                 if (line.startsWith("#"))
                     continue;
-                entries.add(line.trim().toLowerCase());
+                entries.add(line.trim());
             }
+            br.close();
         } catch(IOException e){
-            Util.print_exception("Cannot read file: ", e, log);
+            Util.print_exception("Cannot read/close file: ", e, log);
         }
         return entries;
     }
 
-    public static void testPlurals(){
+    public static Set<String> getCanonicalizedEntriesInFile(String fileName){
+        Set<String> lines = readFile(fileName);
+        Set<String> ces = new LinkedHashSet<>();
+        lines.forEach(line -> ces.add(line.toLowerCase()));
+        return ces;
+    }
+
+    //@returns a map from token (not the stemmed one) to tag count, a token can be affiliated with many POS tags hence MultiMap
+    //acted   act     VBN     102 -> <acted,Pair<VBN, 102>>
+    public static Multimap<String, Pair<String,Integer>> getTagDictionary(){
+        if(tagDict!=null)
+            return tagDict;
+        tagDict = LinkedHashMultimap.create();
+        Set<String> lines = readFile(tagDictFile);
+        for(String line: lines) {
+            String[] fields = line.split("\\t");
+            if(fields.length!=4){
+                log.warn("Line: "+line+" not parsed correct!!");
+                continue;
+            }
+            try {tagDict.put(fields[0], new Pair<>(fields[2], Integer.parseInt(fields[3])));}
+            catch(NumberFormatException nfe){ log.warn("Cannot parse number from line: "+line);}
+        }
+        return tagDict;
+    }
+
+    static void testPlurals(){
         List<Pair<String,String>> plurals = new ArrayList<>();
         plurals.add(new Pair<>("selves","self"));
         plurals.add(new Pair<>("indices", "index"));
@@ -307,6 +339,8 @@ public class EnglishDictionary {
 
     public static void main(String[] args){
         //testPlurals();
+        getTopAdverbs();
+        getDict();
         getAbbreviations();
     }
 }

@@ -1,21 +1,22 @@
 package edu.stanford.muse.webapp;
 
+import java.io.IOException;
+import java.util.*;
+
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
+
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.NER;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-import java.io.IOException;
-import java.util.*;
 
 /** This class has util methods to display an email message in an html page */
 
@@ -96,7 +97,7 @@ public class EmailRenderer {
 																// description
 			html.append("<div class=\"section\" name=\"" + description + "\">\n");
 
-			List<List<String>> clusterResult = new ArrayList<List<String>>();
+			List<List<String>> clusterResult = new ArrayList<>();
 
 			for (Document d : md.docs)
 			{
@@ -134,7 +135,8 @@ public class EmailRenderer {
 						html.append(" reviewed=\"true\"");
 					if (d instanceof EmailDocument && ((EmailDocument) d).addedToCart)
 						html.append(" addToCart=\"true\"");
-					html.append(" pageId='" + pageNum++ + "' docId='" + d.getUniqueId() + "'></div>\n");
+					if (d instanceof EmailDocument)
+						html.append(" pageId='" + pageNum++ + "' " + " signature='" + Util.hash (((EmailDocument) d).getSignature()) + "' docId='" + d.getUniqueId() + "'></div>\n");
 				}
 
 				html.append("</div>"); // document
@@ -174,17 +176,21 @@ public class EmailRenderer {
                     //The goal here is to explain why a doc is selected and hence we should replicate Lucene doc selection and Lucene is case insensitive most of the times
                     String lc = str.toLowerCase();
                     if (highlightUnstemmed != null)
-                        for (String hs : highlightUnstemmed)
-                            if (lc.contains(hs.toLowerCase())) {
+                        for (String hs : highlightUnstemmed) {
+                            String hlc = hs.toLowerCase().replaceAll("^\\W+|\\W+$","");
+                            if (lc.contains(hlc)) {
                                 match = true;
                                 break;
                             }
+                        }
                     if (!match && highlightNames != null)
-                        for (String hn : highlightNames)
-                            if (lc.contains(hn.toLowerCase())) {
+                        for (String hn : highlightNames) {
+                            String hlc = hn.toLowerCase().replaceAll("^\\W+|\\W+$","");
+                            if (lc.contains(hlc)) {
                                 match = true;
                                 break;
                             }
+                        }
                 }
                 if(addr!=null){
                     if (!match && highlightAddresses != null)
@@ -233,6 +239,8 @@ public class EmailRenderer {
 	 * @param highlightAttachments
 	 * @throws Exception
 	 */
+    //TODO: inFull, debug params can be removed
+    //TODO: Consider a HighlighterOptions class
 	public static Pair<String, Boolean> htmlForDocument(Document d, Archive archive, String datasetTitle, BlobStore attachmentsStore,
 			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
 			boolean IA_links, boolean inFull, boolean debug) throws Exception
@@ -263,6 +271,7 @@ public class EmailRenderer {
 			page.append("\n<div class=\"muse-doc-body\">\n");
 			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTerms,
 					authorisedEntities, IA_links, inFull, true);
+
 			StringBuilder htmlMessageBody = contentsHtml.first;
 			overflow = contentsHtml.second;
 			// page.append(ed.getHTMLForContents(indexer, highlightTermsStemmed,
@@ -483,19 +492,22 @@ public class EmailRenderer {
         Map<String, Archive.Entity> entitiesWithId = new HashMap<>();
         //we annotate three specially recognized types
         Map<Short,String> recMap = new HashMap<>();
-        recMap.put(FeatureDictionary.PERSON,"cp");recMap.put(FeatureDictionary.PLACE,"cl");recMap.put(FeatureDictionary.ORGANISATION,"co");
-        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(FeatureDictionary.getCoarseType(n.type)))
+        recMap.put(NEType.Type.PERSON.getCode(),"cp");
+        recMap.put(NEType.Type.PLACE.getCode(),"cl");
+        recMap.put(NEType.Type.ORGANISATION.getCode(),"co");
+        Arrays.asList(names).stream().filter(n -> recMap.keySet().contains(NEType.getCoarseType(n.type).getCode()))
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
-                    types.add(recMap.get(FeatureDictionary.getCoarseType(n.type)));
+                    types.add(recMap.get(NEType.getCoarseType(n.type).getCode()));
                     entitiesWithId.put(n.text, new Archive.Entity(n.text, null, types));
                 });
+
         x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTerms, entitiesWithId, IA_links, false);
 
 		result.append(x);
 		result.append("</b>\n");
 		result.append("\n</td></tr>\n");
-
+		result.append ("\n" + style + "ID: " + "</td><td>" + Util.hash (ed.getSignature()) + "</td></tr>");
 		result.append("</table>\n"); // end docheader table
 
 		if (ModeConfig.isPublicMode())

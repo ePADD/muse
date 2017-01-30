@@ -8,8 +8,8 @@ import java.util.*;
  * handle possible uncanicalisations required
  */
 public class KnownClasses {
-	public Map<String, String[]>	syns	= new HashMap<String, String[]>();
-	public Map<String, String>		colors	= new HashMap<String, String>();
+	public Map<String, String[]>	syns	= new HashMap<>();
+	public Map<String, String>		colors	= new HashMap<>();
 	//Note: keep these names in sync with the DBpedia types.
 	//Book|WrittenWork|Work, Disease, University|EducationalInstitution|Organisation|Agent, Museum|Building|ArchitecturalStructure|Place, Film|Work, Award, Company|Organisation|Agent
 	public static String			BOOK	= "book", UNIV = "university", MUSICAL_ARTIST = "musical_artist", MUSEUM = "museum", HOTEL = "hotel", COMPANY = "company", MOVIE = "film", GOVT = "govt", AWARD = "award", PEOPLE = "people", PLACE = "place", DISEASE = "disease";

@@ -2,26 +2,33 @@ package edu.stanford.muse.ie;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-import edu.stanford.muse.index.Archive;
-import edu.stanford.muse.index.EmailDocument;
+
+import edu.stanford.muse.index.*;
+import edu.stanford.muse.index.Document;
+import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
+import edu.stanford.muse.ner.featuregen.FeatureUtils;
+import edu.stanford.muse.ner.model.NEType;
+import edu.stanford.muse.util.DictUtils;
 import edu.stanford.muse.util.Pair;
+
 import edu.stanford.muse.util.Span;
-import edu.stanford.muse.util.Triple;
+import edu.stanford.muse.webapp.SimpleSessions;
+import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 24/12/15.
- * A model to link proper nouns in an archive
+ * An Utility class to link proper nouns in an archive
  */
 public class ProperNounLinker {
     static Log log = LogFactory.getLog(ProperNounLinker.class);
@@ -29,8 +36,12 @@ public class ProperNounLinker {
     /**
      * breaks the phrase into words, lowercases and stems each of the word
      * will break mixed capitals into individual words,
-     * for example: VanGogh -> [van, gogh] and NYTimes -> [ny, time]*/
+     * for example: VanGogh -> [van, gogh] and NYTimes -> [ny, time]
+     */
     static Set<String> bow(String phrase) {
+        if (phrase == null)
+            return new LinkedHashSet<>();
+        phrase = stripTitles(phrase);
         String[] tokens = phrase.split("\\s+");
         Set<String> bows = new LinkedHashSet<>();
         for (String tok : tokens) {
@@ -44,23 +55,31 @@ public class ProperNounLinker {
             for (int ti = 0; ti < tok.length(); ti++) {
                 boolean cUc = Character.isUpperCase(tok.charAt(ti));
                 boolean nUc = false, pUc = false;
-                if (ti+1 < tok.length())
+                if (ti + 1 < tok.length())
                     nUc = Character.isUpperCase(tok.charAt(ti + 1));
-                if (ti-1 >= 0)
+                if (ti - 1 >= 0)
                     pUc = Character.isUpperCase(tok.charAt(ti - 1));
-                //two cases for breaking a word further
-                //1. an upper case surrounded by lower cases
-                //2. an upper case character with lower case stuff to the right, like 'T' in NYTimes
-                if (cUc && ti > 0 && ti < tok.length() && ((!pUc && !nUc) || (pUc && !nUc))) {
-                    subToks.add(buff);
-                    buff = ""+tok.charAt(ti);
+                //three cases for breaking a word further
+                //1. an upper case surrounded by lower cases, VanGogh = Van Gogh
+                //2. an upper case character with lower case stuff to the right, like 'T' in NYTimes = NY Times
+                //3. an upper case char preceded by '.' H.W.=>H. W.
+                //4. Also split on hyphens
+                if ((cUc && ti > 0 && ti < tok.length() - 1 && ((!pUc && !nUc) || (pUc && !nUc) || tok.charAt(ti - 1) == '.')) || tok.charAt(ti) == '-') {
+                    //don't consider single chars or essentially single chars like 'H.' as words
+                    if (buff.length() > 2 || (buff.length() == 2 && buff.charAt(buff.length() - 1) != '.'))
+                        subToks.add(buff);
+                    if (tok.charAt(ti) != '-')
+                        buff = "" + tok.charAt(ti);
+                    else
+                        buff = "";
                 } else {
                     buff += tok.charAt(ti);
                 }
             }
-            subToks.add(buff);
+            if (buff.length() > 2 || (buff.length() == 2 && buff.charAt(buff.length() - 1) != '.'))
+                subToks.add(buff);
             for (String st : subToks) {
-                String ct = EnglishDictionary.getSingular(st.toLowerCase());
+                String ct = EnglishDictionary.getSingular(st);
                 bows.add(ct);
 
             }
@@ -68,16 +87,19 @@ public class ProperNounLinker {
         return bows;
     }
 
-    /**All the words in the phrase that follow the pattern of Capital word followed by lower-case letters
+    /**
+     * All the words in the phrase that follow the pattern of Capital word followed by lower-case letters
      * US Supreme Court -> [Supreme, Court]
-     * NYTimes -> Times*/
-    static Set<String> nonAcronymWords(String phrase){
+     * NYTimes -> Times
+     */
+    static Set<String> nonAcronymWords(String phrase) {
         String[] tokens = phrase.split("\\s+");
         Set<String> naw = new LinkedHashSet<>();
-        Pattern p = Pattern.compile("[A-Z][a-z]+");
-        for(String tok: tokens) {
+        //the pattern below should pick up all the extra chars that CIC tokenize allows in the name, else may end up classifying Non-consecutive and Non-profit as a valid merge
+        Pattern p = Pattern.compile("[A-Z][a-z']+");
+        for (String tok : tokens) {
             Matcher m = p.matcher(tok);
-            while(m.find()) {
+            while (m.find()) {
                 //There can be more than one sequence of upper-case letter followed by lower-case
                 //e.g. DaVinci
                 naw.add(m.group());
@@ -86,31 +108,20 @@ public class ProperNounLinker {
         return naw;
     }
 
-    static String stripTitles(String str){
+    static String stripTitles(String str) {
         EnglishDictionary.articles.toArray(new String[EnglishDictionary.articles.size()]);
         List<String> titles = new ArrayList<>();
         titles.addAll(Arrays.asList("dear", "hi", "hello"));
         titles.addAll(EnglishDictionary.personTitles);
         titles.addAll(EnglishDictionary.articles);
 
-        for(String t: titles)
-            if(str.toLowerCase().startsWith(t+" "))
-                return str.substring(t.length()+1);
-        if(titles.contains(str.toLowerCase()))
+        String lc = str.toLowerCase();
+        for (String t : titles)
+            if (lc.startsWith(t + " "))
+                return str.substring(t.length() + 1);
+        if (titles.contains(str.toLowerCase()))
             return "";
         return str;
-    }
-
-    static Map<Character, Integer> charHist(String str){
-        Map<Character, Integer> map = new LinkedHashMap<>();
-        for(Character c: str.toCharArray()) {
-            if(!Character.isLetter(c))
-                continue;
-            if (!map.containsKey(c))
-                map.put(c, 0);
-            map.put(c, map.get(c)+1);
-        }
-        return map;
     }
 
     /**
@@ -118,25 +129,21 @@ public class ProperNounLinker {
      * can handle MoMA, Museum of Modern Arts
      * does not handle WaPo, Washington Post are acronyms like these common enough to bother?
      */
-    static boolean isAcronymOf(String c1, String c2){
-        if(c2.equals("WaPo") && (c1.equals("The Washington Post")||c1.equals("Washington Post")))
+    static boolean isAcronymOf(String c1, String c2) {
+        if (c2.equals("WaPo") && (c1.equals("The Washington Post") || c1.equals("Washington Post")))
             return true;
         int uc = 0, lc = 0;
         //a single word cannot have an acronym and acronym cannot span multiple words
-        if(!c1.contains(" ") || c2.contains(" "))
+        if (!c1.contains(" ") || c2.contains(" "))
             return false;
-        for(int ci=0;ci<c2.length();ci++) {
+        for (int ci = 0; ci < c2.length(); ci++) {
             if (Character.isUpperCase(c2.charAt(ci)))
                 uc++;
             else
                 lc++;
         }
         //there can be equal number of upper-case and lower-case, as in WaPo
-        if(uc<lc)
-            return false;
-
-
-        return Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2);
+        return uc >= lc && (Util.getAcronym(c1).equals(c2) || Util.getAcronym(c1, true).equals(c2));
     }
 
     static String flipComma(String str) {
@@ -153,16 +160,17 @@ public class ProperNounLinker {
     }
 
     /**
-     * Strip all known titles
-     * return false if one of the phrases is empty at this stage
-     * [want to be able to quickly say something is bad] check if the character (excluding periods, apostrophe, hyphen) histogram of one is subset of other (there are 11 different people names and short names in which case this is not true)
+     * The two candidates are initially stripped any known titles/articles
+     * then returns true (valid merge)
      * if one is acronym of other
-     * if one of the phrases has ', ' flip the order of words before and after the char and remove ','
-     * if both of them have the same acronym, check if they also share non-acronym word
-     * if one of the phrases has all the words in the other and if the smaller phrase is not a dictionary word.
-     *         Canonicalize words being compared: stemmed, lower-cased, expanded if found in the abbreviation dictionary
-     *         Scan the canonicalized words in both the phrases and see if the other set contains two contiguous words in one set, if so merge the words into one
-     * */
+     * (flips the order of words, if one of the phrases has ', '; This step takes care of Creeley, Robert)
+     * if both of them have the same acronym, check if they also share all the non-acronym word(s), NYTimes and NY Times
+     * if one of the phrases has all the words in the other and if the smaller phrase is not a dictionary word. This step also handles matches between abbreviations and expansions like [A.,Andrew], [Sen., Senate]
+     * Along with the following two additional steps:
+     * Canonicalize words being compared: stemmed, lower-cased, expanded if found in the abbreviation dictionary
+     * (not implemented) Scan the canonicalized words in both the phrases and see if the other set contains two contiguous words in one set, if so merge the words into one. This will take care of cases like [Chandra Babu<->Chandrababu]
+     * Single word chars like middle names or abbreviations such as A. or H.W. in "George H.W. Bush" should not be considered as words
+     */
     static boolean isValidMerge(String c1, String c2) {
         if (c1 == null && c2 == null)
             return true;
@@ -171,24 +179,14 @@ public class ProperNounLinker {
         c1 = stripTitles(c1);
         c2 = stripTitles(c2);
 
-        if(c1.length()<=1 || c2.length()<=1)
+        if (c1.length() <= 1 || c2.length() <= 1)
             return false;
 
         if (c1.equals(c2))
             return true;
 
-        Map<Character, Integer> charHist1 = charHist(c1);
-        Map<Character, Integer> charHist2 = charHist(c2);
-        if(charHist2.size()==charHist1.size() && Sets.intersection(charHist1.keySet(),charHist2.keySet()).size()==charHist1.size()) {
-            Map<Character,Integer> sch = c1.length()<c2.length()?charHist1:charHist2;
-            Map<Character,Integer> lch = c1.length()>c2.length()?charHist1:charHist2;
-            for (Character ch: sch.keySet())
-                if(lch.get(ch)<sch.get(ch))
-                    return false;
-        }
-
         //there is no point moving forward if this is the case
-        if(FeatureDictionary.sws.contains(c1.toLowerCase()) || FeatureDictionary.sws.contains(c2.toLowerCase()))
+        if (FeatureUtils.sws.contains(c1.toLowerCase()) || FeatureUtils.sws.contains(c2.toLowerCase()))
             return false;
 
         c1 = flipComma(c1);
@@ -201,7 +199,7 @@ public class ProperNounLinker {
         if (isAcronymOf(c2, c1) || isAcronymOf(c1, c2))
             return true;
         //handles [US Supreme Court, United States Supreme Court], [NY Times, NYTimes, New York Times]
-        if(Util.getAcronym(c1).equals(Util.getAcronym(c2))) {
+        if (Util.getAcronym(c1).equals(Util.getAcronym(c2))) {
             bow1 = nonAcronymWords(c1);
             bow2 = nonAcronymWords(c2);
             int minS = bow1.size() < bow2.size() ? bow1.size() : bow2.size();
@@ -214,44 +212,72 @@ public class ProperNounLinker {
         bow1 = bow(c1);
         bow2 = bow(c2);
         int minS = bow1.size() < bow2.size() ? bow1.size() : bow2.size();
+        if (minS == 0) {
+            //log.info("BOW of one of: "+c1+", "+c2+" is null! "+bow1+", "+bow2);
+            return false;
+        }
         Set<String> sbow, lbow;
-        if(minS == bow1.size()) {
+        if (minS == bow1.size()) {
             sbow = bow1;
             lbow = bow2;
-        }
-        else {
+        } else {
             sbow = bow2;
             lbow = bow1;
         }
         int numMatches = 0;
         Multimap abb = EnglishDictionary.getAbbreviations();
-        for(String bw1: sbow) {
+        for (String bw1 : sbow) {
             for (String bw2 : lbow) {
                 String lbw1, lbw2;
-                if(bw1.length()<bw2.length()) {
+                if (bw1.length() < bw2.length()) {
                     lbw1 = bw1.toLowerCase();
                     lbw2 = bw2.toLowerCase();
-                }else{
+                } else {
                     lbw1 = bw2.toLowerCase();
                     lbw2 = bw1.toLowerCase();
                 }
                 if (bw1.equals(bw2)
-                        || (lbw1.length()>1 && lbw1.charAt(lbw1.length()-1)=='.' && lbw2.startsWith(lbw1.substring(0,lbw1.length()-1)))
-                        || abb.containsEntry(lbw1, lbw2) || abb.containsEntry(lbw1+".", lbw2)) {
+                        || (bw1.length() > 1 && bw1.charAt(bw1.length() - 1) == '.' && bw2.startsWith(bw1.substring(0, bw1.length() - 1)))
+                        || abb.containsEntry(lbw1, lbw2) || abb.containsEntry(lbw1 + ".", lbw2)) {
                     numMatches++;
                     break;
                 }
             }
         }
-        if(numMatches == minS) {
-            if(minS > 1)
+        if (numMatches == minS) {
+            if (minS > 1)
                 return true;
-            //make sure the deciding term is not a dictionary word
+                //make sure the deciding term is not a dictionary word
             else {
-                String str = sbow.iterator().next().toLowerCase();
-                str = str.replaceAll("^\\W+|\\W+$","");
-                Pair<Integer,Integer> p = EnglishDictionary.getDictStats().get(str);
-                if(p==null || (((double)p.getFirst()/p.getSecond()>0.3) && (EnglishDictionary.getCommonNames().contains(str) || p.getSecond()<500))) {
+                String word = sbow.iterator().next();
+                if (word.length() < 3)
+                    return false;
+
+                int idx;
+                String[] cands = new String[]{c1.toLowerCase(), c2.toLowerCase()};
+                boolean dirty = false;
+                for (String cand : cands) {
+                    String prevWord = null;
+                    if ((idx = cand.indexOf(" " + word)) > 0) {
+                        int prevSpace = cand.substring(0, idx).lastIndexOf(" ");
+                        if (prevSpace < 0)
+                            prevSpace = 0;
+                        prevWord = cand.substring(prevSpace + 1, idx);
+                    }
+                    if (prevWord != null && EnglishDictionary.stopWords.contains(prevWord.toLowerCase())) {
+                        dirty = true;
+                        //log.info("Considering cands "+c1+" and "+c2+" matching on "+prevWord+" as dirty.");
+                        break;
+                    }
+                }
+                if (dirty)
+                    return false;
+
+                String str = word.toLowerCase();
+                str = str.replaceAll("^\\W+|\\W+$", "");
+                Pair<Integer, Integer> p = EnglishDictionary.getDictStats().get(str);
+
+                if (p == null || (((double) p.getFirst() / p.getSecond() > 0.3) && (EnglishDictionary.getCommonNames().contains(str) || p.getSecond() < 500))) {
                     return true;
                 }
             }
@@ -260,286 +286,224 @@ public class ProperNounLinker {
         return false;
     }
 
-    public static class Clusters{
-        public Hierarchy hierarchy;
-        //index of the (field name + values) to the docId
-        Map<String,Set<String>> index;
-        //index of docId to cluster Idxes in List of clusters
-        Map<String,Set<Integer>> clusterIdx;
-        List<Cluster> clusters;
-        public static class Cluster{
-            //list of docIds in which the docIds are mentioned
-            Set<String> docIds, mentions;
-            boolean namedEntity = false;
-            boolean removed = false;
-            Cluster(Cluster c){
-                this.mentions = c.mentions;
-                this.docIds = c.docIds;
-                this.namedEntity = c.namedEntity;
-            }
-            Cluster(){
-                docIds = new LinkedHashSet<>();
-                mentions = new LinkedHashSet<>();
-            }
-            public void addMention(String phrase, EmailDocument ed){
-                mentions.add(phrase);
-                docIds.add(ed.getUniqueId());
-            }
-
-            public void merge(Cluster cluster){
-                if(cluster == null || cluster.mentions==null || cluster.docIds==null) {
-                    log.error("Improper cluster for merging!!");
-                    return;
-                }
-                this.mentions.addAll(cluster.mentions);
-                this.docIds.addAll(cluster.docIds);
-                this.namedEntity = this.namedEntity||cluster.namedEntity;
-            }
-
-            public boolean isValidMerge(Cluster c){
-                for(String m: mentions)
-                    for(String m1: c.mentions)
-                        if(!ProperNounLinker.isValidMerge(m, m1))
-                            return false;
-                return true;
-            }
-
-            @Override
-            public int hashCode(){
-                return mentions.hashCode();
-            }
-
-            @Override
-            public String toString(){
-                return mentions.toString()+(removed?"[Removed]":"");
-            }
-
-            @Override
-            public boolean equals(Object o){
-                if(o==null||!(o instanceof Cluster))
-                    return false;
-                Cluster c = (Cluster) o;
-                if(this.mentions.size()!=c.mentions.size())
-                    return false;
-                for(String str: c.mentions)
-                    if(!mentions.contains(str)) {
-                        //System.err.println("Returning false due to different mention sets: "+c.mentions+", "+mentions);
-                        return false;
-                    }
-                //System.err.println(c.mentions+", "+mentions+" are equal");
-                return true;
+    static String getLastWord(String phrase) {
+        String word = "";
+        boolean start = false;
+        for (int x = phrase.length() - 1; x >= 0; x--) {
+            if (!Character.isLetterOrDigit(phrase.charAt(x))) {
+                if (start)
+                    break;
+            } else {
+                word = phrase.charAt(x) + word;
+                if (!start) start = true;
             }
         }
+        return word;
+    }
 
-        public Clusters(Hierarchy hierarchy){
-            this.hierarchy = hierarchy;
-            index = new LinkedHashMap<>();
-            clusterIdx = new LinkedHashMap<>();
-            clusters = new ArrayList<>();
-        }
-
-        public void addMention(String mention, EmailDocument ed) {
-            addMention(mention, ed, false);
-        }
-
-        public void addMention(String mention, EmailDocument ed, boolean namedEntity) {
-            if (!index.values().contains(ed.getUniqueId())) {
-                for (int f = 0; f < hierarchy.getNumLevels(); f++) {
-                    String field = hierarchy.getName(f);
-                    String val = hierarchy.getValue(f, ed);
-                    String key = field + ":" + val;
-                    if (!index.containsKey(key))
-                        index.put(key, new LinkedHashSet<String>());
-                    index.get(key).add(ed.getUniqueId());
-                }
-            }
-            Cluster cluster = new Cluster();
-            cluster.namedEntity = namedEntity;
-            cluster.addMention(mention, ed);
-            int cid = clusters.indexOf(cluster);
-            if (cid <= 0)
-                clusters.add(cluster);
-            else
-                clusters.get(cid).merge(cluster);
-
-            if (!clusterIdx.containsKey(ed.getUniqueId()))
-                clusterIdx.put(ed.getUniqueId(), new LinkedHashSet<Integer>());
-            clusterIdx.get(ed.getUniqueId()).add(clusters.size() - 1);
-        }
-
-        /**Merge the cluster cluster2 into cluster1*/
-        public void mergeClusters(Cluster cluster1, Cluster cluster2){
-            if(cluster1 == null || cluster2 == null) {
-                log.error("Cannot merge (into) null cluster");
-                return;
-            }
-            if(clusters.indexOf(cluster1)==-1 || clusters.indexOf(cluster2)==-1) {
-                log.error("Unknown cluster in merge operation!! "+cluster1+"("+clusters.indexOf(cluster1)+"), "+cluster2+"("+clusters.indexOf(cluster2)+")");
-                return;
-            }
-            if(cluster1.removed || cluster2.removed){
-                log.error("One of the clusters is already removed!!"+cluster1+", "+cluster2);
-                return;
-            }
-            int out = clusters.indexOf(cluster2);
-            int into = clusters.indexOf(cluster1);
-            //System.err.println("Removing: "+cluster2);
-            cluster1.merge(cluster2);
-            cluster2.removed = true;
-            //clusters.remove(cluster2);
-            clusters.set(out, cluster2);
-            clusters.set(into, cluster1);
-            //update the index
-            for(String docId: cluster2.docIds) {
-                clusterIdx.get(docId).add(into);
-                clusterIdx.get(docId).remove(out);
+    static String getFirstWord(String phrase) {
+        String word = "";
+        boolean start = false;
+        for (int x = 0; x < phrase.length(); x++) {
+            if (!Character.isLetterOrDigit(phrase.charAt(x))) {
+                if (start)
+                    break;
+            } else {
+                word += phrase.charAt(x);
+                if (!start) start = true;
             }
         }
-
-        public void buildSingletonClusters(Archive archive, List<EmailDocument> docs){
-            CICTokenizer tokenizer = new CICTokenizer();
-            int di = 0;
-            for(EmailDocument doc: docs){
-                List<String> entities;
-                try {
-                    entities = Arrays.asList(archive.getAllNamesInDoc(doc, true)).stream().map(Span::getText).collect(Collectors.toList());
-                }catch(IOException ioe){
-                    edu.stanford.muse.util.Util.print_exception("Error while accessing names in "+doc.getUniqueId(),ioe,log);
-                    continue;
-                }
-                String content = archive.getContents(doc, true);
-                List<Triple<String,Integer,Integer>> tokens = tokenizer.tokenize(content, false);
-                for(Triple<String,Integer,Integer> tok: tokens) {
-                    String t = tok.getFirst();
-                    t = t.replaceAll("^\\W+|\\W+$","");
-                    if(EnglishDictionary.stopWords.contains(t.toLowerCase()))
-                        continue;
-                    if(t.length()>50)
-                        continue;
-                    addMention(t, doc);
-                }
-                for(String e: entities) {
-                    e = e.replaceAll("^\\W+|\\W+$","");
-                    addMention(e, doc, true);
-                }
-                if(di++%100 == 0)
-                    log.info("Accumulated " + clusters.size() + " clusters from " + di + " docs");
-            }
-            log.info("Collected #" + clusters.size() + " singleton clusters");
-        }
-
-        public void merge(Archive archive){
-            List<Cluster> oldClusters = new ArrayList<>(clusters.size());
-            int numNamedEntity = 0;
-            for(Cluster c: clusters) {
-                oldClusters.add(new Cluster(c));
-                if(c.namedEntity)
-                    numNamedEntity++;
-            }
-            log.info("Found: #"+numNamedEntity+" named entities");
-            int numProcessed = 0;
-            for(int cid = 0;cid < oldClusters.size(); cid++){
-                Cluster c = oldClusters.get(cid);
-                if(c.removed || !c.namedEntity)
-                    continue;
-                numProcessed++;
-                //System.err.println("Trying: "+c);
-                boolean found = false;
-                for(int f=0;f<hierarchy.getNumLevels();f++) {
-                    String field = hierarchy.getName(f);
-                    List<String> docIds = new ArrayList<>();
-                    //get docs in proximity wrt this level of hierarchy
-                    for(String docId: c.docIds) {
-                        EmailDocument ed = archive.docForId(docId);
-                        String val = hierarchy.getValue(f, ed);
-                        String key = field + ":" + val;
-                        Set<String> ldocIds = index.get(key);
-                        if (ldocIds != null)
-                            docIds.addAll(ldocIds);
-                    }
-
-                    //now get all the candidate clusters
-                    Set<Integer> cands = new LinkedHashSet<>();
-                    for(String did: docIds)
-                        if(clusterIdx.get(did)!=null)
-                            cands.addAll(clusterIdx.get(did));
-
-                    //System.err.println(c+", "+cands.size()+" cands in level "+f);
-                    int ccid = clusters.indexOf(c);
-                    for(int cid2: cands) {
-//                        //else double update of clusters may happen
-//                        if (cid2 >= cid)
-//                            continue;
-                        if(cid2 == ccid)
-                            continue;
-                        if(cid2<0) {
-                            log.error("What??!! the cluster index is less than 0");
-                            continue;
-                        }
-                        Cluster c1 = clusters.get(cid2);
-                        if(c1.removed)
-                            continue;
-                        if(c1.isValidMerge(c)){
-                            found = true;
-                            System.err.println("("+c1+", "+c+"), level:"+f);
-                            //mergeClusters(c1, c);
-                            break;
-                        }
-                    }
-                    if(found)
-                        break;
-                }
-                if(cid%10==0) {
-                    int curr = 0;
-                    for(Cluster cluster: clusters)
-                        if(!cluster.removed)
-                            curr++;
-                    log.info("Iterated over: " + numProcessed + "/" + numNamedEntity +" clusters. No. of clusters after merging is: " + curr + "/" + oldClusters.size());
-                }
-            }
-        }
+        return word;
     }
 
     /**
-     * Collects and merges mention clusters
-     * @arg docs - List of documents
-     * @arg hierarchy - list of field names in the order of priority*/
-    public static Clusters getMentionClusters(Archive archive, final List<EmailDocument> docs, Hierarchy hierarchy) {
-        Clusters clusters = new Clusters(hierarchy);
-        clusters.buildSingletonClusters(archive, docs);
-        clusters.merge(archive);
-        return clusters;
+     * This is a much simpler merge evaluator
+     * assumes that one of c1,c2 is a single word
+     */
+    static boolean isValidMergeSimple(String c1, String c2) {
+        if (c1 == null || c2 == null || (c1.contains(" ") && c2.contains(" "))) {
+            return false;
+        }
+        c1 = stripTitles(c1);
+        c2 = stripTitles(c2);
+        if (c1.length() == 0 || c2.length() == 0)
+            return false;
+
+        if (c1.length() > c2.length()) {
+            String temp = c1;
+            c1 = c2;
+            c2 = temp;
+        }
+        if (DictUtils.fullDictWords.contains(c1.toLowerCase()))
+            return false;
+        c2 = flipComma(c2);
+
+        String c1type = FeatureGeneratorUtil.tokenFeature(c1);
+        if ("ac".equals(c1type)) {
+            return Util.getAcronym(c2).equals(c1);
+        }
+        int idx;
+        if ((idx = c2.indexOf(c1)) < 0)
+            return false;
+        if (idx > 0 && Character.isLetterOrDigit(c2.charAt(idx - 1)))
+            return false;
+        int endIdx = idx + c1.length();
+        if (endIdx < c2.length() && Character.isLetterOrDigit(c2.charAt(endIdx)))
+            return false;
+        //make sure the previous or the next word is not a stop word
+        String prevChunk = c2.substring(0, idx);
+        String nxtChunk = c2.substring(idx + c1.length());
+        if (prevChunk.length() > 0 && prevChunk.charAt(prevChunk.length() - 1) == ' ') {
+            String prevWord = getLastWord(prevChunk);
+            if (EnglishDictionary.stopWords.contains(prevWord.toLowerCase()))
+                return false;
+        }
+        if (nxtChunk.length() > 0 && nxtChunk.charAt(0) == ' ') {
+            String nxtWord = getFirstWord(nxtChunk);
+            if (EnglishDictionary.stopWords.contains(nxtWord.toLowerCase()))
+                return false;
+        }
+        return true;
     }
 
-//    static SoftTFIDF distance = null;
-//    static void initTokenDistance(){
-//        distance = new SoftTFIDF(new SimpleTokenizer(true, true), new JaroWinkler(),0.8);
-//        Map<String,String> dbpedia = EmailUtils.readDBpedia(1.0/10);
-//        List lst = new ArrayList<>();
-//        for(String entry: dbpedia.keySet())
-//            lst.add(distance.prepare(entry));
-//        long st = System.currentTimeMillis();
-//        distance.train(new BasicStringWrapperIterator(lst.iterator()));
-//        log.info("Trained the distance metric on #"+lst.size()+" entries in "+(System.currentTimeMillis()-st)+"ms");
-//    }
-//
-//    static float distance(String s, String t){
-//        if(distance == null)
-//            initTokenDistance();
-//        double d = distance.score(s,t);
-//
-//        // print it out
-//        System.out.println("========================================");
-//        System.out.println("String s:  '"+s+"'");
-//        System.out.println("String t:  '"+t+"'");
-//        System.out.println("Similarity: "+d);
-//
-//        // a sort of system-provided debug output
-//        System.out.println("Explanation:\n" + distance.explainScore(s,t));
-//        return (float)d;
-//    }
+    public static class EmailMention {
+        public Span entity;
+        public String[] contextLevels;
+        EmailDocument ed;
+        Date date;
 
-    public static void test() {
+        public EmailMention(Span entity, Document context, Hierarchy hierarchy) {
+            this.entity = entity;
+            contextLevels = new String[hierarchy.getNumLevels()];
+            for (int l = 0; l < hierarchy.getNumLevels(); l++)
+                this.contextLevels[l] = hierarchy.getValue(l, context);
+            date = ((EmailDocument) context).getDate();
+            ed = (EmailDocument) context;
+        }
+
+        public Date getDate() {
+            return date;
+        }
+        public String toString(){
+            return entity.text+"-"+ed.getUniqueId();
+        }
+    }
+
+    /**Use this method with caution! Don't use this method for bulk resolutions by making repeated calls to the method.
+     * The response time of this method can be in the order of fraction of secs.
+     * Given an EmailMention, gets the closest possible resolutions in the archive.
+     * Uses EMailHierarchy to measure distance between email mentions.*/
+    public static List<Pair<EmailMention,Integer>> getNearestMatches(EmailMention mention, int maxMatches, Archive archive) {
+        //maximum number of documents to consider before giving up on the search
+        int MAX_DOCS = 1000;
+        //Collect one year of docs
+        long WINDOW = 365 * 24 * 3600 * 1000l;
+        Date st = new Date(mention.date.getTime() - WINDOW / 2), et = new Date(mention.date.getTime() + WINDOW / 2);
+        Calendar scal = new GregorianCalendar(), ecal = new GregorianCalendar();
+        scal.setTime(st);
+        ecal.setTime(et);
+        Collection<DatedDocument> docs = (Collection) archive.getAllDocs();
+        List<DatedDocument> sdocs = IndexUtils.selectDocsByDateRange(docs, scal.get(Calendar.YEAR), scal.get(Calendar.MONTH), scal.get(Calendar.DATE),
+                ecal.get(Calendar.YEAR), ecal.get(Calendar.MONTH), ecal.get(Calendar.DATE));
+        Set<String> docIds = sdocs.stream().map(d->d.getUniqueId()).collect(Collectors.toSet());
+
+        Hierarchy hierarchy = new EmailHierarchy();
+        String[] vlevels = new String[hierarchy.getNumLevels()];
+        for(int i=0;i<hierarchy.getNumLevels();i++)
+            vlevels[i] = hierarchy.getValue(i, mention.ed);
+
+        boolean isAcronym = mention.entity.text.length()>2 && FeatureGeneratorUtil.tokenFeature(mention.entity.text).equals("ac");
+        if(mention.entity.text.length()<=2)
+            return new ArrayList<>();
+
+        long addingTime = 0, ldocTime = 0, pst = 0;
+        List<Pair<EmailMention, Integer>> matches = new ArrayList<>();
+
+        //order the docs based on distance from the current doc
+        //Under the assumption that the hierarchy would always impose distance between two email mentions at doc level granularity in the least
+        Map<Integer, List<String>> docDist = new LinkedHashMap<>();
+        for(String docId: docIds){
+            EmailDocument ed = archive.docForId(docId);
+            int dist = -1;
+            for(int i=0;i<hierarchy.getNumLevels();i++)
+                if(vlevels[i]!=null && vlevels[i].equals(hierarchy.getValue(i, ed))) {
+                    dist = i;
+                    break;
+                }
+            if(dist == -1)
+                continue;
+            if(!docDist.containsKey(dist))
+                docDist.put(dist, new ArrayList<>());
+            docDist.get(dist).add(docId);
+        }
+
+        Set<String> fieldsToLoad = new LinkedHashSet<>();
+        fieldsToLoad.add(NER.NAMES);fieldsToLoad.add(NER.NAMES_TITLE);
+
+        //cache stuff
+        Map<String, Boolean> processed = new LinkedHashMap<>();
+        Set<String> considered = new LinkedHashSet<>();
+
+        int docsProcessed = 0;
+        outer:
+        for (Integer level=0;level<hierarchy.getNumLevels();level++) {
+            if(!docDist.containsKey(level))
+                continue;
+            for(String docId: docDist.get(level)) {
+                long st1 = System.currentTimeMillis();
+                org.apache.lucene.document.Document ldoc = null;
+                try {
+                    ldoc = archive.getLuceneDoc(docId, fieldsToLoad);
+                }catch(IOException e){
+                    edu.stanford.muse.util.Util.print_exception("Failed to fetch lucene doc for doc id: " + docId, e, log);
+                    continue;
+                }
+                ldocTime += System.currentTimeMillis() - st1;
+                st1 = System.currentTimeMillis();
+                Span[] entities = NER.getNames(ldoc, true);
+                pst += (System.currentTimeMillis() - st1);
+                st1 = System.currentTimeMillis();
+                List<Span> names = new ArrayList<>();
+                names.addAll(Arrays.asList(entities));
+                EmailDocument ed = archive.docForId(docId);
+                List<String> hpeople = ed.getAllNames();
+                for (String hp : hpeople) {
+                    Span s = new Span(hp, -1, -1);
+                    s.setType(NEType.Type.PERSON.getCode(), 1.0f);
+                    names.add(s);
+                }
+
+                for (Span name : names) {
+                    if (name == null || name.text == null)
+                        continue;
+                    String tText = mention.entity.text;
+                    boolean match;
+                    Boolean pMatch = processed.get(name.text);
+                    if (pMatch == null) {
+                        match = (isAcronym && !name.text.equals(tText) && Util.getAcronym(name.text).equals(tText)) ||
+                                (name.text.contains(" " + tText + " ") || name.text.startsWith(tText + " ") || name.text.endsWith(" " + tText));
+                        processed.put(name.text, match);
+                    } else
+                        match = pMatch;
+                    if (match) {
+                        if (!considered.contains(name.text)) {
+                            considered.add(name.text);
+                            matches.add(new Pair<>(new EmailMention(name, ed, hierarchy), level));
+                            if(matches.size()>=maxMatches)
+                                return matches;
+                        }
+                    }
+                }
+                addingTime += (System.currentTimeMillis() - st1);
+                if(docsProcessed++>MAX_DOCS)
+                    break outer;
+            }
+        }
+        System.out.println("Ldoc get time"+ldocTime+" -- Parsing time: "+pst+" -- Adding time: "+addingTime);
+        return matches;
+    }
+
+    static void test() {
         BOWtest();
         Map<Pair<String,String>,Boolean> tps = new LinkedHashMap<>();
         tps.put(new Pair<>("NYTimes", "NY Times"),true);
@@ -584,6 +548,7 @@ public class ProperNounLinker {
         tps.put(new Pair<>("University of Chicago", "UC"), true);
         tps.put(new Pair<>("University of Chicago", "Chicago Univ"), true);
         tps.put(new Pair<>("University of Chicago", "U. Chicago"), true);
+        tps.put(new Pair<>("University of Chicago", "Chicago Univ."), true);
         tps.put(new Pair<>("Pt. Hariprasad", "Hariprasad"), true);
         tps.put(new Pair<>("Mt. Everest", "Everest"), true);
         //because such acronyms are unlikely
@@ -628,35 +593,50 @@ public class ProperNounLinker {
         tps.put(new Pair<>("Chandra Babu", "Chandrababu"), true);
         tps.put(new Pair<>("Yograj", "Yog Raj"), true);
         tps.put(new Pair<>("Lakshmi", "Laxmi"), true);
+
         tps.put(new Pair<>("Chicago University", "Chicago Square"), false);
-        tps.put(new Pair<>("A. J. Cheyer","Adam Cheyer"), false);
+        tps.put(new Pair<>("A. J. Cheyer","Adam Cheyer"), true);
+        tps.put(new Pair<>("Prez Abdul Kalam","Abdul J Kalam"), true);
         //When we mark two phrases as a valid merge based on one common word then we check if it is a common word,
         //since we rely on american national corpus for such frequencies (stats.txt), some of the valid merges like the one below are marked wrong
         //yet to deal with this problem
         tps.put(new Pair<>("Washington", "Washington State"), true);
         tps.put(new Pair<>("Dharwad University","Dharwad"), false);
-
-        int numFailed = 0;
+        tps.put(new Pair<>("Dumontier Lab", "Lab"), false);
+        tps.put(new Pair<>("DJBDX Thank", "Thank"), false);
+        tps.put(new Pair<>("Non-ProfitOrganisation", "Non-profit"), false);
+        tps.put(new Pair<>("Non-ProfitOrganisation", "Non-consecutive"), true);
+        tps.put(new Pair<>("Stanford University","Washington University in St. Louis"), false);
+        tps.put(new Pair<>("McAfee Research","MC"), false);
+        tps.put(new Pair<>("Blog","Presto Blog Digest"), false);
+        tps.put(new Pair<>("Rubin","Should Rubin"), true);
+        int numFailed = 0, numTest = 0;
         long st = System.currentTimeMillis();
         for(Map.Entry e: tps.entrySet()) {
             boolean expected = (boolean)e.getValue();
             String cand1 = ((Pair<String,String>)e.getKey()).first;
             String cand2 = ((Pair<String,String>)e.getKey()).second;
-            if (isValidMerge(cand1, cand2) != expected) {
-                System.err.println(cand1 + " - " + cand2 + ", expected: " + expected);
-                numFailed++;
+            if(!cand1.contains(" ") || !cand2.contains(" ")) {
+                if (isValidMergeSimple(cand1, cand2) != expected) {
+                    System.err.println(cand1 + " - " + cand2 + ", expected: " + expected);
+                    numFailed++;
+                }
+                numTest++;
             }
-            //compare(cand1,cand2);
         }
-        System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+tps.size()+"]");
+        System.err.println("All tests done in: "+(System.currentTimeMillis()-st)+"ms\nFailed ["+numFailed+"/"+numTest+"]");
     }
 
     public static void BOWtest(){
-        String[] phrases = new String[]{"NYTimes","DaVinci","Vincent VanGogh"};
+        String[] phrases = new String[]{"NYTimes","DaVinci","Vincent VanGogh", "George H.W. Bush","George H W Bush","George W. Bush","Non-consecutive"};
         String[][] expected = new String[][]{
                 new String[]{"ny","time"},
                 new String[]{"da","vinci"},
-                new String[]{"vincent","van","gogh"}
+                new String[]{"vincent","van","gogh"},
+                new String[]{"george","bush"},
+                new String[]{"george","bush"},
+                new String[]{"george","bush"},
+                new String[]{"non","consecutive"}
         };
         for(int pi=0;pi<phrases.length;pi++) {
             String p = phrases[pi];
@@ -677,28 +657,31 @@ public class ProperNounLinker {
                 System.err.println(str);
             }
         }
-        System.out.println("All tests done!");
+        System.out.println("Bag of Words test done!");
     }
 
-    public static void main(String[] args){
-//        try{
-//            String userDir = System.getProperty("user.home") + File.separator + ".muse" + File.separator + "user";
-//            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
-//            archive.assignThreadIds();
-//            Hierarchy hierarchy = new EmailHierarchy();
-//            Clusters clusters = getMentionClusters(archive, (List)archive.getAllDocs(), hierarchy);
-//            for(Clusters.Cluster cluster: clusters.clusters) {
-//                if(cluster.mentions.size()<=1 || cluster.removed)
-//                    continue;
-//                System.err.println("-------------");
-//                System.err.println(cluster);
-//            }
-//            archive.close();
-////            EmailDocument ed = (EmailDocument)archive.getAllDocs().get(2);
-////            System.err.println(archive.getDoc(ed));
-//        }catch(Exception e){
-//            e.printStackTrace();
-//        }
-        test();
+    public static void main(String[] args) {
+//        BOWtest();
+//        test();
+        Random rand = new Random();
+        try {
+            String userDir = System.getProperty("user.home") + File.separator + "epadd-appraisal" + File.separator + "user";
+            Archive archive = SimpleSessions.readArchiveIfPresent(userDir);
+//            findMerges(archive);
+//            SimpleSessions.saveArchive(archive.baseDir, "default", archive);
+            List<Document> docs = archive.getAllDocs();
+            long st = System.currentTimeMillis();
+            int numQ = 0;
+            for(int i=0;i<5;i++) {
+                Document doc = docs.get(rand.nextInt(docs.size()));
+                Span[] es = NER.getNames(doc, true, archive);
+                Arrays.asList(es).stream().filter(s -> !s.text.contains(" "))
+                        .forEach(s -> System.out.println(s.text + "<->" + getNearestMatches(new EmailMention(s, doc, new EmailHierarchy()), 5, archive)));
+                numQ += Arrays.asList(es).stream().filter(s -> !s.text.contains(" ")).count();
+            }
+            System.out.println("NumQ:"+numQ+"- Time: "+(System.currentTimeMillis()-st)+"ms"+"- AVG: "+((float)(System.currentTimeMillis()-st)/numQ)+"ms");
+        }catch(Exception e){
+            e.printStackTrace();
+        }
     }
 }

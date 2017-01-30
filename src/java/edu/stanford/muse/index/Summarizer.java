@@ -29,7 +29,7 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 
 /** this is the class responsible for generating summaries (currently, in the form of cards). it is closely tied to the indexer.
- * mainly provides 2 features: recomputeCards() which does TFIDF scoring and populateCards, which uses the scores already computed 
+ * mainly provides 2 mixtures: recomputeCards() which does TFIDF scoring and populateCards, which uses the scores already computed
  * to create cards.  if only the # of terms per card changes, populateCards can be used, since all the scores don't need to be recomputed.
  * nukeCards should be called if something changed (like a filter) which invalidates the existing cards.
  */

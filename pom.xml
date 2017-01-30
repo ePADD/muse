@@ -1,14 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-	<dependencies>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.10</version>
-		</dependency>
-	</dependencies>
-	<parent>
+  <parent>
     <groupId>edu.stanford.muse</groupId>
     <artifactId>muse-common</artifactId>
     <version>1.0.0-SNAPSHOT</version>
@@ -24,7 +17,6 @@
   <url>http://maven.apache.org</url>
   
   <build>
-  <testSourceDirectory>src/test/java</testSourceDirectory>
     <defaultGoal>install</defaultGoal>
     <plugins>
       <plugin>
@@ -71,11 +63,32 @@
 	  <warSourceDirectory>${basedir}/WebContent</warSourceDirectory>
 	</configuration>
       </plugin>
-		<plugin>
-			<groupId>org.apache.maven.plugins</groupId>
-			<artifactId>maven-dependency-plugin</artifactId>
-		</plugin>
-	</plugins>
-
+      <plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-dependency-plugin</artifactId>
+      </plugin>
+    </plugins>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.19.1</version>
+	  <configuration>
+	    <testSourceDirectory>${basedir}/src/java</testSourceDirectory>
+	    <testClassesDirectory>${project.build.directory}/classes/</testClassesDirectory>
+	    <includes>
+              <include>**/*Test.java</include>
+            </includes>
+	    <argLine>-Xmx2048m</argLine>
+	  </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <resources>
+      <resource>
+	<directory>WebContent/WEB-INF/classes</directory>
+      </resource>
+    </resources>
   </build>
 </project>

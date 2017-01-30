@@ -20,7 +20,6 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
 import edu.stanford.muse.ie.variants.Variants;
 
 import org.apache.commons.codec.DecoderException;
@@ -44,7 +43,7 @@ import java.util.stream.Collectors;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
-	public static Map<String, String>	dbpedia			= null;
+	public static org.apache.commons.collections4.map.CaseInsensitiveMap<String, String> dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
 	/** Returns the part before @ in an email address, e.g. hangal@gmail.com => hangal.
@@ -917,7 +916,7 @@ public class EmailUtils {
 		StringBuilder result = new StringBuilder();
 		BufferedReader br = new BufferedReader(new StringReader(text));
 
-		// stopper for the tokenizer when we meet a line that needs to be ignored
+		// stopper for the tokenize when we meet a line that needs to be ignored
 		String stopper = " . ";
 
 		// we'll maintain line and nextLine for lookahead. needed e.g. for the "on .... wrote:" detection below
@@ -1217,8 +1216,8 @@ public class EmailUtils {
 		}
 
 		Collections.sort(tokens);
-		// to be enabled for version 3
-//        tokens = tokens.stream().map(Variants.nameVariants::getCanonicalVariant).collect(Collectors.toList());
+		// enable variants
+		tokens = tokens.stream().map(Variants.nameVariants::getCanonicalVariant).collect(Collectors.toList());
 
 		// cat all the tokens, one space in between, no space at the end
 		String cname = Util.join(tokens, " ");
@@ -1464,16 +1463,18 @@ public class EmailUtils {
             if(p==1)
                 return dbpedia;
             else
-                return sample(dbpedia, p);
+                return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(sample(dbpedia, p));
         }
         if(typesFile == null)
-            typesFile = "instance_types_2014-04.en.txt.bz2";
-        dbpedia = new LinkedHashMap<>();
+            typesFile = Config.DBPEDIA_INSTANCE_FILE;
+        //dbpedia = new LinkedHashMap<>();
+		//we want to be able to access elements in the map in a case-sensitive manner, this is a way to do that.
+		dbpedia = new org.apache.commons.collections4.map.CaseInsensitiveMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
 			InputStream is = Config.getResourceAsStream(typesFile);
 			if (is == null) {
-				log.warn ("Dbpedia file resource could not be read!!");
+				log.warn ("DBpedia file resource could not be read!!");
 				return dbpedia;
 			}
 
@@ -1491,8 +1492,6 @@ public class EmailUtils {
 
                 String[] words = line.split("\\s+");
                 String r = words[0];
-				if(!r.contains("_"))
-					continue;
 
                 /**
                  * The types file contains lines like this:
@@ -1504,8 +1503,6 @@ public class EmailUtils {
                 if (r.contains("__")) {
                     d++;
                     continue;
-                    //					r = r.replaceAll("\\_\\_.$", "");
-                    //					r = r.replaceAll("^.+?\\_\\_", "");
                 }
                 //if it still contains this, is a bad title.
                 if (r.equals("") || r.contains("__")) {
@@ -1535,16 +1532,6 @@ public class EmailUtils {
                     numPersons++;
                 type = type.intern(); // type strings are repeated very often, so intern
 
-                boolean allowed = true;
-                //boolean allowed = DBpediaTypes.allowedTypes.contains(type);
-                for(String it: FeatureDictionary.ignoreTypes)
-                    if(type.endsWith(it)) {
-                        allowed = false;
-                        break;
-                    }
-                if(!allowed)
-                    continue;
-
 				if(type.equals("Road|RouteOfTransportation|Infrastructure|ArchitecturalStructure|Place")) {
 					//System.err.print("Cleaned: "+title);
 					title = cleanDBPediaRoad(title);
@@ -1559,16 +1546,11 @@ public class EmailUtils {
 
 		log.info("Read " + dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
-		return sample(dbpedia,p);
+		return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(sample(dbpedia,p));
 	}
 
-
-	public static Map<String,String> readDBpedia(double fraction) {
-        return readDBpedia(fraction, null);
-    }
-
 	public static Map<String,String> readDBpedia(){
-		return readDBpedia(1.0);
+		return readDBpedia(1.0, null);
 	}
 
     public static void main(String[] args){

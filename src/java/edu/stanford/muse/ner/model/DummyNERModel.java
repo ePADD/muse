@@ -1,28 +1,31 @@
 package edu.stanford.muse.ner.model;
 
-import edu.stanford.muse.ner.featuregen.FeatureDictionary;
-import edu.stanford.muse.ner.tokenizer.CICTokenizer;
-import edu.stanford.muse.util.Pair;
+import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
-import edu.stanford.muse.util.Util;
 
-import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by vihari on 24/02/16.
+ * A dummy model that simulates the behavior of a NER model.
+ * This model returns all pseudo proper nouns in the content and hence generally is a super-set of all the possible entities in the content
  */
 public class DummyNERModel implements NERModel{
-    CICTokenizer tokenizer = new CICTokenizer();
+    Tokenizer tokenizer = new CICTokenizer();
     public Span[] find (String content) {
-        Short defType = FeatureDictionary.PERSON;
-        List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content, false);
-        List<Span> names = new ArrayList<>();
-        pns.forEach(tok->{
-            Span sp = new Span(tok.first,tok.second,tok.third);
-            sp.setType(defType,1.0f);
-            names.add(sp);
-        });
-        return names.toArray(new Span[names.size()]);
+        // collect all pseudo proper nouns
+        List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content);
+        //we will make a dummy object of type map
+        List<Span> chunks = pns.stream().map(pn -> new Span(pn.getFirst(), pn.getSecond(), pn.getThird())).collect(Collectors.toList());
+
+        return chunks.toArray(new Span[chunks.size()]);
+    }
+
+    @Override
+    public void setTokenizer(Tokenizer tokenizer) {
+        this.tokenizer = tokenizer;
     }
 }

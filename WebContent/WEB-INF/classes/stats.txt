@@ -1,5 +1,6 @@
 #A word statistics file generated from one of the American National Corpus. http://www.anc.org/ [The data is completely open and can be used in any way we want]
 #The file contains three columns: first one is the canocalised word, the second number is number of appearances of the canonicalised word in lower case and the third column is the total number of occurrences of the word. The position of the word in a sentence is not considered when generating the counts in the second column.
+#Consider using this file instead: http://www.anc.org/SecondRelease/data/ANC-written-count.zip -- we are trying to differentiate NNP/NN from others by looking at upper-case and lower-case frequencies. Instead, we can consider the tag frequencies in ANC-written-count which is definitely more accurate.
 wot 2 6
 s 9026 163337
 de 233 3334
@@ -144,7 +145,7 @@ provide 55 3489
 vivid 3 136
 picture 45 1107
 alongside 15 173
-features 42 1401
+mixtures 42 1401
 such 900 14519
 vocabulary 10 266
 regional 100 614

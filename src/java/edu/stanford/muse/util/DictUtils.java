@@ -25,16 +25,16 @@ public class DictUtils {
 	/**
 	 * some common word sets. static so that all indexers share the same objects
 	 */
-	public static Set<String>			stopWords		= new HashSet<String>();
-	public static Set<String>	commonDictWords	= new HashSet<String>();				// these will be pruned from the output
-	public static Set<String>	fullDictWords	= new HashSet<String>();
-	public static Set<String>	commonDictWords5000 = new HashSet<String>();
-	public static Set<String>	topNames		= new HashSet<String>();				// used for NER
-	public static Set<String>	tabooNames		= new LinkedHashSet<String>();			// this will be ignored by NER
+	public static Set<String>			stopWords		= new HashSet<>();
+	public static Set<String>	commonDictWords	= new HashSet<>();				// these will be pruned from the output
+	public static Set<String>	fullDictWords	= new HashSet<>();
+	public static Set<String>	commonDictWords5000 = new HashSet<>();
+	public static Set<String>	topNames		= new HashSet<>();				// used for NER
+	public static Set<String>	tabooNames		= new LinkedHashSet<>();		// this will be ignored by NER
 
-	public static Set<String>	bannedWordsInPeopleNames	= new HashSet<String>(), bannedStringsInPeopleNames = new HashSet<String>();	// bannedWords => discrete word; bannedStrings => occurs anywhere in the name
-	public static Set<String>	bannedStartStringsForEmailAddresses = new HashSet<String>();
-	static Set<String>			joinWords					= new HashSet<String>();														// this will be ignored for the indexing
+	public static Set<String>	bannedWordsInPeopleNames	= new HashSet<>(), bannedStringsInPeopleNames = new HashSet<>();	// bannedWords => discrete word; bannedStrings => occurs anywhere in the name
+	public static Set<String>	bannedStartStringsForEmailAddresses = new HashSet<>();
+	static Set<String>			joinWords					= new HashSet<>();  // this will be ignored for the indexing
 	private static final String	COMMENT_STRING				= "#";
 
 	static {
