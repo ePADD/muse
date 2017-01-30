@@ -1216,8 +1216,8 @@ public class EmailUtils {
 		}
 
 		Collections.sort(tokens);
-		// to be enabled for version 3
-//        tokens = tokens.stream().map(Variants.nameVariants::getCanonicalVariant).collect(Collectors.toList());
+		// enable variants
+		tokens = tokens.stream().map(Variants.nameVariants::getCanonicalVariant).collect(Collectors.toList());
 
 		// cat all the tokens, one space in between, no space at the end
 		String cname = Util.join(tokens, " ");

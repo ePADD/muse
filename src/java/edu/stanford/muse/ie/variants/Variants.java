@@ -214,6 +214,7 @@ public class Variants {
             s = Util.canonicalizeSpaces(s);
             List<String> tokens = Util.tokenize(s, DELIMS);
             tokens.removeAll(stopWords);
+            tokens = tokens.stream().map(Variants.nameVariants::getCanonicalVariant).collect(Collectors.toList());
 
             if (Util.nullOrEmpty(tokens))
                 return "";
@@ -260,6 +261,16 @@ public class Variants {
             }
         }
 
+        public Set<Set<String>> getClusters() {
+            Set<Set<String>> clusters = new LinkedHashSet<>();
+            for (String cEntity: cEntityToDEntity.keys()) {
+                Set<String> cluster = new LinkedHashSet<>(cEntityToDEntity.get(cEntity));
+                clusters.add (cluster);
+            }
+            return clusters;
+        }
+
+        /* returns map of centities -> weight that the string s maps to */
         public Map<String, Integer> lookupAsWeightedMap(String s) {
             Map<String, Integer> result = new LinkedHashMap<>(); // cEntityToScore
             s = canonicalize(s);

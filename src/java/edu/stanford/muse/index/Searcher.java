@@ -11,8 +11,6 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
-import groovy.lang.StringWriterIOException;
-import org.apache.commons.collections4.map.LinkedMap;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -760,6 +758,19 @@ public class Searcher {
         return result;
     }
 
+    private static Set<Document> updateForSensitiveMessages(Archive archive, Set<Document> docs, Multimap<String, String> params) {
+        String isSensitive = getParam(params, "sensitive");
+
+        if ("true".equals(isSensitive)) {
+            Indexer.QueryType qt = null;
+            qt = Indexer.QueryType.PRESET_REGEX;
+            Collection<Document> sensitiveDocs = archive.docsForQuery(-1 /* cluster num -- not used */, qt);
+            docs.retainAll(sensitiveDocs);
+        }
+        return docs;
+    }
+
+
     /**
      * Important method.
      * handle query for term, sentiment, person, attachment, docNum, timeCluster
@@ -835,6 +846,7 @@ public class Searcher {
         resultDocs = (Set) updateForLexicons(archive, resultDocs, params);
         resultDocs = (Set) updateForEntities(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
         resultDocs = (Set) updateForEntityTypes(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
+        resultDocs = (Set) updateForSensitiveMessages(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
 
         // now only keep blobs that belong to resultdocs
 
