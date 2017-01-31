@@ -37,8 +37,8 @@ public class Entities implements Serializable, StatusProvider {
 		 * db - Database for lookup, only fast and freebase are supported.
 		 */
 		public Info(String t, String db, boolean test) {
-			this.type = t;
-			this.database = db;
+			this.type = t.intern();
+			this.database = db.intern();
 			this.test = test;
 		}
 	}
@@ -57,9 +57,9 @@ public class Entities implements Serializable, StatusProvider {
 	double								pctComplete;
 
 	public Entities() {
-		pairs = new ArrayList<Pair<String, Integer>>();
-		canonicalToOriginal = new LinkedHashMap<String, String>();
-		counts = new LinkedHashMap<String, Integer>();
+		pairs = new ArrayList<>();
+		canonicalToOriginal = new LinkedHashMap<>();
+		counts = new LinkedHashMap<>();
 	}
 
     public static class Score implements Comparable<Score>{
@@ -177,7 +177,7 @@ public class Entities implements Serializable, StatusProvider {
 	//TODO: this method is very slow because it searches many names in FASTDB to see if they exist and proceeds further only if it exists.
 	//Load FAST data into memory nad make it faster
 	//TODO: this method should also take sort as parameter and should sort teh records if this variable is set
-	public String getHtmlFor(int beginIdx, int endIdx, Info info, Archive archive) {
+	public JSONObject getJSONObjectFor(int beginIdx, int endIdx, Info info, Archive archive) {
 		String type = info.type;
 		String db = info.database;
         //check if the context feature is available
@@ -201,12 +201,12 @@ public class Entities implements Serializable, StatusProvider {
         if (type.equals("person") || type.equals("correspondent")){
             //because it throws an exception if the file does not exist
             File f = new File(FASTSearcher.indexDir);
-            if(f==null || !f.exists()) {
+            if (f==null || !f.exists()) {
                 JSONObject obj = new JSONObject();
                 obj.put("status", "0");
                 //dont use the key "error" as statusUpdate.js has some default behaviour with that key
                 obj.put("info", "FAST index not found in: " + FASTSearcher.indexDir);
-                return obj.toString();
+                return obj;
             }
         }
 
@@ -529,7 +529,7 @@ public class Entities implements Serializable, StatusProvider {
         obj2.put("status", "1");
 		totalTime = System.currentTimeMillis() - totalTime;
 		log.info("Total time: " + totalTime + "\nTime to collect record hits: " + whileLoopTime + "\nResolution time: " + resolutionTime + "\nContext Collection Time: " + contextCollectionTime);
-		return obj2.toString();
+		return obj2;
 	}
 
 	@Override
@@ -556,7 +556,7 @@ public class Entities implements Serializable, StatusProvider {
 
 			Entities ent = authorities.entitiesData.get(EntityFeature.PERSON);
 			Info info = new Info("person", "fast", false);
-			String html = ent.getHtmlFor(0, 1, info, archive);
+			String html = ent.getJSONObjectFor(0, 1, info, archive).toString();
 			System.err.println(html);
 		} catch (Exception e) {
 			e.printStackTrace();

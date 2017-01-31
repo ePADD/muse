@@ -82,7 +82,7 @@ public class Config {
             SETTINGS_DIR = DEFAULT_SETTINGS_DIR;
 
         // set up base_dir and its subdirs
-        String BASE_DIR = System.getProperty("epadd.base.dir");
+        String BASE_DIR = props.getProperty("epadd.base.dir");
         if (Util.nullOrEmpty(BASE_DIR))
             BASE_DIR = DEFAULT_BASE_DIR;
 
