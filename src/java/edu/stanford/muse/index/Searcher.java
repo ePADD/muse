@@ -348,6 +348,24 @@ public class Searcher {
         return resultDocs;
     }
 
+    private static Set<EmailDocument> updateForMessageId (Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+        String val = getParam(params, "uniqueId");
+        if (Util.nullOrEmpty(val))
+            return docs;
+
+        Set<String> messageIds = splitFieldForOr(val);
+
+        Set<EmailDocument> resultDocs = new LinkedHashSet<>();
+        for (EmailDocument ed : docs)
+        {
+            String messageSig = Util.hash (ed.getSignature());
+            if (!Util.nullOrEmpty (messageSig))
+                if (messageIds.contains(messageSig))
+                    resultDocs.add(ed);
+        }
+        return resultDocs;
+    }
+
     private static Set<EmailDocument> updateForMailingListState(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
         String mailingListState = getParam(params, "mailingListState");
         if ("either".equals(mailingListState) || Util.nullOrEmpty(mailingListState))
@@ -835,6 +853,7 @@ public class Searcher {
         }
 
         resultDocs = (Set) updateForDocId(archive, (Set) resultDocs, params); // for clicking on message in attachment listing
+        resultDocs = (Set) updateForMessageId(archive, (Set) resultDocs, params); // for message id field in adv. search
 
         resultDocs = (Set) updateForMailingListState(archive.addressBook, (Set) resultDocs, params);
         resultDocs = (Set) updateForEmailDirection(archive.addressBook, (Set) resultDocs, params);

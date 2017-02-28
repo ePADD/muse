@@ -11,7 +11,6 @@ import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.JSONUtils;
-import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
@@ -48,9 +47,6 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 
 	public Map<Short, Entities>		entitiesData		= new HashMap<>();
 
-	// frequency of a contact. ContactId->frequency
-	public Map<Integer, Integer>	contactFreq;
-
 	//contains status at any moment.
 	String							status;
 	double							pctComplete			= 0.0;
@@ -59,6 +55,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	//set cancel to true if wish to cancel the op, cancel will be checked or used in during repetitive or heavy tasks 
 	boolean							cancel				= false;
 
+    /** load this object from a file, if its already available */
 	public static InternalAuthorityAssigner load(Archive archive) {
 		InternalAuthorityAssigner aa;
 		String AUTHORITY_ASSIGNER_FILE = archive.baseDir + File.separator + Config.AUTHORITY_ASSIGNER_FILENAME;
@@ -72,15 +69,14 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 				if (ois != null)
 					ois.close();
 				String stats = "";
-				stats += "#People: " + aa.entitiesData.get(EntityFeature.PERSON).pairs.size() + "\n";
-				stats += "#Correspondents: " + aa.entitiesData.get(EntityFeature.CORRESPONDENT).pairs.size() + "\n";
-				stats += "#Places: " + aa.entitiesData.get(EntityFeature.PLACE).pairs.size() + "\n";
-				stats += "#Orgs: " + aa.entitiesData.get(EntityFeature.ORG).pairs.size();
+				stats += "#People: " + aa.entitiesData.get(EntityFeature.PERSON).size() + "\n";
+				stats += "#Correspondents: " + aa.entitiesData.get(EntityFeature.CORRESPONDENT).size() + "\n";
+				stats += "#Places: " + aa.entitiesData.get(EntityFeature.PLACE).size() + "\n";
+				stats += "#Orgs: " + aa.entitiesData.get(EntityFeature.ORG).size();
 				log.info("Loaded entities from file: " + AUTHORITY_ASSIGNER_FILE + "\n" + stats);
 				return aa;
 			} catch (Exception e) {
-				e.printStackTrace();
-				log.warn("Exception while reading: " + AUTHORITY_ASSIGNER_FILE + " file, constructing the object...", e);
+				edu.stanford.muse.util.Util.print_exception ("Exception while reading: " + AUTHORITY_ASSIGNER_FILE + " file, constructing the object...", e, log);
 				return null;
 			}
 		} else {
@@ -96,24 +92,108 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 	public InternalAuthorityAssigner() {
 	}
 
-	/** Initializes the object */
-	public void initialize(Archive archive) {
-		contactFreq = new HashMap<>();
-		// collect all the entities of type person from all the docs
-		Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
-		long start_time = System.currentTimeMillis();
-		AddressBook ab = archive.addressBook;
+	private void setupCorrespondents(Collection<EmailDocument> docs, AddressBook ab) {
+        // compute entitySet for correspondents, by setting up maps of centity -> display name
+        {
+            Map<Integer, Integer> contactIdToFreq = new LinkedHashMap<>(); // compute contact id -> Freq
+            for (EmailDocument ed : docs) {
+                List<String> addrs = ed.getAllAddrs();
+                for (String addr : addrs) {
+                    Contact c = ab.lookupByEmail(addr);
+                    if (c != null) {
+                        int cid = ab.getContactId(c);
+                        if (!contactIdToFreq.containsKey(cid))
+                            contactIdToFreq.put(cid, 0);
+                        contactIdToFreq.put(cid, contactIdToFreq.get(cid) + 1);
+                    }
+                }
+            }
 
-		short[] types = new short[] { EntityFeature.PERSON, EntityFeature.CORRESPONDENT, EntityFeature.ORG, EntityFeature.PLACE };
-		for (short t : types) {
-			if (!entitiesData.containsKey(t))
-				entitiesData.put(t, new Entities());
+            List<Contact> contacts = ab.allContacts();
+            Entities entitySet = entitiesData.get(EntityFeature.CORRESPONDENT);
+            for (int i = 0; i < contacts.size(); i++) {
+                //Set<String> names = contacts.get(i).names;
+                int cid = ab.getContactId(contacts.get(i));
+
+                if (!contactIdToFreq.containsKey(cid)) {
+                    //These contacts generally doesn't have any email addresses associated with them.
+                    log.warn("Contact freq doesn't contain the contact: " + contacts.get(i).emails);
+                    continue;
+                }
+
+                int freq = contactIdToFreq.get(cid);
+                String displayName = contacts.get(i).pickBestName();
+                if (displayName == null)
+                    continue;
+                displayName = displayName.replaceAll("^\\s+|\\s+$", "");
+                if (displayName.contains(" ")) {
+                    entitySet.add(displayName, freq);
+
+                    String canonicalEntity = IndexUtils.canonicalizeEntity(displayName);
+                    if (canonicalEntity == null)
+                        continue;
+                    if (entitySet.get(canonicalEntity) == null)
+                        entitySet.put(canonicalEntity, displayName);
+                }
+                if (cancel)
+                    return;
+            }
+        }
+    }
+
+    private Set<String> setupAcronyms(Archive archive) {
+        Set<String> acronyms = new LinkedHashSet<>();
+
+        pctComplete = 0;
+        int i = 0;
+        Collection<edu.stanford.muse.index.Document> docs = archive.getAllDocs();
+        Tokenizer tokenizer = new CICTokenizer(); // this is being used only to generate acronyms... duh!
+        for (edu.stanford.muse.index.Document d : docs) {
+            String content = archive.getContents(d, false);
+            try {
+                //TODO: trying to get acronyms this way is a hack and inefficient
+                //Initialise a special reg exp for this task
+                Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content);
+                if (pnames != null)
+                    for (String name : pnames) {
+                        String tc = FeatureGeneratorUtil.tokenFeature(name);
+                        //we want only all capital letters
+                        if (tc.equals("ac") && name.length() > 2)
+                            acronyms.add(name);
+                    }
+            } catch (Exception e) {
+                edu.stanford.muse.util.Util.print_exception("Error trying to get acronyms: ", e, log);
+            }
+
+            status = "Collected acronyms in " + i + "/" + docs.size() + " messages";
+            pctComplete = ((double) i * 100) / docs.size();
+            i++;
+            if (cancel)
+                return null;
+        }
+
+        return acronyms;
+    }
+
+    /** Initializes the object */
+	public void initialize(Archive archive) {
+        Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
+        AddressBook ab = archive.addressBook;
+        long start_time = System.currentTimeMillis();
+
+        // create empty data structs for each type
+		{
+			short[] types = new short[]{EntityFeature.PERSON, EntityFeature.CORRESPONDENT, EntityFeature.ORG, EntityFeature.PLACE};
+			for (short t : types) {
+				if (!entitiesData.containsKey(t))
+					entitiesData.put(t, new Entities());
+			}
 		}
 
 		if (cancel)
 			return;
 
-		Set<String> acronyms = new HashSet<>();
+		Set<String> acronyms = new LinkedHashSet<>();
 
 		/*
 		 * There are two iterations on all docs, because the entities and their
@@ -122,76 +202,10 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		 * analyze every entity that comes in the way.
 		 */
 		//get all acronyms
-		int di = 0;
-        Tokenizer tokenizer = new CICTokenizer();
-		for (EmailDocument ed : docs) {
-			List<String> addrs = ed.getAllAddrs();
-			for (String addr : addrs) {
-				Contact c = ab.lookupByEmail(addr);
-				if (c != null) {
-					int cid = ab.getContactId(c);
-					if (!contactFreq.containsKey(cid))
-						contactFreq.put(cid, 0);
-					contactFreq.put(cid, contactFreq.get(cid) + 1);
-				}
-			}
-			String id = ed.getUniqueId();
-			String content = archive.getContents(ed, false);
-			try {
-				//TODO: trying to get acronyms this way is a hack and inefficient
-				//Initialise a special reg exp for this task
-				Set<String> pnames = tokenizer.tokenizeWithoutOffsets(content);
-				if (pnames != null)
-					for (String name : pnames) {
-						String tc = FeatureGeneratorUtil.tokenFeature(name);
-						//we want only all capital letters
-						if (tc.equals("ac") && name.length() > 2)
-							acronyms.add(name);
-					}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		// acronyms = setupAcronyms(archive);
+		setupCorrespondents(docs, ab);
 
-			status = "Collected acronyms and contacts in " + di + "/" + docs.size();
-			pctComplete = ((double) di * 50) / docs.size();
-			di++;
-			if (cancel)
-				return;
-		}
-
-		List<Contact> contacts = ab.allContacts();
-		for (int i = 0; i < contacts.size(); i++) {
-			//Set<String> names = contacts.get(i).names;
-			int cid = ab.getContactId(contacts.get(i));
-			Entities d = entitiesData.get(EntityFeature.CORRESPONDENT);
-
-			if (!contactFreq.containsKey(cid)) {
-				//These contacts generally doesn't have any email addresses associated with them. 
-				System.err.println("Contact freq doesn't contain the contact: " + contacts.get(i).emails);
-				continue;
-			}
-
-			int freq = contactFreq.get(cid);
-			String dn = contacts.get(i).pickBestName();
-			if (dn == null)
-				continue;
-			dn = dn.replaceAll("^\\s+|\\s+$", "");
-			if (dn.contains(" ")) {
-				d.pairs.add(new Pair<String, Integer>(dn, freq));
-
-				String canonicalEntity = IndexUtils.canonicalizeEntity(dn);
-				if (canonicalEntity == null)
-					continue;
-				if (d.canonicalToOriginal.get(canonicalEntity) == null)
-					d.canonicalToOriginal.put(canonicalEntity, dn);
-
-				d.counts.put(canonicalEntity, freq);
-			}
-			if (cancel)
-				return;
-		}
-
-		di = 0;
+        int di = 0;
 		for (EmailDocument ed : docs) {
 			List<String> people, orgs, places;
             try {
@@ -205,11 +219,13 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
                 orgs = Arrays.asList(names).stream()
                         .filter(n-> n.type == NEType.Type.ORGANISATION.getCode())
                         .map(n -> n.text).collect(Collectors.toList());
-            }catch(IOException ioe){
+            } catch (IOException ioe) {
+                edu.stanford.muse.util.Util.print_exception ("Error trying to get acronyms and contact ids: ", ioe, log);
                 continue;
             }
+
 			//List<String> expansions = new ArrayList<String>();
-			String content = archive.getContents(ed, false);
+			// String content = archive.getContents(ed, false);
 			//For an acronym, expand it to one of entities to only of the types: place, org or people
 			//else it adds noise and can increase the size of the dump uncontrollably
 			//			try {
@@ -242,20 +258,20 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 			// of the entity
 			List<List<String>> allEntities = Arrays.asList(people, orgs, places);
 			short[] allTypes = new short[]{EntityFeature.PERSON, EntityFeature.ORG, EntityFeature.PLACE};
-			for(int ei=0;ei<allEntities.size();ei++) {
+			for(int ei = 0; ei < allEntities.size(); ei++) {
 				List<String> entities = allEntities.get(ei);
 				Short et = allTypes[ei];
 				for (String e : entities) {
-					if (e != null && (et != EntityFeature.PERSON ||e.contains(" "))) {
+					if (e != null && (et != EntityFeature.PERSON || e.contains(" "))) {
 						Entities d = entitiesData.get(et);
 						String canonicalEntity = IndexUtils.canonicalizeEntity(e);
 						if (canonicalEntity == null)
 							continue;
-						if (d.canonicalToOriginal.get(canonicalEntity) == null)
-							d.canonicalToOriginal.put(canonicalEntity, e);
+						if (d.get(canonicalEntity) == null)
+							d.put(canonicalEntity, e);
 
-						Integer I = d.counts.get(canonicalEntity);
-						d.counts.put(canonicalEntity, (I == null) ? 1 : I + 1);
+						Integer I = d.getCount(canonicalEntity);
+						d.putCount(canonicalEntity, (I == null) ? 1 : I + 1);
 					}
 				}
 			}
@@ -273,7 +289,7 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		// descending count
 		start_time = System.currentTimeMillis();
 		for (Entities d : entitiesData.values())
-			d.pairs = edu.stanford.muse.util.Util.sortMapByValue(d.counts);
+		    d.sort();
 
 		log.info("Time taken for sorting entities: " + (System.currentTimeMillis() - start_time));
 
@@ -282,10 +298,10 @@ public class InternalAuthorityAssigner implements StatusProvider, Serializable {
 		ObjectOutputStream oos ;
 		try {
 			String stats = "";
-			stats += "#People: " + this.entitiesData.get(EntityFeature.PERSON).pairs.size() + "\n";
-			stats += "#Correspondents: " + this.entitiesData.get(EntityFeature.CORRESPONDENT).pairs.size() + "\n";
-			stats += "#Places: " + this.entitiesData.get(EntityFeature.PLACE).pairs.size() + "\n";
-			stats += "#Orgs: " + this.entitiesData.get(EntityFeature.ORG).pairs.size();
+			stats += "#People: " + this.entitiesData.get(EntityFeature.PERSON).size() + "\n";
+			stats += "#Correspondents: " + this.entitiesData.get(EntityFeature.CORRESPONDENT).size() + "\n";
+			stats += "#Places: " + this.entitiesData.get(EntityFeature.PLACE).size() + "\n";
+			stats += "#Orgs: " + this.entitiesData.get(EntityFeature.ORG).size();
 			log.info("Writing entities from file: " + AUTHORITY_ASSIGNER_FILE + "\n" + stats);
 			oos = new ObjectOutputStream(new FileOutputStream(AUTHORITY_ASSIGNER_FILE));
 			oos.writeObject(this);

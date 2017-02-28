@@ -1,13 +1,17 @@
 package edu.stanford.muse.ie;
 
+import com.google.common.collect.LinkedHashMultimap;
+import edu.stanford.muse.email.AddressBook;
+import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.index.Archive;
+import edu.stanford.muse.index.EmailDocument;
 import edu.stanford.muse.index.IndexUtils;
 import edu.stanford.muse.util.JSONUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.SimpleSessions;
-
+import org.apache.commons.collections4.MultiMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
@@ -17,52 +21,93 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 
-//
-
 /**
  * Contains entities of specific type like: person, organisation and place along
  * with supplementary data
  */
-public class Entities implements Serializable, StatusProvider {
-	private static Log			log					= LogFactory.getLog(FASTSearcher.class);
-
+public class CorrespondentsMapper implements Serializable, StatusProvider {
+	private static Log			log					= LogFactory.getLog(CorrespondentsMapper.class);
 	private static final long	serialVersionUID	= 1L;
 
-	public static class Info {
-		Boolean	test;
-		String	type, database;
-
-		/**
-		 * t - the type of entities i.e. Correspondents, people etc.
-		 * db - Database for lookup, only fast and freebase are supported.
-		 */
-		public Info(String t, String db, boolean test) {
-			this.type = t.intern();
-			this.database = db.intern();
-			this.test = test;
-		}
-	}
+	private static MultiMap<Integer, String> contactIdToFastIds = LinkedHashMultimap.create();
 
 	//consult mixtures index for entity mixtures. this class contains very sparse representation of all entities mentioned in the email.
 	//pairs -> list of <name, frequency> pairs.
 	//canonicaltooriginal -> map from canonical name to original name.
-	//counts -> map from canonical name to frequency. 
+	//counts -> map from canonical name to frequency.
 	//yes, this looks stupid.
-	public List<Pair<String, Integer>>	pairs				= null;
-	public Map<String, String>			canonicalToOriginal	= null;
-	public Map<String, Integer>			counts;
+	private List<Pair<String, Integer>>	pairs				= null;
+	private Map<String, String>			canonicalToOriginal	= null;
+	private Map<String, Integer>			counts;
 
 	boolean								cancel				= false;
 	String								status;
 	double								pctComplete;
 
-	public Entities() {
+	public CorrespondentsMapper (Archive archive) {
+		setup (archive);
+	}
+
+	public void setup (Archive archive) {
+		Collection<EmailDocument> docs = (Collection) archive.getAllDocs();
+		AddressBook ab = archive.getAddressBook();
+		List<Contact> contacts = ab.sortedContacts(docs);
+		Map<String, Authority> cnameToDefiniteID = AuthorisedAuthorities.getConfirmedAuthorities(archive);
+
+		for (Contact c: contacts) {
+			if (c.names == null)
+				continue;
+
+			for (String name: c.names) {
+				String cname = IndexUtils.canonicalizeEntity(name);
+				Authority confirmedAuthority = cnameToDefiniteID.get(cname);
+
+				if (confirmedAuthority == null) {
+
+				}
+
+				// lookup name in FAST index
+				// contactIdToAuthority.put("", fastId);
+			}
+		}
+
 		pairs = new ArrayList<>();
 		canonicalToOriginal = new LinkedHashMap<>();
 		counts = new LinkedHashMap<>();
 	}
 
-    public static class Score implements Comparable<Score>{
+	public void setAuthorityRecord (String entityNum, int option) {
+
+	}
+
+	public String get (String canonicalEntity) {
+		return canonicalToOriginal.get(canonicalEntity);
+	}
+
+	public void put (String canonicalEntity, String displayEntity) {
+		canonicalToOriginal.put (canonicalEntity, displayEntity);
+	}
+
+	public Integer getCount (String canonicalEntity) {
+		return counts.get(canonicalEntity);
+	}
+
+	public void putCount (String canonicalEntity, int freq) {
+		counts.put (canonicalEntity, freq);
+	}
+
+	public int size() { return pairs.size(); }
+
+	public void sort() {
+		this.pairs = Util.sortMapByValue(this.counts);
+	}
+
+	public void add (String canonicalEntity, int freq) {
+		pairs.add (new Pair<>(canonicalEntity, freq));
+		this.counts.put(canonicalEntity, freq);
+	}
+
+	public static class Score implements Comparable<Score>{
         public double score;
         public String scoredOn;
         public Score(double score, String scoredOn){
@@ -184,9 +229,9 @@ public class Entities implements Serializable, StatusProvider {
         boolean enableDAButton = EntityFeature.indexExists(archive);
 
 		Boolean test = false;
-		Entities entitiesData = this;
+		CorrespondentsMap entitiesData = this;
 		JSONArray table = new JSONArray();
-		log.info("Number of confirmed authorities: " + AuthorisedAuthorities.getAuthorisedAuthorities(archive).size());
+		log.info("Number of confirmed authorities: " + AuthorisedAuthorities.getConfirmedAuthorities(archive).size());
 
 		List<Integer> indices = new ArrayList<Integer>();
 		Set<Integer> considered = new HashSet<Integer>();
@@ -267,7 +312,7 @@ public class Entities implements Serializable, StatusProvider {
 
             //check if the authority is already resolved
 			Authority authority = null;
-			Map<String, Authority> cnameToDefiniteID = AuthorisedAuthorities.getAuthorisedAuthorities(archive);
+			Map<String, Authority> cnameToDefiniteID = AuthorisedAuthorities.getConfirmedAuthorities(archive);
 			if (cnameToDefiniteID != null)
 				for (String cname : cnames) {
 					authority = cnameToDefiniteID.get(cname);
@@ -554,7 +599,7 @@ public class Entities implements Serializable, StatusProvider {
 			InternalAuthorityAssigner authorities = new InternalAuthorityAssigner();
 			authorities.initialize(archive);
 
-			Entities ent = authorities.entitiesData.get(EntityFeature.PERSON);
+			CorrespondentsMap ent = authorities.entitiesData.get(EntityFeature.PERSON);
 			Info info = new Info("person", "fast", false);
 			String html = ent.getJSONObjectFor(0, 1, info, archive).toString();
 			System.err.println(html);

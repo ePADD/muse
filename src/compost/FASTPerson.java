@@ -122,7 +122,7 @@ public class FASTPerson extends FASTRecord implements java.io.Serializable {
 			s = FASTIndexer.convertUTF16(s);
 		// expect s to be quoted
 		if (!s.startsWith("\"") || !s.endsWith("\"")) {
-			System.err.println("Sorry, bad name: " + s);
+			super.log.warn ("Sorry, bad name for fast extract name: " + s);
 			return "DUMMY";
 		}
 

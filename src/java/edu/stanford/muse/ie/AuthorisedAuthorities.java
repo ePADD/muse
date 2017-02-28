@@ -22,7 +22,7 @@ public class AuthorisedAuthorities {
     private static Log						log					= LogFactory.getLog(AuthorisedAuthorities.class);
     public static Map<String, Authority>	cnameToDefiniteID	= null; // this should not be static! @vihari
 
-    public static Map<String, Authority> getAuthorisedAuthorities(Archive archive) {
+    public static Map<String, Authority> getConfirmedAuthorities(Archive archive) {
 
 	if (cnameToDefiniteID != null)
 	    return cnameToDefiniteID;

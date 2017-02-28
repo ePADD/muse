@@ -3,6 +3,7 @@ package edu.stanford.muse.index;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.EmailRenderer;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.lang.StringEscapeUtils;
@@ -180,7 +181,7 @@ public class Highlighter {
      * */
     //TODO: can also get rid of termsToHyperlink
     public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, Boolean sensitive,
-                                                          Set<String> termsToHighlight, Map<String, Archive.Entity> entitiesWithId,
+                                                          Set<String> termsToHighlight, Map<String, EmailRenderer.Entity> entitiesWithId,
                                                           Set<String> termsToHyperlink, boolean showDebugInfo) {
         Set<String> highlightTerms = new LinkedHashSet<>(), hyperlinkTerms = new LinkedHashSet<>();
         if(termsToHighlight!=null) termsToHighlight.forEach(highlightTerms::add);
@@ -358,7 +359,7 @@ public class Highlighter {
             String title = "";
             try {
                 String cssclass = "";
-                Archive.Entity info = entitiesWithId.get(entity);
+                EmailRenderer.Entity info = entitiesWithId.get(entity);
                 if (info != null) {
                     if (info.ids != null) {
                         title += "<div id=\"fast_" + info.ids + "\"></div>";
@@ -504,7 +505,7 @@ public class Highlighter {
             for(String td: testDocIds) {
                 EmailDocument ed = archive.docForId(td);
                 String content = archive.getContents(ed,false);
-                Map<String, Archive.Entity> ewid = new LinkedHashMap<>();
+                Map<String, EmailRenderer.Entity> ewid = new LinkedHashMap<>();
                 Util.tokenize(archive.getLuceneDoc(ed.getUniqueId()).get("names"), Indexer.NAMES_FIELD_DELIMITER).forEach(t -> {
                     if (t == null) {
                         log.warn("Found null content while parsing entity spans!!!");
@@ -525,7 +526,7 @@ public class Highlighter {
                         //}
                     short ct = NEType.getCoarseType(type).getCode();
                     types.add(ct == NEType.Type.PERSON.getCode() ? "cp" : ((ct == NEType.Type.PLACE.getCode()) ? "cl" : "co"));
-                    ewid.put(fields[0], new Archive.Entity(fields[0], null, types));
+                    ewid.put(fields[0], new EmailRenderer.Entity(fields[0], null, types));
                 });
                 Set<String> termsToHighlight = new HashSet<>();
                 for(String[] ht: highlightTerms)

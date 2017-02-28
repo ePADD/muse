@@ -94,7 +94,7 @@ public class FASTGeographic extends FASTRecord {
 						System.err.println("Miscongiguration in Settings file...\nFound: " + type + " and is being interpreted as Corporate Type");
 				}
 				else if (i == 3 || i == 4) {
-					interpretSource(value);
+					setSource(value);
 					sources.add(value);
 				}
 				else if (i == 5)

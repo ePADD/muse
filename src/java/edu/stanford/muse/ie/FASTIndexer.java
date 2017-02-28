@@ -1,354 +1,371 @@
 package edu.stanford.muse.ie;
 
-import com.google.gson.Gson;
-import edu.stanford.muse.Config;
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
+import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.document.*;
+import org.apache.lucene.index.*;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 
 import java.io.*;
-import java.text.DecimalFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Creates a Lucene index from FAST files. To be run one-time only, whenever there is an update to FAST.
+ * This class takes a .fast nt file and converts it to a lucene index that can be searched for.
+ * It's a standalone program, i.e. doesn't need to be included in epadd.war
  */
 public class FASTIndexer {
-	private class Stats {
-		public int	numWiki	= 0, numVIAF = 0, numLOC = 0, numUnknown = 0, numGeo = 0, numLatLon = 0;
-		// number of words with struff inside brackets -> numBrackets.
-		public int	totalItems	= 0, numMultipleWords = 0, numSingleWords = 0, numNames = 0, numWithBrackets = 0;
+    private static Log log = LogFactory.getLog(FASTIndexer.class);
+    public static final String FIELD_NAME_LABELS = "labels";
+    public static final String FIELD_NAME_FAST_ID = "fastId";
+    public static final String FIELD_NAME_WIKIPEDIA_ID = "wikipediaId";
+    public static final String FIELD_NAME_VIAF_ID = "viafId";
+    public static final String FIELD_NAME_LCNAF_ID = "lcnafId";
+    public static final String FIELD_NAME_LCSH_ID = "lcshId";
+    private static final String LABEL_SEPARATOR = " ; "; // the labels field will have primary name, followed by alt names, all separated with a ";"
+    private static PrintStream out = System.out, err = System.err;
 
-		public void collectStats(FASTRecord ft) {
-			if (ft.wikiSource)
-				numWiki++;
-			if (ft.LOCSource)
-				numLOC++;
-			if (ft.VIAFSource)
-				numVIAF++;
-			if (ft.GEOSource)
-				numGeo++;
-			if (ft.unknownSource)
-				numUnknown++;
-			totalItems++;
-			Set<String> names = FASTRecord.getNames(ft);
-			for (String name : names) {
-				if (name.contains(" "))
-					numMultipleWords++;
-				else
-					numSingleWords++;
-				numNames++;
-				if (name.contains("("))
-					numWithBrackets++;
-			}
-		}
+    public static void main (String args[]) throws IOException, ParseException {
+        if (args.length != 2) {
+            out.println("usage java FASTIndexer <.nt file> <output directory");
+            return;
+        }
 
-		public String getPercent(int item, int total) {
-			return new DecimalFormat("#.##").format((item * 100.0 / (double) total));
-		}
+       // index (args[0], args[1]);
+        test (args[1]);
+    }
 
-		@Override
-		public String toString() {
-			String summary = "";
-			summary += ":::::::::::::::::::\n";
-			summary += "Total number of items read: " + totalItems + "\n";
-			summary += "Total number of names: " + numNames + "\n";
-			summary += "Items with single word names: " + numSingleWords + " :: " + getPercent(numSingleWords, numNames) + "\n";
-			summary += "Items with multiple word names: " + numMultipleWords + " :: " + getPercent(numMultipleWords, numNames) + "\n";
-			summary += "Entities with latitude and longitude: " + numLatLon + " :: " + getPercent(numLatLon, totalItems) + "\n";
-			summary += "Items with brackets in name: " + numWithBrackets + " :: " + getPercent(numWithBrackets, numNames) + "\n";
-			summary += "Items with Wikipedia source: " + numWiki + " :: " + getPercent(numWiki, totalItems) + "\n";
-			summary += "Items with VIAF source: " + numVIAF + " :: " + getPercent(numVIAF, totalItems) + "\n";
-			summary += "Items with LOC source: " + numLOC + " :: " + getPercent(numLOC, totalItems) + "\n";
-			summary += "Items with GeoNames source: " + numGeo + " :: " + getPercent(numGeo, totalItems) + "\n";
-			summary += "Items with Unknown source: " + numUnknown + " :: " + getPercent(numUnknown, totalItems) + "\n";
-			summary += ":::::::::::::::::::\n";
-			return summary;
-		}
-	}
+    // example line:
+    // <http://id.worldcat.org/fast/348231> <http://www.w3.org/2004/02/skos/core#prefLabel> "Obama, Barack" .
+    // Note: it ends with space and period.
+    private static Pattern triplePattern = Pattern.compile("([^\\s]*)\\s+([^\\s]*)\\s+(.*) \\.");
+    private static IndexWriter indexWriter;
 
-	// though some sh id's exist in the FASTTopical.nt, they are only for label
-	// and contain no extra info.
-	static Pattern			subjects	= Pattern.compile("^\\d+$");
+    public static void index(String fastNTFile, String outputDir) throws IOException {
 
-	static IndexWriter		w			= null;
-	static Set<String>		sids		= new HashSet<String>();
+        File outputFile = new File (outputDir);
+        if (!outputFile.exists() && !outputFile.isFile()) {
+            outputFile.mkdirs();
+        }
 
-	static String			indexPath	= Config.FAST_INDEX;
+        StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */)); // empty chararrayset, so effectively no stop words
+        Directory index = FSDirectory.open(outputFile);
+        IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
+        iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+        indexWriter = new IndexWriter(index, iwc);
 
-	// In debug mode prints out all the names, to check if they further need
-	// cleaning.
-	Boolean					debug		= false;
-	Stats					stats		= new Stats();
-	String					FASTDbFile;
-	Map<String, FASTRecord>	topics;
-	String					fastType;
+        try {
+            LineNumberReader lnr;
+            lnr = new LineNumberReader(new BufferedReader(new InputStreamReader(new FileInputStream(fastNTFile))));
+            // sometimes lines in loc subject files starts like:
+            int lineNum = 0;
+            Multimap<String, String> predicateToObject = LinkedHashMultimap.create();
 
-	/**
-	 * @param append
-	 *            to existing index(boolean), name matching patterns and class
-	 *            that impleme FASTType
-	 */
-	public FASTIndexer(boolean appendToIndex, String dbFile, String fastType) {
-		// map from fast id to FASTTopic, doesn't store more than THRESHOLD
-		// entries
-		// at any instance FATTopical.nt contains all the entries clustered so
-		// there
-		// is no need to keep track of.
-		topics = new HashMap<String, FASTRecord>();
-		stats = new Stats();
+            long currentFastId = -1L; // invalid fast id
 
-		if (Util.nullOrEmpty(fastType)) {
-			System.err.println("FASTType is null... cannot proceed.");
-			return;
-		}
-		this.fastType = fastType;
-		if (Util.nullOrEmpty(dbFile)) {
-			System.err.println("Error in initialisation of FASTIndexer: Null/empty dbFile");
-			return;
-		}
-		FASTDbFile = dbFile;
+            // important assumption we are making about parsing the lines in this file:
+            // all the entries with the same fastid as the predicate are next to each other
+            // subjects without a "http://id.worldcat.org/fast/" start are ignored
+            while (true) {
+                String line = lnr.readLine();
+                if (line == null)
+                    break;
 
-		// initialize the indexer
-		try {
-			StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
-			Directory index = FSDirectory.open(new File(indexPath));
-			IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47,
-					analyzer);
-			if (appendToIndex)
-				iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-			else
-				iwc.setOpenMode(OpenMode.CREATE);
-			w = new IndexWriter(index, iwc);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		if (w == null) {
-			System.err.println("Couldn't open index files... exiting.");
-			//System.exit(0);
-		}
-	}
+                lineNum++;
+                if (lineNum % 100000 == 0)
+                    System.out.println("Line number: " + lineNum);
 
-	/* <http://id.loc.gov/authorities/subjects/sh2004005400> -> sh2004005400 */
-	public static String extractTail(String s) {
-		String s1 = s;
-		try {
-			s1 = s1.substring(s1.lastIndexOf("/") + 1, s.length() - 1); // s.length()-1
-																		// to
-																		// exclude
-																		// the
-																		// trailing
-																		// ">"
-																		// character
-		} catch (Exception e) {
-			System.err.println("unable to extract tail from string " + s);
-			return "dummy";
-		}
-		return s1;
-	}
+                // sample line: <http://id.worldcat.org/fast/15615> <http://schema.org/name> "Boss, David" .
 
-	// will parse Vila Dinar\u00E9s, Pau to map the \u00E9 to the right unicode
-	// char
-	public static String convertUTF16(String s) {
-		List<Character> out = new ArrayList<Character>();
-		for (int i = 0; i < s.length(); i++) {
-			char ch = s.charAt(i);
-			if (ch == '\\' && (i + 5 < s.length()) && s.charAt(i + 1) == 'u') {
-				String seq = Character.toString(s.charAt(i + 2))
-						+ Character.toString(s.charAt(i + 3))
-						+ Character.toString(s.charAt(i + 4))
-						+ Character.toString(s.charAt(i + 5));
-				ch = (char) Integer.parseInt(seq, 16);
-				i += 5;
-			}
+                Matcher m = triplePattern.matcher(line);
 
-			out.add(ch);
-		}
-		StringBuilder sb = new StringBuilder();
-		for (char c : out)
-			sb.append(c);
-		return sb.toString();
-	}
+                if (!m.find() || m.groupCount() != 3) {
+                    err.println("WARNING: This is not an nt file! line#" + lineNum + ": " + line);
+                    continue;
+                }
 
-	public void appendOrupdate(String subject, String predicate, String object) {
-		String id = "";
-		Pattern metaIdP = Pattern.compile("_:[\\w\\d]+");
+                String subject = m.group(1), predicate = m.group(2), object = m.group(3);
+                subject = Util.convertSlashUToUnicode (subject);
+                if (!subject.startsWith ("<http://id.worldcat.org/fast/"))
+                    continue;
 
-		String subject_id;
-		if (subject.contains("/fast/"))
-			subject_id = extractTail(subject);
-		// some meta info is store in ids like this,
-		else if (metaIdP.matcher(subject).matches())
-			subject_id = subject;
-		else {
-			if (debug)
-				System.err.println("Unhandled subject: " + subject);
-			return;
-		}
+                // sometimes we see lines like this, skip them:
+                //  <http://id.worldcat.org/fast/void/0.1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rdfs.org/ns/void#Dataset> .
+                if (subject.startsWith ("<http://id.worldcat.org/fast/void"))
+                    continue;
 
-		id = subject_id;
-		if (Util.nullOrEmpty(id))
-			return;
+                String fastIdStr = Util.baseName (subject); // "15615>"
+                fastIdStr = fastIdStr.substring(0, fastIdStr.length()-1); // "15615" (strip the trailing > char)
 
-		if (!topics.containsKey(id)) {
-			FASTRecord topic = FASTRecord.getInstance(fastType);
-			topic.id = id;
-			topic.addValue(predicate, object);
-			topics.put(id, topic);
-		} else if (topics.containsKey(id)) {
-			topics.get(id).addValue(predicate, object);
-		}
-	}
+                long fastId;
+                try { fastId = Long.parseLong (fastIdStr); }
+                catch (Exception e) { err.println ("WARNING: Unable to parse fast id on line " + line); continue; }
 
-	// call it before closing the FASTTopical file, flushes all objects in
-	// topics.
-	void dumpTopics() {
-		for (String id : topics.keySet()) {
-			FASTRecord ft = topics.get(id);
-			if (stats != null)
-				stats.collectStats(ft);
-			if (debug)
-				System.err.println(FASTRecord.stringify(FASTRecord.getNames(ft)));
+                predicate = Util.convertSlashUToUnicode (predicate);
+                object = Util.convertSlashUToUnicode (object);
 
-			if (ft instanceof FASTGeographic) {
-				FASTGeographic fg = (FASTGeographic) ft;
-				// fills latitude and longitude values
-				fg.fillGaps(topics);
-				if (fg.latitude != null && fg.longitude != null)
-					stats.numLatLon++;
-			}
+                if (currentFastId != fastId) {
+                    // done with all the lines for one fast id, process it now
+                    processFastEntity (currentFastId, predicateToObject);
 
-			Document doc1 = ft.getIndexerDoc();
-			// probably a subtype id like _:.* which shouldn't/needn't be
-			// indexed.
-			if (doc1 != null) {
-				Set<Document> mapDocs = ft.getNameMap();
-				if (mapDocs == null)
-					mapDocs = new HashSet<Document>();
-				doc1.add(new StringField(FASTRecord.SUB_TYPE, FASTRecord.FULL_RECORD, org.apache.lucene.document.Field.Store.YES));
-				mapDocs.add(doc1);
+                    // start a new fast id
+                    currentFastId = fastId;
+                    predicateToObject.clear();
+                }
+                predicateToObject.put (predicate, object);
+            }
+            lnr.close();
 
-				for (Document doc : mapDocs) {
-					if (doc != null) {
-						try {
-							w.addDocument(doc);
-						} catch (Exception e) {
-							e.printStackTrace();
-							System.err.println("Couldn't add document for FASTTopic with id: "
-									+ id);
-						}
-					}
-				}
-			}
-		}
-	}
+            // just cleanup at the last line
+            if (predicateToObject.size() > 0)
+                processFastEntity (currentFastId, predicateToObject);
 
-	public void printStats() {
-		System.out.println(stats);
-	}
+            indexWriter.close();
+        } catch (Exception e){
+            Util.print_exception("Error parsing FAST file", e, log);
+        }
+    }
 
-	public void index() {
-		try {
-			LineNumberReader lnr = new LineNumberReader(new BufferedReader(
-					new InputStreamReader(new FileInputStream(FASTDbFile))));
-			Pattern triple = Pattern.compile("([^\\s]*)\\s+([^\\s]*)\\s+(.*) \\.");
-			// sometimes lines in loc subject files starts like:
-			// _:b173f2600000000de
-			int lineNum = 0;
-			while (true) {
-				String line = lnr.readLine();
-				if (line == null)
-					break;
+    static final Pattern prefNameAndExtentMatcher = Pattern.compile ("(.*), *([0-9\\-]*)"); // to match pref names like: Cooper, Dr. (Thomas), 1759-1839
+    static final Pattern prefNameAndExtentMatcher2 = Pattern.compile ("(.*), (active.*)"); // to match Theoktistos, the Stoudite, active 14th century
 
-				lineNum++;
-				if (lineNum % 100000 == 0)
-					System.out.println("Line number: " + lineNum);
+    public static Pair<String, String> breakIntoNameAndExtent (String nameLabel) {
 
-				Matcher m = triple.matcher(line);
+        String name = nameLabel, extent = null; // by default assume no extent
 
-				if (!m.find()) {
-					System.err.println("What!? This is not an nt file! line#"
-							+ lineNum + ": " + line);
-					continue;
-				}
+        Matcher m = prefNameAndExtentMatcher.matcher (nameLabel);
+        if (m.matches ()) {
+            name = m.group (1);
+            extent = m.group (2);
+        } else {
+            Matcher m2 = prefNameAndExtentMatcher2.matcher (nameLabel);
+            if (m2.matches ()) {
+                // to handle prefLabel = Theoktistos, the Stoudite, active 14th century
+                name = m2.group (1);
+                extent = m2.group (2);
+            }
+        }
 
-				int count = m.groupCount();
-				if (count != 3) {
-					System.err.println("What!? This is not an nt file! line#"
-							+ lineNum + ": " + line);
-					continue;
-				}
-				String subject = m.group(1), predicate = m.group(2), object = m
-						.group(3);
+        return new Pair<>(name, extent);
+    }
 
-				appendOrupdate(subject, predicate, object);
-			}
-			lnr.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		dumpTopics();
-		try {
-			w.close();
-		} catch (IOException e) {
-			System.err.println("Exception while closing index writer!");
-			e.printStackTrace();
-		}
-	}
+    /** assembles a fast entity, given all the pred->objs for subject with the given fastid */
+    public static void processFastEntity(long fastId, Multimap<String, String> predToObject) throws IOException {
 
-	public static void show_help() {
-		System.err.println("Usage: program [config file]");
-	}
+        String wikipediaId = "?", viafId = "?", lcshId = "?", lcnafId = "?";
+        String type = "?";
+        String prefLabel = "?";
+        List<String> altLabels = new ArrayList<>();
+        String extent = null;
 
-	public static void main(String[] args) {
-		if (args.length != 1) {
-			show_help();
-			return;
-		}
+        for (String pred: predToObject.keySet()) {
+            Collection<String> objs = predToObject.get (pred);
 
-		String configFile = args[0];
-		Gson gson = new Gson();
-		BufferedReader br = null;
-		try {
-			File f = new File(configFile);
-			FileReader fr = new FileReader(f);
-			br = new BufferedReader(fr);
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.err.println("Error while opening the settings file.");
-			return;
-		}
+            {
+                // fast lines connecting to wikipedia look like this: <http://id.worldcat.org/fast/348231> <http://xmlns.com/foaf/0.1/focus> <http://en.wikipedia.org/wiki/Barack_Obama> .
+                if (pred.startsWith ("<http://xmlns.com/foaf") && pred.endsWith ("focus>")) {
+                    if (objs.size() > 1) {
+                        // Multiple focus predicates can happen occasionally, e.g.
+                        // WARNING: Multiple focus predicates for the same fast id: 52519
+                        // <http://id.worldcat.org/fast/52519> <http://xmlns.com/foaf/0.1/focus> <http://en.wikipedia.org/wiki/Erich_Raeder_pre_Grand_Admiral> .
+                        // <http://id.worldcat.org/fast/52519> <http://xmlns.com/foaf/0.1/focus> <http://en.wikipedia.org/wiki/Erich_Raeder> .
+                        // seems to happen for a small # of id's (~50), so ignoring
 
-		FASTSettings settings = gson.fromJson(br, FASTSettings.class);
-		if (settings.dbFiles == null || settings.types == null || settings.appendToExistingIndex == null || settings.dbFiles.size() != settings.types.size()) {
-			System.err.println("The settings file is improper. It should be json representing FASTIndexer$Settings class.");
-			return;
-		}
+                        err.println("WARNING: Multiple focus predicates for the same fast id: " + fastId);
+                        continue;
+                    }
+                    String wikipediaObj = objs.iterator().next();
+                    if (!wikipediaObj.startsWith ("<http://en.wikipedia.org/wiki/")) {
+                        err.println ("WARNING: wikipediaObj is unexpected: " + wikipediaObj);
+                        continue;
+                    }
 
-		for (int i = 0; i < settings.dbFiles.size(); i++) {
-			boolean append = true;
-			if (i == 0)
-				append = settings.appendToExistingIndex;
-			String type = settings.types.get(i);
-			System.err.println("DBfile: " + settings.dbFiles.get(i) + ", type: " + settings.types.get(i));
+                    wikipediaId = Util.baseName(wikipediaObj);
+                    wikipediaId = wikipediaId.substring (0, wikipediaId.length()-1);
+                }
+            }
 
-			if (!FASTRecord.isSupported(type)) {
-				System.err.println("Misconfiguration in the settings file\nType: " + type + " is not supoorted.");
-				return;
-			}
-			FASTIndexer indexer = new FASTIndexer(append, settings.dbFiles.get(i), type);
-			indexer.debug = false;
-			indexer.index();
-			indexer.printStats();
-		}
-	}
+            {
+                // lines connecting to viaf and lcnaf and lcsh look like this:
+                // <http://id.worldcat.org/fast/348231> <http://schema.org/sameAs> <https://viaf.org/viaf/52010985> .
+                // <http://id.worldcat.org/fast/348231> <http://schema.org/sameAs> <http://id.loc.gov/authorities/names/n94112934> .
+                // <http://id.worldcat.org/fast/369807> <http://schema.org/sameAs> <http://id.loc.gov/authorities/subjects/sh96000006> .
+                if (fastId == 348231) {
+                    out.println ("found obama");
+                }
+                if (pred.equals("<http://schema.org/sameAs>")) {
+                    for (String obj : objs) {
+                        if (obj.startsWith("<http://id.loc.gov/authorities/names/")) {
+                            lcnafId = Util.baseName(obj);
+                            lcnafId = lcnafId.substring(0, lcnafId.length() - 1);
+                        } else if (obj.contains("//viaf.org/viaf/")) {
+                            viafId = Util.baseName(obj);
+                            viafId = viafId.substring(0, viafId.length() - 1);
+                        } else if (obj.startsWith ("<http://id.loc.gov/authorities/subjects/")) {
+                            lcshId = Util.baseName(obj);
+                            lcshId = lcshId.substring(0, lcshId.length() - 1);
+                        } else {
+                           err.println("WARNING: unknown sameAs directive: " + obj + " fastId = " + fastId);
+                        }
+                    }
+                }
+            }
+
+            {
+                // lines specifying the type of this fast id look like this:
+                // <http://id.worldcat.org/fast/348231> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Person> .
+                if (pred.equals("<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>")) {
+                    if (objs.size() > 1) {
+                        err.println ("WARNING: multiple types for fast id " + fastId + ": " + Util.join (objs, ";"));
+                        continue;
+                    }
+
+                    type = objs.iterator().next();
+                    type = Util.baseName(type);
+                    type = type.substring (0, type.length()-1);
+                }
+            }
+
+            {
+                //  lines specifying the preferred label of this fast id look like this:
+                // <http://id.worldcat.org/fast/348231> <http://www.w3.org/2004/02/skos/core#prefLabel> "Obama, Barack" .
+
+                if (pred.equals("<http://www.w3.org/2004/02/skos/core#prefLabel>")) {
+                    if (objs.size() > 1) {
+                        err.println("WARNING: multiple preferred labels for fast id " + fastId + ": " + Util.join(objs, ";"));
+                        continue;
+                    }
+
+                    prefLabel = Util.stripDoubleQuotes(objs.iterator().next());
+                    Pair<String, String> p = breakIntoNameAndExtent(prefLabel);
+                    prefLabel = p.getFirst();
+                    if (!Util.nullOrEmpty(p.getSecond()))
+                        extent = p.getSecond();
+
+                    // more patterns needed for pref names we're not able to parse correctly:
+                    // Hasselborn, Martha, 1600 or 1601-1696
+                    // David, Ernest, b. 1838
+                }
+            }
+
+            {
+                //  lines specifying the alt labels of this fast id look like this:
+                // <http://id.worldcat.org/fast/348231> <http://www.w3.org/2004/02/skos/core#altLabel> "Obama, Barack Hussein, II" .
+                if (pred.equals("<http://www.w3.org/2004/02/skos/core#altLabel>")) {
+
+                    for (String obj: objs) {
+                        String altLabel = Util.stripDoubleQuotes(obj);
+                        Pair<String, String> p = breakIntoNameAndExtent(altLabel);
+                        altLabel = p.getFirst();
+                        if (extent == null && !Util.nullOrEmpty(p.getSecond()))
+                            extent = p.getSecond(); // if already set (by a prefLabel), ignore it. a dependency here on seeing the prefLabel line before the altLabel lines
+                        altLabels.add(altLabel);
+                    }
+                }
+            }
+        }
+
+        // we'll ignore anything non-Person
+        if (!"Person".equals (type))
+            return;
+
+        String alt = (altLabels.size() == 0) ? "" : ((altLabels.size() == 1) ? "alt: " + altLabels.get(0) : altLabels.size() + "alt: " + Util.join (altLabels, ";"));
+        out.println ("fast id: " + fastId + " pref name " + prefLabel + " "
+                + (extent != null ? "" : "Extent: " + extent)
+                + " " + alt + " viaf: " + viafId + " lcsh id " + lcshId + " lcnaf id " + lcnafId + " wiki " + wikipediaId);
+
+
+        if (Util.nullOrEmpty(prefLabel)) {
+            err.println ("WARNING: prefLabel = null or empty for fast id " + fastId);
+            return;
+        }
+        if (fastId < 0) {
+            err.println("WARNING: fast Id is not valid: " + fastId);
+            return;
+        }
+
+        String labels = prefLabel;
+        if (!Util.nullOrEmpty(altLabels)) {
+            String altLabelString = Util.join (altLabels, LABEL_SEPARATOR);
+            labels += LABEL_SEPARATOR + altLabelString;
+        }
+
+        // Put these entries into Lucene.
+        // Important: the names are textfields, while the ids are stringfields (since they are matched exactly, so no tokenization)
+        {
+            Document luceneDoc = new Document();
+            luceneDoc.add(new TextField(FIELD_NAME_LABELS, labels, Field.Store.YES));
+
+            if (fastId >= 0)
+                luceneDoc.add(new LongField(FIELD_NAME_FAST_ID, fastId, Field.Store.YES));
+
+            if (!Util.nullOrEmpty(wikipediaId))
+                luceneDoc.add(new StringField(FIELD_NAME_WIKIPEDIA_ID, wikipediaId, Field.Store.YES));
+
+            if (!Util.nullOrEmpty(viafId))
+                luceneDoc.add(new StringField(FIELD_NAME_VIAF_ID, viafId, Field.Store.YES));
+
+            if (!Util.nullOrEmpty(lcnafId))
+                luceneDoc.add(new StringField(FIELD_NAME_LCNAF_ID, lcnafId, Field.Store.YES));
+
+            if (!Util.nullOrEmpty(lcshId))
+                luceneDoc.add(new StringField(FIELD_NAME_LCSH_ID, lcshId, Field.Store.YES));
+            indexWriter.addDocument(luceneDoc);
+        }
+    }
+
+    public static void queryFast (String dir, String name, int nExpectedHits) throws IOException, ParseException {
+        IndexReader indexReader = DirectoryReader.open(FSDirectory.open (new File(dir)));
+        StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */)); // empty chararrayset, so effectively no stop words
+        IndexSearcher indexSearcher = new IndexSearcher(indexReader);
+
+        QueryParser parser = new MultiFieldQueryParser(Version.LUCENE_47, new String[] {FIELD_NAME_LABELS}, analyzer);
+
+        Query query = parser.parse("\"" + name + "\"");
+        TopDocs docs = indexSearcher.search (query, null, 10000);
+
+        // note a quoted
+        out.println ("searching for " + name);
+        long startTimeMillis = System.currentTimeMillis();
+        int i = 0;
+        for (ScoreDoc scoreDoc: docs.scoreDocs) {
+            out.println ("---- #" + (++i));
+            Document d = indexSearcher.doc(scoreDoc.doc);
+            for (IndexableField ifield: d.getFields()) {
+                out.println (ifield.name() + "=" + ifield.stringValue());
+            }
+        }
+        long endTimeMillis = System.currentTimeMillis();
+        out.println ("time taken = " + (endTimeMillis - startTimeMillis) + "ms");
+
+        if (docs.scoreDocs.length == nExpectedHits)
+            out.println ("Good, got expected result for " + name);
+        else {
+            err.println("ERROR: " + docs.scoreDocs.length + " docs for " + name + ", expected " + nExpectedHits);
+            throw new RuntimeException("test failed");
+        }
+        indexReader.close();
+    }
+
+    public static void test (String dir) throws IOException, ParseException {
+        queryFast (dir, "Barack Obama", 1);
+        queryFast (dir, "Barak Obama", 1);
+        queryFast (dir, "barack", 3);
+        queryFast (dir, "Gandhi", 24);
+        queryFast (dir, "Gandhi Mohandas", 1);
+        queryFast (dir, "Junk somename", 0);
+    }
 }

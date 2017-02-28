@@ -25,19 +25,23 @@ import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.ie.AuthorisedAuthorities;
 import edu.stanford.muse.ie.Authority;
+import edu.stanford.muse.ie.AuthorityMapper;
 import edu.stanford.muse.ie.NameInfo;
+import edu.stanford.muse.ie.variants.EntityMapper;
 import edu.stanford.muse.ner.NER;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
+import edu.stanford.muse.webapp.EmailRenderer;
 import edu.stanford.muse.webapp.ModeConfig;
 import edu.stanford.muse.webapp.SimpleSessions;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.queryparser.classic.ParseException;
 
 import java.io.*;
 import java.util.*;
@@ -92,6 +96,8 @@ public class Archive implements Serializable {
     transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
     public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();
     private Map<String, Authority> cnameToAuthority;
+    private EntityMapper entityMapper;
+    private AuthorityMapper authorityMapper;
     Map<String, NameInfo> nameMap;
 
     public ProcessingMetadata processingMetadata = new ProcessingMetadata();
@@ -112,6 +118,18 @@ public class Archive implements Serializable {
         }
         AuthorisedAuthorities.cnameToDefiniteID = cnameToAuthority;
         return cnameToAuthority;
+    }
+
+    public synchronized AuthorityMapper getAuthorityMapper() throws IOException, ParseException {
+        if (authorityMapper == null)
+            authorityMapper = new AuthorityMapper(this, Config.FAST_INDEX);
+        return authorityMapper;
+    }
+
+    public synchronized EntityMapper getEntityMapper() {
+        if (entityMapper == null)
+            entityMapper = new EntityMapper();
+        return entityMapper;
     }
 
     /** returns a string with the definite authorities in a CSV format. */
@@ -295,24 +313,6 @@ public class Archive implements Serializable {
 
     public EmailDocument docForId(String id){ return indexer.docForId(id);}
 
-
-    public static class Entity {
-        public Map<String, Short> ids;
-        //person,places,orgs, custom
-        public String name;
-        Set<String> types = new HashSet<String>();
-
-        public Entity(String name, Map<String, Short> ids, Set<String> types) {
-            this.name = name;
-            this.ids = ids;
-            this.types = types;
-        }
-
-        @Override
-        public String toString() {
-            return types.toString();
-        }
-    }
 
     public String getTitle(org.apache.lucene.document.Document doc){
         return indexer.getTitle(doc);
@@ -1099,7 +1099,7 @@ public class Archive implements Serializable {
      * showDebugInfo - enabler to show debug info
      */
     public String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
-                           Map<String, Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
+                           Map<String, EmailRenderer.Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
         getAllDocs();
         try {
             Summarizer summarizer = new Summarizer(indexer);
@@ -1119,7 +1119,7 @@ public class Archive implements Serializable {
     }
 
     public String annotate(String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
-                           Map<String, Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
+                           Map<String, EmailRenderer.Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
         return annotate(null, s, date, docId, sensitive, highlightTerms,
                 entitiesWithId, IA_links, showDebugInfo);
     }
@@ -1138,7 +1138,7 @@ public class Archive implements Serializable {
         }
 
         // Contains all entities and id if it is authorised else null
-        Map<String, Entity> entitiesWithId = new HashMap<>();
+        Map<String, EmailRenderer.Entity> entitiesWithId = new HashMap<>();
         //we annotate three specially recognized types
         Map<Short,String> recMap = new HashMap<>();
         recMap.put(NEType.Type.PERSON.getCode(),"cp");
@@ -1148,12 +1148,12 @@ public class Archive implements Serializable {
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
                     types.add(recMap.get(NEType.getCoarseType(n.type).getCode()));
-                    entitiesWithId.put(n.text, new Entity(n.text, authorisedEntities == null ? null : authorisedEntities.get(n), types));
+                    entitiesWithId.put(n.text, new EmailRenderer.Entity(n.text, authorisedEntities == null ? null : authorisedEntities.get(n), types));
                 });
         acrs.forEach(acr->{
             Set<String> types = new HashSet<>();
             types.add("acr");
-            entitiesWithId.put(acr,new Entity(acr, authorisedEntities==null?null:authorisedEntities.get(acr),types));
+            entitiesWithId.put(acr,new EmailRenderer.Entity(acr, authorisedEntities==null?null:authorisedEntities.get(acr),types));
         });
 
         //don't want "more" button anymore
@@ -1251,7 +1251,7 @@ public class Archive implements Serializable {
     public Span[] getEntitiesInDoc(Document d, boolean body){
         try {
             return edu.stanford.muse.ner.NER.getNames(d, body, this);
-        }catch(Exception e){
+        }catch(Exception e) {
             Util.print_exception(e, log);
             return new Span[]{};
         }

@@ -12,7 +12,6 @@ import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.groups.SimilarGroup;
 import edu.stanford.muse.index.*;
-import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
@@ -489,7 +488,7 @@ public class EmailRenderer {
         Span[] names = archive.getAllNamesInDoc(ed, false);
 
         // Contains all entities and id if it is authorised else null
-        Map<String, Archive.Entity> entitiesWithId = new HashMap<>();
+        Map<String, Entity> entitiesWithId = new HashMap<>();
         //we annotate three specially recognized types
         Map<Short,String> recMap = new HashMap<>();
         recMap.put(NEType.Type.PERSON.getCode(),"cp");
@@ -499,7 +498,7 @@ public class EmailRenderer {
                 .forEach(n -> {
                     Set<String> types = new HashSet<>();
                     types.add(recMap.get(NEType.getCoarseType(n.type).getCode()));
-                    entitiesWithId.put(n.text, new Archive.Entity(n.text, null, types));
+                    entitiesWithId.put(n.text, new Entity(n.text, null, types));
                 });
 
         x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTerms, entitiesWithId, IA_links, false);
@@ -516,4 +515,22 @@ public class EmailRenderer {
 		return result;
 	}
 
+	/** I'm not sure what this is used for -- I think its used only for rendering HTML for the message. */
+    public static class Entity {
+        public Map<String, Short> ids;
+        //person,places,orgs, custom
+        public String name;
+        public Set<String> types = new HashSet<String>();
+
+        public Entity(String name, Map<String, Short> ids, Set<String> types) {
+            this.name = name;
+            this.ids = ids;
+            this.types = types;
+        }
+
+        @Override
+        public String toString() {
+            return types.toString();
+        }
+    }
 }

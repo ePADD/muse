@@ -147,17 +147,18 @@ public class FASTSearcher {
 	 * Dzhordzh -- variant of George Bush (what? who calls him that?)
 	 * set limit to negative if dont want to set it.
 	 */
-	public static Set<FASTRecord> getMatches(String dname, FASTDB type, int limit) {
+	public static Set<FASTRecord> getMatches(String dname, FASTDB type, int maxResults) {
 		String name = EmailUtils.normalizePersonNameForLookup(dname);
 		if (name == null) {
 			log.warn("Normalised name for: " + dname + " is null!");
 			return null;
 		}
+
 		//lc it! normalization behaves weird with single word normalizations.
 		name = name.toLowerCase();
 
-		if (limit < 0)
-			limit = 100;
+		if (maxResults < 0)
+			maxResults = 100;
 		try {
 			if (type != FASTDB.ALL) {
 				BooleanQuery internal = new BooleanQuery();
@@ -165,11 +166,9 @@ public class FASTSearcher {
 				CharArraySet stopWords = StopAnalyzer.ENGLISH_STOP_WORDS_SET;
 				for (String w : words) {
 					if (stopWords.contains(w))
-						internal.add(new TermQuery(new Term(FASTRecord.CNAME, w)),
-								BooleanClause.Occur.SHOULD);
+						internal.add(new TermQuery(new Term(FASTRecord.CNAME, w)), BooleanClause.Occur.SHOULD);
 					else {
-						internal.add(new TermQuery(new Term(FASTRecord.CNAME, w)),
-								BooleanClause.Occur.MUST);
+						internal.add(new TermQuery(new Term(FASTRecord.CNAME, w)), BooleanClause.Occur.MUST);
 					}
 				}
 
@@ -178,7 +177,7 @@ public class FASTSearcher {
 				bq.add(new TermQuery(new Term(FASTRecord.TYPE, FASTRecord.getValidType(type))), BooleanClause.Occur.MUST);
 				bq.add(new TermQuery(new Term(FASTRecord.SUB_TYPE, FASTRecord.LOOKUP)), BooleanClause.Occur.MUST);
 
-				TopDocs docs = searcher.search(bq, null, limit);
+				TopDocs docs = searcher.search(bq, null, maxResults);
 
 				// records contains fast id of matching fast records.
 				Set<String> records = new HashSet<String>();
@@ -204,10 +203,10 @@ public class FASTSearcher {
 				return items;
 			} else {
 				Set<FASTRecord> allTypes = new HashSet<FASTRecord>();
-				allTypes.addAll(getMatches(name, FASTDB.CORPORATE, limit));
-				allTypes.addAll(getMatches(name, FASTDB.GEOGRAPHIC, limit));
-				allTypes.addAll(getMatches(name, FASTDB.TOPICS, limit));
-				allTypes.addAll(getMatches(name, FASTDB.PERSON, limit));
+				allTypes.addAll(getMatches(name, FASTDB.CORPORATE, maxResults));
+				allTypes.addAll(getMatches(name, FASTDB.GEOGRAPHIC, maxResults));
+				allTypes.addAll(getMatches(name, FASTDB.TOPICS, maxResults));
+				allTypes.addAll(getMatches(name, FASTDB.PERSON, maxResults));
 				return allTypes;
 			}
 		} catch (Exception e) {

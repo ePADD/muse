@@ -3,6 +3,8 @@ package edu.stanford.muse.ie;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -16,23 +18,27 @@ import java.util.regex.Pattern;
 
 /**
  * An abstract representation for various FAST types such as Personal,
- * Geogeraphic etc.
- * Contrary to what the class name says, the record represented by this class
- * may not
- * be FAST record always.
+ * Geogeraphic etc. Contrary to what the class name says, the record represented by this class
+ * may not be FAST record always.
  * 
  * @author: Vihari
- * */
+ **/
+
 abstract public class FASTRecord {
+	protected static Log log			= LogFactory.getLog(FASTRecord.class);
+
 	// there are also small proportion of type:
 	// <http://sws.geonames.org/5387597/>
 	//TODO: are these booleans usable anymore?
-	public Boolean				wikiSource						= false, VIAFSource = false, LOCSource = false, GEOSource = false, unknownSource = false;
+	public Boolean wikiSource = false, VIAFSource = false, LOCSource = false, GEOSource = false, unknownSource = false;
+
+	// col. names in the fast index
 	// fast id. sub type is to differentiate between those records that are just
 	// maps and those that are full records.
-	//though the field CNAME is named so, the names are actually normalised with EmailUtils.normalizePersonaNameForLookup rather than canonicalized, I am not changing this so as to avoid pain of re-indexing.
+	//though the field CNAME is named so, the names are actually normalised with EmailUtils.normalizePersonaNameForLookup rather than canonicalized,
 	//TODO: change the CNAME field to NName ie. normalized name.
-	public static String		ID								= "id", TYPE = "type", NAME = "name", CNAME = "cname", SOURCE = "source", SUB_TYPE = "subType";
+	public static final String ID = "id", TYPE = "type", NAME = "name", CNAME = "cname", SOURCE = "source", SUB_TYPE = "subType";
+
 	/**
 	 * lookup and full_record are two fields added so as to make searching the
 	 * index faster. lookup ids for lookup into the full records. This increases
@@ -40,12 +46,17 @@ abstract public class FASTRecord {
 	 * TODO remove lookup and full record types if not required, they are also
 	 * used in FASTIndexer and FASTSearcher
 	 */
-	public static String		LOOKUP							= "lookup", FULL_RECORD = "fullRecord";
-	public Set<String>			names, sources;
-	//note: id can be null too in which case this is not even a FASTRecord. A change in class name is required?
-	public String				id, type;
+	public static final String		LOOKUP							= "lookup", FULL_RECORD = "fullRecord";
+
+	// this is the main part of the fast record, which contains IDs in various databases, e.g.
+	// "fast" -> xxx, dbpedia -> "yyy", etc.
+	protected Set<String>			names, sources;
+
+	// note: id can be null too in which case this is not even a FASTRecord. A change in class name is required?
+	protected String				id, type;
+
 	/** Nt style of adding value */
-	static public List<Pattern>	namePatternsToMatchAndRemove	= new ArrayList<Pattern>();
+	public static final List<Pattern> namePatternsToMatchAndRemove	= new ArrayList<>();
 
 	public abstract void addValue(String relation, String value);
 
@@ -65,49 +76,49 @@ abstract public class FASTRecord {
 		}
 	}
 
-	static Pattern	jP	= Pattern.compile("^ ::: | ::: $");
+	private static Pattern jP = Pattern.compile("^ ::: | ::: $");
+	private static Pattern leadingAndTrailingQuotePattern = Pattern.compile("^\"|\"$");
+
+	private static String cleanName (String s) {
+		String s1 = s.trim();
+		s1 = leadingAndTrailingQuotePattern.matcher(s1).replaceAll("");
+
+		// Some strange corporate names contains such string patterns like \"some name\"
+		s1 = s1.replaceAll("\\\\\"", ""); // remove backslash-quote
+		s1 = s1.replaceAll("\"", ""); // remove quotes
+		s1 = s1.trim();
+		return s1;
+	}
 
 	public String extractName(String s) {
 		if (s.contains("\\u"))
 			s = FASTIndexer.convertUTF16(s);
 
-		String s1 = s;
-		// remove trailing and leading spaces
-		Pattern sR = Pattern.compile("^[\\s\\t]+|[\\s\\t]+$");
-		s1 = sR.matcher(s1).replaceAll("");
-		// remove trailing and leading quotes.
-		Pattern qR = Pattern.compile("^\"|\"$");
-		s1 = qR.matcher(s1).replaceAll("");
-
-		// Some strange corporate names contains such string patterns like \"some name\"
-		s1 = s1.replaceAll("\\\\\"", ""); // remove quotes
-		s1 = s1.replaceAll("\"", ""); // remove quotes
-		s1 = s1.trim();
-
+		s = cleanName (s);
 		for (Pattern p : namePatternsToMatchAndRemove)
-			s1 = p.matcher(s1).replaceAll("");
+			s = p.matcher(s).replaceAll("");
 
-		for (char c : s1.toCharArray())
+		for (char c : s.toCharArray())
 			if (Character.isDigit(c)) {
 				// System.err.println("Warning: numeric digit in " + s1);
 				break;
 			}
-		return s1;
+		return s;
 	}
 
-	public void interpretSource(String value) {
+	public void setSource (String value) {
 		if (value.contains("viaf"))
 			VIAFSource = true;
 		else if (value.contains("id.loc.gov"))
 			LOCSource = true;
-		else if (value.contains("dbpedia") || value.contains("wiki"))
+		else if (value.contains ("dbpedia") || value.contains ("wiki"))
 			wikiSource = true;
 		// of type: <http://sws.geonames.org/4232911/>
 		else if (value.contains("geonames.org"))
 			GEOSource = true;
 		else {
 			unknownSource = true;
-			System.err.println("Unknown source: " + value);
+			log.warn("FAST record received Unknown source: " + value);
 		}
 	}
 

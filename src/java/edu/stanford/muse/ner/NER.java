@@ -2,6 +2,7 @@ package edu.stanford.muse.ner;
 
 import edu.stanford.muse.email.StatusProvider;
 import edu.stanford.muse.exceptions.CancelledException;
+import edu.stanford.muse.ie.KillPhrases;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.Indexer;
@@ -167,7 +168,8 @@ public class NER implements StatusProvider {
         }
 
         String[] plainSpans = val.split(Indexer.NAMES_FIELD_DELIMITER);
-        List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).filter(s -> s != null).collect(Collectors.toList());
+        // remove kill phrases here itself
+        List<Span> spans = Arrays.asList(plainSpans).stream().map(Span::parse).filter(s -> s != null && !KillPhrases.isKillPhrase(s.getText())).collect(Collectors.toList());
 
         return spans.toArray(new Span[spans.size()]);
     }

@@ -1429,6 +1429,15 @@ public class Util
 		return s;
 	}
 
+	// strips double quotes from start and end. e.g. "Barack Obama" (with quotes) -> Barack Obama (without quotes)
+	public static String stripDoubleQuotes(String s)
+	{
+		if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2)
+			return s.substring(1, s.length() - 1);
+		else
+			return s;
+	}
+
 	/**
 	 * returns a string with elements of the given collection concatenated,
 	 * separated by given separator
@@ -1683,6 +1692,34 @@ public class Util
 				return false;
 			return !(suffix != null && !name.endsWith(suffix));
 		}
+	}
+
+	/** will parse Vila Dinar\u00E9s, Pau to map the \u00E9 to the right unicode char. Useful when parsing FAST Index */
+	public static String convertSlashUToUnicode (String s) {
+		if (s == null)
+			return s;
+		if (s.indexOf("\\u") < 0)
+			return s;
+
+		List<Character> out = new ArrayList<>();
+		for (int i = 0; i < s.length(); i++) {
+			char ch = s.charAt(i);
+			if (ch == '\\' && (i + 5 < s.length()) && s.charAt(i + 1) == 'u') {
+				String seq = Character.toString(s.charAt(i + 2))
+						+ Character.toString(s.charAt(i + 3))
+						+ Character.toString(s.charAt(i + 4))
+						+ Character.toString(s.charAt(i + 5));
+				ch = (char) Integer.parseInt(seq, 16);
+				i += 5;
+			}
+
+			out.add(ch);
+		}
+
+		StringBuilder sb = new StringBuilder();
+		for (char c : out)
+			sb.append(c);
+		return sb.toString();
 	}
 
 	public static Set<String> filesWithPrefixAndSuffix(String dir, String prefix, String suffix)

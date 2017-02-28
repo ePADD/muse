@@ -32,7 +32,7 @@ public class Variants {
 
     static {
         try {
-            InputStream is = Config.getResourceAsStream("stop.words.full"); // can change this to stop.words.new if we want to
+            InputStream is = Config.getResourceAsStream("stop.words"); // can change this to stop.words.new or stop.words.full if we want to
             stopWords = DictUtils.readStreamAndInternStrings(new InputStreamReader(is, "UTF-8"));
             is.close();
         } catch (Exception ioe) {
@@ -205,7 +205,7 @@ public class Variants {
         /**
          * case independent, word order independent, case normalized
          */
-        public String canonicalize(String s) {
+        public static String canonicalize(String s) {
             if (s == null)
                 return s;
 
