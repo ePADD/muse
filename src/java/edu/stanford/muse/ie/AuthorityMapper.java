@@ -5,6 +5,8 @@ import com.google.common.collect.LinkedHashMultiset;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
+import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.index.Archive;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -16,10 +18,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 import org.json.JSONArray;
@@ -29,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static edu.stanford.muse.ie.FASTIndexer.FIELD_NAME_FAST_ID;
 import static edu.stanford.muse.ie.variants.EntityMapper.canonicalize;
 import static java.lang.System.out;
 
@@ -36,19 +36,38 @@ import static java.lang.System.out;
  * Authority mapper for correspondents only
  */
 public class AuthorityMapper implements java.io.Serializable {
+    private final static long serialVersionUID = 1L;
+    public final static long INVALID_FAST_ID = -1L;
+
+    public static class AuthorityInfo {
+        public boolean isConfirmed;
+        public int nMessages;
+        public String name, tooltip, url, errorMessage;
+        public AuthorityRecord confirmedAuthority;
+        public List<AuthorityRecord> candidates;
+    }
+
+    public static class AuthorityRecord {
+        public long fastId;
+        public String lcshId, lcnafId, wikipediaId, viafId;
+        public String preferredLabel, altLabels;
+    }
+
+
     Map<String, Long> confirmedCnameToFastId = new LinkedHashMap<>();
-    private Set<String> confirmedCnamesWithNoAuth = new LinkedHashSet<>();
+    private Map<String, Integer> cnameToCount = new LinkedHashMap<>();
 
     transient Multimap<String, Long> cnameToFastIdCandidates = LinkedHashMultimap.create(); // make this transient because it can be recomputed later
 
     transient private StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */));
     transient private IndexSearcher indexSearcher;
     transient private QueryParser parser;
-    transient private QueryParser parserFastId;
     transient private IndexReader indexReader;
+    private Archive archive;
 
     public AuthorityMapper (Archive archive, String dir) throws IOException, ParseException {
 
+        this.archive = archive;
         openFastIndex(dir);
         AddressBook ab = archive.getAddressBook();
 
@@ -69,84 +88,94 @@ public class AuthorityMapper implements java.io.Serializable {
                     List<Document> hits = lookupNameInFastIndex(name);
 
                     for (Document d : hits) {
-                        Long fastId = Long.parseLong (d.get (FASTIndexer.FIELD_NAME_FAST_ID));
+                        Long fastId = Long.parseLong (d.get (FIELD_NAME_FAST_ID));
                         cnameToFastIdCandidates.put (cname, fastId);
                     }
                 }
             }
         }
-        closeFastIndex ();
+    }
+
+    public void setupCounts(Archive archive) {
+        AddressBook ab = archive.getAddressBook();
+        List<Pair<Contact, Integer>> pairs = ab.sortedContactsAndCounts((Collection) archive.getAllDocs());
+        for (Pair<Contact, Integer> p: pairs) {
+            Contact c = p.getFirst();
+            String name = c.pickBestName();
+            String cname = canonicalize(name);
+            if (Util.nullOrEmpty(cname))
+                continue;
+
+            cnameToCount.put(cname, p.getSecond());
+        }
     }
 
     /** populates the other ids, given the fast Id */
-    private void updateOtherIds (JSONObject obj) throws ParseException, IOException {
-        long fastId = obj.getLong (FASTIndexer.FIELD_NAME_FAST_ID);
-        Query query = parser.parse(Long.toString (fastId));
+    private AuthorityRecord updateOtherIds (long fastId) throws ParseException, IOException {
+        AuthorityRecord result = new AuthorityRecord();
+
+        result.fastId = fastId;
+        Query query = NumericRangeQuery.newLongRange(FIELD_NAME_FAST_ID, fastId, fastId, true, true); // don't do a string query, must do a numeric range query
+
         TopDocs docs = indexSearcher.search (query, null, 10000);
 
+        // there should be only 1 result
         for (ScoreDoc scoreDoc: docs.scoreDocs) {
             Document d = indexSearcher.doc(scoreDoc.doc);
-            String viafId = d.get(FASTIndexer.FIELD_NAME_VIAF_ID);
-            String lcshId = d.get(FASTIndexer.FIELD_NAME_LCSH_ID);
-            String lcnafId = d.get(FASTIndexer.FIELD_NAME_LCNAF_ID);
-            String wikipediaId = d.get(FASTIndexer.FIELD_NAME_WIKIPEDIA_ID);
+            result.viafId = d.get(FASTIndexer.FIELD_NAME_VIAF_ID);
+            result.lcshId = d.get(FASTIndexer.FIELD_NAME_LCSH_ID);
+            result.lcnafId = d.get(FASTIndexer.FIELD_NAME_LCNAF_ID);
+            result.wikipediaId = d.get(FASTIndexer.FIELD_NAME_WIKIPEDIA_ID);
 
-            if (!Util.nullOrEmpty(viafId)) {
-                obj.put(FASTIndexer.FIELD_NAME_VIAF_ID, viafId);
-            }
-            if (!Util.nullOrEmpty(wikipediaId)) {
-                obj.put(FASTIndexer.FIELD_NAME_WIKIPEDIA_ID, wikipediaId);
-            }
-            if (!Util.nullOrEmpty(lcnafId)) {
-                obj.put(FASTIndexer.FIELD_NAME_LCNAF_ID, lcnafId);
-            }
-            if (!Util.nullOrEmpty(lcshId)) {
-                obj.put(FASTIndexer.FIELD_NAME_LCSH_ID, lcshId);
+            String labels = d.get(FASTIndexer.FIELD_NAME_LABELS);
+            if (!Util.nullOrEmpty(labels)) {
+                String splitLabels[] = labels.split (" ; ", 2);
+                if (!Util.nullOrEmpty(splitLabels[0]))
+                    result.preferredLabel = splitLabels[0];
+                if (splitLabels.length > 1 && !Util.nullOrEmpty(splitLabels[1]))
+                    result.altLabels = splitLabels[1];
             }
         }
+        return result;
     }
 
-    public JSONObject getJsonForName (String name) throws IOException, ParseException {
+    public AuthorityInfo getAuthorityInfo (String name) throws IOException, ParseException {
         String cname = canonicalize (name);
-        JSONObject result = new JSONObject();
+        AuthorityInfo result = new AuthorityInfo();
+        result.isConfirmed = false;
+        result.name = name;
+        AddressBook ab = archive.getAddressBook();
+        Contact c = ab.lookupByName(name);
+
+        Integer nMessages = (cnameToCount != null) ? cnameToCount.get(cname) : null;
+        result.nMessages = (nMessages == null) ? 0 : nMessages;
+
+        if (c == null) {
+            result.errorMessage = "Name not in address book: " + name;
+            return result;
+        }
+
+        result.url = "browse?adv-search=1&contact=" + ab.getContactId(c);
+        result.tooltip = c.toTooltip();
+        result.nMessages = nMessages;
 
         Long fastId = confirmedCnameToFastId.get(cname);
         if (fastId != null) {
-            result.put ("status", "confirmed");
-            JSONObject obj = new JSONObject();
-            obj.put (FASTIndexer.FIELD_NAME_FAST_ID, (long) fastId);
-            updateOtherIds (obj);
-            result.put ("authority", obj);
-        } else {
-            if (confirmedCnamesWithNoAuth.contains (cname)) {
-                result.put ("status", "confirmedNoAuth");
-            } else {
-                JSONArray jarr = new JSONArray();
-                result.put ("status", "candidates");
-                Collection<Long> fastIds = cnameToFastIdCandidates.get(cname);
-                if (fastIds != null) {
-                    int count = 0;
-                    for (Long l: fastIds) {
-                        JSONObject obj = new JSONObject();
-                        obj.put (FASTIndexer.FIELD_NAME_FAST_ID, l);
-                        updateOtherIds(obj);
-                        jarr.put (count++, obj);
-                    }
-                    result.put ("candidates", jarr);
-                } else {
-                    result.put ("status", "noMatch");
-                }
-            }
+            result.isConfirmed = true;
+            result.confirmedAuthority = updateOtherIds(fastId);
         }
 
+        List<AuthorityRecord> candidates = new ArrayList<>();
+        Collection<Long> fastIds = cnameToFastIdCandidates.get(cname);
+        if (fastIds != null)
+            for (Long id : fastIds)
+                candidates.add (updateOtherIds(id));
+
+        result.candidates = candidates;
         return result;
     }
 
     public void setFastId(int contactId, long fastId) {
-
-    }
-
-    public void setNoFastId (int contactId) {
 
     }
 
@@ -167,8 +196,7 @@ public class AuthorityMapper implements java.io.Serializable {
         indexReader = DirectoryReader.open(FSDirectory.open (new File(dir)));
         analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */)); // empty chararrayset, so effectively no stop words
         indexSearcher = new IndexSearcher(indexReader);
-        parser = new MultiFieldQueryParser(Version.LUCENE_47, new String[] {FASTIndexer.FIELD_NAME_LABELS}, analyzer);
-        parser = new MultiFieldQueryParser(Version.LUCENE_47, new String[] {FASTIndexer.FIELD_NAME_FAST_ID}, analyzer);
+        parser = new QueryParser(Version.LUCENE_47, FASTIndexer.FIELD_NAME_LABELS, analyzer);
     }
 
     private void closeFastIndex () throws IOException {

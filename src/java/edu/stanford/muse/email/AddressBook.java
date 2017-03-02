@@ -855,6 +855,29 @@ public class AddressBook implements Serializable {
     }
 
     /**
+     * returns a list of all contacts in the given collection of docs, sorted by outgoing freq.
+     */
+    public List<Pair<Contact, Integer>> sortedContactsAndCounts(Collection<EmailDocument> docs) {
+        Map<Contact, Integer> contactToCount = new LinkedHashMap<>();
+
+        // note that we'll count a recipient twice if 2 different email addresses are present on the message.
+        // we'll also count the recipient twice if he sends a message to himself
+        for (EmailDocument ed : docs) {
+            List<String> allEmails = ed.getAllAddrs();
+            for (String email : allEmails) {
+                Contact c = lookupByEmail(email);
+                if (c != null) {
+                    Integer I = contactToCount.get(c);
+                    contactToCount.put(c, (I == null) ? 1 : I + 1);
+                }
+            }
+        }
+
+        List<Pair<Contact, Integer>> pairs = Util.sortMapByValue(contactToCount);
+        return pairs;
+    }
+
+    /**
      * given an email addr, find a canonical email addr for that contact
      */
     public String getCanonicalAddr(String s) {
@@ -1226,7 +1249,7 @@ public class AddressBook implements Serializable {
             int contactId = getContactId(c);
             //	out.println ("<a style=\"text-decoration:none;color:inherit;\" href=\"browse?contact=" + contactId + "\">");
             String bestNameForContact = c.pickBestName();
-            String url = "browse?contact=" + contactId;
+            String url = "browse?adv-search=1&contact=" + contactId;
             String nameToPrint = Util.escapeHTML(Util.ellipsize(bestNameForContact, 50));
             Integer inCount = contactInCount.get(c), outCount = contactOutCount.get(c), mentionCount = contactMentionCount.get(c);
             if (inCount == null)

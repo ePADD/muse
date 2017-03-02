@@ -323,6 +323,7 @@ public class FASTIndexer {
 
             if (!Util.nullOrEmpty(lcshId))
                 luceneDoc.add(new StringField(FIELD_NAME_LCSH_ID, lcshId, Field.Store.YES));
+
             indexWriter.addDocument(luceneDoc);
         }
     }
@@ -332,7 +333,7 @@ public class FASTIndexer {
         StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */)); // empty chararrayset, so effectively no stop words
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
 
-        QueryParser parser = new MultiFieldQueryParser(Version.LUCENE_47, new String[] {FIELD_NAME_LABELS}, analyzer);
+        QueryParser parser = new QueryParser(Version.LUCENE_47, FIELD_NAME_LABELS, analyzer);
 
         Query query = parser.parse("\"" + name + "\"");
         TopDocs docs = indexSearcher.search (query, null, 10000);
