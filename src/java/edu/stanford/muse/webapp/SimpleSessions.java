@@ -1,9 +1,8 @@
 package edu.stanford.muse.webapp;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.email.MuseEmailFetcher;
-import edu.stanford.muse.ie.AuthorisedAuthorities;
-import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Archive.ProcessingMetadata;
 import edu.stanford.muse.index.Document;
@@ -109,7 +108,7 @@ public class SimpleSessions {
 	 */
 	public static ProcessingMetadata readProcessingMetadata(String baseDir, String name)
 	{
-		String processingFilename = baseDir + File.separatorChar + name + Sessions.PROCESSING_METADATA_SUFFIX;
+		String processingFilename = baseDir + File.separatorChar + name + Config.PROCESSING_METADATA_SUFFIX;
 		ObjectInputStream ois = null;
 		try {
 			ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(processingFilename)));
@@ -207,7 +206,7 @@ public class SimpleSessions {
 		}
 
 		// now write out the metadata
-		String processingFilename = dir + File.separatorChar + name + Sessions.PROCESSING_METADATA_SUFFIX;
+		String processingFilename = dir + File.separatorChar + name + Config.PROCESSING_METADATA_SUFFIX;
 		oos = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream(processingFilename)));
 		try {
 			oos.writeObject(archive.processingMetadata);
@@ -218,6 +217,18 @@ public class SimpleSessions {
 			oos.close();
 		}
 
+		if (archive.authorityMapper != null) {
+			String authorityMapperFilename = dir + File.separatorChar + name + Config.AUTHORITIES_FILENAME;
+			oos = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream(authorityMapperFilename)));
+			try {
+				oos.writeObject(archive.authorityMapper);
+			} catch (Exception e1) {
+				Util.print_exception("Failed to write archive's authority mapper: ", e1, log);
+				oos.close();
+			} finally {
+				oos.close();
+			}
+		}
         // re-open for reading
 		archive.openForRead();
 

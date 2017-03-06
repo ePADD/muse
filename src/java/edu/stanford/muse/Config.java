@@ -14,7 +14,8 @@ import java.util.Map;
 import java.util.Properties;
 
 public class Config {
-	public static Log log = LogFactory.getLog(Config.class);
+    public static final String PROCESSING_METADATA_SUFFIX = ".processing.metadata"; // all session files end with .session
+    public static Log log = LogFactory.getLog(Config.class);
     public static String admin, holder, holderContact, holderReadingRoom;
 
     /* default location for dir under which archives are imported/stored. Should not end in File.separator */

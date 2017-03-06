@@ -40,8 +40,7 @@ import java.util.*;
 public class Sessions {
     public static Log log = LogFactory.getLog(Sessions.class);
     public static final String SESSION_SUFFIX = ".archive.v2"; // all session files end with .session
-    public static final String PROCESSING_METADATA_SUFFIX = ".processing.metadata"; // all session files end with .session	
-    public  static String CACHE_BASE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"
+	public  static String CACHE_BASE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"
     public static String CACHE_DIR = null; // overruled (but not overwritten) by session's attribute "cacheDir"
     private static String SESSIONS_DIR = null;
     public static String MUSE_DIRNAME = ".muse"; // clients might choose to override this

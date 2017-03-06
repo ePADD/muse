@@ -35,6 +35,7 @@ public class FASTIndexer {
     public static final String FIELD_NAME_VIAF_ID = "viafId";
     public static final String FIELD_NAME_LCNAF_ID = "lcnafId";
     public static final String FIELD_NAME_LCSH_ID = "lcshId";
+    public static final String FIELD_NAME_EXTENT = "extent";
     private static final String LABEL_SEPARATOR = " ; "; // the labels field will have primary name, followed by alt names, all separated with a ";"
     private static PrintStream out = System.out, err = System.err;
 
@@ -323,6 +324,9 @@ public class FASTIndexer {
 
             if (!Util.nullOrEmpty(lcshId))
                 luceneDoc.add(new StringField(FIELD_NAME_LCSH_ID, lcshId, Field.Store.YES));
+
+            if (!Util.nullOrEmpty(extent))
+                luceneDoc.add(new StringField(FIELD_NAME_EXTENT, extent, Field.Store.YES));
 
             indexWriter.addDocument(luceneDoc);
         }

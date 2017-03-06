@@ -15,7 +15,6 @@
  */
 package edu.stanford.muse.index;
 
-import au.com.bytecode.opencsv.CSVWriter;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
@@ -23,8 +22,6 @@ import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.*;
 import edu.stanford.muse.groups.SimilarGroup;
-import edu.stanford.muse.ie.AuthorisedAuthorities;
-import edu.stanford.muse.ie.Authority;
 import edu.stanford.muse.ie.AuthorityMapper;
 import edu.stanford.muse.ie.NameInfo;
 import edu.stanford.muse.ie.variants.EntityMapper;
@@ -94,10 +91,8 @@ public class Archive implements Serializable {
     transient private Set<Document> allDocsAsSet = null;
     private Set<FolderInfo> fetchedFolderInfos = new LinkedHashSet<FolderInfo>();    // keep this private since its updated in a controlled way
     transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
-    public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();
-    private Map<String, Authority> cnameToAuthority;
-    private EntityMapper entityMapper;
-    private AuthorityMapper authorityMapper;
+    public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();private EntityMapper entityMapper;
+    public AuthorityMapper authorityMapper; /* transient because this is saved and loaded separately */
     Map<String, NameInfo> nameMap;
 
     public ProcessingMetadata processingMetadata = new ProcessingMetadata();
@@ -106,23 +101,10 @@ public class Archive implements Serializable {
 
     public String archiveTitle; // this is the name of this archive
 
-    public synchronized Map<String, Authority> getAuthorities() {
-        if (cnameToAuthority != null)
-            return cnameToAuthority;
-        String filename = this.baseDir + java.io.File.separator + Config.AUTHORITIES_FILENAME;
-        try {
-            cnameToAuthority = (Map<String, Authority>) Util.readObjectFromFile(filename);
-        } catch (Exception e) {
-            log.info ("No authorities file: " + filename);
-            cnameToAuthority = new LinkedHashMap<>();
-        }
-        AuthorisedAuthorities.cnameToDefiniteID = cnameToAuthority;
-        return cnameToAuthority;
-    }
-
-    public synchronized AuthorityMapper getAuthorityMapper() throws IOException, ParseException {
+    public synchronized AuthorityMapper getAuthorityMapper() throws IOException, ParseException, ClassNotFoundException {
+        // auth mapper is transient, so may have to be created each time. but it will be loaded from a file if it already exists
         if (authorityMapper == null)
-            authorityMapper = new AuthorityMapper(this, Config.FAST_INDEX);
+            authorityMapper = AuthorityMapper.createAuthorityMapper (this, Config.FAST_INDEX);
         return authorityMapper;
     }
 
@@ -130,43 +112,6 @@ public class Archive implements Serializable {
         if (entityMapper == null)
             entityMapper = new EntityMapper();
         return entityMapper;
-    }
-
-    /** returns a string with the definite authorities in a CSV format. */
-    public String getAuthoritiesAsCSV () throws IOException {
-        Map<String, Authority> nameToId = getAuthorities();
-        if (Util.nullOrEmpty(nameToId)) {
-            log.warn ("trying to export authority records, when none exist!");
-            return "";
-        }
-
-        StringWriter sw = new StringWriter();
-        CSVWriter writer = new CSVWriter(sw, ',', '"', '\n');
-
-        // write the header line: "name, fast, viaf, " etc.
-        List<String> line = new ArrayList<>();
-        line.add("name");
-        for (String type : Authority.types)
-            line.add(type);
-        writer.writeNext(line.toArray(new String[line.size()]));
-
-        // write the records
-        for (Authority auth : nameToId.values()) {
-            line = new ArrayList<>();
-            Map<Short, String> typeToId = auth.getTypeToId();
-
-            line.add(EmailUtils.uncanonicaliseName(auth.name));
-            for (short i = 0; i < Authority.types.length; i++)
-                line.add(typeToId.get(i));
-            writer.writeNext(line.toArray(new String[line.size()]));
-        }
-        writer.close();
-        String csv = sw.toString();
-        return csv;
-    }
-
-    public synchronized void setAuthorities(Map<String, Authority> authorities) {
-        cnameToAuthority = authorities;
     }
 
     /*
@@ -1597,6 +1542,8 @@ public class Archive implements Serializable {
 
     /** transfers actions from one archive to another. returns user-displayable status message */
     public String transferActionsFrom(String otherArchiveDir) throws ClassNotFoundException, IOException {
+        return "Error: transfer actions disabled in v3!";
+        /*
         String file = otherArchiveDir + File.separator + SESSIONS_SUBDIR + File.separator + "default.archive.v1"; // note that is v1!
 
         if (!new File(file).exists()) {
@@ -1683,6 +1630,7 @@ public class Archive implements Serializable {
                 + " to current archive in format v2 (" + Util.pluralize(this.allDocs.size(), "message") + ").\n"
                 + Util.pluralize(matchedMessages, "message") + " matched"
                 + "\n" + authorityTransferStatus;
+        */
     }
 
     public static void main(String[] args) {

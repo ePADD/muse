@@ -17,9 +17,7 @@ public class Authority implements Serializable {
 	//dbId -> dbType
 	public Map<String, Short>	sources; // this is id -> type. @Vihari, why isn't it type -> id?
     public static short			FAST				= 0, DBPEDIA = 1, VIAF = 2, LOC_SUBJECT = 3, LOC_NAME = 4, FREEBASE = 5, GEO_NAMES = 6;
-    public static String[]		types				= new String[] { "fast", "dbpedia", "viaf", "locSubject", "locName", "freebase", "geonames" };
     public static Log 			log					= LogFactory.getLog(Authority.class);
-    public static String        sep = ":::";
 
 	public Authority(String name, String[] ids, String[] dbTypes) {
         //geo names -> http://sws.geonames.org/
