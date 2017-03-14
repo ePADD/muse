@@ -76,7 +76,7 @@ public class AuthorityMapper implements java.io.Serializable {
     transient private IndexReader indexReader;
 
     /* creates a mapper. first checks if it already exists in the archive dir. otherwise creates a new one, and initializes it for the archive (might take a while to generate candidates) */
-    public static AuthorityMapper createAuthorityMapper (Archive archive, String fastDir) throws IOException, ParseException, ClassNotFoundException {
+    public static AuthorityMapper createAuthorityMapper (Archive archive) throws IOException, ParseException, ClassNotFoundException {
 
         String filename = archive.baseDir + File.separator + Config.AUTHORITIES_FILENAME;
         File authMapperFile = new File (filename);
@@ -94,7 +94,7 @@ public class AuthorityMapper implements java.io.Serializable {
             mapper = new AuthorityMapper();
 
         // get ready for queries
-        mapper.openFastIndex (fastDir);
+        mapper.openFastIndex ();
 
         // compute candidates if we don't have them yet. may need some way to force recomputation in the future, even if already computed.
         if (mapper.cnameToFastIdCandidates.isEmpty() || mapper.cnameToCount.isEmpty()) {
@@ -163,20 +163,22 @@ public class AuthorityMapper implements java.io.Serializable {
         writer.writeNext(line.toArray(new String[line.size()]));
 
         // write the records
-        for (AuthorityRecord auth : cnameToAuthority.values()) {
-            // note: the cname itself is not exported.
-            line = new ArrayList<>();
-            line.add (auth.preferredLabel);
-            line.add (Long.toString(auth.fastId));
-            line.add (auth.viafId);
-            line.add (auth.wikipediaId);
-            line.add (auth.lcshId);
-            line.add (auth.lcnafId);
-            line.add (auth.localId);
-            line.add (auth.extent);
-            line.add (auth.isManuallyAssigned ? "Y" : "N");
+        if (cnameToAuthority != null) {
+            for (AuthorityRecord auth : cnameToAuthority.values()) {
+                // note: the cname itself is not exported.
+                line = new ArrayList<>();
+                line.add(auth.preferredLabel);
+                line.add(Long.toString(auth.fastId));
+                line.add(auth.viafId);
+                line.add(auth.wikipediaId);
+                line.add(auth.lcshId);
+                line.add(auth.lcnafId);
+                line.add(auth.localId);
+                line.add(auth.extent);
+                line.add(auth.isManuallyAssigned ? "Y" : "N");
 
-            writer.writeNext(line.toArray(new String[line.size()]));
+                writer.writeNext(line.toArray(new String[line.size()]));
+            }
         }
         writer.close();
         String csv = sw.toString();
@@ -190,6 +192,9 @@ public class AuthorityMapper implements java.io.Serializable {
         String labelSeparator = " ; ";
         result.fastId = fastId;
         Query query = NumericRangeQuery.newLongRange(FIELD_NAME_FAST_ID, fastId, fastId, true, true); // don't do a string query, must do a numeric range query
+
+        if (indexSearcher == null)
+            this.openFastIndex();
 
         TopDocs docs = indexSearcher.search (query, null, 10000);
 
@@ -301,7 +306,8 @@ public class AuthorityMapper implements java.io.Serializable {
         return result;
     }
 
-    private void openFastIndex (String dir) throws IOException {
+    private void openFastIndex () throws IOException {
+        String dir = Config.FAST_INDEX_DIR;
         indexReader = DirectoryReader.open(FSDirectory.open (new File(dir)));
         analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */)); // empty chararrayset, so effectively no stop words
         indexSearcher = new IndexSearcher(indexReader);

@@ -104,7 +104,7 @@ public class Archive implements Serializable {
     public synchronized AuthorityMapper getAuthorityMapper() throws IOException, ParseException, ClassNotFoundException {
         // auth mapper is transient, so may have to be created each time. but it will be loaded from a file if it already exists
         if (authorityMapper == null)
-            authorityMapper = AuthorityMapper.createAuthorityMapper (this, Config.FAST_INDEX);
+            authorityMapper = AuthorityMapper.createAuthorityMapper (this);
         return authorityMapper;
     }
 

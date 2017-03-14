@@ -29,9 +29,8 @@ public class Config {
 
 	//Ideally Muse should not even have the concept of settings file, by default everything should be in the WEB-INF
     public static String	SETTINGS_DIR		= System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator;
-    public static String	FAST_FILE = SETTINGS_DIR + "cnameToFASTPersons.db.gz";;
-    
-    public static String 	FAST_INDEX, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
+
+    public static String 	FAST_INDEX_DIR, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
     
     //List of resource file that the NER model is trained on
     public static String[] NER_RESOURCE_FILES = new String[0];
@@ -103,7 +102,8 @@ public class Config {
         AUTHORITIES_FILENAME = props.getProperty("AUTHORITIES_FILENAME", "authorities.ser");
         AUTHORITIES_CSV_FILENAME = props.getProperty("AUTHORITIES_CSV_FILENAME", "authorities.csv");
         AUTHORITY_ASSIGNER_FILENAME = props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
-        FAST_INDEX = SETTINGS_DIR + File.separator + "fast_index";
+        FAST_INDEX_DIR = props.getProperty("fast.index.dir", SETTINGS_DIR + File.separator + "fast_index");
+
         String rsrcField = props.getProperty("NER_RESOURCE_FILE", "CONLL/lists/ePADD.ned.list.LOC:::CONLL/lists/ePADD.ned.list.PER:::CONLL/lists/ePADD.ned.list.ORG");
         if (rsrcField != null && rsrcField.length() > 0)
             NER_RESOURCE_FILES = rsrcField.split(":::");
@@ -170,8 +170,7 @@ public class Config {
         log.info("ePADD base dir = " + BASE_DIR);
         log.info("ePADD settings dir = " + SETTINGS_DIR);
         log.info("ePADD mode = " + ModeConfig.mode);
-        log.info("FAST index = " + FAST_INDEX);
-        log.info("FAST file = " + FAST_FILE);
+        log.info("FAST index = " + FAST_INDEX_DIR);
         log.info("Admin = " + admin);
         // add more things here if needed
         log.info("-------------End Configuration block -----------------");
