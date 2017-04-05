@@ -421,8 +421,20 @@ public class EmailFetcherThread implements Runnable, Serializable {
         }
 
         if (p == m && p.isMimeType("text/html")) {
+            /*
             String s = "top level part is html! message:" + m.getSubject() + " " + m.getDescription();
             dataErrors.add(s);
+            */
+            // we don't normally expect the top-level part to have content-type text/html
+            // but we saw this happen on some sample archives pst -> emailchemy. so allow it and handle it by parsing the html
+            String html = (String) p.getContent();
+            String text = Util.unescapeHTML(html);
+            org.jsoup.nodes.Document doc = Jsoup.parse(text);
+
+            StringBuilder sb = new StringBuilder();
+            HTMLUtils.extractTextFromHTML(doc.body(), sb);
+            list.add(sb.toString());
+            return list;
         }
 
         if (p.isMimeType("text/plain")) {
@@ -543,7 +555,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 // some apps do not need attachments, so this saves some time.
                 // however, it seems like a lot of time is taken in imap prefetch, which gets attachments too?
                 if (fetchConfig.downloadAttachments)
-                    handleAttachments(messageNum, m, p, attachmentsList);
+                    handleAttachments(messageNum, m, p, list, attachmentsList);
             } catch (Exception e) {
                 dataErrors.add("Ignoring attachment for " + folder_name() + " Message #" + messageNum + ": " + Util.stackTrace(e));
             }
@@ -554,10 +566,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
     /**
      * recursively processes attachments, fetching and saving it if needed
-     *
+     * parses the given part p, and adds it to hte attachmentsList.
+     * in some cases, like a text/html type without a filename, we instead append it to the textlist
      * @throws MessagingException
      */
-    private void handleAttachments(int idx, Message m, Part p, List<Blob> attachmentsList) throws MessagingException {
+    private void handleAttachments(int idx, Message m, Part p, List<String> textList, List<Blob> attachmentsList) throws MessagingException {
         String ct = null;
         if (!(m instanceof MimeMessage)) {
             Exception e = new IllegalArgumentException("Not a MIME message!");
@@ -580,8 +593,24 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
         String sanitizedFName = Util.sanitizeFolderName(emailStore.getAccountID() + "." + folder_name());
         if (filename == null) {
+            dataErrors.add("attachment filename is null for " + sanitizedFName + " Message#" + idx);
+            if (p.isMimeType("text/html")) {
+                try {
+                    log.info("Turning message " + sanitizedFName + " Message#" + idx + " into text although it is an attachment");
+                    String html = (String) p.getContent();
+                    String text = Util.unescapeHTML(html);
+                    org.jsoup.nodes.Document doc = Jsoup.parse(text);
+
+                    StringBuilder sb = new StringBuilder();
+                    HTMLUtils.extractTextFromHTML(doc.body(), sb);
+                    textList.add(sb.toString());
+                    return;
+                } catch (Exception e) {
+                    Util.print_exception("Error reading contents of text/html multipart without a filename!", e, log);
+                    return;
+                }
+            }
             filename = sanitizedFName + "." + idx;
-            dataErrors.add("attachment filename = null for " + sanitizedFName + " Message#" + idx + "\nassigning dummy name: " + filename);
         }
 
         // Replacing any of the disallowed filename characters (\/:*?"<>|&) to _

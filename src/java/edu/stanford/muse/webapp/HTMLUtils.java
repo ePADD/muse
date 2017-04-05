@@ -170,7 +170,7 @@ public class HTMLUtils {
 	    return ua.contains("iphone") || ua.contains("ipad") || ua.contains("android");
 	}
 
-	/** extract text from html, including a newline after all div's. note -- this should really not be in the webapp package
+	/** extract text from html, including a newline after all div's/br's or hr's. note -- this should really not be in the webapp package
 	// since its used by email fetcher (which can be used without the webapp frontend).
 	 */
 	public static void extractTextFromHTML(org.jsoup.nodes.Node n, StringBuilder result)
@@ -183,6 +183,10 @@ public class HTMLUtils {
 			for (org.jsoup.nodes.Node c: e.childNodes())
 				extractTextFromHTML(c, result);
 			if ("div".equals(e.tagName()))
+				result.append ("\n");
+			if ("br".equals(e.tagName()))
+				result.append ("\n");
+			if ("hr".equals(e.tagName()))
 				result.append ("\n");
 		}
 	}

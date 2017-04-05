@@ -15,6 +15,7 @@
 */
 package edu.stanford.muse.datacache;
 
+import com.google.common.collect.Multimap;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -42,6 +43,20 @@ public class BlobStore implements Serializable {
 
     // mapping of each data to its views
     protected Map<Blob, Map<String,Object>> views = new LinkedHashMap<Blob, Map<String,Object>>();
+
+    public Multimap<Blob, String> getBlobToKeywords() {
+        return blobToKeywords;
+    }
+
+    public void setBlobToKeywords(Multimap<Blob, String> blobToKeywords) {
+        this.blobToKeywords = blobToKeywords;
+    }
+
+    public Collection<String> getKeywordsForBlob (Blob b) {
+        return blobToKeywords.get(b);
+    }
+
+    Multimap<Blob, String> blobToKeywords;
 
     private static Log log = LogFactory.getLog(BlobStore.class);
     private final static long serialVersionUID = 1L;

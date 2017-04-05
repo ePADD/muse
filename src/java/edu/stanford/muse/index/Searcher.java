@@ -4,6 +4,7 @@ import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
+import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
 import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.email.MailingList;
@@ -476,6 +477,36 @@ public class Searcher {
         return result;
     }
 
+    private static Set<EmailDocument> updateForAttachmentEntities(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+        Set<EmailDocument> resultDocs = new LinkedHashSet<>();
+        Set<Blob> resultBlobs = new LinkedHashSet<>();;
+        String val = getParam(params, "attachmentEntity");
+        if (Util.nullOrEmpty(val))
+            return docs;
+
+        val = val.toLowerCase();
+        Set<String> entities = splitFieldForOr(val);
+        Set<EmailDocument> result = new LinkedHashSet<>();
+        BlobStore blobStore = archive.blobStore;
+
+        nextDoc:
+        for (EmailDocument ed : docs)
+        {
+            Collection<Blob> blobs = ed.attachments;
+            for (Blob blob: blobs) {
+                Collection<String> keywords = blobStore.getKeywordsForBlob(blob);
+                if (keywords != null)
+                    for (String keyword : keywords)
+                        if (entities.contains(keyword.toLowerCase())) {
+                            resultDocs.add (ed);
+                            resultBlobs.add(blob); // select the blob
+                            continue nextDoc;
+                        }
+            }
+        }
+        return resultDocs;
+    }
+
     private static Set<EmailDocument> updateForEntityTypes(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
         String val = getParam(params, "entityType");
         if (Util.nullOrEmpty(val))
@@ -832,6 +863,7 @@ public class Searcher {
 
         resultDocs = (Set) p.getFirst();
         resultDocs = (Set) updateForAttachmentNames (archive, (Set) resultDocs, params); // for exact names -- when clicking on image in attachment wall or listing
+        resultDocs = (Set) updateForAttachmentEntities (archive, (Set) resultDocs, params); // for exact names -- when clicking on image in attachment wall or listing
 
         // resultBlobs will be a *union* (not intersection) of blobs that hit above (in text search) and these blobs that satisfy other criteria
         // resultBlobs are really used for highlighting the attachment
