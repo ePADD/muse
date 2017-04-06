@@ -33,7 +33,7 @@ public class Config {
     public static String 	FAST_INDEX_DIR, AUTHORITIES_FILENAME, AUTHORITIES_CSV_FILENAME, AUTHORITY_ASSIGNER_FILENAME;
     
     //List of resource file that the NER model is trained on
-    public static String[] NER_RESOURCE_FILES = new String[0];
+    public static String[] NER_RESOURCE_FILES = new String[]{};
     public static String DBPEDIA_INSTANCE_FILE;
     
     public static String	FEATURES_INDEX, TABOO_FILE = "kill.txt";
@@ -104,9 +104,9 @@ public class Config {
         AUTHORITY_ASSIGNER_FILENAME = props.getProperty("AUTHORITY_ASSIGNER_FILENAME", "InternalAuthorityAssigner.ser");
         FAST_INDEX_DIR = props.getProperty("fast.index.dir", SETTINGS_DIR + File.separator + "fast_index");
 
-        String rsrcField = props.getProperty("NER_RESOURCE_FILE", "CONLL/lists/ePADD.ned.list.LOC:::CONLL/lists/ePADD.ned.list.PER:::CONLL/lists/ePADD.ned.list.ORG");
-        if (rsrcField != null && rsrcField.length() > 0)
-            NER_RESOURCE_FILES = rsrcField.split(":::");
+        //String rsrcField = props.getProperty("NER_RESOURCE_FILE", "CONLL/lists/ePADD.ned.list.LOC:::CONLL/lists/ePADD.ned.list.PER:::CONLL/lists/ePADD.ned.list.ORG");
+        //if (rsrcField != null && rsrcField.length() > 0)
+        //    NER_RESOURCE_FILES = rsrcField.split(":::");
         DBPEDIA_INSTANCE_FILE = props.getProperty("DBPEDIA_INSTANCE_FILE", "instance_types_2014-04.en.txt.bz2");
         // set the int mixtures
         String s = props.getProperty("MAX_ENTITY_FEATURES");

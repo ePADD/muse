@@ -11,7 +11,13 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import opennlp.tools.formats.Conll03NameSampleStream;
+import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.NameSample;
+import opennlp.tools.namefind.TokenNameFinderEvaluator;
+import opennlp.tools.namefind.TokenNameFinderModel;
+import opennlp.tools.util.TrainingParameters;
+import opennlp.tools.util.eval.FMeasure;
+import opennlp.tools.util.featuregen.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
@@ -20,6 +26,7 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -696,7 +703,145 @@ public class SequenceModelTest {
         }
     }
 
+    static void testOpenNLP(AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
+        if (thisFeatureGens==null)
+            thisFeatureGens = new AdaptiveFeatureGenerator[]{};
+
+        InputStream[] modelIns = new InputStream[]{Config.getResourceAsStream(modelName)};
+        try {
+            List<AdaptiveFeatureGenerator> featureGens = new ArrayList<>();
+            Stream.of(getDefaultFeatureGens()).forEach(featureGens::add);
+            Stream.of(thisFeatureGens).forEach(featureGens::add);
+            AdaptiveFeatureGenerator featureGenerator = new CachedFeatureGenerator(
+                    featureGens.toArray(new AdaptiveFeatureGenerator[featureGens.size()])
+            );
+
+            NameFinderME[] finders = new NameFinderME[modelIns.length];
+
+            for (int i = 0; i < modelIns.length; i++) {
+                TokenNameFinderModel nerModel = new TokenNameFinderModel(modelIns[i]);
+                finders[i] = new NameFinderME(nerModel, featureGenerator, NameFinderME.DEFAULT_BEAM_SIZE);
+            }
+            int[] codes = new int[]{7};
+            String test = "testa";
+            IntStream.range(0, modelIns.length).forEach(i -> {
+                InputStream in = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
+                //7==0111 PER, LOC, ORG
+                Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, codes[i]);
+                TokenNameFinderEvaluator evaluator = new TokenNameFinderEvaluator(finders[i]);
+                try {
+                    evaluator.evaluate(sampleStream);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                FMeasure result = evaluator.getFMeasure();
+                System.out.println("For type: " + i + "\n\n" + result.toString());
+            });
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally {
+            try {
+                for(int i=0;i<modelIns.length;i++)
+                    if(modelIns[i] != null)
+                        modelIns[i].close();
+            } catch (IOException e){
+
+            }
+        }
+
+    }
+
+    static AdaptiveFeatureGenerator[] getDefaultFeatureGens(){
+        return new AdaptiveFeatureGenerator[]{
+                new WindowFeatureGenerator(new TokenFeatureGenerator(), 2, 2),
+                new WindowFeatureGenerator(new TokenClassFeatureGenerator(true), 2, 2),
+                new OutcomePriorFeatureGenerator(),
+                new PreviousMapFeatureGenerator(),
+                new BigramNameFeatureGenerator(),
+                new SentenceFeatureGenerator(true, false)
+        };
+    }
+
+    static void trainOpennlpModel(AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
+        assert modelName!=null: "Model name can't be null";
+        if (thisFeatureGens==null)
+            thisFeatureGens = new AdaptiveFeatureGenerator[]{};
+
+        InputStream in = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator +  "trainspacesep.txt");
+        //7==0111 PER, LOC, ORG
+        Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
+        try {
+            List<AdaptiveFeatureGenerator> featureGens = new ArrayList<>();
+            Stream.of(getDefaultFeatureGens()).forEach(featureGens::add);
+            Stream.of(thisFeatureGens).forEach(featureGens::add);
+            AdaptiveFeatureGenerator featureGenerator = new CachedFeatureGenerator(
+                    featureGens.toArray(new AdaptiveFeatureGenerator[featureGens.size()])
+            );
+
+            TokenNameFinderModel model = NameFinderME.train("en", null, sampleStream,
+                    TrainingParameters.defaultParams(),
+                    featureGenerator,
+                    Collections.emptyMap());
+
+            BufferedOutputStream modelOut = null;
+            try {
+                modelOut = new BufferedOutputStream(new FileOutputStream(
+                        new File(String.join(File.separator, new String[]{System.getProperty("user.home"), "epadd-settings", modelName})
+                        )));
+                model.serialize(modelOut);
+            } finally {
+                if (modelOut != null)
+                    modelOut.close();
+            }
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+    On testa dataset
+     =======================
+     Performance with Gazette lookup feature
+     Precision: 0.9116753472222222
+     Recall: 0.8368525896414343
+     F-Measure: 0.8726630660573327
+     =======================
+     Performance with Spelling rules feature
+     Precision: 0.9133120340788072
+     Recall: 0.8541832669322709
+     F-Measure: 0.8827586206896552
+     =======================
+     =======================
+     Without any special features
+     Precision: 0.8982166159199652
+     Recall: 0.8227091633466136
+     F-Measure: 0.8588064046579331
+     =======================
+     * */
     public static void main(String[] args){
-        testOnDbpediaHelper();
+        String modelName = String.join(File.separator, new String[]{"opennlp", "en-ner-gazette.bin"});
+//        AdaptiveFeatureGenerator[] lookupFeature = new AdaptiveFeatureGenerator[]{
+//                new OpenNLPNERFeatureGens.GazetteLookupFeatureGenerator()
+//        };
+//        //trainOpennlpModel(lookupFeature, modelName);
+//        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+//        testOpenNLP(lookupFeature, modelName);
+//        System.out.println("=======================");
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "en-ner-rules.bin"});
+        AdaptiveFeatureGenerator[] ruleFeature = new AdaptiveFeatureGenerator[]{
+                new OpenNLPNERFeatureGens.SpellingRuleFeatureGenerator()
+        };
+        //trainOpennlpModel(ruleFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Spelling rules feature");
+        testOpenNLP(ruleFeature, modelName);
+        System.out.println("=======================");
+
+        System.out.println("=======================\n\nWithout any special features");
+        testOpenNLP(null, String.join(File.separator, new String[]{"opennlp", "en-ner.bin"}));
+        System.out.println("=======================");
     }
 }

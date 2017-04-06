@@ -1147,7 +1147,9 @@ public class SequenceModel implements NERModel, Serializable {
     static void loadAndTestNERModel(){
         if (fdw == null) {
             try {
-                fdw = new FileWriter(new File(System.getProperty("user.home") + File.separator + "epadd-settings" + File.separator + "cache" + File.separator + "mixtures.dump"));
+                fdw = new FileWriter(new File(System.getProperty("user.home") +
+                        File.separator + "epadd-settings" + File.separator + "cache" +
+                        File.separator + "mixtures.dump"));
             } catch (Exception e) {
                 e.printStackTrace();
             }
