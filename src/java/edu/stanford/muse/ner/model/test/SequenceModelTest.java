@@ -723,7 +723,7 @@ public class SequenceModelTest {
                 finders[i] = new NameFinderME(nerModel, featureGenerator, NameFinderME.DEFAULT_BEAM_SIZE);
             }
             int[] codes = new int[]{7};
-            String test = "testa";
+            String test = "testb";
             IntStream.range(0, modelIns.length).forEach(i -> {
                 InputStream in = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
                 //7==0111 PER, LOC, ORG
@@ -810,9 +810,9 @@ public class SequenceModelTest {
      F-Measure: 0.8726630660573327
      =======================
      Performance with Spelling rules feature
-     Precision: 0.9133120340788072
-     Recall: 0.8541832669322709
-     F-Measure: 0.8827586206896552
+     Precision: 0.9148258283772303
+     Recall: 0.8579681274900398
+     F-Measure: 0.885485197368421
      =======================
      =======================
      Without any special features
@@ -820,16 +820,37 @@ public class SequenceModelTest {
      Recall: 0.8227091633466136
      F-Measure: 0.8588064046579331
      =======================
+
+     On testb dataset
+     =======================
+     Performance with Gazette lookup feature
+     Precision: 0.8779056646355224
+     Recall: 0.7882472137791287
+     F-Measure: 0.8306641042067051
+     =======================
+     =======================
+     Performance with Spelling rules feature
+     Precision: 0.8872743284896522
+     Recall: 0.8166160081053698
+     F-Measure: 0.850480109739369
+     =======================
+     =======================
+     Without any special features
+     Precision: 0.8692587539790814
+     Recall: 0.7746707193515704
+     F-Measure: 0.8192435444123004
+     =======================
+
      * */
     public static void main(String[] args){
         String modelName = String.join(File.separator, new String[]{"opennlp", "en-ner-gazette.bin"});
-//        AdaptiveFeatureGenerator[] lookupFeature = new AdaptiveFeatureGenerator[]{
-//                new OpenNLPNERFeatureGens.GazetteLookupFeatureGenerator()
-//        };
-//        //trainOpennlpModel(lookupFeature, modelName);
-//        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
-//        testOpenNLP(lookupFeature, modelName);
-//        System.out.println("=======================");
+        AdaptiveFeatureGenerator[] lookupFeature = new AdaptiveFeatureGenerator[]{
+                new OpenNLPNERFeatureGens.GazetteLookupFeatureGenerator()
+        };
+        //trainOpennlpModel(lookupFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+        testOpenNLP(lookupFeature, modelName);
+        System.out.println("=======================");
 
         modelName = String.join(File.separator, new String[]{"opennlp", "en-ner-rules.bin"});
         AdaptiveFeatureGenerator[] ruleFeature = new AdaptiveFeatureGenerator[]{
@@ -840,8 +861,10 @@ public class SequenceModelTest {
         testOpenNLP(ruleFeature, modelName);
         System.out.println("=======================");
 
+        modelName = String.join(File.separator, new String[]{"opennlp", "en-ner.bin"});
+        //trainOpennlpModel(null, modelName);
         System.out.println("=======================\n\nWithout any special features");
-        testOpenNLP(null, String.join(File.separator, new String[]{"opennlp", "en-ner.bin"}));
+        testOpenNLP(null, modelName);
         System.out.println("=======================");
     }
 }
