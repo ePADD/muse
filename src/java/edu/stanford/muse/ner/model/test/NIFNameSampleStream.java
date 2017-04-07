@@ -81,7 +81,9 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
                                 ct = nt.getDisplayName();
                         }
                     }
-                    if(ct!=null) {
+                    if(ct == null){
+                        System.err.println("Bad ref: " + nif.ref);
+                    }if(ct!=null) {
                         Span span = new Span(nif.beginIndex, nif.endIndex, ct);
                         String refId = nif.referenceContext;
                         if(!spans.containsKey(refId))
@@ -93,7 +95,7 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
         nifs.entrySet().stream()
                 .filter(e->{
                     Set<NIF.Type> types = e.getValue().types;
-                    return types.contains(NIF.Type.Context) && types.contains(NIF.Type.RFC5147String)
+                    return types.contains(NIF.Type.Context) && types.contains(NIF.Type.RFC5147String);
                 })
                 .forEach(e->{
                     assert e.getValue().text!=null: "Parsing of NIFs not proper";
@@ -110,6 +112,11 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
         int numSents = nameSamples.size();
         int numSpans = spans.values().stream().mapToInt(List::size).sum();
         System.out.println("Found " + numSpans + " in "+numSents+" sentences");
+        System.out.println("Total number of annotations: " + nifs.entrySet().stream()
+                .filter(e->{
+                    Set<NIF.Type> types = e.getValue().types;
+                    return !types.contains(NIF.Type.Context) && types.contains(NIF.Type.RFC5147String);
+                }).count());
     }
 
     List<String> readBlock() throws IOException{
@@ -198,7 +205,6 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
                 else if(prop.contains(":referenceContext"))
                     nif.referenceContext = obj;
             }
-            System.out.println("Parsed: "+nif);
             return nif;
         }
     }
@@ -223,7 +229,7 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
     public static void main(String[] args){
         InputStream is = Config.getResourceAsStream("RSS-500.ttl");
         NIFNameSampleStream nifs = new NIFNameSampleStream(is);
-        System.out.println(String.join("========\n=======",
+        System.out.println(String.join("\n=============\n",
                 nifs.nameSamples.stream().limit(10).map(NameSample::toString).collect(Collectors.toList())));
     }
 }
