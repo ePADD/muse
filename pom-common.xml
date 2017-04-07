@@ -19,11 +19,11 @@
 	    <layout>default</layout>
 	    <url>file:///${basedir}/lib</url>
 	  </repository>
-    <repository>
-        <id>adobe-restlet</id>
-        <name>Adobe repository</name>
-        <url>https://repo.adobe.com/nexus/content/repositories/public</url>
-    </repository>
+        <repository>
+            <id>adobe-restlet</id>
+            <name>Adobe repository</name>
+            <url>https://repo.adobe.com/nexus/content/repositories/public</url>
+        </repository>
 	</repositories>
 	
 	<pluginRepositories>
