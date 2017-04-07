@@ -1,12 +1,10 @@
 package edu.stanford.muse.ner.model.test;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.stanford.muse.Config;
 import opennlp.tools.formats.Conll02NameSampleStream;
 import opennlp.tools.namefind.NameSample;
 import opennlp.tools.util.*;
@@ -113,12 +111,12 @@ public class CustomConll03NameSampleStream implements ObjectStream<NameSample>{
                 sentence.add(fields[0]);
                 tags.add(fields[4]); // 4 is NE-TAG
             }
-            else if (DATASET.NER_WEL_ILLINOIS.equals(dataset) && fields.length==8) {
+            else if (DATASET.NER_WEL_ILLINOIS.equals(dataset) && fields.length>6) {
                 sentence.add(fields[5]);
                 tags.add(fields[0]);
             }
             else {
-                throw new IOException("Incorrect number of fields per line for language: '" + line + "'!");
+                throw new IOException("Incorrect number of fields per line for language: '" + line + "'! Found: "+fields.length);
             }
         }
 
@@ -209,6 +207,13 @@ public class CustomConll03NameSampleStream implements ObjectStream<NameSample>{
 
     public void close() throws IOException {
         lineStream.close();
+    }
+
+    public static void main(String[] args) throws IOException {
+        InputStream nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  "test.dat");
+        InputStream nwiTrainIn = Config.getResourceAsStream("NERWeb" + File.separator + "train.dat");
+        CustomConll03NameSampleStream nwiTrainStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTrainIn, 7);
+        while(nwiTrainStream.read()!=null);
     }
 
 }

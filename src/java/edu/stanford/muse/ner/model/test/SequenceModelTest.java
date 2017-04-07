@@ -849,6 +849,8 @@ public class SequenceModelTest {
         System.out.println("=======================\n\nPerformance with Gazette lookup feature");
         testOpenNLP(conllTestStream, lookupFeature, modelName);
         System.out.println("=======================");
+        conllTestIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
+        conllTrainIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + "trainspacesep.txt");
         conllTestStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTestIn, 7);
         conllTrainStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTrainIn, 7);
 
@@ -857,6 +859,9 @@ public class SequenceModelTest {
         System.out.println("=======================\n\nPerformance with Spelling rules feature");
         testOpenNLP(conllTestStream, ruleFeature, modelName);
         System.out.println("=======================");
+
+        conllTestIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
+        conllTrainIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + "trainspacesep.txt");
         conllTestStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTestIn, 7);
         conllTrainStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTrainIn, 7);
 
@@ -871,26 +876,59 @@ public class SequenceModelTest {
         NIFNameSampleStream okeTestStream = new NIFNameSampleStream(okeTestIn);
         NIFNameSampleStream okeTrainStream = new NIFNameSampleStream(okeTrainIn);
 
-        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-gazette.bin"});
-        //trainOpennlpModel(okeTrainStream, lookupFeature, modelName);
+//        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-gazette.bin"});
+//        //trainOpennlpModel(okeTrainStream, lookupFeature, modelName);
+//        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+//        testOpenNLP(okeTestStream, lookupFeature, modelName);
+//        System.out.println("=======================");
+//        okeTestStream = new NIFNameSampleStream(okeTestIn);
+//        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+//
+//        modelName= String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-rules.bin"});
+//        //trainOpennlpModel(okeTrainStream, ruleFeature, modelName);
+//        System.out.println("=======================\n\nPerformance with Spelling rules feature");
+//        testOpenNLP(okeTestStream, ruleFeature, modelName);
+//        System.out.println("=======================");
+//        okeTestStream = new NIFNameSampleStream(okeTestIn);
+//        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+//
+//        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner.bin"});
+//        //trainOpennlpModel(okeTrainStream, null, modelName);
+//        System.out.println("=======================\n\nWithout any special features");
+//        testOpenNLP(okeTestStream, null, modelName);
+//        System.out.println("=======================");
+
+        InputStream nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  "test.dat");
+        InputStream nwiTrainIn = Config.getResourceAsStream("NERWeb" + File.separator + "train.dat");
+        CustomConll03NameSampleStream nwiTrainStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTrainIn, 7);
+        CustomConll03NameSampleStream nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "nwi", "en-ner-gazette.bin"});
+        trainOpennlpModel(nwiTrainStream, lookupFeature, modelName);
         System.out.println("=======================\n\nPerformance with Gazette lookup feature");
-        testOpenNLP(okeTestStream, lookupFeature, modelName);
+        testOpenNLP(nwiTestStream, lookupFeature, modelName);
         System.out.println("=======================");
-        okeTestStream = new NIFNameSampleStream(okeTestIn);
-        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
 
-        modelName= String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-rules.bin"});
-        //trainOpennlpModel(okeTrainStream, ruleFeature, modelName);
+        nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  "test.dat");
+        nwiTrainIn = Config.getResourceAsStream("NERWeb" + File.separator + "train.dat");
+        nwiTrainStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTrainIn, 7);
+        nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "nwi", "en-ner-rules.bin"});
+        trainOpennlpModel(nwiTrainStream, ruleFeature, modelName);
         System.out.println("=======================\n\nPerformance with Spelling rules feature");
-        testOpenNLP(okeTestStream, ruleFeature, modelName);
+        testOpenNLP(nwiTestStream, ruleFeature, modelName);
         System.out.println("=======================");
-        okeTestStream = new NIFNameSampleStream(okeTestIn);
-        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
 
-        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner.bin"});
-        //trainOpennlpModel(okeTrainStream, null, modelName);
+        nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  "test.dat");
+        nwiTrainIn = Config.getResourceAsStream("NERWeb" + File.separator + "train.dat");
+        nwiTrainStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTrainIn, 7);
+        nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "nwi", "en-ner.bin"});
+        trainOpennlpModel(nwiTrainStream, null, modelName);
         System.out.println("=======================\n\nWithout any special features");
-        testOpenNLP(okeTestStream, null, modelName);
+        testOpenNLP(nwiTestStream, null, modelName);
         System.out.println("=======================");
     }
 }
