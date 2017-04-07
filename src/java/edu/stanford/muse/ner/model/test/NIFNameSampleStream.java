@@ -70,6 +70,8 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
         List<Span> spans = new ArrayList<>();
         for (int mi = 0; mi < markings.size(); mi++) {
             Marking marking = markings.get(mi);
+            if (!(marking instanceof TypedNamedEntity))
+                continue;
             TypedNamedEntity tne = (TypedNamedEntity) marking;
             String ct = null;
             if (tne.getTypes().contains(DUL_PERSON))
@@ -97,7 +99,7 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
 
     public static void main(String[] args){
         String filePath = String.join(File.separator,
-                new String[]{Config.SETTINGS_DIR, "evaluation-dataset-task1.ttl"});
+                    new String[]{Config.SETTINGS_DIR, "oke-challenge-2016/GoldStandard_sampleData/task1/dataset_task_1.ttl"});
         NIFNameSampleStream nss = new NIFNameSampleStream(filePath);
         int numSents = 0, numSpans = 0;
         int numPer = 0, numOrg = 0, numPlace = 0;
