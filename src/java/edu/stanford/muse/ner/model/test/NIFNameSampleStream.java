@@ -27,6 +27,7 @@ import org.aksw.gerbil.datatypes.ExperimentType;
 import org.aksw.gerbil.exceptions.GerbilException;
 import org.aksw.gerbil.transfer.nif.Document;
 import org.aksw.gerbil.transfer.nif.Marking;
+import org.aksw.gerbil.transfer.nif.data.NamedEntity;
 import org.aksw.gerbil.transfer.nif.data.TypedNamedEntity;
 
 import java.io.File;
@@ -64,14 +65,16 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
             return null;
         Document document = documents.get(di++);
         String text = document.getText();
-        String[] tokens = text.split("\\W+");
+        String[] tokens = text.split(" ");
 
         List<Marking> markings = document.getMarkings();
         List<Span> spans = new ArrayList<>();
         for (int mi = 0; mi < markings.size(); mi++) {
             Marking marking = markings.get(mi);
-            if (!(marking instanceof TypedNamedEntity))
+            if(!(marking instanceof TypedNamedEntity)) {
+                System.err.println("Skipping a non typed marking");
                 continue;
+            }
             TypedNamedEntity tne = (TypedNamedEntity) marking;
             String ct = null;
             if (tne.getTypes().contains(DUL_PERSON))
@@ -81,8 +84,21 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
             else if (tne.getTypes().contains(DUL_ORG))
                 ct = "ORG";
 
-            if (ct!=null)
-                spans.add(new Span(tne.getStartPosition(), tne.getStartPosition()+tne.getLength(), ct));
+            if (ct!=null) {
+                int st = -1, end = -1;
+                int len = 0;
+                for(int ti=0;ti<tokens.length;ti++) {
+                    if(len>=tne.getStartPosition() && st==-1)
+                        st = ti;
+                    if(len>=tne.getStartPosition()+tne.getLength() && end == -1)
+                        end = ti;
+                    len += tokens[ti].length() + 1;
+                }
+                if(end == -1)
+                    end = tokens.length;
+                assert st!=-1 && end!=-1;
+                spans.add(new Span(st, end, ct));
+            }
         }
 
         return new NameSample(tokens, spans.toArray(new Span[spans.size()]), di<=1?false:true);
@@ -100,6 +116,7 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
     public static void main(String[] args){
         String filePath = String.join(File.separator,
                     new String[]{Config.SETTINGS_DIR, "oke-challenge-2016/GoldStandard_sampleData/task1/dataset_task_1.ttl"});
+        //"oke-challenge-2016/evaluation-data/task1/evaluation-dataset-task1.ttl"});
         NIFNameSampleStream nss = new NIFNameSampleStream(filePath);
         int numSents = 0, numSpans = 0;
         int numPer = 0, numOrg = 0, numPlace = 0;
@@ -113,6 +130,6 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
         }
 
         System.out.println("Found " + numSents + " sentences and " + numSpans + " spans");
-        System.out.println("Found #" + numPer + "persons #" + numOrg + " orgs #" + numPlace + " places");
+        System.out.println("Found #" + numPer + " persons #" + numOrg + " orgs #" + numPlace + " places");
     }
 }
