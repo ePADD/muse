@@ -15,6 +15,7 @@ import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.NameSample;
 import opennlp.tools.namefind.TokenNameFinderEvaluator;
 import opennlp.tools.namefind.TokenNameFinderModel;
+import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.TrainingParameters;
 import opennlp.tools.util.eval.FMeasure;
 import opennlp.tools.util.featuregen.*;
@@ -703,11 +704,11 @@ public class SequenceModelTest {
         }
     }
 
-    static void testOpenNLP(AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
+    static void testOpenNLP(ObjectStream<NameSample> sampleStream, AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
         if (thisFeatureGens==null)
             thisFeatureGens = new AdaptiveFeatureGenerator[]{};
 
-        InputStream[] modelIns = new InputStream[]{Config.getResourceAsStream(modelName)};
+        InputStream modelIn = Config.getResourceAsStream(modelName);
         try {
             List<AdaptiveFeatureGenerator> featureGens = new ArrayList<>();
             Stream.of(getDefaultFeatureGens()).forEach(featureGens::add);
@@ -716,37 +717,26 @@ public class SequenceModelTest {
                     featureGens.toArray(new AdaptiveFeatureGenerator[featureGens.size()])
             );
 
-            NameFinderME[] finders = new NameFinderME[modelIns.length];
+            TokenNameFinderModel nerModel = new TokenNameFinderModel(modelIn);
+            NameFinderME finder = new NameFinderME(nerModel, featureGenerator, NameFinderME.DEFAULT_BEAM_SIZE);
 
-            for (int i = 0; i < modelIns.length; i++) {
-                TokenNameFinderModel nerModel = new TokenNameFinderModel(modelIns[i]);
-                finders[i] = new NameFinderME(nerModel, featureGenerator, NameFinderME.DEFAULT_BEAM_SIZE);
+            TokenNameFinderEvaluator evaluator = new TokenNameFinderEvaluator(finder);
+            try {
+                evaluator.evaluate(sampleStream);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            int[] codes = new int[]{7};
-            String test = "testb";
-            IntStream.range(0, modelIns.length).forEach(i -> {
-                InputStream in = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
-                //7==0111 PER, LOC, ORG
-                Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, codes[i]);
-                TokenNameFinderEvaluator evaluator = new TokenNameFinderEvaluator(finders[i]);
-                try {
-                    evaluator.evaluate(sampleStream);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
 
-                FMeasure result = evaluator.getFMeasure();
-                System.out.println("For type: " + i + "\n\n" + result.toString());
-            });
+            FMeasure result = evaluator.getFMeasure();
+            System.out.println("\n\n" + result.toString());
         }
         catch (IOException e) {
             e.printStackTrace();
         }
         finally {
-            try {
-                for(int i=0;i<modelIns.length;i++)
-                    if(modelIns[i] != null)
-                        modelIns[i].close();
+            try{
+                if(modelIn != null)
+                    modelIn.close();
             } catch (IOException e){
 
             }
@@ -765,14 +755,11 @@ public class SequenceModelTest {
         };
     }
 
-    static void trainOpennlpModel(AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
+    static void trainOpennlpModel(ObjectStream<NameSample> sampleStream, AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
         assert modelName!=null: "Model name can't be null";
         if (thisFeatureGens==null)
             thisFeatureGens = new AdaptiveFeatureGenerator[]{};
 
-        InputStream in = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator +  "trainspacesep.txt");
-        //7==0111 PER, LOC, ORG
-        Conll03NameSampleStream sampleStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, in, 7);
         try {
             List<AdaptiveFeatureGenerator> featureGens = new ArrayList<>();
             Stream.of(getDefaultFeatureGens()).forEach(featureGens::add);
@@ -842,29 +829,68 @@ public class SequenceModelTest {
      =======================
 
      * */
-    public static void main(String[] args){
-        String modelName = String.join(File.separator, new String[]{"opennlp", "en-ner-gazette.bin"});
+    public static void main(String[] args) throws IOException {
+        String test = "testb";
+        InputStream conllTestIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
+        InputStream conllTrainIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + "trainspacesep.txt");
+        Conll03NameSampleStream conllTestStream, conllTrainStream;
+        conllTestStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTestIn, 7);
+        conllTrainStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTrainIn, 7);
+
         AdaptiveFeatureGenerator[] lookupFeature = new AdaptiveFeatureGenerator[]{
                 new OpenNLPNERFeatureGens.GazetteLookupFeatureGenerator()
         };
-        //trainOpennlpModel(lookupFeature, modelName);
-        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
-        testOpenNLP(lookupFeature, modelName);
-        System.out.println("=======================");
-
-        modelName = String.join(File.separator, new String[]{"opennlp", "en-ner-rules.bin"});
         AdaptiveFeatureGenerator[] ruleFeature = new AdaptiveFeatureGenerator[]{
                 new OpenNLPNERFeatureGens.SpellingRuleFeatureGenerator()
         };
-        //trainOpennlpModel(ruleFeature, modelName);
+
+        String modelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner-gazette.bin"});
+        //trainOpennlpModel(conllTrainStream, lookupFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+        testOpenNLP(conllTestStream, lookupFeature, modelName);
+        System.out.println("=======================");
+        conllTestStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTestIn, 7);
+        conllTrainStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTrainIn, 7);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner-rules.bin"});
+        //trainOpennlpModel(conllTrainStream, ruleFeature, modelName);
         System.out.println("=======================\n\nPerformance with Spelling rules feature");
-        testOpenNLP(ruleFeature, modelName);
+        testOpenNLP(conllTestStream, ruleFeature, modelName);
+        System.out.println("=======================");
+        conllTestStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTestIn, 7);
+        conllTrainStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTrainIn, 7);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner.bin"});
+        //trainOpennlpModel(conllTrainStream, null, modelName);
+        System.out.println("=======================\n\nWithout any special features");
+        testOpenNLP(conllTestStream, null, modelName);
         System.out.println("=======================");
 
-        modelName = String.join(File.separator, new String[]{"opennlp", "en-ner.bin"});
-        //trainOpennlpModel(null, modelName);
+        String okeTestIn = Config.SETTINGS_DIR + File.separator + "oke-challenge-2016/evaluation-data/task1/evaluation-dataset-task1.ttl";
+        String okeTrainIn = Config.SETTINGS_DIR + File.separator + "oke-challenge-2016/GoldStandard_sampleData/task1/dataset_task_1.ttl";
+        NIFNameSampleStream okeTestStream = new NIFNameSampleStream(okeTestIn);
+        NIFNameSampleStream okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-gazette.bin"});
+        //trainOpennlpModel(okeTrainStream, lookupFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+        testOpenNLP(okeTestStream, lookupFeature, modelName);
+        System.out.println("=======================");
+        okeTestStream = new NIFNameSampleStream(okeTestIn);
+        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+
+        modelName= String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-rules.bin"});
+        //trainOpennlpModel(okeTrainStream, ruleFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Spelling rules feature");
+        testOpenNLP(okeTestStream, ruleFeature, modelName);
+        System.out.println("=======================");
+        okeTestStream = new NIFNameSampleStream(okeTestIn);
+        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner.bin"});
+        //trainOpennlpModel(okeTrainStream, null, modelName);
         System.out.println("=======================\n\nWithout any special features");
-        testOpenNLP(null, modelName);
+        testOpenNLP(okeTestStream, null, modelName);
         System.out.println("=======================");
     }
 }
