@@ -25,7 +25,6 @@ import java.util.stream.Stream;
 public class MU implements Serializable {
     static Log log = LogFactory.getLog(MU.class);
     static final long serialVersionUID = 1L;
-    static String[] POSITION_LABELS = new String[]{"S","B","I","E"};
     static String[] WORD_LABELS = new String[NEType.getAllTypes().length+1];
     static String[] TYPE_LABELS = new String[NEType.getAllTypes().length];
     static String[] BOOLEAN_VARIABLES = new String[]{"Y","N"};
@@ -114,9 +113,6 @@ public class MU implements Serializable {
             return WORD_LABELS.length;
         if(f.startsWith("T:"))
             return TYPE_LABELS.length;
-        for(String str: POSITION_LABELS)
-            if(f.endsWith(str))
-                return POSITION_LABELS.length;
         if(f.startsWith("SW:"))
             return FeatureUtils.sws.size()+1;
         if(f.startsWith("DICT:")||f.startsWith("ADJ:")||f.startsWith("ADV:")||f.startsWith("PREP:")||f.startsWith("V:")||f.startsWith("PN:")||f.startsWith("POS:"))
