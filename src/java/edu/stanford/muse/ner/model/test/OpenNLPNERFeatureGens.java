@@ -1,9 +1,8 @@
 package edu.stanford.muse.ner.model.test;
 
-import com.google.common.collect.Multimap;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.model.SequenceModel;
-import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.DBpediaUtils;
 import edu.stanford.muse.util.Span;
 import opennlp.tools.util.featuregen.AdaptiveFeatureGenerator;
 import opennlp.tools.util.featuregen.CachedFeatureGenerator;
@@ -25,7 +24,7 @@ public class OpenNLPNERFeatureGens {
     @SuppressWarnings("Duplicates")
     static class GazetteLookupFeatureGenerator extends FeatureGeneratorAdapter {
         static String PER = "gazz_per", LOC = "gazz_loc", ORG = "gazz_org";
-        static Map<String, String> dbpedia = EmailUtils.readDBpedia();
+        static Map<String, String> dbpedia = DBpediaUtils.readDBpedia();
 
         @Override
         public void createFeatures(List<String> features, String[] tokens, int index, String[] previousOutcomes) {
@@ -79,6 +78,7 @@ public class OpenNLPNERFeatureGens {
                 try {
                     if (sp.getText().matches(".*\\b" + t + "\\b.*") && sp.typeScore > 1E-10) {
                         int ls = (int) (Math.ceil(-Math.log10(sp.typeScore)));
+                        ls = ls>5?0:1;
                         NEType.Type type = NEType.getCoarseType(sp.getType());
                         if (type == NEType.Type.PERSON) {
                             features.add(PER + ls);

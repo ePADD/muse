@@ -18,6 +18,8 @@ package edu.stanford.muse.ner.model.test;
 
 import edu.stanford.muse.Config;
 import opennlp.tools.namefind.NameSample;
+import opennlp.tools.tokenize.TokenizerME;
+import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.Span;
 import org.aksw.gerbil.dataset.Dataset;
@@ -27,11 +29,11 @@ import org.aksw.gerbil.datatypes.ExperimentType;
 import org.aksw.gerbil.exceptions.GerbilException;
 import org.aksw.gerbil.transfer.nif.Document;
 import org.aksw.gerbil.transfer.nif.Marking;
-import org.aksw.gerbil.transfer.nif.data.NamedEntity;
 import org.aksw.gerbil.transfer.nif.data.TypedNamedEntity;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -47,15 +49,30 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
 
     int di = 0;
     List<Document> documents;
+    opennlp.tools.tokenize.Tokenizer tokenizer;
     public NIFNameSampleStream(String filePath){
         di = 0;
         DatasetConfiguration datasetConfig = new NIFFileDatasetConfig("OKE_Task1", filePath, false,
                 ExperimentType.A2KB, null, null);
+
+        InputStream modelIn = null;
         try {
+            modelIn = Config.getResourceAsStream("models/en-token.bin");
+            tokenizer = new TokenizerME(new TokenizerModel(modelIn));
+
             Dataset dataset = datasetConfig.getDataset(ExperimentType.A2KB);
             documents = dataset.getInstances();
-        } catch (GerbilException ge) {
+        } catch (IOException|GerbilException ge) {
             ge.printStackTrace();
+        }
+        finally {
+            if (modelIn != null) {
+                try {
+                    modelIn.close();
+                }
+                catch (IOException e) {
+                }
+            }
         }
     }
 
@@ -65,7 +82,7 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
             return null;
         Document document = documents.get(di++);
         String text = document.getText();
-        String[] tokens = text.split(" ");
+        String[] tokens = tokenizer.tokenize(text);
 
         List<Marking> markings = document.getMarkings();
         List<Span> spans = new ArrayList<>();
@@ -78,11 +95,11 @@ public class NIFNameSampleStream implements ObjectStream<NameSample> {
             TypedNamedEntity tne = (TypedNamedEntity) marking;
             String ct = null;
             if (tne.getTypes().contains(DUL_PERSON))
-                ct = "PER";
+                ct = "person";
             else if (tne.getTypes().contains(DUL_LOCATION))
-                ct = "LOC";
+                ct = "location";
             else if (tne.getTypes().contains(DUL_ORG))
-                ct = "ORG";
+                ct = "organization";
 
             if (ct!=null) {
                 int st = -1, end = -1;

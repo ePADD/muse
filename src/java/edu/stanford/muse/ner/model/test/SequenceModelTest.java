@@ -7,13 +7,13 @@ import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
+import edu.stanford.muse.util.DBpediaUtils;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.NameSample;
-import opennlp.tools.namefind.TokenNameFinderEvaluator;
 import opennlp.tools.namefind.TokenNameFinderModel;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.TrainingParameters;
@@ -534,7 +534,7 @@ public class SequenceModelTest {
         int missAssigned=0, missSegmentation = 0, missNoEvidence = 0;
         int correct = 0;
         //these are the entries which are not completely tagged as OTHER by NER, but may have some segments that are not OTHER, hence visible
-        double CUTOFF = 0;
+        double CUTOFF = 1E-10;
         Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
         Map<Short, Integer> freqs = new LinkedHashMap<>();
         String[] badSuffixTypes = new String[]{"MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
@@ -553,8 +553,8 @@ public class SequenceModelTest {
             if(fullType.equals("Agent"))
                 type = NEType.Type.PERSON.getCode();
             else
-                for (String bst: badSuffixTypes)
-                    if(fullType.endsWith(bst))
+                for (String bst: DBpediaUtils.ignoreDBpediaTypes)
+                    if(fullType.contains(bst))
                         continue ol;
 
             entry = EmailUtils.uncanonicaliseName(entry);
@@ -584,7 +584,14 @@ public class SequenceModelTest {
             if(!(es.containsKey(NEType.Type.OTHER.getCode()) && es.size()==1)) {
                 shown = true;
                 boolean any;
-                if (!type.equals(NEType.Type.OTHER.getCode()) && es.containsKey(type) && es.get(type).containsKey(entry))
+                Short bt = -1;
+                if(es.size()>0)
+                    bt = es.entrySet().stream()
+                            .map(e->new Pair<>(e.getKey(),
+                                    e.getValue().keySet().stream().mapToInt(k->k.length()).max().orElse(0)))
+                            .max((e1, e2)->Double.compare(e1.getSecond(), e2.getSecond()))
+                            .map(Pair::getFirst).get();
+                if (!type.equals(NEType.Type.OTHER.getCode()) && bt==type) //es.containsKey(type) && es.get(type).containsKey(entry))
                     correct++;
                 else {
                     any = false;
@@ -601,13 +608,13 @@ public class SequenceModelTest {
                     }
                     if (found) {
                         missAssigned++;
-                        System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + "--------");
+                        //System.err.println("Wrong assignment miss\nExpected: " + entry + " - " + fullType + " found: " + assignedTo + "\n" + "--------");
                     } else if (any) {
-                        System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + "--------");
+                        //System.err.println("Segmentation miss\nExpected: " + entry + " - " + fullType + "\n" + "--------");
                         missSegmentation++;
                     } else {
                         missNoEvidence++;
-                        System.err.println("Not enough evidence for: " + entry + " - " + fullType);
+                        //System.err.println("Not enough evidence for: " + entry + " - " + fullType);
                     }
                 }
             }
@@ -690,7 +697,7 @@ public class SequenceModelTest {
             model = SequenceModel.loadModel(modelName);
             Pair<Map<String,String>,Map<String,String>> trainTestSplit;
             if(model == null) {
-                trainTestSplit = split(EmailUtils.readDBpedia(),0.8f);
+                trainTestSplit = split(DBpediaUtils.readDBpedia(),0.8f);
                 model = SequenceModel.train(trainTestSplit.first);
                 model.writeModel(Config.SETTINGS_DIR+File.separator+modelName);
                 writeToDir(trainTestSplit,Config.SETTINGS_DIR+File.separator+"dbpediaTest");
@@ -720,15 +727,28 @@ public class SequenceModelTest {
             TokenNameFinderModel nerModel = new TokenNameFinderModel(modelIn);
             NameFinderME finder = new NameFinderME(nerModel, featureGenerator, NameFinderME.DEFAULT_BEAM_SIZE);
 
-            TokenNameFinderEvaluator evaluator = new TokenNameFinderEvaluator(finder);
+            FMeasure result = new FMeasure();
+            int totalFound = 0, totalTarget = 0;
             try {
-                evaluator.evaluate(sampleStream);
+                NameSample sample;
+                while ((sample = sampleStream.read()) != null) {
+                    opennlp.tools.util.Span[] found = finder.find(sample.getSentence());
+                    result.updateScores(sample.getNames(), found);
+                    totalFound += found.length;
+                    totalTarget += sample.getNames().length;
+//                    String[] tokens = sample.getSentence();
+//                    System.err.println(
+//                            Stream.of(found)
+//                            .map(sp->Arrays.asList(Arrays.copyOfRange(tokens, sp.getStart(), sp.getEnd()))+", " + sp.getType())
+//                                    .collect(Collectors.toList())
+//                    );
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            FMeasure result = evaluator.getFMeasure();
             System.out.println("\n\n" + result.toString());
+            System.out.println("Found #"+totalFound+" names of #"+totalTarget+" correct #"+result.getPrecisionScore()*totalFound);
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -753,6 +773,22 @@ public class SequenceModelTest {
                 new BigramNameFeatureGenerator(),
                 new SentenceFeatureGenerator(true, false)
         };
+    }
+
+    static String stats(ObjectStream<NameSample> stream){
+        NameSample sample;
+        int numTokens = 0, numNames = 0;
+        try {
+            while((sample=stream.read())!=null) {
+                numNames += sample.getNames().length;
+                numTokens += sample.getSentence().length;
+            }
+            stream.reset();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "#" + numTokens + " tokens and #" + numNames;
     }
 
     static void trainOpennlpModel(ObjectStream<NameSample> sampleStream, AdaptiveFeatureGenerator[] thisFeatureGens, String modelName){
@@ -829,7 +865,7 @@ public class SequenceModelTest {
      =======================
 
      * */
-    public static void main(String[] args) throws IOException {
+    static void sameDomainTest(){
         String test = "testb";
         InputStream conllTestIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
         InputStream conllTrainIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + "trainspacesep.txt");
@@ -843,6 +879,8 @@ public class SequenceModelTest {
         AdaptiveFeatureGenerator[] ruleFeature = new AdaptiveFeatureGenerator[]{
                 new OpenNLPNERFeatureGens.SpellingRuleFeatureGenerator()
         };
+
+        System.out.println("===============ON CONLL==================");
 
         String modelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner-gazette.bin"});
         //trainOpennlpModel(conllTrainStream, lookupFeature, modelName);
@@ -876,27 +914,31 @@ public class SequenceModelTest {
         NIFNameSampleStream okeTestStream = new NIFNameSampleStream(okeTestIn);
         NIFNameSampleStream okeTrainStream = new NIFNameSampleStream(okeTrainIn);
 
-//        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-gazette.bin"});
-//        //trainOpennlpModel(okeTrainStream, lookupFeature, modelName);
-//        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
-//        testOpenNLP(okeTestStream, lookupFeature, modelName);
-//        System.out.println("=======================");
-//        okeTestStream = new NIFNameSampleStream(okeTestIn);
-//        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
-//
-//        modelName= String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-rules.bin"});
-//        //trainOpennlpModel(okeTrainStream, ruleFeature, modelName);
-//        System.out.println("=======================\n\nPerformance with Spelling rules feature");
-//        testOpenNLP(okeTestStream, ruleFeature, modelName);
-//        System.out.println("=======================");
-//        okeTestStream = new NIFNameSampleStream(okeTestIn);
-//        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
-//
-//        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner.bin"});
-//        //trainOpennlpModel(okeTrainStream, null, modelName);
-//        System.out.println("=======================\n\nWithout any special features");
-//        testOpenNLP(okeTestStream, null, modelName);
-//        System.out.println("=======================");
+        System.out.println("===============ON OKE CHALLENGE 2016==================");
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-gazette.bin"});
+        trainOpennlpModel(okeTrainStream, lookupFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+        testOpenNLP(okeTestStream, lookupFeature, modelName);
+        System.out.println("=======================");
+        okeTestStream = new NIFNameSampleStream(okeTestIn);
+        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+
+        modelName= String.join(File.separator, new String[]{"opennlp", "oke", "en-ner-rules.bin"});
+        trainOpennlpModel(okeTrainStream, ruleFeature, modelName);
+        System.out.println("=======================\n\nPerformance with Spelling rules feature");
+        testOpenNLP(okeTestStream, ruleFeature, modelName);
+        System.out.println("=======================");
+        okeTestStream = new NIFNameSampleStream(okeTestIn);
+        okeTrainStream = new NIFNameSampleStream(okeTrainIn);
+
+        modelName = String.join(File.separator, new String[]{"opennlp", "oke", "en-ner.bin"});
+        trainOpennlpModel(okeTrainStream, null, modelName);
+        System.out.println("=======================\n\nWithout any special features");
+        testOpenNLP(okeTestStream, null, modelName);
+        System.out.println("=======================");
+
+        System.out.println("===============ON NER WEB ILLINOIS==================");
 
         InputStream nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  "test.dat");
         InputStream nwiTrainIn = Config.getResourceAsStream("NERWeb" + File.separator + "train.dat");
@@ -930,5 +972,163 @@ public class SequenceModelTest {
         System.out.println("=======================\n\nWithout any special features");
         testOpenNLP(nwiTestStream, null, modelName);
         System.out.println("=======================");
+    }
+
+    public static void crossDomainTest(){
+        String test = "testa";
+        InputStream conllTestIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + test + "spacesep.txt");
+        InputStream conllTrainIn = Config.getResourceAsStream("CONLL" + File.separator + "annotation" + File.separator + "trainspacesep.txt");
+//        Conll03NameSampleStream conllTestStream, conllTrainStream;
+//        conllTestStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTestIn, 7);
+//        conllTrainStream = new Conll03NameSampleStream(Conll03NameSampleStream.LANGUAGE.EN, conllTrainIn, 7);
+
+        AdaptiveFeatureGenerator[] lookupFeature = new AdaptiveFeatureGenerator[]{
+                new OpenNLPNERFeatureGens.GazetteLookupFeatureGenerator()
+        };
+        AdaptiveFeatureGenerator[] ruleFeature = new AdaptiveFeatureGenerator[]{
+                new OpenNLPNERFeatureGens.SpellingRuleFeatureGenerator()
+        };
+
+        String gazzModelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner-gazette.bin"});
+        String ruleModelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner-rules.bin"});
+        String modelName = String.join(File.separator, new String[]{"opennlp", "conll", "en-ner.bin"});
+
+        System.out.println("===============ON OKE CHALLENGE 2016==================");
+
+        String OKE_TEST = "oke-challenge-2016/GoldStandard_sampleData/task1/dataset_task_1.ttl";
+        String OKE_TEST2 = "oke-challenge-2016/evaluation-data/task1/evaluation-dataset-task1.ttl";
+        String okeTestIn = Config.SETTINGS_DIR + File.separator + OKE_TEST;
+        String okeTestIn2 = Config.SETTINGS_DIR + File.separator + OKE_TEST2;
+        NIFNameSampleStream okeTestStream = new NIFNameSampleStream(okeTestIn);
+        NIFNameSampleStream okeTestStream2 = new NIFNameSampleStream(okeTestIn2);
+        final String NWI_TEST = "all.dat";
+        InputStream nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  NWI_TEST);
+        CustomConll03NameSampleStream nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+
+        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+        System.out.println("------Gold standard---------");
+        testOpenNLP(okeTestStream, lookupFeature, gazzModelName);
+        System.out.println("------Evaluation data--------");
+        testOpenNLP(okeTestStream2, lookupFeature, gazzModelName);
+        System.out.println("=======================");
+        okeTestStream = new NIFNameSampleStream(okeTestIn);
+        okeTestStream2 = new NIFNameSampleStream(okeTestIn2);
+
+        System.out.println("=======================\n\nPerformance with Spelling rules feature");
+        System.out.println("------Gold standard---------");
+        testOpenNLP(okeTestStream, ruleFeature, ruleModelName);
+        System.out.println("------Evaluation data--------");
+        testOpenNLP(okeTestStream2, ruleFeature, ruleModelName);
+        System.out.println("=======================");
+        okeTestStream = new NIFNameSampleStream(okeTestIn);
+        okeTestStream2 = new NIFNameSampleStream(okeTestIn2);
+
+        System.out.println("=======================\n\nWithout any special features");
+        System.out.println("------Gold standard---------");
+        testOpenNLP(okeTestStream, null, modelName);
+        System.out.println("------Evaluation data--------");
+        testOpenNLP(okeTestStream2, null, modelName);
+        System.out.println("=======================");
+
+
+        System.out.println("===============ON NER WEB ILLINOIS==================");
+
+        System.out.println("=======================\n\nPerformance with Gazette lookup feature");
+        testOpenNLP(nwiTestStream, lookupFeature, gazzModelName);
+        System.out.println("=======================");
+
+        nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  NWI_TEST);
+        nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+
+        System.out.println("=======================\n\nPerformance with Spelling rules feature");
+        testOpenNLP(nwiTestStream, ruleFeature, ruleModelName);
+        System.out.println("=======================");
+
+        nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator +  NWI_TEST);
+        nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+
+        System.out.println("=======================\n\nWithout any special features");
+        testOpenNLP(nwiTestStream, null, modelName);
+        System.out.println("=======================");
+    }
+
+    public static void bootstrap(){
+        try {
+            SequenceModel model = SequenceModel.loadModelFromRules(SequenceModel.RULES_DIRNAME);
+            FileWriter fw = new FileWriter(new File(Config.SETTINGS_DIR + File.separator + "NERWeb" + File.separator + "weak_train.txt"));
+
+            final String NWI_TEST = "all.dat";
+            InputStream nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator + NWI_TEST);
+            ObjectStream<NameSample> nwiTestStream = new IllinoisHTMLSampleStream(Config.getResourceAsStream("datasets/IllinoisHTML/train.txt"));
+            //CustomConll03NameSampleStream nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+            NameSample sample;
+            while ((sample = nwiTestStream.read()) != null) {
+                String[] tokens = sample.getSentence();
+                String text = String.join(" ", tokens);
+                Span[] spans = model.find(text);
+                String[] types = new String[tokens.length];
+                for (int ti = 0; ti < tokens.length; ti++)
+                    types[ti] = "O";
+
+                Map<String, Short> names = new LinkedHashMap<>();
+                Stream.of(spans).filter(sp-> sp.typeScore>1E-10).forEach(sp -> names.put(sp.getText(), sp.getType()));
+                for (int ti = 0; ti < tokens.length; ti++) {
+                    int from = ti, to = Math.min(ti + 10, tokens.length);
+                    for (int tj = to - 1; tj >= from; tj--) {
+                        String cand = String.join(" ", Arrays.copyOfRange(tokens, ti, tj + 1));
+                        Short type = names.get(cand);
+                        if (type != null) {
+                            NEType.Type t = NEType.getCoarseType(type);
+                            String ct = null;
+                            if (t == NEType.Type.PERSON)
+                                ct = "PER";
+                            else if (t == NEType.Type.PLACE)
+                                ct = "LOC";
+                            else if (t == NEType.Type.ORGANISATION)
+                                ct = "ORG";
+
+                            if (ct != null) {
+                                for (int i = ti; i <= tj; i++)
+                                    types[i] = "I-" + ct;
+                                types[ti] = "B-" + ct;
+                            }
+                            //ti will be incremented by one by the loop
+                            ti = tj;
+                            break;
+                        }
+                    }
+                }
+
+                if (sample.isClearAdaptiveDataSet())
+                    fw.write("O\t0\t0\tO\t-X-\t-DOCSTART-\tx\tx\t0\n\n");
+                IntStream.range(0, tokens.length).forEach(ti -> {
+                            try {
+                                fw.write(types[ti] + "\t0\t0\tO\tO\t" + tokens[ti] + "\tx\tx\t0\n");
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+                fw.write("\n");
+            }
+            fw.close();
+
+            AdaptiveFeatureGenerator[] ruleFeature = new AdaptiveFeatureGenerator[]{
+                    new OpenNLPNERFeatureGens.SpellingRuleFeatureGenerator()
+            };
+            nwiTestIn = Config.getResourceAsStream("NERWeb" + File.separator + "all.dat");
+            InputStream nwiTrainIn = Config.getResourceAsStream("NERWeb" + File.separator + "weak_train.txt");
+            nwiTestStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTestIn, 7);
+            CustomConll03NameSampleStream nwiTrainStream = new CustomConll03NameSampleStream(CustomConll03NameSampleStream.DATASET.NER_WEL_ILLINOIS, nwiTrainIn, 7);
+            String modelName = String.join(File.separator, new String[]{"opennlp", "nwi", "en-ner-weakly.bin"});
+            trainOpennlpModel(nwiTrainStream, ruleFeature, modelName);
+            testOpenNLP(nwiTestStream, ruleFeature, modelName);
+        } catch(IOException ie){
+            ie.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args){
+        testOnDbpediaHelper();
     }
 }

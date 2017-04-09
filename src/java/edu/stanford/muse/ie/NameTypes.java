@@ -4,7 +4,7 @@ import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
-import edu.stanford.muse.util.EmailUtils;
+import edu.stanford.muse.util.DBpediaUtils;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -28,7 +28,7 @@ public class NameTypes {
 	{
 		// types.gz is of the form First_Last Subtype|Type
 		try {
-			Map<String, String> dbpedia = EmailUtils.readDBpedia();
+			Map<String, String> dbpedia = DBpediaUtils.readDBpedia();
 			//LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new GZIPInputStream(NameTypes.class.getClassLoader().getResourceAsStream(typesFile)), "UTF-8"));
 			Set<String> seenTitles = new HashSet<String>();
 			Set<String> ambiguousTitles = new HashSet<String>();

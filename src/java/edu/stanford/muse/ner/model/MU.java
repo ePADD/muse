@@ -201,8 +201,8 @@ public class MU implements Serializable {
         }
 
         for (String f : features) {
-            if(f.equals("L:"+SequenceModel.UNKNOWN_TYPE)) f = "L:"+type;
-            if(f.equals("R:"+SequenceModel.UNKNOWN_TYPE)) f = "R:"+type;
+            if(f.equals("L:"+ RuleInducer.UNKNOWN_TYPE)) f = "L:"+type;
+            if(f.equals("R:"+ RuleInducer.UNKNOWN_TYPE)) f = "R:"+type;
             float fraction = 1;
             if(f.startsWith("L:")) fraction = 1.0f/numLeft;
             if(f.startsWith("R:")) fraction = 1.0f/numRight;

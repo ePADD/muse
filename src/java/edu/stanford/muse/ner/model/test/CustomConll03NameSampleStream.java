@@ -21,20 +21,9 @@ public class CustomConll03NameSampleStream implements ObjectStream<NameSample>{
     }
 
     private DATASET dataset;
-    private final ObjectStream<String> lineStream;
+    private final LineNumberReader lineStream;
 
     private final int types;
-
-    /**
-     *
-     * @param lineStream
-     * @param types
-     */
-    public CustomConll03NameSampleStream(DATASET dataset, ObjectStream<String> lineStream, int types) {
-        this.dataset = dataset;
-        this.lineStream = lineStream;
-        this.types = types;
-    }
 
     /**
      *
@@ -45,7 +34,7 @@ public class CustomConll03NameSampleStream implements ObjectStream<NameSample>{
 
         this.dataset = dataset;
         try {
-            this.lineStream = new PlainTextByLineStream(in, "UTF-8");
+            this.lineStream = new LineNumberReader(new InputStreamReader(in, "UTF-8"));
             System.setOut(new PrintStream(System.out, true, "UTF-8"));
         } catch (UnsupportedEncodingException e) {
             // UTF-8 is available on all JVMs, will never happen
@@ -87,11 +76,11 @@ public class CustomConll03NameSampleStream implements ObjectStream<NameSample>{
         // Empty line indicates end of sentence
 
         String line;
-        while ((line = lineStream.read()) != null && !StringUtil.isEmpty(line)) {
+        while ((line = lineStream.readLine()) != null && !StringUtil.isEmpty(line)) {
 
-            if (line.startsWith(Conll02NameSampleStream.DOCSTART)) {
+            if (line.contains(Conll02NameSampleStream.DOCSTART)) {
                 isClearAdaptiveData = true;
-                String emptyLine = lineStream.read();
+                String emptyLine = lineStream.readLine();
 
                 if (!StringUtil.isEmpty(emptyLine))
                     throw new IOException("Empty line after -DOCSTART- not empty: '" + emptyLine +"'!");
@@ -116,7 +105,7 @@ public class CustomConll03NameSampleStream implements ObjectStream<NameSample>{
                 tags.add(fields[0]);
             }
             else {
-                throw new IOException("Incorrect number of fields per line for language: '" + line + "'! Found: "+fields.length);
+                throw new IOException("Incorrect number of fields per line for language: '" + line + "'! Found: "+fields.length+" Line no: "+lineStream.getLineNumber());
             }
         }
 
