@@ -4,6 +4,7 @@ import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.util.DBpediaUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
+import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -44,27 +45,34 @@ abstract class RuleInducer {
     }
 
     //Input is a token and returns the best type assignment for token
-    private static Short getType(String token, Map<String,MU> mixtures) {
+    private static List<String> getType(String token, Map<String,MU> mixtures) {
+        List<String> types = new ArrayList<>();
         MU mu = mixtures.get(token);
         if (mu == null) {
             //log.warn("Token: "+token+" not initialised!!");
-            return UNKNOWN_TYPE;
+            types.add("T:" + UNKNOWN_TYPE);
+            types.add("Wc:" + FeatureGeneratorUtil.tokenFeature(token));
         }
-        Short[] allTypes = NEType.getAllTypeCodes();
-        Short bestType = allTypes[rand.nextInt(allTypes.length)];
-        double bv = 0;
+        else {
+            Short[] allTypes = NEType.getAllTypeCodes();
+            Short bestType = allTypes[rand.nextInt(allTypes.length)];
+            double bv = 0;
 
-        //We don't consider OTHER as even a type
-        for (Short type : allTypes) {
-            if (!type.equals(NEType.Type.OTHER.getCode())) {
-                double val = mu.getLikelihoodWithType(type);
-                if (val > bv) {
-                    bv = val;
-                    bestType = type;
+            //We don't consider OTHER as even a type
+            for (Short type : allTypes) {
+                if (!type.equals(NEType.Type.OTHER.getCode())) {
+                    double val = mu.getLikelihoodWithType(type);
+                    if (val > bv) {
+                        bv = val;
+                        bestType = type;
+                    }
                 }
             }
+            if(mu.numSeen>10)
+                types.add("Tk:" + token);
+            types.add("T:" + bestType);
         }
-        return bestType;
+        return types;
     }
 
     /**
@@ -79,9 +87,9 @@ abstract class RuleInducer {
             List<String> fs = new ArrayList<>();
             features.get(k).forEach(f->{
                 if(f.startsWith("L:") && !f.equals("L:NULL"))
-                    fs.add("L:"+ getType(f.substring(2), mixtures));
+                    getType(f.substring(2), mixtures).stream().forEach(t->fs.add("L:"+t));
                 else if(f.startsWith("R:") && !f.equals("R:NULL"))
-                    fs.add("R:"+ getType(f.substring(2), mixtures));
+                    getType(f.substring(2), mixtures).stream().forEach(t->fs.add("R:"+t));
                 else
                     fs.add(f);
             });

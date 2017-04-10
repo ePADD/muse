@@ -251,17 +251,14 @@ public class MU implements Serializable {
         str += "ID: " + id + "\n";
         for(int i=0;i<labels.length;i++) {
             Map<String,Float> some = new LinkedHashMap<>();
-            for(int l=0;l<labels[i].length;l++) {
-                String d = p[i] + labels[i][l];
-                String dim = p[i].substring(0,p[i].length()-1);
-
-                Float v = muVectorPositive.get(d);
-                some.put(d, (((v==null)?0:v)) / (numMixture));
-            }
+            String f = p[i];
+            muVectorPositive.entrySet().stream().filter(e->e.getKey().startsWith(f)).forEach(e-> {
+                Float v = e.getValue();
+                some.put(e.getKey(), (((v == null) ? 0 : v)) / (numMixture));
+            });
             List<Pair<String,Float>> smap;
             smap = Util.sortMapByValue(some);
-            for(Pair<String,Float> pair: smap)
-                str += pair.getFirst()+":"+pair.getSecond()+"-";
+            str += String.join("--", smap.stream().limit(5).map(pair-> pair.getFirst() + ":" + pair.getSecond() + "-").collect(Collectors.toList()));
             str += "\n";
         }
         str += "NM:"+numMixture+", NS:"+numSeen+"\n";

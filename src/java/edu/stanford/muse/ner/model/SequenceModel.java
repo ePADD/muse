@@ -65,7 +65,7 @@ public class SequenceModel extends NERModel implements Serializable{
         return gazettes;
     }
 
-    private static void writeModelAsRules(SequenceModel model) {
+    public static void writeModelAsRules(SequenceModel model) {
         try {
             NEType.Type[] ats = NEType.getAllTypes();
             //make cache dir if it does not exist
@@ -115,7 +115,7 @@ public class SequenceModel extends NERModel implements Serializable{
                     //only if both the below conditions are satisfied, this template will ever be seen in action
                     //some mixtures may have very low evidence that their "numMixture" is 0, there is just no point dumping them
                     if (maxT.equals(type) && mu.numMixture>0) { //&& scores.get(p.getFirst()) >= 0.001) {
-                        ffw.write(mu.prettyPrint());
+                        ffw.write(mu.toString());
                         ffw.write("========================\n");
                     }
                 }
@@ -240,7 +240,7 @@ public class SequenceModel extends NERModel implements Serializable{
         }
     }
 
-    public static synchronized SequenceModel loadModel(String modelPath) throws IOException{
+    public static synchronized SequenceModel loadModel(String modelPath) {
         try {
             //the buffer size can be much higher than default 512 for GZIPInputStream
             SequenceModel model = (SequenceModel) Util.readObjectFromSerGZ(modelPath);
@@ -434,6 +434,8 @@ public class SequenceModel extends NERModel implements Serializable{
     }
 
     public static void main(String[] args) {
-        loadAndTestNERModel();
+        String modelName = "dbpediaTest" + File.separator + "SequenceModel-80.ser.gz";
+        SequenceModel model = loadModel(modelName);
+        writeModelAsRules(model);
     }
 }

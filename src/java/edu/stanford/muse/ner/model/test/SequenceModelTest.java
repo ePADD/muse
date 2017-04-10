@@ -689,14 +689,15 @@ public class SequenceModelTest {
     }
 
     static void testOnDbpediaHelper(){
-        NERModel model;
+        SequenceModel model;
         try {
-            String modelName = "dbpediaTest"+File.separator+"HMMModel-80.ser.gz";
-            model = HMMModel.loadModel(modelName);
+            String modelName = "dbpediaTest"+File.separator+"SequenceModel-80.ser.gz";
+            model = SequenceModel.loadModel(modelName);
             Pair<Map<String,String>,Map<String,String>> trainTestSplit;
             if(model == null) {
-                trainTestSplit = split(DBpediaUtils.readDBpedia(),0.8f);
-                model = HMMModel.train(trainTestSplit.first);
+                trainTestSplit = split(DBpediaUtils.readDBpedia(0.05f, null),0.8f);
+                model = SequenceModel.train(trainTestSplit.first);
+                SequenceModel.writeModelAsRules(model);
                 Util.writeObjectAsSerGZ(model, Config.SETTINGS_DIR + File.separator + modelName);
                 writeToDir(trainTestSplit,Config.SETTINGS_DIR+File.separator+"dbpediaTest");
             }
