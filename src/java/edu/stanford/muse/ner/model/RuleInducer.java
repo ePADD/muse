@@ -212,7 +212,7 @@ abstract class RuleInducer {
             }
             if (alpha.size() > 0)
                 initAlpha++;
-            //initializing teh mixture with this world knowledge can help the mixture assign itself the right types and move in right direction
+            //initializing the mixture with this world knowledge can help the mixture assign itself the right types and move in right direction
             mixtures.put(str, new MU(str, alpha));
             muPriors.put(str, alpha);
             if (wi++ % 1000 == 0) {

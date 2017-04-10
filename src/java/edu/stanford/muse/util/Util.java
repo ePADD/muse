@@ -27,6 +27,8 @@
 
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.Config;
+import edu.stanford.muse.ner.model.SequenceModel;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 
@@ -41,6 +43,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * a general set of utils by Sudheendra... don't introduce dependencies in this
@@ -1672,6 +1675,23 @@ public class Util
         }
         return acrs;
     }
+
+    //writes a .ser.gz file to the file passed in args.
+    public static void writeObjectAsSerGZ(Object o, String fileName) throws IOException{
+        FileOutputStream fos = new FileOutputStream(new File(fileName));
+        GZIPOutputStream gos = new GZIPOutputStream(fos);
+        ObjectOutputStream oos = new ObjectOutputStream(gos);
+        oos.writeObject(o);
+        oos.close();
+    }
+
+    public static Object readObjectFromSerGZ(String fileName) throws IOException, ClassNotFoundException {
+		//the buffer size can be much higher than default 512 for GZIPInputStream
+		ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(Config.getResourceAsStream(fileName)));
+		Object o = ois.readObject();
+		ois.close();
+		return o;
+	}
 
     public static class MyFilenameFilter implements FilenameFilter {
 		private String	prefix, suffix; // suffix is optional

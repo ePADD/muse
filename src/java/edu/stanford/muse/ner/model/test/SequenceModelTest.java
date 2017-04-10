@@ -3,14 +3,12 @@ package edu.stanford.muse.ner.model.test;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
+import edu.stanford.muse.ner.model.HMMModel;
 import edu.stanford.muse.ner.model.NERModel;
 import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.ner.model.SequenceModel;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
-import edu.stanford.muse.util.DBpediaUtils;
-import edu.stanford.muse.util.EmailUtils;
-import edu.stanford.muse.util.Pair;
-import edu.stanford.muse.util.Span;
+import edu.stanford.muse.util.*;
 import opennlp.tools.formats.Conll03NameSampleStream;
 import opennlp.tools.namefind.NameFinderME;
 import opennlp.tools.namefind.NameSample;
@@ -691,15 +689,15 @@ public class SequenceModelTest {
     }
 
     static void testOnDbpediaHelper(){
-        SequenceModel model;
+        NERModel model;
         try {
-            String modelName = "dbpediaTest"+File.separator+"SeqModel-80.ser.gz";
-            model = SequenceModel.loadModel(modelName);
+            String modelName = "dbpediaTest"+File.separator+"HMMModel-80.ser.gz";
+            model = HMMModel.loadModel(modelName);
             Pair<Map<String,String>,Map<String,String>> trainTestSplit;
             if(model == null) {
                 trainTestSplit = split(DBpediaUtils.readDBpedia(),0.8f);
-                model = SequenceModel.train(trainTestSplit.first);
-                model.writeModel(Config.SETTINGS_DIR+File.separator+modelName);
+                model = HMMModel.train(trainTestSplit.first);
+                Util.writeObjectAsSerGZ(model, Config.SETTINGS_DIR + File.separator + modelName);
                 writeToDir(trainTestSplit,Config.SETTINGS_DIR+File.separator+"dbpediaTest");
             }
             else{

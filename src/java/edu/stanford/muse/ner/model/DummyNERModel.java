@@ -6,6 +6,7 @@ import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Triple;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -13,8 +14,9 @@ import java.util.stream.Collectors;
  * A dummy model that simulates the behavior of a NER model.
  * This model returns all pseudo proper nouns in the content and hence generally is a super-set of all the possible entities in the content
  */
-public class DummyNERModel implements NERModel{
+public class DummyNERModel extends NERModel{
     Tokenizer tokenizer = new CICTokenizer();
+    @Override
     public Span[] find (String content) {
         // collect all pseudo proper nouns
         List<Triple<String, Integer, Integer>> pns = tokenizer.tokenize(content);
@@ -27,5 +29,20 @@ public class DummyNERModel implements NERModel{
     @Override
     public void setTokenizer(Tokenizer tokenizer) {
         this.tokenizer = tokenizer;
+    }
+
+    @Override
+    Tokenizer getTokenizer() {
+        return tokenizer;
+    }
+
+    @Override
+    Map<String, String> getGazette() {
+        return null;
+    }
+
+    @Override
+    double getConditional(String phrase, Short type) {
+        return 0;
     }
 }
