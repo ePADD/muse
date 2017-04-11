@@ -32,6 +32,9 @@ public class MixtureModelLearner extends RuleInducer {
 
     //the argument alpha fraction is required only for naming of the dumped model size
     void learn() {
+        SequenceModel.log.info("Starting EM on gazettes");
+        SequenceModel.log.info(Util.getMemoryStats());
+
         log.info("Performing EM on: #" + mixtures.size() + " words");
         double ll = getIncompleteDataLogLikelihood();
         log.info("Start Data Log Likelihood: " + ll);

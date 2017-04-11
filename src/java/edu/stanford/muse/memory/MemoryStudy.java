@@ -244,7 +244,7 @@ public class MemoryStudy implements Serializable{
         Short[] itypes = new Short[]{NEType.Type.BUILDING.getCode(), NEType.Type.PLACE.getCode(), NEType.Type.RIVER.getCode(),
                 NEType.Type.ROAD.getCode(), NEType.Type.UNIVERSITY.getCode(), NEType.Type.MOUNTAIN.getCode(), NEType.Type.AIRPORT.getCode(),
                 NEType.Type.ISLAND.getCode(), NEType.Type.MUSEUM.getCode(), NEType.Type.BRIDGE.getCode(), NEType.Type.AIRLINE.getCode(), NEType.Type.THEATRE.getCode(),
-                NEType.Type.LIBRARY.getCode(), NEType.Type.LAWFIRM.getCode(), NEType.Type.GOVAGENCY.getCode()};
+                NEType.Type.LIBRARY.getCode(), NEType.Type.GOVAGENCY.getCode()};
         double CUTOFF = 0.001;
         tabooCluesSet = new LinkedHashSet<>();
         archive.assignThreadIds();

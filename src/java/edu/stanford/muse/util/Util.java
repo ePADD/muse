@@ -30,6 +30,8 @@ package edu.stanford.muse.util;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.model.SequenceModel;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
+import org.apache.commons.collections4.map.AbstractHashedMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.logging.Log;
 
 import java.io.*;
@@ -42,6 +44,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -3095,6 +3099,92 @@ public class Util
         }
     }
 
+    public static class CaseInsensitiveMap<K, V> extends org.apache.commons.collections4.map.CaseInsensitiveMap<K, V> implements Serializable, Cloneable {
+        Map<K, Integer[]> original = new LinkedHashMap<>();
+
+        /** Serialisation version */
+        private static final long serialVersionUID = -7074655917369299456L;
+
+        public CaseInsensitiveMap() {super();}
+
+        public CaseInsensitiveMap(final int initialCapacity) {
+            super(initialCapacity);
+        }
+
+        public CaseInsensitiveMap(final int initialCapacity, final float loadFactor) {
+            super(initialCapacity, loadFactor);
+        }
+
+        public CaseInsensitiveMap(final Map<? extends K, ? extends V> map) {
+            final int mapSize = map.size();
+            if (mapSize == 0) {
+                return;
+            }
+            final int newSize = (int) ((size() + mapSize) / super.DEFAULT_LOAD_FACTOR + 1);
+            ensureCapacity(calculateNewCapacity(newSize));
+            for (final Map.Entry<? extends K, ? extends V> entry: map.entrySet()) {
+                put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        @Override
+        public V put(final K k, final V value){
+            K key = (K)convertKey(k);
+            if (key != AbstractHashedMap.NULL) {
+                List<Integer> ucPos = new ArrayList<>();
+                final char[] chars = k.toString().toCharArray();
+                for (int i = chars.length - 1; i >= 0; i--) {
+                    if(Character.isUpperCase(chars[i]))
+                        ucPos.add(i);
+                }
+                assert key!=null: "The key for "+ k + " is null!";
+                if(original == null) original = new LinkedHashMap<>();
+                original.put(key, ucPos.toArray(new Integer[ucPos.size()]));
+            }
+
+            return super.put(k, value);
+        }
+
+        protected K deconvertKey(K k){
+            Integer[] ucPos = original.get(k);
+            if (ucPos == null)
+                return null;
+
+            char[] chars = k.toString().toCharArray();
+            Stream.of(ucPos).filter(p -> p < chars.length).forEach(p -> chars[p] = Character.toUpperCase(chars[p]));
+            return (K)new String(chars);
+        }
+
+        @Override
+        public Set<K> keySet() {
+            Set<K> keys = super.keySet();
+            return keys.stream().map(this::deconvertKey).collect(Collectors.toSet());
+        }
+
+        @Override
+        public Set<Map.Entry<K, V>> entrySet(){
+            Set<Map.Entry<K, V>> entries = super.entrySet();
+            return entries.stream().map(e-> new SimpleEntry<>(deconvertKey(e.getKey()), e.getValue()))
+                    .collect(Collectors.toSet());
+        }
+    }
+
+    public static void testCaseInsensitiveMap(){
+        Map<String, String> src = new LinkedHashMap<>();
+        src.put("one", "One");
+        src.put("One", "two");
+        src.put("GAP", "hello");
+        src.put("Being", "Human");
+        Map<String,String> map = new CaseInsensitiveMap<>(src);
+        //two -- gap
+        System.out.println(map.get("ONE") + " -- " + map.get("gap"));
+        //One, GAP, Being
+        System.out.println(map.keySet());
+        System.out.println(map.entrySet());
+        for(String k: map.keySet())
+            System.out.println(k);
+    }
+
 	public static void testTokenizeAlphaChars() {
 		String[] tests = new String[]{"12abc xyz", "abc", "abc xyz12", "Dr. Prof. Doolit"};
 		for (String s : tests)
@@ -3114,6 +3204,6 @@ public class Util
 	}
 
 	public static void main(String[] args){
-		test();
+		testCaseInsensitiveMap();
     }
 }

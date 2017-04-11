@@ -1,6 +1,7 @@
 package edu.stanford.muse.ner.model;
 
 import com.google.common.collect.Multimap;
+import com.hp.hpl.jena.rdf.model.Seq;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.*;

@@ -1,5 +1,6 @@
 package edu.stanford.muse.util;
 
+import edu.stanford.muse.ner.model.NEType;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -46,7 +47,8 @@ public class Span implements java.io.Serializable {
 
     @Override
     public String toString() {
-        return "[" + this.start + ".." + this.end + ")" + " " + this.type + " " + this.typeScore;
+        return this.text + ";" + this.start + ";" + this.end + ";" + NEType.getTypeForCode(this.type).getDisplayName()
+                + ";" + this.typeScore;
     }
 
     /**

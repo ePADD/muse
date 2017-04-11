@@ -508,7 +508,7 @@ public class SequenceModelTest {
 
     //samples [fraction] fraction of entries from dictionary supplied and splices the supplied dict
     private static Pair<Map<String,String>,Map<String,String>> split(Map<String,String> dict, float fraction){
-        Map<String,String> dict1 = new LinkedHashMap<>(), dict2 = new LinkedHashMap<>();
+        Map<String,String> dict1 = new Util.CaseInsensitiveMap<>(), dict2 = new Util.CaseInsensitiveMap<>();
         Random rand = new Random();
         for(String str: dict.keySet()){
             if(rand.nextFloat()<fraction){
@@ -532,7 +532,7 @@ public class SequenceModelTest {
         int missAssigned=0, missSegmentation = 0, missNoEvidence = 0;
         int correct = 0;
         //these are the entries which are not completely tagged as OTHER by NER, but may have some segments that are not OTHER, hence visible
-        double CUTOFF = 1E-10;
+        double CUTOFF = nerModel instanceof HMMModel?-100:1E-10;
         Map<Short,Map<Short,Integer>> confMat = new LinkedHashMap<>();
         Map<Short, Integer> freqs = new LinkedHashMap<>();
         String[] badSuffixTypes = new String[]{"MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
@@ -612,7 +612,7 @@ public class SequenceModelTest {
                         missSegmentation++;
                     } else {
                         missNoEvidence++;
-                        //System.err.println("Not enough evidence for: " + entry + " - " + fullType);
+                        //System.err.println("Not enough evidence for: " + entry + " - " + fullType + " found: "+Stream.of(spans).collect(Collectors.toSet()));
                     }
                 }
             }
@@ -654,13 +654,20 @@ public class SequenceModelTest {
             System.err.println(ln);
         }
         System.err.println("------------------------\n");
+        double averagePrecision = allTypes.stream().filter(t->t>=0 && t!=NEType.Type.OTHER.getCode())
+                .mapToDouble(t1->{
+                    if (confMat.containsKey(t1) && confMat.get(t1).containsKey(t1) && freqs.containsKey(t1))
+                        return (double)confMat.get(t1).get(t1)/freqs.get(t1);
+                    else return 0;
+                })
+                .average().getAsDouble();
         double precision = (double)(correct)/(neShown);
         double recall = (double)correct/neShouldShown;
         //miss and misAssigned are number of things we are missing we are missing, but for different reasons, miss is due to segmentation problem, assignment to OTHER; misAssigned is due to wrong type assignment
         //visible = ne - number of entries that are assigned OTHER label and hence visible
         System.err.println("Missed #"+missAssigned+" due to improper assignment\n#"+missSegmentation+"due to improper segmentation\n" +
                 "#"+missNoEvidence+" due to single word or no evidence");
-        System.err.println("Precision: "+precision+"\nRecall: "+recall);
+        System.err.println("Precision: "+precision+"\nRecall: "+recall+"\nF1:"+(2*precision*recall)/(precision+recall) + "\nAverage Precision: " + averagePrecision);
     }
 
     static void writeToDir(Pair<Map<String,String>,Map<String,String>> trainTest, String dirName){
@@ -689,15 +696,16 @@ public class SequenceModelTest {
     }
 
     static void testOnDbpediaHelper(){
-        SequenceModel model;
+        String className = "SequenceModel";
+        NERModel model;
         try {
-            String modelName = "dbpediaTest"+File.separator+"SequenceModel-80.ser.gz";
-            model = SequenceModel.loadModel(modelName);
+            String modelName = "dbpediaTest"+ File.separator + className + "-80.ser.gz";
+            model = className.equals("SequenceModel")?SequenceModel.loadModel(modelName):HMMModel.loadModel(modelName);
             Pair<Map<String,String>,Map<String,String>> trainTestSplit;
             if(model == null) {
                 trainTestSplit = split(DBpediaUtils.readDBpedia(0.05f, null),0.8f);
-                model = SequenceModel.train(trainTestSplit.first);
-                SequenceModel.writeModelAsRules(model);
+                model = className.equals("SequenceModel")?SequenceModel.train(trainTestSplit.first):HMMModel.train(trainTestSplit.first);
+                //SequenceModel.writeModelAsRules(model);
                 Util.writeObjectAsSerGZ(model, Config.SETTINGS_DIR + File.separator + modelName);
                 writeToDir(trainTestSplit,Config.SETTINGS_DIR+File.separator+"dbpediaTest");
             }

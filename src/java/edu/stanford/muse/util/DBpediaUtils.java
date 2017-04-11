@@ -39,7 +39,6 @@ public class DBpediaUtils {
                 //London appears in 192 Album|MusicalWork|Work, 123 Settlement|PopulatedPlace|Place
                 //Pair in 130 Film|Work, 109 Album|MusicalWork|Work
                 //Can you believe this?!
-                "Album|MusicalWork|Work",
                 "Film|Work",
                 //This type is too noisy and contain titles like
                 //Cincinatti Kids, FA_Youth_Cup_Finals, The Strongest (and other such team names)
@@ -50,7 +49,13 @@ public class DBpediaUtils {
                 //the following type has entities like "Cox_Broadcasting_Corp._v._Cohn", that may assign wrong type to tokens like corp., co., ltd.
                 "SupremeCourtOfTheUnitedStatesCase|LegalCase|Case|UnitOfWork",
                 //should be careful about Agent type, though it contains personal names it can also contain many non-personal entities
-                "ComicsCharacter|FictionalCharacter|Person"
+                "ComicsCharacter|FictionalCharacter|Person",
+                "MusicalWork|Work","Sport", "Film|Work", "Band|Group|Organisation", "Food",
+                "EthnicGroup","RadioStation|Broadcaster|Organisation", "MeanOfTransportation", "TelevisionShow|Work",
+                "Play|WrittenWork|Work","Language", "Book|WrittenWork|Work","Genre|TopicalConcept", "InformationAppliance|Device",
+                "SportsTeam|Organisation", "Eukaryote|Species","Software|Work", "TelevisionEpisode|Work", "Comic|WrittenWork|Work",
+                "Mayor", "Website|Work", "Cartoon|Work",
+                "LawFirm|Company|Organisation"
         );
     }
 
@@ -124,13 +129,13 @@ public class DBpediaUtils {
             if (p == 1)
                 return EmailUtils.dbpedia;
             else
-                return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(EmailUtils.sample(EmailUtils.dbpedia, p));
+                return new Util.CaseInsensitiveMap<>(EmailUtils.sample(EmailUtils.dbpedia, p));
         }
         if (typesFile == null)
             typesFile = Config.DBPEDIA_INSTANCE_FILE;
-//dbpedia = new LinkedHashMap<>();
+        //dbpedia = new LinkedHashMap<>();
         //we want to be able to access elements in the map in a case-sensitive manner, this is a way to do that.
-        EmailUtils.dbpedia = new org.apache.commons.collections4.map.CaseInsensitiveMap<>();
+        EmailUtils.dbpedia = new Util.CaseInsensitiveMap<>();
         int d = 0, numPersons = 0, lines = 0;
         try {
             InputStream is = Config.getResourceAsStream(typesFile);
@@ -207,7 +212,7 @@ public class DBpediaUtils {
 
         EmailUtils.log.info("Read " + EmailUtils.dbpedia.size() + " names from DBpedia, " + numPersons + " people name. dropped: " + d);
 
-        return new org.apache.commons.collections4.map.CaseInsensitiveMap<>(EmailUtils.sample(EmailUtils.dbpedia, p));
+        return new Util.CaseInsensitiveMap<>(EmailUtils.sample(EmailUtils.dbpedia, p));
     }
 
     public static Map<String, String> readDBpedia() {

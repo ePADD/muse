@@ -10,6 +10,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by vihari on 09/04/17.
@@ -40,18 +42,34 @@ abstract class RuleInducer {
         SequenceModel.log.info("Initializing the model with gazettes");
         SequenceModel.log.info(Util.getMemoryStats());
         addGazz(gazettes, tokenPriors);
-        SequenceModel.log.info("Starting EM on gazettes");
-        SequenceModel.log.info(Util.getMemoryStats());
     }
 
+    /*Precision: 0.7213898629263628
+     Recall: 0.7488418266048974
+
+     When the token feature is included:
+     Precision: 0.7352941176470589
+     Recall: 0.7596463022508039
+
+     //when all the word class features are included
+     Precision: 0.7257002908311648
+     Recall: 0.7542157174673878
+
+     //when all caps and other are omitted
+     Precision: 0.7267793456349821
+     Recall: 0.7565778853914447
+     */
     //Input is a token and returns the best type assignment for token
+    static Set<String> wcs = Stream.of("2d", "4d", "an", "dd", "ds", "dc", "dp", "num", "sc", "ac", "cp").collect(Collectors.toSet());
     private static List<String> getType(String token, Map<String,MU> mixtures) {
         List<String> types = new ArrayList<>();
         MU mu = mixtures.get(token);
         if (mu == null) {
             //log.warn("Token: "+token+" not initialised!!");
             types.add("T:" + UNKNOWN_TYPE);
-            types.add("Wc:" + FeatureGeneratorUtil.tokenFeature(token));
+            String wc = FeatureGeneratorUtil.tokenFeature(token);
+            if(wcs.contains(wc))
+                types.add("Wc:" + wc);
         }
         else {
             Short[] allTypes = NEType.getAllTypeCodes();
@@ -68,6 +86,7 @@ abstract class RuleInducer {
                     }
                 }
             }
+
             if(mu.numSeen>10)
                 types.add("Tk:" + token);
             types.add("T:" + bestType);

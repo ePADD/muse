@@ -32,7 +32,7 @@ public class NEType {
             COMPANY(1, ORGANISATION, "Company"),UNIVERSITY(7, ORGANISATION, "University"),
             PERIODICAL_LITERATURE(13, ORGANISATION, "Periodical Literature"),AIRLINE(20, ORGANISATION, "Airline"),
             GOVAGENCY(22, ORGANISATION, "Government Agency"),AWARD(27, ORGANISATION, "Award"),
-            LEGISLATURE(32,ORGANISATION, "Legislature"),LAWFIRM(34, ORGANISATION, "Law firm"),
+            LEGISLATURE(32,ORGANISATION, "Legislature"),//LAWFIRM(34, ORGANISATION, "Law firm"),
             DISEASE(36, ORGANISATION, "Disease"),EVENT(37, ORGANISATION, "Event"),
         //any other type that is not one of types above
         OTHER(38, null, "Other");
@@ -82,7 +82,7 @@ public class NEType {
         dbpediaTypesMap.put(Type.THEATRE, new String[]{"Theatre|Venue|ArchitecturalStructure|Place"});
         dbpediaTypesMap.put(Type.LEGISLATURE, new String[]{"Legislature|Organisation"});
         dbpediaTypesMap.put(Type.LIBRARY, new String[]{"Library|Building|ArchitecturalStructure|Place"});
-        dbpediaTypesMap.put(Type.LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
+        //dbpediaTypesMap.put(Type.LAWFIRM, new String[]{"LawFirm|Company|Organisation"});
         dbpediaTypesMap.put(Type.MONUMENT, new String[]{"Monument|Place"});
         dbpediaTypesMap.put(Type.DISEASE, new String[]{"Disease|Medicine"});
         dbpediaTypesMap.put(Type.EVENT, new String[]{"SocietalEvent|Event"});

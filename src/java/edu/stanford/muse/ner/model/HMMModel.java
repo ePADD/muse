@@ -5,7 +5,6 @@ import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
-import edu.stanford.muse.util.Triple;
 import edu.stanford.muse.util.Util;
 import opennlp.tools.util.StringUtil;
 import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
@@ -18,7 +17,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,23 +56,24 @@ public class HMMModel extends NERModel implements Serializable{
         }
 
         static class Transition implements Serializable{
-            Map<NEType.Type, Integer> freq = new LinkedHashMap<>();
+            Map<NEType.Type, Double> probs = new LinkedHashMap<>();
             void add(NEType.Type type){
-                freq.put(type, freq.getOrDefault(type, 0)+1);
+                probs.put(type, probs.getOrDefault(type, 0.0)+1);
             }
-            int getTotalFreq(NEType.Type t){
-                return freq.getOrDefault(t, 0);
+            double getTotalProb(NEType.Type t){
+                return probs.getOrDefault(t, 0.0);
             }
-            int getTotalFreq(){
-                return freq.values().stream().mapToInt(v->v).sum();
+            double getTotalProb(){
+                return probs.values().stream().mapToDouble(v->v).sum();
             }
-            Map<NEType.Type, Integer> getFreq(){
-                return freq;
+            Map<NEType.Type, Double> getProb(){
+                return probs;
             }
         }
 
         static class Transitions implements Serializable{
             Map<String, Map<String, Transition>> transitions = new LinkedHashMap<>();
+            Map<String, Map<NEType.Type, Double>> typesOfState = new LinkedHashMap<>();
             Transition get(String s1, String s2){
                 if(!transitions.containsKey(s1) || !transitions.get(s1).containsKey(s2))
                     return null;
@@ -94,32 +93,59 @@ public class HMMModel extends NERModel implements Serializable{
                 return allstates.contains(state);
             }
 
+            int NUM_STATES = 3*(1000 + 38 + 20);
+
             double getScore(String s1, String s2, NEType.Type type){
                 Transition transition = get(s1, s2);
-                int NUM_STATES = 3*(1000 + 38 + 20);
 
-                Map<NEType.Type, Integer> total =
-                        Stream.of(NEType.getAllTypes()).map(t -> new Pair<>(t, transitions.get(s1).values().stream().mapToInt(tr -> tr.getTotalFreq(t)).sum()))
-                                .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+                Map<NEType.Type, Double> total = new LinkedHashMap<>();
+                Map<NEType.Type, Double> types = typesOfState.get(s1);
+                if(types!=null)
+                    total = types;
 
-                Map<NEType.Type, Integer> f_i_1_2, f_i_1;
-                int f_1_2;//f(t(s1, s2))
+                if(transition == null) {
+                    //assert transitions.containsKey(s1):"Invalid state: "+s1+" is never seen during training, which is not supposed to happen because of the design";
+                    return 1.0/(NUM_STATES + total.getOrDefault(type, 0.0)) * (1.0/NEType.getAllTypes().length);
+                }
+                return transition.getTotalProb(type);
+            }
+
+            double _getScore(Transition transition, String s1, String s2, NEType.Type type){
+                assert transition!=null;
+
+                Map<NEType.Type, Double> total = Stream.of(NEType.getAllTypes())
+                        .map(t -> new Pair<>(t, transitions.get(s1).values()
+                        .stream().mapToDouble(tr -> tr.getTotalProb(t)).sum()))
+                        .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond));
+                if(typesOfState==null)
+                    typesOfState = new LinkedHashMap<>();
+                typesOfState.put(s1, total);
+                Map<NEType.Type, Double> f_i_1_2, f_i_1;
+                double f_1_2;//f(t(s1, s2))
 
                 f_i_1 = total;
-                if(transition == null) {
-                    assert transitions.containsKey(s1):"Invalid state: "+s1+" is never seen during training, which is not supposed to happen because of the design";
-                    return 1.0/(NUM_STATES+f_i_1.getOrDefault(type, 0));
-                }
 
-                f_i_1_2 = transition.getFreq();
-                f_1_2 = transition.getTotalFreq();
+                f_i_1_2 = transition.getProb();
+                f_1_2 = transition.getTotalProb();
                 //add one smoothing
                 if (!f_i_1_2.containsKey(type))
-                    return 1.0/(f_1_2+NEType.getAllTypes().length);
+                    return 1.0/(f_1_2+NEType.getAllTypes().length) * (1.0/(f_i_1.getOrDefault(type, 0.0) + NUM_STATES));
 
-                double score = ((double)(f_i_1_2.get(type)+1)/(double)(f_1_2+NEType.getAllTypes().length)) *
-                        ((double)(f_i_1_2.get(type)+1)/(double)(f_i_1.get(type) + NUM_STATES));
+                double score = ((f_i_1_2.get(type)+1)/(f_1_2+NEType.getAllTypes().length)) *
+                        ((f_i_1_2.get(type)+1)/(f_i_1.get(type) + NUM_STATES));
                 return score;
+            }
+
+            void computeProbabilities(){
+                for(Map.Entry<String, Map<String, Transition>> e1: transitions.entrySet())
+                    for(Map.Entry<String, Transition> e2: e1.getValue().entrySet()){
+                        String s1 = e1.getKey();
+                        String s2 = e2.getKey();
+                        Transition t = e2.getValue();
+                        for(NEType.Type type: t.probs.keySet())
+                            t.probs.put(type, _getScore(t, s1, s2, type));
+                        transitions.get(s1).put(s2, t);
+                    }
             }
 
             void add(String s1, String s2, Transition transition){
@@ -134,7 +160,7 @@ public class HMMModel extends NERModel implements Serializable{
             String t1 = tokens[ti];
             Set<String> types = new LinkedHashSet<>();
 
-            //add a new one only if both the tokens are frequent ones
+            //add a new one only if it is a frequent ones
             if(freqWords.contains(t1))
                 types.add(BIE(TOKEN_PREFIX + t1, ti, tokens.length));
 
@@ -142,7 +168,7 @@ public class HMMModel extends NERModel implements Serializable{
             MU mu1 = mixtures.get(t1);
             if (mu1 != null) {
                 NEType.Type t = Stream.of(NEType.getAllTypes())
-                        .max((tr1, tr2) -> Double.compare(mu1.getLikelihoodWithType(tr1.getCode()), mu1.getLikelihoodWithType(tr2.getCode()))).get();
+                        .max((tr1, tr2) -> Double.compare(mu1.getLikelihoodWithType(tr1.getCode()), mu1.getLikelihoodWithType(tr2.getCode()))).orElse(null);
                 tokenTypes.put(tokens[ti], t);
                 while(t!=null) {
                     types.add(BIE(TYPE_PREFIX + t.getCode(), ti, tokens.length));
@@ -150,8 +176,10 @@ public class HMMModel extends NERModel implements Serializable{
                 }
             }
 
-            String wc = WORD_CLASS_PREFIX + FeatureGeneratorUtil.tokenFeature(t1);
-            types.add(BIE(wc, ti, tokens.length));
+            String wc = FeatureGeneratorUtil.tokenFeature(t1);
+            Set<String> badWCs = Stream.of("ic", "other", "lc").collect(Collectors.toSet());
+            if(!badWCs.contains(wc))
+                types.add(BIE(WORD_CLASS_PREFIX + wc, ti, tokens.length));
 
             return types;
         }
@@ -161,7 +189,8 @@ public class HMMModel extends NERModel implements Serializable{
             //collect word frequencies
             int LIMIT = 1000;
             log.info("Computing most frequent words");
-            Set<String> freqWords = getGazettes().keySet().stream()
+            Map<String, String> gazette = getGazettes();
+            Set<String> freqWords = gazette.keySet().stream()
                     .flatMap(v->Stream.of(v.split("\\s+")))
                     .collect(groupingBy(Function.identity(), counting()))
                     .entrySet().stream()
@@ -186,25 +215,28 @@ public class HMMModel extends NERModel implements Serializable{
                             Set<String> t1Types = getAllSubsumingTypes(tokens, ti, freqWords);
                             Set<String> t2Types = getAllSubsumingTypes(tokens, tj, freqWords);
                             Set<List<String>> cps = Sets.cartesianProduct(t1Types, t2Types);
-                            Transition transition =
-                                    cps.stream().map(cp -> transitions.get(cp.get(0), cp.get(1)))
-                                            .filter(t->t!=null).findAny().orElse(null);
 
-                            if(transition == null) {
-                                transition = new Transition();
-                                for(List<String> cp: cps)
-                                    if(cp.get(0)!=null && cp.get(1)!=null) {
-                                        transitions.add(cp.get(0), cp.get(1), transition);
-                                        //System.err.println("Adding: "+cp.get(0)+ "::"+cp.get(1)+" Size: "+transitions.transitions.size());
-                                        //System.err.println(transitions.transitions.keySet());
+                            cps.stream().filter(cp -> cp.get(0) != null && cp.get(1) != null).filter(cp->{
+                                //such transitions are overly general, the algo. wrongly recognizes that wc:ic-wc:ic as Person
+                                return !(cp.get(0).contains(":WC:") && cp.get(1).contains(":WC:"));
+                            }).forEach(cp -> {
+                                Transition transition = transitions.get(cp.get(0), cp.get(1));
+                                if (transition == null) {
+                                    transition = new Transition();
+                                    transitions.add(cp.get(0), cp.get(1), transition);
                                 }
-                            }
-                            transition.add(type);
+                                transition.add(type);
+                                //System.err.println("Adding: "+cp.get(0)+ "::"+cp.get(1)+" Size: "+transitions.transitions.size());
+                                //System.err.println(transitions.transitions.keySet());
+                            });
                         }
                     });
+            transitions.computeProbabilities();
             System.out.println("Size: " + transitions.transitions.size());
         }
     }
+
+    long timeToComputeStates = 0, timeToScore = 0;
 
     @Override
     //given a sequence, returns the confidence of the phrase being of certain type
@@ -213,6 +245,7 @@ public class HMMModel extends NERModel implements Serializable{
         String[] tokens = phrase.split("\\s+");
         String[] states = new String[tokens.length];
 
+        long st = System.currentTimeMillis();
         for(int ti=0;ti<tokens.length;ti++) {
             //base token state
             String bts = BIE(TOKEN_PREFIX + tokens[ti].toLowerCase(), ti, tokens.length);
@@ -227,20 +260,27 @@ public class HMMModel extends NERModel implements Serializable{
             } else states[ti] = bts;
         }
 
-        System.out.println("States for " + phrase + " :: " + String.join(", ", states));
+        timeToComputeStates += System.currentTimeMillis()-st;
+        st = System.currentTimeMillis();
+        //System.out.println("States for " + phrase + " :: " + String.join(", ", states));
 
-        double score = 0;
+        double score = 1;
         for(int ti=0;ti<tokens.length-1;ti++){
             String s1 = states[ti];
             String s2 = states[ti+1];
-            if(transitions.get(s1, s2)!=null)
-                score += Math.log(transitions.getScore(s1, s2, t));
-            else
-                System.err.println("No transition from "+s1+"-"+s2);
+            double s = transitions.getScore(s1, s2, t);
+            //System.err.println(s1 + " - "+ s2 + " - "+ s);
+            score *= s;
         }
 
-        System.err.println("Score for: "+phrase+" is "+score);
-        return score;
+//        System.err.println("Score for: "+phrase+ " with states: " + Stream.of(states).collect(Collectors.toSet())
+//                + " is "+score + " for type: "+NEType.getTypeForCode(typeCode).getDisplayName());
+        timeToScore += System.currentTimeMillis()-st;
+        //System.out.println("To compute states: " + timeToComputeStates + " to score: " + timeToScore);
+        if(score == 1)
+            return 0;
+        else
+            return score;
     }
 
     @Override
@@ -301,7 +341,8 @@ public class HMMModel extends NERModel implements Serializable{
         try {
             String modelName = "dbpediaTest" + File.separator + "HMMModel-80.ser.gz";
             HMMModel model = HMMModel.loadModel(modelName);
-            Span[] spans = model.find("Hello this is New York City and this is Steve Irwin! This is Vihari Piratla, I am from Rajahmundry. This is a project fuynded by Rajahmundry University");
+            Span[] spans = model.find("Hello this is New York City and this is Steve Irwin! This is Vihari Piratla, I am from Rajahmundry. " +
+                    "This is a project fuynded by Rajahmundry University");
             System.out.println("Found: " + Stream.of(spans).collect(Collectors.toList()));
             Stream.of(NEType.getAllTypes()).forEach(t -> {
                 Learner.Transitions transitions = model.transitions;
@@ -317,19 +358,17 @@ public class HMMModel extends NERModel implements Serializable{
             });
             Learner.Transition t = model.transitions.get("B:T:3", "E:TK:university");
             if(t!=null)
-                System.out.println("Freq: " + t.getTotalFreq());
-            //System.out.println(model.transitions.transitions);
+                System.out.println("Freq: " + t.getTotalProb());
+            Set<String> states = new LinkedHashSet<>();
+            states.addAll(model.transitions.transitions.keySet());
+            model.transitions.transitions.entrySet().stream().flatMap(e->e.getValue().keySet().stream()).forEach(states::add);
+            System.out.println( "Total number of states: "
+                    + model.transitions.transitions.keySet().size()
+                    + " -- "
+                    + model.transitions.transitions.entrySet().stream().mapToInt(e->e.getValue().size()).sum()
+                    + "\n\n" + states.stream().limit(100).collect(Collectors.toSet()));
         } catch (IOException ie) {
             ie.printStackTrace();
         }
-//        Learner.Transitions transitions = new Learner.Transitions();
-//        Learner.Transition t = new Learner.Transition();
-//        transitions.add("I:WC:lc", "I:WC:dd", t);
-//        transitions.add("I:WC:dd", "I:WC:lc", t);
-//        transitions.add("I:WC:2d", "I:WC:4d", t);
-//        transitions.add("I:WC:2d", "I:WC:an", t);
-//        transitions.add("I:WC:4d", "I:WC:2d", t);
-//        transitions.add("I:WC:an", "E:WC:an", t);
-//        System.out.println(transitions.transitions.size());
     }
 }
