@@ -155,6 +155,17 @@ public class MU implements Serializable {
         return p;
     }
 
+    Short bestType = null;
+    public short getBestType(){
+        if(bestType!=null)
+            return bestType;
+        bestType = Stream.of(NEType.getAllTypes())
+                .map(t->new Pair<>(t.getCode(), getLikelihoodWithType(t.getCode())))
+                .max((p1,p2)->Double.compare(p1.getSecond(), p2.getSecond()))
+                .map(Pair::getFirst).get();
+        return bestType;
+    }
+
     //where N is the total number of observations, for normalization
     public float getNumSeenEffective(){
         if(numSeen == 0) {

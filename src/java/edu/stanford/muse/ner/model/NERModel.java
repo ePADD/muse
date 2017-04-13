@@ -2,6 +2,7 @@ package edu.stanford.muse.ner.model;
 
 import com.google.common.collect.Multimap;
 import com.hp.hpl.jena.rdf.model.Seq;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.*;
@@ -9,6 +10,9 @@ import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.LineNumberReader;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -275,6 +279,55 @@ public abstract class NERModel {
                 break;
         }
         return segments;
+    }
+
+
+    //returns token -> {redirect (can be the same as token), page length of the page it redirects to}
+    static Map<String,Map<String,Integer>> getTokenTypePriors(){
+        Map<String,Map<String,Integer>> pageLengths = new LinkedHashMap<>();
+        log.info("Parsing token types...");
+        try{
+            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(Config.getResourceAsStream("TokenTypes.txt")));
+            String line;
+            while((line=lnr.readLine())!=null){
+                String[] fields = line.split("\\t");
+                if(fields.length!=4){
+                    log.warn("Line --"+line+"-- has an unexpected pattern!");
+                    continue;
+                }
+                int pageLen = Integer.parseInt(fields[3]);
+                String redirect = fields[2];
+                //if the page is not a redirect, then itself is the title
+                if(fields[2] == null || fields[2].equals("null"))
+                    redirect = fields[1];
+                String lc = fields[0].toLowerCase();
+                if(!pageLengths.containsKey(lc))
+                    pageLengths.put(lc, new LinkedHashMap<>());
+                pageLengths.get(lc).put(redirect, pageLen);
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        return pageLengths;
+    }
+
+
+    static Map<String, Map<String, Float>> getNormalizedTokenPriors(Map<String, String> tdata, float alpha){
+        //page lengths from wikipedia
+        Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
+        //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
+        Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
+        //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
+        for(String tok: pageLens.keySet()) {
+            Map<String,Float> tmp =  new LinkedHashMap<>();
+            Map<String,Integer> tpls = pageLens.get(tok);
+            for(String page: tpls.keySet()) {
+                String type = tdata.get(page.toLowerCase());
+                tmp.put(type, tpls.get(page)*alpha/1000f);
+            }
+            tokenPriors.put(tok, tmp);
+        }
+        return tokenPriors;
     }
 
     /**

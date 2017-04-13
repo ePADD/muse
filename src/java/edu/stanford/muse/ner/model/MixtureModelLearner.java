@@ -35,11 +35,19 @@ public class MixtureModelLearner extends RuleInducer {
         SequenceModel.log.info("Starting EM on gazettes");
         SequenceModel.log.info(Util.getMemoryStats());
 
+//        for(Map.Entry<String, MU> e: mixtures.entrySet()) {
+//            MU mu = e.getValue();
+//            mu.muVectorPositive.keySet().stream().filter(feat -> feat.startsWith("T:")).forEach(feat -> mu.muVectorPositive.put(feat, 0f));
+//
+//            mu.muVectorPositive.put("T:"+e.getValue().getBestType(), mu.numMixture);
+//        }
+//
+//        System.out.println("sample MU: "+mixtures.entrySet().iterator().next().getValue());
+        Map<String, MU> revisedMixtures = new LinkedHashMap<>();
         log.info("Performing EM on: #" + mixtures.size() + " words");
         double ll = getIncompleteDataLogLikelihood();
         log.info("Start Data Log Likelihood: " + ll);
         System.out.println("Start Data Log Likelihood: " + ll);
-        Map<String, MU> revisedMixtures = new LinkedHashMap<>();
         int N = gazettes.size();
         int wi;
         for (int i = 0; i < options.emIters; i++) {
@@ -72,7 +80,7 @@ public class MixtureModelLearner extends RuleInducer {
                             //log.warn("!!FATAL!! MU null for: " + mi + ", " + mixtures.size());
                             continue;
                         }
-                        double d = mu.getLikelihood(wfeatures.get(mi)) * getPrior(mu, mixtures);
+                        double d = mu.getLikelihood(wfeatures.get(mi)) * getPrior(mu, mixtures) * 1.0/(mu.numSeen+1);
                         if (Double.isNaN(d))
                             log.warn("score for: " + mi + " " + wfeatures.get(mi) + " is NaN");
                         gamma.put(mi, (float) d);
@@ -117,7 +125,6 @@ public class MixtureModelLearner extends RuleInducer {
                     //don't even update if the value is so low, that just adds meek affiliation with unrelated mixtures
                     if (gamma.get(g) > 1E-7)
                         revisedMixtures.get(g).add(gamma.get(g), wfeatures.get(g), muPriors.get(g));
-
                 }
             }
             double change = 0;

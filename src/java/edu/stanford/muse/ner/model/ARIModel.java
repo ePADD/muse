@@ -1,14 +1,23 @@
 package edu.stanford.muse.ner.model;
 
+import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import edu.stanford.muse.util.DBpediaUtils;
+import edu.stanford.muse.util.Util;
 import jscip.*;
+
+import static edu.stanford.muse.ner.featuregen.FeatureUtils.getPatts;
 
 
 /**
@@ -19,27 +28,11 @@ import jscip.*;
  */
 
 /** Example how to create a problem with linear constraints. */
-public class ARIModel extends NERModel {
-    Tokenizer tokenizer = new CICTokenizer();
+public class ARIModel extends SequenceModel implements Serializable{
+    static boolean DEBUG = false;
 
-    @Override
-    void setTokenizer(Tokenizer tokenizer) {
-        this.tokenizer = tokenizer;
-    }
-
-    @Override
-    Tokenizer getTokenizer() {
-        return tokenizer;
-    }
-
-    @Override
-    Map<String, String> getGazette() {
-        return null;
-    }
-
-    @Override
-    double getConditional(String phrase, Short type) {
-        return 0;
+    public ARIModel(Map<String, MU> mixtures, Map<String, String> gazettes) {
+        super(mixtures, gazettes);
     }
 
     static class Learner extends RuleInducer {
@@ -49,7 +42,15 @@ public class ARIModel extends NERModel {
 
         @Override
         public void learn() {
+            //make sure this is linked hashmap
             Map<String, MU> revisedMixtures = new LinkedHashMap<>();
+            String rulesDir = Config.SETTINGS_DIR + File.separator + "ARI_rules";
+
+            if (DEBUG) {
+                if (!new File(rulesDir).exists())
+                    new File(rulesDir).mkdir();
+            }
+
             for (Map.Entry e : gazettes.entrySet()) {
                 String phrase = (String) e.getKey();
                 String dbpediaType = (String) e.getValue();
@@ -74,68 +75,153 @@ public class ARIModel extends NERModel {
                 }
             }
 
-            System.loadLibrary("jscip");
 
-            Scip scip = new Scip();
+            long st = System.currentTimeMillis();
+            System.err.println("Adding rule vars");
+            for (NEType.Type type : NEType.getAllTypes()) {
+                System.loadLibrary("jscip");
+                System.gc();
+                System.out.println("Learning for: "+type.getDisplayName());
+                System.out.println(Util.getMemoryStats());
+                Scip scip = new Scip();
 
-            // set up data structures of SCIP
-            scip.create("ARI");
+                // set up data structures of SCIP
+                scip.create("ARI");
 
-            int N = gazettes.size();
-            for(int i=0;i<N;i++)
-                scip.createVar("err-"+i, 0.0, scip.infinity(), 1.0, SCIP_Vartype.SCIP_VARTYPE_CONTINUOUS);
-            for(int ri=0;ri<revisedMixtures.size();ri++)
-                scip.createVar("rule-"+ri, 0, 1, penalties.get(revisedMixtures.get(ri)), SCIP_Vartype.SCIP_VARTYPE_BINARY);
+                List<Variable> rule_vars = new ArrayList<>();
+                Map<String, Integer> midToRule = new LinkedHashMap<>();
+                int ri = 0;
+                System.out.println("Adding rule vars");
+                for (String mid : revisedMixtures.keySet()) {
+                    rule_vars.add(scip.createVar("rule-" + ri, 0, 1, revisedMixtures.get(mid).numSeen / gazettes.size(), SCIP_Vartype.SCIP_VARTYPE_BINARY));
+                    midToRule.put(mid, ri);
+                    ri++;
+                }
 
-            //add constraints
-            scip.createConsLinear()
+                System.out.println("Time to add rule vars: " + (System.currentTimeMillis() - st));
+
+                //long neg = gazettes.entrySet().stream().map(e->NEType.parseDBpediaType(e.getValue())).filter(t->type!=t).count();
+                System.err.println("Adding gazette vars");
+                int i = 0;
+                for (Map.Entry<String, String> e : gazettes.entrySet()) {
+                    String phrase = e.getKey();
+                    phrase = DBpediaUtils.filterTitle(phrase, e.getValue());
+                    if (phrase == null)
+                        continue;
+                    NEType.Type thisType = NEType.parseDBpediaType(e.getValue());
+
+                    Map<String, List<String>> features = genFeatures(phrase, thisType.getCode());
+                    Set<String> patts = features.keySet();
+
+                    List<Variable> vars = new ArrayList<>();
+                    List<Double> vals = new ArrayList<>();
+
+                    //Map<NEType.Type, Variable> gvars = new LinkedHashMap();
+                    Variable g_var = scip.createVar("err-" + type.getCode() + "-" + i, 0.0, scip.infinity(), 1.0, SCIP_Vartype.SCIP_VARTYPE_CONTINUOUS);
+
+                    for (String patt : patts) {
+                        MU mu = revisedMixtures.get(patt);
+                        if (mu == null) {
+                            continue;
+                        }
+
+                        double n_a_r = mu.getLikelihood(features.get(patt));
+                        Variable rule_var = rule_vars.get(midToRule.get(patt));
+                        vars.add(rule_var);
+                        vals.add(n_a_r);
+                    }
+
+                    //add constraint
+                    if (thisType == type) {
+                        vars.add(g_var);
+                        vals.add(1.0);
+                        Constraint c = scip.createConsLinear("err_+_" + i, vars.toArray(new Variable[vars.size()]),
+                                vals.stream().mapToDouble(d -> d).toArray(), 1, scip.infinity());
+                        scip.addCons(c);
+                    } else {
+                        vars.add(g_var);
+                        vals.add(-1.0);
+                        Constraint c = scip.createConsLinear("err_-_" + i, vars.toArray(new Variable[vars.size()]),
+                                vals.stream().mapToDouble(d -> d).toArray(), -scip.infinity(), 0);
+                        scip.addCons(c);
+                    }
+                    i++;
+                    if (i % 500000 == 0)
+                        System.err.println("Added vars for: " + i + "/" + gazettes.size());
+                }
+
+                // solve problem
+                System.err.println("Starting to solve the problem with: " + (rule_vars.size() + i) + " vars and " + i + " constraints");
+                st = System.currentTimeMillis();
+                scip.solve();
+                System.out.println("Time for solve op: " + (System.currentTimeMillis() - st));
+
+                st = System.currentTimeMillis();
+                // print all solutions
+                Solution bestSol = scip.getBestSol();
+                System.out.println("Getting best sol: " + (System.currentTimeMillis() - st));
+
+                st = System.currentTimeMillis();
+                //IntStream.range(0, rule_vars.size()).forEach(rvi-> System.out.println(rvi + " " + scip.getSolVal(bestSol, rule_vars.get(rvi))));
+                Set<Integer> goodRulesIndices = IntStream.range(0, rule_vars.size()).filter(rvi -> scip.getSolVal(bestSol, rule_vars.get(rvi)) == 1)
+                        .boxed().collect(Collectors.toSet());
+                System.out.println("Iteration over: " + (System.currentTimeMillis() - st));
+                ri = 0;
+                if (DEBUG) {
+
+                    try {
+                        FileWriter fw = new FileWriter(rulesDir + File.separator + type.getDisplayName() + ".txt");
+                        for (Map.Entry<String, MU> e : revisedMixtures.entrySet()) {
+                            if (goodRulesIndices.contains(ri))
+                                fw.write("------------\n" + e.getValue().toString() + "\n");
+                            ri++;
+                        }
+                        fw.close();
+                    } catch (IOException ie) {
+                        ie.printStackTrace();
+                    }
+                }
+
+                ri = 0;
+                System.out.println("Found " + goodRulesIndices.size() + " rules for " + type.getDisplayName());
+
+                for (Map.Entry<String, MU> e : revisedMixtures.entrySet()) {
+                    if (goodRulesIndices.contains(ri)) {
+                        MU mu = revisedMixtures.get(e.getKey());
+                        mu.muVectorPositive.keySet().stream().filter(f -> f.startsWith("T:")).forEach(f -> mu.muVectorPositive.put(f, 0f));
+                        mu.muVectorPositive.put("T:" + type.getCode(), mu.numMixture);
+                    }
+                    ri++;
+                }
+
+                scip.free();
+            }
+            mixtures = revisedMixtures;
+
+        }
+    }
+
+    public static ARIModel train(Map<String, String> tdata){
+        float alpha = 0.2f;
+        Map<String, Map<String, Float>> tokenPriors = getNormalizedTokenPriors(tdata, alpha);
+        Learner learner = new Learner(tdata, tokenPriors);
+        learner.learn();
+        return new ARIModel(learner.getMixtures(), learner.getGazettes());
+    }
+
+    public static synchronized ARIModel loadModel(String modelPath) {
+        try {
+            //the buffer size can be much higher than default 512 for GZIPInputStream
+            ARIModel model = (ARIModel) Util.readObjectFromSerGZ(modelPath);
+            return model;
+        } catch (Exception e) {
+            Util.print_exception("Exception while trying to load model from: " + modelPath, e, log);
+            return null;
         }
     }
 
     public static void main(String[] args){
-        // load generated C-library
-        System.loadLibrary("jscip");
-
-        Scip scip = new Scip();
-
-        // set up data structures of SCIP
-        scip.create("ARI");
-
-        // create variables (also adds variables to SCIP)
-        Variable x = scip.createVar("x", 2.0, 3.0, 1.0, SCIP_Vartype.SCIP_VARTYPE_CONTINUOUS);
-        Variable y = scip.createVar("y", 7.0, scip.infinity(), -3.0, SCIP_Vartype.SCIP_VARTYPE_INTEGER);
-
-        // create a linear constraint
-        Variable[] vars = {x, y};
-        double[] vals = {1.0, 2.0};
-        Constraint lincons = scip.createConsLinear("lincons", vars, vals, 12, 20);
-
-        // add constraint to SCIP
-        scip.addCons(lincons);
-
-        // release constraint (if not needed anymore)
-        scip.releaseCons(lincons);
-
-        // set parameters
-        scip.setRealParam("limits/time", 100.0);
-        scip.setRealParam("limits/memory", 10000.0);
-        scip.setLongintParam("limits/totalnodes", 1000);
-
-        // solve problem
-        scip.solve();
-
-        // print all solutions
-        Solution[] allsols = scip.getSols();
-
-        for (int s = 0; allsols != null && s < allsols.length; ++s)
-            System.out.println("solution (x,y) = (" + scip.getSolVal(allsols[s], x) + ", " + scip.getSolVal(allsols[s], y) + ") with objective value " + scip.getSolOrigObj(allsols[s]));
-
-        // release variables (if not needed anymore)
-        scip.releaseVar(y);
-        scip.releaseVar(x);
-
-        // free SCIP
-        scip.free();
-
+        Map<String, String> dbpedia = DBpediaUtils.readDBpedia(0.05f, null);
+        ARIModel.train(dbpedia);
     }
 }

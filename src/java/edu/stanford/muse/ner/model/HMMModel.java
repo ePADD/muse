@@ -302,20 +302,9 @@ public class HMMModel extends NERModel implements Serializable{
         log.info(Util.getMemoryStats());
 
         float alpha = 0.2f;
-        //page lengths from wikipedia
-        Map<String,Map<String,Integer>> pageLens = SequenceModel.getTokenTypePriors();
+
         //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
-        Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
-        //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
-        for(String tok: pageLens.keySet()) {
-            Map<String,Float> tmp =  new LinkedHashMap<>();
-            Map<String,Integer> tpls = pageLens.get(tok);
-            for(String page: tpls.keySet()) {
-                String type = tdata.get(page.toLowerCase());
-                tmp.put(type, tpls.get(page)*alpha/1000f);
-            }
-            tokenPriors.put(tok, tmp);
-        }
+        Map<String,Map<String,Float>> tokenPriors = getNormalizedTokenPriors(tdata, alpha);
         log.info("Initialized "+tokenPriors.size()+" token priors.");
         Learner trainer = new HMMModel.Learner(tdata, tokenPriors);
         trainer.learn();

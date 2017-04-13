@@ -1,14 +1,11 @@
 package edu.stanford.muse.ner.model;
 
-import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
-import edu.stanford.muse.ner.dictionary.EnglishDictionary;
 import edu.stanford.muse.ner.featuregen.FeatureUtils;
 import edu.stanford.muse.ner.model.test.SequenceModelTest;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 import edu.stanford.muse.util.*;
-import opennlp.tools.util.featuregen.FeatureGeneratorUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -65,11 +62,10 @@ public class SequenceModel extends NERModel implements Serializable{
         return gazettes;
     }
 
-    public static void writeModelAsRules(SequenceModel model) {
+    public static void writeModelAsRules(SequenceModel model, String rulesDir) {
         try {
             NEType.Type[] ats = NEType.getAllTypes();
             //make cache dir if it does not exist
-            String rulesDir = Config.SETTINGS_DIR + File.separator + "rules";
             if (!new File(rulesDir).exists()) {
                 boolean mkdir = new File(rulesDir).mkdir();
                 if (!mkdir) {
@@ -251,35 +247,6 @@ public class SequenceModel extends NERModel implements Serializable{
         }
     }
 
-    //returns token -> {redirect (can be the same as token), page length of the page it redirects to}
-    static Map<String,Map<String,Integer>> getTokenTypePriors(){
-        Map<String,Map<String,Integer>> pageLengths = new LinkedHashMap<>();
-        log.info("Parsing token types...");
-        try{
-            LineNumberReader lnr = new LineNumberReader(new InputStreamReader(Config.getResourceAsStream("TokenTypes.txt")));
-            String line;
-            while((line=lnr.readLine())!=null){
-                String[] fields = line.split("\\t");
-                if(fields.length!=4){
-                    log.warn("Line --"+line+"-- has an unexpected pattern!");
-                    continue;
-                }
-                int pageLen = Integer.parseInt(fields[3]);
-                String redirect = fields[2];
-                //if the page is not a redirect, then itself is the title
-                if(fields[2] == null || fields[2].equals("null"))
-                    redirect = fields[1];
-                String lc = fields[0].toLowerCase();
-                if(!pageLengths.containsKey(lc))
-                    pageLengths.put(lc, new LinkedHashMap<>());
-                pageLengths.get(lc).put(redirect, pageLen);
-            }
-        }catch(IOException e){
-            e.printStackTrace();
-        }
-        return pageLengths;
-    }
-
     /**
      * Use this routine to read an external gazette list, the resource is expected to be a plain text file
      * the lines in the file should be two fields separated by ' ' (space), the first field should be the title and second: its type.
@@ -347,17 +314,8 @@ public class SequenceModel extends NERModel implements Serializable{
         //page lengths from wikipedia
         Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
         //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
-        Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
-        //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
-        for(String tok: pageLens.keySet()) {
-            Map<String,Float> tmp =  new LinkedHashMap<>();
-            Map<String,Integer> tpls = pageLens.get(tok);
-            for(String page: tpls.keySet()) {
-                String type = tdata.get(page.toLowerCase());
-                tmp.put(type, tpls.get(page)*alpha/1000f);
-            }
-            tokenPriors.put(tok, tmp);
-        }
+        Map<String,Map<String,Float>> tokenPriors = getNormalizedTokenPriors(tdata, alpha);
+
         log.info("Initialized "+tokenPriors.size()+" token priors.");
         RuleInducer trainer = new MixtureModelLearner(tdata, tokenPriors, new MixtureModelLearner.Options());
         trainer.learn();
@@ -375,20 +333,7 @@ public class SequenceModel extends NERModel implements Serializable{
                     tdata.putIfAbsent(e.getKey(),e.getValue());
         }
 
-        //page lengths from wikipedia
-        Map<String,Map<String,Integer>> pageLens = getTokenTypePriors();
-        //getTokenPriors returns Map<String, Map<String,Integer>> where the first key is the single word DBpedia title and second keys are the titles it redirects to and its page length
-        Map<String,Map<String,Float>> tokenPriors = new LinkedHashMap<>();
-        //The Dir. prior related param alpha is empirically found to be performing at the value of 0.2f
-        for(String tok: pageLens.keySet()) {
-            Map<String,Float> tmp =  new LinkedHashMap<>();
-            Map<String,Integer> tpls = pageLens.get(tok);
-            for(String page: tpls.keySet()) {
-                String type = tdata.get(page.toLowerCase());
-                tmp.put(type, tpls.get(page)*alpha/1000f);
-            }
-            tokenPriors.put(tok, tmp);
-        }
+        Map<String, Map<String, Float>> tokenPriors = getNormalizedTokenPriors(tdata, alpha);
 	    log.info("Initialized "+tokenPriors.size()+" token priors.");
         return train(tdata, tokenPriors, emIter);
     }
@@ -421,7 +366,7 @@ public class SequenceModel extends NERModel implements Serializable{
             nerModel = SequenceModel.loadModelFromRules("rules");
             if(nerModel==null) {
                 nerModel = train();
-                writeModelAsRules(nerModel);
+                writeModelAsRules(nerModel, Config.SETTINGS_DIR + File.separator + "rules");
             }
 
             log.info(Util.getMemoryStats());
@@ -436,6 +381,6 @@ public class SequenceModel extends NERModel implements Serializable{
     public static void main(String[] args) {
         String modelName = "dbpediaTest" + File.separator + "SequenceModel-80.ser.gz";
         SequenceModel model = loadModel(modelName);
-        writeModelAsRules(model);
+        writeModelAsRules(model, Config.SETTINGS_DIR + File.separator + "rules");
     }
 }
