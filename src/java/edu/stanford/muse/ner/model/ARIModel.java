@@ -1,6 +1,7 @@
 package edu.stanford.muse.ner.model;
 
 import edu.stanford.muse.Config;
+import edu.stanford.muse.ner.model.test.SequenceModelTest;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;
 import edu.stanford.muse.ner.tokenize.Tokenizer;
 
@@ -217,6 +218,29 @@ public class ARIModel extends SequenceModel implements Serializable{
         } catch (Exception e) {
             Util.print_exception("Exception while trying to load model from: " + modelPath, e, log);
             return null;
+        }
+    }
+
+    static void loadAndTestNERModel(){
+        System.err.println("Loading model...");
+        SequenceModel nerModel;
+        log.info(Util.getMemoryStats());
+        try {
+            String modelName = ARIModel.class.getCanonicalName()+".ser.gz";
+            nerModel = ARIModel.loadModel(modelName);
+            if(nerModel==null) {
+                nerModel = train();
+                Util.writeObjectAsSerGZ(nerModel, Config.SETTINGS_DIR + File.separator + modelName);
+                writeModelAsRules(nerModel, Config.SETTINGS_DIR + File.separator + "ARI_rules");
+            }
+
+            log.info(Util.getMemoryStats());
+            SequenceModelTest.ParamsCONLL params = new SequenceModelTest.ParamsCONLL();
+            params.ignoreSegmentation = false;
+            SequenceModelTest.testCONLL(nerModel, false, params);
+            log.info(Util.getMemoryStats());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
