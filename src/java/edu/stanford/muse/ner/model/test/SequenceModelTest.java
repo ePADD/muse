@@ -441,7 +441,7 @@ public class SequenceModelTest {
     public void test() {
         SequenceModel model;
         try {
-            model = SequenceModel.loadModelFromRules(SequenceModel.RULES_DIRNAME);
+            model = ARIModel.loadModel("dbpediaTest" + File.separator + ARIModel.class.getName() + "-80.ser.gz");//.loadModelFromRules(SequenceModel.RULES_DIRNAME);
             testCommon(model);
 
             ParamsCONLL params = new ParamsCONLL();
@@ -459,7 +459,7 @@ public class SequenceModelTest {
             assertTrue("Severe drop in F1 score with " + params + "!!!\n" + stats.toString(), 0.70 - stats.f1 < 0.05);
             assertTrue("Severe drop in precision with " + params + "!!!\n" + stats.toString(), 0.65 - stats.precision < 0);
             assertTrue("Severe drop in recall with " + params + "!!!\n" + stats.toString(), 0.65 - stats.recall < 0.05);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Could not oad model from: " + SequenceModel.MODEL_FILENAME, e);
         }
 
@@ -693,8 +693,49 @@ public class SequenceModelTest {
         }
     }
 
-    static void testOnDbpediaHelper(){
-        Class clazz = ARIModel.class;
+    /**
+     * ------------------------
+     0    1    2    3    4    5    7    9   10   11   13   17   18   19   20   22   25   27   31   32   33   35   36   37   38   -1
+     0 0.95    0    0 0.01    0    -    0    0    0    0    0    0    -    0    0    0    -    0    -    0    -    -    0    0    - 0.04
+     1 0.07 0.45 0.01 0.04    0    0 0.01    -    0 0.02    0    -    -    -    0    0    -    0    -    0    -    -    0    0    - 0.39
+     2 0.06    0 0.37 0.11    0    0 0.01    0    - 0.01    0    -    - 0.01    -    -    -    -    0    -    -    -    -    -    - 0.43
+     3 0.08    0 0.01 0.63 0.01    0    0 0.02    0    0    0    0    -    0    -    0    -    0    0    -    -    -    0    0    - 0.24
+     4 0.01    0    - 0.03 0.71    -    -    -    -    0    -    -    -    -    -    -    -    -    -    -    -    -    0    -    - 0.25
+     5 0.02    0    0 0.04    - 0.67    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.26
+     7 0.03 0.01    0 0.04    -    -  0.8    -    -    0    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.12
+     9 0.09    0    0 0.12    0    -    -  0.5    -    -    -    0    -    -    -    -    -    -    -    -    -    -    -    -    - 0.29
+     10    -    -    - 0.03    0    -    -    - 0.83 0.06    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.08
+     11 0.04 0.03    0 0.03    0    -    0    -    - 0.37    0    -    -    -    -    0    -    0    -    -    -    -    -    0    - 0.51
+     13 0.06 0.02    0 0.04    -    -    0    0    - 0.02 0.25    -    0    -    -    0    -    -    -    -    -    -    -    0    -  0.6
+     17 0.04 0.01    -  0.1    0    -    -    -    0    -    - 0.63    -    -    -    -    -    -    -    -    -    -    -    -    - 0.21
+     18 0.02    -    - 0.07    -    -    -    -    -    -    -    - 0.62    -    -    -    -    -    -    -    -    -    -    -    -  0.3
+     19 0.03    - 0.01 0.02 0.01    -    -    -    -    -    -    -    - 0.79    -    -    -    -    -    -    -    -    -    -    - 0.14
+     20 0.02 0.01    - 0.21    -    -    -    -    - 0.02    -    -    -    - 0.27    -    -    -    -    -    -    -    -    -    - 0.47
+     22    -    -    -    -    -    -    -    -    - 0.09    -    -    -    -    - 0.09    -    -    -    -    -    -    -    -    - 0.82
+     25    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.64    -    -    -    -    -    -    -    - 0.36
+     27 0.05    -    - 0.02    -    -    -    -    -    -    -    -    -    -    -    -    - 0.72    -    -    -    -    -    -    - 0.22
+     31 0.07 0.07 0.07 0.03    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.41    -    -    -    -    -    - 0.34
+     32  0.2    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.8
+     33    -    -    -  0.4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.6
+     35 0.14    - 0.29 0.14    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.43
+     36 0.06    -    - 0.03    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.64    -    - 0.27
+     37    0    -    - 0.02    -    -    0    -    -    -    0    -    -    -    -    -    -    0    -    -    -    -    - 0.55    - 0.41
+     38 0.02    0    0 0.01    0    -    0    -    -    0    0    -    -    0    -    -    -    0    -    -    -    -    0    0    - 0.95
+     -1    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+     ------------------------
+
+     Missed #4396 due to improper assignment
+     #8195due to improper segmentation
+     #7746 due to single word or no evidence
+     Precision: 0.8433784116813505
+     Recall: 0.8748212588172326
+     F1:0.8588121350905191
+     Average Precision: 0.49639430632074544
+
+
+     */
+     static void testOnDbpediaHelper(){
+        Class clazz = SequenceModel.class;
         NERModel model;
         try {
             String modelName = "dbpediaTest"+ File.separator + clazz.getName() + "-80.ser.gz";
@@ -708,7 +749,7 @@ public class SequenceModelTest {
 
             if(model == null) {
                 model = (NERModel) clazz.getDeclaredMethod("train", Map.class).invoke(null, trainTestSplit.first);
-                if(model instanceof SequenceModel || model instanceof ARIModel)
+                if(model instanceof ARIModel)
                     SequenceModel.writeModelAsRules((SequenceModel) model, Config.SETTINGS_DIR + File.separator + "ARI_rules");
                 Util.writeObjectAsSerGZ(model, Config.SETTINGS_DIR + File.separator + modelName);
             }
@@ -1135,85 +1176,45 @@ public class SequenceModelTest {
         }
     }
 
+    /**
+     * Found: 2630 -- Total: 2462 -- Correct: 1418 -- Missed due to wrong type: 287
+     Precision: 0.5391635
+     Recall: 0.5759545
+     F1: 0.556952
+     ------------
+     -------------
+     Found: 2630 -- Total: 2462 -- Correct: 1418 -- Missed due to wrong type: 287
+     Precision: 0.5391635
+     Recall: 0.5759545
+     F1: 0.556952
+     ------------
+     14 Apr 08:22:48 Config INFO  - Reading resource CONLL/annotation/testbspacesep.txt from /home/vihari/epadd-settings/CONLL/annotation/testbspacesep.txt
+     14 Apr 08:22:52 SequenceModelTest INFO  - -------------
+     Found: 2546 -- Total: 2339 -- Correct: 1265 -- Missed due to wrong type: 367
+     Precision: 0.49685782
+     Recall: 0.5408294
+     F1: 0.5179119
+     ------------
+     -------------
+     Found: 2546 -- Total: 2339 -- Correct: 1265 -- Missed due to wrong type: 367
+     Precision: 0.49685782
+     Recall: 0.5408294
+     F1: 0.5179119
+     ------------
+     */
     public static void main(String[] args){
+//        SequenceModel model = SequenceModel.loadModel("dbpediaTest" + File.separator + SequenceModel.class.getName() + "-80.ser.gz");//.loadModelFromRules(SequenceModel.RULES_DIRNAME);
+//        //testCommon(model);
+//
+//        ParamsCONLL params = new ParamsCONLL();
+//
+//        params.ignoreSegmentation = false;
+//        params.onlyMultiWord = false;
+//        params.testType = params.testType.testa;
+//        testCONLL(model, false, params);
+//
+//        params.testType = params.testType.testb;
+//        testCONLL(model, false, params);
         testOnDbpediaHelper();
     }
 }
-
-/**
- ------------------------
- 0    1    2    3    4    5    7    9   10   11   13   17   18   19   20   22   25   27   31   32   33   35   36   37   38   -1
- 0 0.92    0    0 0.01    0    -    0    0    0    0    0    0    0    0    0    0    -    0    0    0    0    -    0    0    - 0.07
- 1 0.07  0.4 0.01 0.06    0    0    0    0    0 0.02 0.01    0    0    -    0    0    0    0    0    0    0    -    0    0    - 0.41
- 2 0.09 0.01 0.27 0.15    -    - 0.01    0    0 0.01    0    -    0 0.01    -    -    -    -    0    -    -    -    -    -    - 0.43
- 3 0.08    0 0.01 0.64 0.01    0    0 0.02    0    0    0    0    0    0    -    0    0    0    0    -    -    -    0    0    - 0.23
- 4 0.06    0    0 0.06  0.6    -    0    0    0    0    0    0    0    -    -    -    -    -    -    -    -    -    -    -    - 0.27
- 5 0.02    -    - 0.07    - 0.67    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.25
- 7 0.02    0    - 0.02    -    - 0.84    -    - 0.01    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.09
- 9 0.06 0.01    0 0.14    0    -    - 0.49    -    0    0    0    -    -    -    -    -    -    -    -    -    -    0    -    - 0.28
- 10 0.01    -    0 0.08    -    -    -    - 0.76 0.01    -    0    -    -    -    -    -    -    -    -    -    -    -    -    - 0.13
- 11 0.03 0.03    0 0.04    0    -    0    0    -  0.4 0.01    -    -    -    0    -    -    -    -    0    -    -    -    0    - 0.48
- 13 0.05 0.02    0 0.03    -    -    -    -    - 0.01 0.26    -    -    -    0    0    -    0    -    -    -    -    - 0.01    - 0.62
- 17    0    -    - 0.53    -    -    -    0    0    -    - 0.05    -    -    -    -    -    -    -    -    -    -    -    -    - 0.42
- 18 0.03 0.01    - 0.12    -    -    -    -    -    -    -    - 0.53    -    -    -    -    -    -    -    -    -    -    -    - 0.32
- 19 0.03    -    - 0.01 0.01    -    -    -    -    -    -    -    - 0.81    -    -    -    -    -    -    -    -    -    -    - 0.13
- 20 0.01 0.04    - 0.02    -    -    -    -    - 0.01    -    -    -    -  0.4    -    -    -    -    -    -    -    -    -    - 0.52
- 22    - 0.08    - 0.15    -    -    -    -    - 0.23    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.54
- 25 0.33 0.07    - 0.13    -    - 0.07    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.4
- 27 0.03    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.87    -    -    -    -    -    -    -  0.1
- 31 0.03    - 0.03 0.03    -    -    -    -    - 0.03    -    -    -    -    -    -    -    - 0.43    -    -    -    -    -    - 0.46
- 32 0.17    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.5    -    -    -    -    - 0.33
- 33    -    -    - 0.57    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.43
- 35    -    - 0.12 0.38    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.5
- 36 0.05    -    - 0.01    -    -    -    -    - 0.01 0.01    -    -    -    -    -    -    -    -    -    -    - 0.66    -    - 0.27
- 37 0.06 0.01 0.01 0.09 0.01    - 0.01    - 0.01    -    -    -    - 0.01    -    -    -    -    -    -    -    -    - 0.44    - 0.36
- 38 0.03 0.01    0 0.02    0    -    0    -    -    0 0.01    -    -    0    0    -    -    0    -    -    -    -    0    0    - 0.93
- -1    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
- ------------------------
-
- Missed #5675 due to improper assignment
- #8802due to improper segmentation
- #9605 due to single word or no evidence
- Precision: 0.8140917266881277
- Recall: 0.8445453526180065
- F1:0.8290389657354669
- Average Precision: 0.45527249227963645
-
- ------------------------
- 0    1    2    3    4    5    7    9   10   11   13   17   18   19   20   22   25   27   31   32   33   35   36   37   38   -1
- 0 0.92    0    0 0.01    0    -    0    0    0    0    0    0    0    0    0    0    -    0    0    0    0    -    0    0    - 0.07
- 1 0.07 0.41 0.01 0.06    0    0    0    0    - 0.02 0.01    0    0    -    0    0    0    0    0    0    0    -    0    0    - 0.41
- 2 0.09 0.01 0.27 0.15    -    - 0.01    0    0 0.01    0    -    0 0.01    -    -    -    -    0    -    -    -    -    -    - 0.43
- 3 0.08    0 0.01 0.64 0.01    0    0 0.02    0    0    0    0    0    0    -    0    0    0    0    -    -    -    0    0    - 0.23
- 4 0.06    0    0 0.06  0.6    -    0    0    0    0    0    0    0    -    -    -    -    -    -    -    -    -    -    -    - 0.27
- 5 0.02    -    - 0.07    - 0.67    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.24
- 7 0.03    0    - 0.02    -    - 0.83    -    - 0.01    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.1
- 9 0.07 0.01    0 0.14    0    -    - 0.49    -    0    0    0    -    -    -    -    -    -    -    -    -    -    0    -    - 0.28
- 10 0.01    -    0 0.07    -    -    -    - 0.76 0.01    -    0    -    -    -    -    -    -    -    -    -    -    -    -    - 0.13
- 11 0.03 0.03    0 0.04    0    -    0    0    -  0.4 0.01    -    -    -    0    -    -    -    -    0    -    -    -    0    - 0.47
- 13 0.05 0.02    0 0.03    -    -    -    -    - 0.01 0.26    -    -    -    0    0    -    0    -    -    -    -    - 0.01    - 0.62
- 17    0    -    - 0.53    -    -    -    0    0    0    - 0.05    -    -    -    -    -    -    -    -    -    -    -    -    - 0.41
- 18 0.03 0.01    - 0.12    -    -    -    -    -    -    -    - 0.53    -    -    -    -    -    -    -    -    -    -    -    - 0.32
- 19 0.03    -    - 0.01 0.01    -    -    -    -    -    -    -    - 0.81    -    -    -    -    -    -    -    -    -    -    - 0.13
- 20 0.01 0.04    - 0.02    -    -    -    -    - 0.01    -    -    -    - 0.41    -    -    -    -    -    -    -    -    -    - 0.52
- 22    - 0.08    - 0.15    -    -    -    -    - 0.23    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.54
- 25 0.33    -    - 0.13    -    - 0.07    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.47
- 27 0.03    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.87    -    -    -    -    -    -    -  0.1
- 31 0.03    - 0.03 0.03    -    -    -    -    - 0.03    -    -    -    -    -    -    -    - 0.43    -    -    -    -    -    - 0.46
- 32 0.17    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.5    -    -    -    -    - 0.33
- 33    -    -    - 0.57    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    - 0.43
- 35    -    - 0.12 0.38    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -  0.5
- 36 0.05    -    - 0.01    -    -    -    -    - 0.01 0.01    -    -    -    -    -    -    -    -    -    -    - 0.67    -    - 0.26
- 37 0.06 0.01 0.02  0.1 0.01    - 0.01    - 0.01    -    -    -    - 0.01    -    -    -    -    -    -    -    -    -  0.4    - 0.39
- 38 0.03 0.01    0 0.02    0    -    0    -    -    0    0    -    -    0    0    -    -    0    -    -    -    -    0    0    - 0.93
- -1    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
- ------------------------
-
- Missed #5658 due to improper assignment
- #8724due to improper segmentation
- #9623 due to single word or no evidence
- Precision: 0.8146861514470769
- Recall: 0.8451620136786635
- F1:0.8296443045089877
- Average Precision: 0.45397282171135217
- */
