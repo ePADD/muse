@@ -246,7 +246,31 @@
 			<artifactId>junit</artifactId>
 			<version>4.11</version>
 		</dependency>
-		
+
+		<!-- For parsing NNT files, which is the format of ERD benchmark data -->
+		<dependency>
+		  <groupId>org.aksw</groupId>
+		  <artifactId>gerbil</artifactId>
+		  <version>1.2.5</version>
+		  <scope>system</scope>
+		  <systemPath>${project.basedir}/lib/gerbil-1.2.5.jar</systemPath>
+		</dependency>
+
+		<dependency>
+		  <groupId>org.aksw.gerbil</groupId>
+		  <artifactId>transfer</artifactId>
+		  <version>1.2.1</version>
+		  <scope>system</scope>
+		  <systemPath>${project.basedir}/lib/gerbil.nif.transfer-1.2.1.jar</systemPath>
+		</dependency>
+
+		<dependency>
+			<groupId>jsicp</groupId>
+			<artifactId>scip</artifactId>
+			<version>0.0.1</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/scip.jar</systemPath>
+		</dependency>
 		<!--<dependency>
 		    <groupId>edu.stanford.nlp</groupId>
 		    <artifactId>stanford-corenlp</artifactId>

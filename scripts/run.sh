@@ -6,4 +6,6 @@ do
     CP=$CP:$lib;
 done
 CP=$CP:target/muse-1.0.0-SNAPSHOT/WEB-INF/classes/;
-java -Xmx10g -cp $CP edu.stanford.muse.ner.model.BMMModel
+# set to the path where lijscip.so file exists
+LD_LIBRARY_PATH=/home/vihari/repos/JSCIPOpt/build
+java -Xmx10g -cp $CP edu.stanford.muse.ner.model.ARIModel

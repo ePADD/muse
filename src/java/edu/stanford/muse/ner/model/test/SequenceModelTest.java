@@ -2,7 +2,6 @@ package edu.stanford.muse.ner.model.test;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
-import com.hp.hpl.jena.rdf.model.Seq;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.model.*;
 import edu.stanford.muse.ner.tokenize.CICTokenizer;

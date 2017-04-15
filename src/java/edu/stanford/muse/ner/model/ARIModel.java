@@ -2,8 +2,6 @@ package edu.stanford.muse.ner.model;
 
 import edu.stanford.muse.Config;
 import edu.stanford.muse.ner.model.test.SequenceModelTest;
-import edu.stanford.muse.ner.tokenize.CICTokenizer;
-import edu.stanford.muse.ner.tokenize.Tokenizer;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -12,13 +10,11 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import edu.stanford.muse.util.DBpediaUtils;
 import edu.stanford.muse.util.Util;
 import jscip.*;
 
-import static edu.stanford.muse.ner.featuregen.FeatureUtils.getPatts;
 
 
 /**
@@ -229,7 +225,7 @@ public class ARIModel extends SequenceModel implements Serializable{
             String modelName = ARIModel.class.getCanonicalName()+".ser.gz";
             nerModel = ARIModel.loadModel(modelName);
             if(nerModel==null) {
-                nerModel = train();
+                nerModel = ARIModel.train(DBpediaUtils.readDBpedia());
                 Util.writeObjectAsSerGZ(nerModel, Config.SETTINGS_DIR + File.separator + modelName);
                 writeModelAsRules(nerModel, Config.SETTINGS_DIR + File.separator + "ARI_rules");
             }
