@@ -401,7 +401,7 @@ public class EmailDocument extends DatedDocument implements Serializable
 			// expect only one from address, warn if more than one
 			if (from.length > 1)
 			{
-				log.warn("SERIOUS WARNING!: froms.length > 1: " + from.length);
+				log.warn("WARNING!: Multiple from addresses in message (" + from.length + "): " + Util.join (from, ", ") + " Message: " + this);
 				for (Address f: from)
 					log.warn(f);
 			}

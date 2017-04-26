@@ -35,6 +35,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -122,8 +123,19 @@ public class Accounts {
 
 				String emailDomain = loginName.substring(loginName.indexOf("@") + 1);
 				log.info("Domain: " + emailDomain);
-				
-				URL url = new URL("https://live.mozillamessaging.com/autoconfig/v1.1/" + emailDomain);
+
+				// from http://suhothayan.blogspot.in/2012/05/how-to-install-java-cryptography.html
+				// to get around the need for installingthe unlimited strength encryption policy files.
+				try {
+					Field field = Class.forName("javax.crypto.JceSecurity").getDeclaredField("isRestricted");
+					field.setAccessible(true);
+					field.set(null, java.lang.Boolean.FALSE);
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+
+//				URL url = new URL("https://live.mozillamessaging.com/autoconfig/v1.1/" + emailDomain);
+				URL url = new URL("https://autoconfig.thunderbird.net/v1.1/" + emailDomain);
 				try {
 					URLConnection urlConnection = url.openConnection();
 					InputStream in = new BufferedInputStream(urlConnection.getInputStream());
@@ -178,11 +190,10 @@ public class Accounts {
 						}
 					}
 				} catch (Exception e) {
-					log.info("Exception: " + e.getMessage());
+					Util.print_exception ("Exception trying to read ISPDB", e, log);
 					errorStatus = 2; // status code = 2 => ispdb lookup failed
-					errorMessage = "No automatic configuration available for " + emailDomain + ", please use the option to provide a private (IMAP) server.";
+					errorMessage = "No automatic configuration available for " + emailDomain + ", please use the option to provide a private (IMAP) server. \nDetails: " + e.getMessage() + ". \nRunning with java -Djavax.net.debug=all may provide more details.";
 				}
-				
 			}
 		}		
 		

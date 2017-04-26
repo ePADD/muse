@@ -1286,7 +1286,7 @@ public class AddressBook implements Serializable {
             // do not use html special chars here!
 
             String s = "own_email_address: " + nOwnEmails + " own_names: " + nOwnNames + "\n";
-            s += "contacts: " + nContacts + " non_zero_contacts: " + "\n";
+            s += "contacts: " + nContacts;
             return s;
         }
     }

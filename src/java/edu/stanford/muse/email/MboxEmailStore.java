@@ -104,6 +104,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 					String path = f.getPath();
 					if (path.endsWith(".msf"))
 						return; // explicitly ignore msf files, sometimes it seems to read an actual number of messages even from msf files
+
 					folderBeingScanned = f.getPath();
 //					folderBeingScannedShortName = Util.stripFrom(f.getPath(), rootPath + File.separatorChar);
 					int idx = folderBeingScanned.lastIndexOf(File.separatorChar);
@@ -114,6 +115,15 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 
 					Pair<Folder, Integer> pair = openFolder(null, f.getPath());
 					int count = pair.getSecond();
+					if (count == 1) { // many files are wrongly considered mbox with count 1. Ignore them if they also have a suffix that is known to cause noise. we're being cautious and ignoring these files only if they are noisy
+						if (path.endsWith (".plist"))
+							return;
+						if (path.endsWith (".lock"))
+							return;
+						if (path.endsWith (".DS_Store")) // explicitly ignore .DS_store and ._.DS_Store files, annoying Mac OS binary files that get read as mbox by our parser
+							return;
+						log.info ("Ignoring file " + path + " because it has only 1 message and its name matches a suffix that indicates it's likely not an mbox file.");
+					}
 					Folder f1 = pair.getFirst();
 					boolean validFolder = count > 0 && f1 != null;
 					// we'll cache the folder info even if its not a valid folder.

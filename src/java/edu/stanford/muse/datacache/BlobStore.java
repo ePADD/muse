@@ -243,6 +243,7 @@ public class BlobStore implements Serializable {
             Files.move (tmpPath, new File(destination).toPath());
         } catch (IOException ioe) {
             // we couldn't copy the stream to the data store, so undo everything
+            Util.print_exception("IO Error copying blob to blobstore", ioe, log);
             remove(blob);
             Util.ASSERT(!this.contains(blob));
             throw ioe;

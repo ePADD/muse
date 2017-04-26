@@ -15,6 +15,17 @@
         	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         	<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
+
+    <profiles>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <enforcer.skip>false</enforcer.skip>
+                <skip.generate.git.props>false</skip.generate.git.props> <!-- yes, generate git props for prod builds -->
+            </properties>
+        </profile>
+    </profiles>
+
 	<name>Muse</name>
 	<url>http://maven.apache.org</url>
 	

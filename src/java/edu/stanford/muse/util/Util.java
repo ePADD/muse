@@ -2219,8 +2219,15 @@ public class Util
 		result.append(stripPackageFromClassName(c.getName()) + ": ");
 
 		// append all the fields
-		for (String field : map.keySet())
-			result.append(field + "=" + map.get(field) + " ");
+		for (String field : map.keySet()) {
+			Object val = map.get(field);
+			String valString = (val != null) ? val.toString() : "null";
+			if (val instanceof Integer)
+				valString = Util.commatize((Integer) val);
+			if (val instanceof Long)
+				valString = Util.commatize((Integer) val);
+			result.append(field + "=" + valString + " ");
+		}
 
 		return result.toString();
 	}

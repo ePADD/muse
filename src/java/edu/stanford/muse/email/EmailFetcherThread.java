@@ -464,7 +464,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
             }
             if (dirty) {
-                dataErrors.add("Dirty message part, has conflicting message part headers.");
+                dataErrors.add("Dirty message part, has conflicting message part headers."  + folder_name() + " Message# " + messageNum);
                 return list;
             }
 
@@ -548,7 +548,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
             } else if (o instanceof Part)
                 list.addAll(processMessagePart(messageNum, m, (Part) o, attachmentsList));
             else
-                dataErrors.add("Unhandled part content, Java type: " + o.getClass() + " Content-Type: " + p.getContentType());
+                dataErrors.add("Unhandled part content, " + folder_name() + " Message #" + messageNum + "Java type: " + o.getClass() + " Content-Type: " + p.getContentType());
         } else {
             try {
                 // do attachments only if downloadAttachments is set.
@@ -587,7 +587,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
             // Folders__gmail-sent Message #12185 Expected ';', got "Message"
             // javax.mail.internet.ParseException: Expected ';', got "Message"
 
-            dataErrors.add("Unable to read attachment name: " + folder_name() + " msg# " + idx);
+            dataErrors.add("Unable to read attachment name: " + folder_name() + " Message# " + idx);
             return;
         }
 
@@ -667,7 +667,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 ct = ct.substring(0, x);
             log.info("Attachment content type: " + ct + " filename = " + Util.blurKeepingExtension(filename));
         } catch (Exception pex) {
-            dataErrors.add("Can't read CONTENT-TYPE: " + ct + " size = " + p.getSize() + " subject: " + m.getSubject() + " Date : " + m.getSentDate().toString() + "\n Exception: " + pex + "\n" + Util.stackTrace(pex));
+            dataErrors.add("Can't read CONTENT-TYPE: " + ct + " filename:" + filename + " size = " + p.getSize() + " subject: " + m.getSubject() + " Date : " + m.getSentDate().toString() + "\n Exception: " + pex + "\n" + Util.stackTrace(pex));
             return;
         }
 
@@ -708,7 +708,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
                 } catch (IOException ioe) {
                     success = false;
-                    dataErrors.add("WARNING: Unable to fetch attachment: size = " + p.getSize() + " subject: " + m.getSubject() + " Date : " + m.getSentDate().toString() + "\nException: " + ioe);
+                    dataErrors.add("WARNING: Unable to fetch attachment: filename: " + filename + " size = " + p.getSize() + " subject: " + m.getSubject() + " Date : " + m.getSentDate().toString() + "\nException: " + ioe);
                     ioe.printStackTrace(System.out);
                 }
             }
@@ -720,7 +720,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 try {
                     archive.getBlobStore().generate_thumbnail(b); // supplement
                 } catch (IOException ioe) {
-                    log.warn("failed to create thumbnail, size = " + p.getSize() + " subject: " + m.getSubject() + " Date : " + m.getSentDate().toString() + "\nException: " + ioe);
+                    log.warn("failed to create thumbnail, filename: " + filename + " size = " + p.getSize() + " subject: " + m.getSubject() + " Date : " + m.getSentDate().toString() + "\nException: " + ioe);
                     ioe.printStackTrace(System.out);
                 }
             }
@@ -1110,7 +1110,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
                     String contentStr = sb.toString();
                     if (!messageLooksOk(contentStr)) {
-                        dataErrors.add("Skipping message as it seems to have very long words");
+                        dataErrors.add("Skipping message as it seems to have very long words: " + ed);
                         continue;
                     }
                     contentStr = IndexUtils.normalizeNewlines(contentStr); // just get rid of \r's
@@ -1158,6 +1158,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
             //				if (cancelled && false) // TODO: disable for now as currently only indexes are rolled back and allDocs/blobs are not rolled back in sync yet
             //					archive.rollbackIndexWrites();
             //				else
+            currentStatus = JSONUtils.getStatusJSON("Saving archive...");
             archive.close();
         }
 

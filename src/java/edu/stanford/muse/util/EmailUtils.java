@@ -106,10 +106,15 @@ public class EmailUtils {
 	public static String formatMessageHeader(MimeMessage m) throws MessagingException {
 		StringBuilder sb = new StringBuilder();
 		sb.append("To: ");
+		if (m == null) {
+			log.warn ("Trying to format null message!?");
+			return "Null message";
+		}
 		try {
 			Address[] tos = m.getAllRecipients();
-			for (Address a : tos)
-				sb.append(a.toString() + " ");
+			if (tos != null)
+				for (Address a : tos)
+					sb.append(a.toString() + " ");
 			sb.append("\n");
 		} catch (Exception e) {
 			Util.print_exception(e, log);
@@ -118,8 +123,10 @@ public class EmailUtils {
 		sb.append("From: ");
 		try {
 			Address[] froms = m.getFrom();
-			for (Address a : froms)
-				sb.append(a.toString() + " ");
+			if (froms != null)
+				for (Address a : froms)
+					sb.append(a.toString() + " ");
+			sb.append("\n");
 		} catch (Exception e) {
 			Util.print_exception(e, log);
 		}

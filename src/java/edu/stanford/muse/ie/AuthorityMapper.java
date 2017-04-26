@@ -110,23 +110,27 @@ public class AuthorityMapper implements java.io.Serializable {
 
         List<Contact> contacts = ab.allContacts();
         for (Contact c : contacts) {
-            Set<String> names = c.names;
-            if (Util.nullOrEmpty(names))
-                continue;
+            try {
+                Set<String> names = c.names;
+                if (Util.nullOrEmpty(names))
+                    continue;
 
-            String contactName = c.pickBestName();
-            String cname = canonicalize(contactName);
-            if (cnameToAuthority.get(cname) != null) {
-                continue;
-            } else {
-                for (String name : names) {
-                    List<Document> hits = lookupNameInFastIndex(name);
+                String contactName = c.pickBestName();
+                String cname = canonicalize(contactName);
+                if (cnameToAuthority.get(cname) != null) {
+                    continue;
+                } else {
+                    for (String name : names) {
+                        List<Document> hits = lookupNameInFastIndex(name);
 
-                    for (Document d : hits) {
-                        Long fastId = Long.parseLong(d.get(FIELD_NAME_FAST_ID));
-                        cnameToFastIdCandidates.put(cname, fastId);
+                        for (Document d : hits) {
+                            Long fastId = Long.parseLong(d.get(FIELD_NAME_FAST_ID));
+                            cnameToFastIdCandidates.put(cname, fastId);
+                        }
                     }
                 }
+            } catch (Exception e) {
+                Util.print_exception("Error parsing contact for authorities: " + c, e, log);
             }
         }
 
