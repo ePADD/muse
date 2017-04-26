@@ -593,7 +593,8 @@ public class EmailFetcherThread implements Runnable, Serializable {
 
         String sanitizedFName = Util.sanitizeFolderName(emailStore.getAccountID() + "." + folder_name());
         if (filename == null) {
-            dataErrors.add("attachment filename is null for " + sanitizedFName + " Message#" + idx);
+            String tempFname = sanitizedFName + "." + idx;
+            dataErrors.add("attachment filename is null for " + sanitizedFName + " Message#" + idx + " assigning it the name: " + tempFname);
             if (p.isMimeType("text/html")) {
                 try {
                     log.info("Turning message " + sanitizedFName + " Message#" + idx + " into text although it is an attachment");
@@ -610,7 +611,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                     return;
                 }
             }
-            filename = sanitizedFName + "." + idx;
+            filename = tempFname;
         }
 
         // Replacing any of the disallowed filename characters (\/:*?"<>|&) to _

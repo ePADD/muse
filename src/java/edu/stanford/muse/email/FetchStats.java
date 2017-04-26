@@ -28,7 +28,15 @@ public class FetchStats implements Serializable {
         Calendar c = new GregorianCalendar();
         c.setTime(new Date(lastUpdate));
         String s = "Import date: " + Util.formatDateLong(c) + "\n";
-        //		s += "user_key: " + userKey + "\n";
+
+        s += "message_filter: " + messageFilter + "\n";
+
+//        s += "selected_messages: " + importStats.nTotalMessages +  " filtered: " + importStats.nMessagesFiltered + " imported: " + importStats.nMessagesAdded +" duplicates: " + importStats.nMessagesAlreadyPresent + "\n";
+        s += "imported: " + Util.commatize(importStats.nMessagesAdded) + " duplicates: " + Util.commatize(importStats.nMessagesAlreadyPresent) + "\n";
+        //	s += "sent_messages: " + nMessagesSent + " received_messages: " + nMessagesReceived + "\n";
+        s += "first_date: " + Util.formatDate(new Date(firstMessageDate)) + " last_date: " + Util.formatDate(new Date(lastMessageDate)) + " span_in_months: " + spanInMonths + "\n";
+        s += "fetch_time_in_secs: " + fetchAndIndexTimeMillis / 1000 + "\n";
+//		s += "user_key: " + userKey + "\n";
         //		s += "total_folders: " + nFolders + "\n";
         if (selectedFolders == null)
             s += "selected_folders: null";
@@ -38,13 +46,6 @@ public class FetchStats implements Serializable {
                 s += " - " + p.getFirst() + " (" + p.getSecond() + ")";
         }
         s += "\n";
-        s += "message_filter: " + messageFilter + "\n";
-
-        s += "selected_messages: " + importStats.nTotalMessages +  " filtered: " + importStats.nMessagesFiltered + " imported: " + importStats.nMessagesAdded +" dups: " + importStats.nMessagesAlreadyPresent + "\n";
-        //	s += "sent_messages: " + nMessagesSent + " received_messages: " + nMessagesReceived + "\n";
-        s += "first_date: " + Util.formatDate(new Date(firstMessageDate)) + " last_date: " + Util.formatDate(new Date(lastMessageDate)) + " span_in_months: " + spanInMonths + "\n";
-        s += "fetch_time_in_secs: " + fetchAndIndexTimeMillis / 1000 + "\n";
-
         return s;
     }
 
