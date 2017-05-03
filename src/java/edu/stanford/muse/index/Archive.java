@@ -108,6 +108,11 @@ public class Archive implements Serializable {
         return authorityMapper;
     }
 
+    /** recreates the authority mapper, call this, e.g. if the address book changes. */
+    public synchronized void recreateAuthorityMapper() throws IOException, ParseException, ClassNotFoundException {
+        authorityMapper = AuthorityMapper.createAuthorityMapper (this);
+    }
+
     public synchronized EntityMapper getEntityMapper() {
         if (entityMapper == null)
             entityMapper = new EntityMapper();

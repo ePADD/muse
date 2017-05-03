@@ -816,6 +816,10 @@ public class Searcher {
             qt = Indexer.QueryType.PRESET_REGEX;
             Collection<Document> sensitiveDocs = archive.docsForQuery(-1 /* cluster num -- not used */, qt);
             docs.retainAll(sensitiveDocs);
+
+            for (Document d: sensitiveDocs) {
+                System.out.println ("MessageHash: " + Util.hash (((EmailDocument) d).getSignature()));
+            }
         }
         return docs;
     }

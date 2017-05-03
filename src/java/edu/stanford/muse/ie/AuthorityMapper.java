@@ -117,12 +117,21 @@ public class AuthorityMapper implements java.io.Serializable {
 
                 String contactName = c.pickBestName();
                 String cname = canonicalize(contactName);
+                List<String> cnameTokens = Util.tokenize(cname);
+                if (cnameTokens.size() < 2)
+                    continue; // only match when 2 or more words are present in the name
+
                 if (cnameToAuthority.get(cname) != null) {
                     continue;
                 } else {
                     for (String name : names) {
-                        List<Document> hits = lookupNameInFastIndex(name);
+                        List<String> nameTokens = Util.tokenize(name);
+                        if (nameTokens.size() < 2)
+                            continue; // only match when 2 or more words are present in the name
 
+                        List<Document> hits = lookupNameInFastIndex(name);
+                        if (hits.size() > 20)
+                            log.warn ("Warning: many (" + hits.size() + ") hits for authority name=" + name + " (associated with contact " + contactName + ")");
                         for (Document d : hits) {
                             Long fastId = Long.parseLong(d.get(FIELD_NAME_FAST_ID));
                             cnameToFastIdCandidates.put(cname, fastId);
@@ -299,6 +308,12 @@ public class AuthorityMapper implements java.io.Serializable {
 
     private List<Document> lookupNameInFastIndex (String name) throws IOException, ParseException {
         List<Document> result = new ArrayList<>();
+
+        // be careful, double quotes inside the name can mess things up and result in spurious hits.
+        // e.g. we got name as the string:Karl "Fritz" Mueller
+        // since we're going to give the whole string embedded in double quotes as a query to Lucene, the query got converted to "Karl "Fritz" Mueller", matching over 3000 records with Fritz
+        // so we simple replace any double quotes with nothing
+        name = name.replaceAll ("\"", "");
 
         Query query = parser.parse("\"" + name + "\"");
         TopDocs docs = indexSearcher.search (query, null, 10000);
