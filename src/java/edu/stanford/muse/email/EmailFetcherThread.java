@@ -472,12 +472,17 @@ public class EmailFetcherThread implements Runnable, Serializable {
             String content;
             String type = p.getContentType(); // new InputStreamReader(p.getInputStream(), "UTF-8");
             try {
-                // if forced encoding is set, we read the string with that encoding, otherwise we just use whatever p.getContent gives us
-                if (FORCED_ENCODING != null) {
+                if (type.contains("charset=")) {
                     byte b[] = Util.getBytesFromStream(p.getInputStream());
-                    content = new String(b, FORCED_ENCODING);
-                } else
-                    content = (String) p.getContent();
+                    content = new String(b, type.substring(type.indexOf("charset=") + "charset=".length()));
+                } else {
+                    // if forced encoding is set, we read the string with that encoding, otherwise we just use whatever p.getContent gives us
+                    if (FORCED_ENCODING != null) {
+                        byte b[] = Util.getBytesFromStream(p.getInputStream());
+                        content = new String(b, FORCED_ENCODING);
+                    } else
+                        content = (String) p.getContent();
+                }
             } catch (UnsupportedEncodingException uee) {
                 dataErrors.add("Unsupported encoding: " + folder_name() + " Message #" + messageNum + " type " + type + ", using brute force conversion");
                 // a particularly nasty issue:javamail can't handle utf-7 encoding which is common with hotmail and exchange servers.

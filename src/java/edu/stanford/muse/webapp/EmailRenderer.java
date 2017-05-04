@@ -168,7 +168,7 @@ public class EmailRenderer {
 				InternetAddress ia = (InternetAddress) a;
 				Pair<String, String> p = JSPHelper.getNameAndURL((InternetAddress) a, addressBook);
 				String url = p.getSecond();
-				String str = ia.toString();
+				String str = ia.getPersonal() == null ? ia.getAddress() : ia.getPersonal() + "<" + ia.getAddress() + ">";
                 String addr = ia.getAddress();
                 boolean match = false;
                 if(str!=null) {
