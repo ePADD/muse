@@ -187,6 +187,9 @@ public class Highlighter {
         if(termsToHighlight!=null) termsToHighlight.forEach(highlightTerms::add);
         if(termsToHyperlink!= null) termsToHyperlink.forEach(hyperlinkTerms::add);
 
+        // remove these special words from the list of hyperlinkterms, otherwise, we just mess up the HTML if any of them is in the hyperlinkTerms
+
+
         if(log.isDebugEnabled())
             log.debug("DocId: "+docId+"; Highlight terms: " + highlightTerms+"; Entities: " + entitiesWithId+"; Hyperlink terms: " + hyperlinkTerms);
         //System.err.println("DocId: " + docId + "; Highlight terms: " + highlightTerms + "; Entities: " + entitiesWithId + "; Hyperlink terms: " + hyperlinkTerms);
@@ -220,9 +223,12 @@ public class Highlighter {
             contents = annotateSensitive(contents, preHighlightTag, postHighlightTag);
         }
 
+        List<String> catchTerms = Arrays.asList("class","span","data","ignore");
+        Set<String> ignoreTermsForHyperlinking = catchTerms.stream().map (String::toLowerCase).collect (Collectors.toSet());
+
         //entitiesid stuff is already canonicalized with tokenize used with analyzer
         if (entitiesWithId != null)
-            hyperlinkTerms.addAll(entitiesWithId.keySet().stream().map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
+            hyperlinkTerms.addAll(entitiesWithId.keySet().stream().filter (term -> !ignoreTermsForHyperlinking.contains (term.trim().toLowerCase())).map(term -> "\"" + term + "\"").collect(Collectors.toSet()));
 
         //If there are overlapping annotations, then they need to be serialised.
         //This is serialized order for such annotations.
@@ -247,7 +253,8 @@ public class Highlighter {
         //should preserve order so that highlight terms that are added first stay that way
         Map<Pair<String, Short>, Integer> o = new LinkedHashMap<>();
         //prioritised terms
-        List<String> catchTerms = Arrays.asList("class","span","data","ignore");
+
+
         //Note that a term can be marked both for highlight and hyperlink
         Set<String> consTermsHighlight = new HashSet<>(), consTermsHyperlink = new HashSet<>();
         for (String at : allTerms) {

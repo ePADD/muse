@@ -105,7 +105,7 @@
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
-			<version>2.0.1</version>
+			<version>2.5</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-codec</groupId>
@@ -171,11 +171,14 @@
 			<artifactId>tika-core</artifactId>
 			<version>1.14</version>
 		</dependency>
+
+                <!-- no direct dependency on pdfbox now, only through tika 
 		<dependency>
 			<groupId>org.apache.pdfbox</groupId>
 			<artifactId>pdfbox</artifactId>
-			<version>1.8.1</version>
-		</dependency>
+			<version>2.0.5</version>
+		</dependency> 
+                -->
 
 		<dependency>
 			<groupId>org.apache.opennlp</groupId>

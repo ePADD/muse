@@ -16,6 +16,7 @@
 package edu.stanford.muse.email;
 
 import com.sun.mail.imap.IMAPFolder;
+import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.util.EmailUtils;
@@ -929,6 +930,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
         if (content == null)
             //let others handle it.
             return true;
+
         String[] lines = content.split("\n");
         int badlines = 0;
         if (lines.length > 50)
@@ -1114,6 +1116,12 @@ public class EmailFetcherThread implements Runnable, Serializable {
                         dataErrors.add("Skipping message as it seems to have very long words: " + ed);
                         continue;
                     }
+
+                    if (contentStr.length() > Config.MAX_TEXT_SIZE_TO_ANNOTATE) {
+                        dataErrors.add("Skipping message as it seems to be very long: " + contentStr.length() + " chars, while the max size message that will be annotated for display is " + Config.MAX_TEXT_SIZE_TO_ANNOTATE + " chars. Message = " + ed);
+                        // but we continue, don't skip the message entirely. See issue #111
+                    }
+
                     contentStr = IndexUtils.normalizeNewlines(contentStr); // just get rid of \r's
 
                     archive.addDoc(ed, contentStr);
@@ -1353,6 +1361,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
             if (t instanceof OutOfMemoryError)
                 this.mayHaveRunOutOfMemory = true;
             // this is important, because there could be an out of memory etc over here.
+            Util.aggressiveWarn (" A major error seems to have occurded! Processing of messages has been aborted.", 5000);
             Util.print_exception(t, log);
         } finally {
             try {

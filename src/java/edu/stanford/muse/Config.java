@@ -42,7 +42,8 @@ public class Config {
     public static int		MAX_ENTITY_FEATURES			= 200;
     public static int		MAX_TRY_TO_RESOLVE_NAMES	= 10;
     public static int		MAX_DOCS_PER_QUERY	= 10000;
-    
+    public static int		MAX_TEXT_SIZE_TO_ANNOTATE	= 100000; // messages with bodies longer than this will not be annotated
+
     public static Boolean 	OPENNLP_NER = false;
     public static String EPADD_PROPS_FILE = System.getProperty("user.home") + File.separator + "epadd.properties";
     public static String DEFAULT_SETTINGS_DIR = System.getProperty("user.home") + File.separator + "epadd-settings";

@@ -1108,7 +1108,11 @@ public class Archive implements Serializable {
 
         //don't want "more" button anymore
         boolean overflow = false;
-        String htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
+        String htmlContents;
+        if (contents.length() > Config.MAX_TEXT_SIZE_TO_ANNOTATE) // don't try to annotate extraordinarily long messages, probably bad data, as discovered on RF archive
+            htmlContents = Util.escapeHTML(contents);
+        else
+            htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
 
         if (ModeConfig.isPublicMode())
             htmlContents = Util.maskEmailDomain(htmlContents);

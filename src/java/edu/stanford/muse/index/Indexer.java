@@ -1107,8 +1107,13 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			add1DocToIndex(title, documentText, d, stats);
 			if (blobStore != null && d instanceof EmailDocument && io.indexAttachments)
 				indexAttachments((EmailDocument) d, blobStore, null, stats);
-		} catch (Exception e) {
-			Util.print_exception(e, log);
+		} catch (Throwable e) {
+  			Util.print_exception(e, log);
+			// also catch Errors. Sometimes, we might have a ClassNotFoundError (which is not covered by Exception)
+			if (e instanceof OutOfMemoryError) {
+				Util.print_exception("Out of memory error!", e, log);
+				throw ((OutOfMemoryError) e);
+			}
 		}
 
 		if (d instanceof EmailDocument)
