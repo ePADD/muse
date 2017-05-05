@@ -267,17 +267,17 @@ public class JSPHelper {
 	// converts an array of strings from iso-8859-1 to utf8. useful for converting i18n chars in http request parameters
 	public static String convertRequestParamToUTF8(String param) throws UnsupportedEncodingException
 	{
-		if (RUNNING_ON_JETTY)
-		{
-			log.info("running on jetty: no conversion for " + param);
+	//	if (RUNNING_ON_JETTY)
+	//	{
+	//		log.info("running on jetty: no conversion for " + param);
 			return param;
-		}
-		if (param == null)
-			return null;
-		String newParam = new String(param.getBytes("ISO-8859-1"), "UTF-8");
-		if (!newParam.equals(param))
-			log.info("Converted to utf-8: " + param + " -> " + newParam);
-		return newParam;
+	//	}
+	//	if (param == null)
+	//		return null;
+	//	String newParam = new String(param.getBytes("ISO-8859-1"), "UTF-8");
+	//	if (!newParam.equals(param))
+	//		log.info("Converted to utf-8: " + param + " -> " + newParam);
+	//	return newParam;
 	}
 
 	public static boolean runningOnLocalhost(HttpServletRequest request)
