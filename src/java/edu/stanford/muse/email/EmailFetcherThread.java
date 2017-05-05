@@ -24,6 +24,7 @@ import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.HTMLUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.james.mime4j.codec.DecoderUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -588,6 +589,9 @@ public class EmailFetcherThread implements Runnable, Serializable {
         String filename = null;
         try {
             filename = p.getFileName();
+            if (filename != null) {
+                filename = DecoderUtil.decodeEncodedWords(filename, null);
+            }
         } catch (Exception e) {
             // seen this happen with:
             // Folders__gmail-sent Message #12185 Expected ';', got "Message"
