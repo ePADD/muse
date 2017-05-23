@@ -1282,7 +1282,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 // this is a special for mbox'es because we run out of memory if we try to openFolderAndGetMessages()
                 // so we process in batches
                 //TODO: Ideally, should cap on buffer size rather than on number of messages.
-                final int BATCH = 10000;
+                final int BATCH = 100; //it ate too much memory more than 12gb with 10000
                 int nbatches = nMessages / BATCH;
                 nMessagesProcessedSuccess = 0;
                 long st = System.currentTimeMillis();
