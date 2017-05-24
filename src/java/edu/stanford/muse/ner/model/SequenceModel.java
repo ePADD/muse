@@ -363,14 +363,17 @@ public class SequenceModel extends NERModel implements Serializable{
         SequenceModel nerModel;
         log.info(Util.getMemoryStats());
         try {
-            nerModel = SequenceModel.loadModelFromRules("rules");
+            String modelName = SequenceModel.class.getName() + ".ser.gz";
+            nerModel = SequenceModel.loadModel(modelName);
+            //.loadModelFromRules("rules");
             if(nerModel==null) {
                 nerModel = train();
-                writeModelAsRules(nerModel, Config.SETTINGS_DIR + File.separator + "rules");
+                nerModel.writeModel(Config.SETTINGS_DIR + File.separator + modelName);
             }
 
             log.info(Util.getMemoryStats());
             SequenceModelTest.ParamsCONLL params = new SequenceModelTest.ParamsCONLL();
+            params.ignoreSegmentation = false;
             SequenceModelTest.testCONLL(nerModel, false, params);
             log.info(Util.getMemoryStats());
         } catch (IOException e) {
@@ -379,8 +382,9 @@ public class SequenceModel extends NERModel implements Serializable{
     }
 
     public static void main(String[] args) {
-        String modelName = "dbpediaTest" + File.separator + "SequenceModel-80.ser.gz";
-        SequenceModel model = loadModel(modelName);
-        writeModelAsRules(model, Config.SETTINGS_DIR + File.separator + "rules");
+//        String modelName = "dbpediaTest" + File.separator + "SequenceModel-80.ser.gz";
+//        SequenceModel model = loadModel(modelName);
+//        writeModelAsRules(model, Config.SETTINGS_DIR + File.separator + "rules");
+        loadAndTestNERModel();
     }
 }

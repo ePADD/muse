@@ -241,7 +241,7 @@ public class ARIModel extends SequenceModel implements Serializable{
     }
 
     public static void main(String[] args){
-        Map<String, String> dbpedia = DBpediaUtils.readDBpedia(0.05f, null);
-        ARIModel.train(dbpedia);
+        //Map<String, String> dbpedia = DBpediaUtils.readDBpedia(0.05f, null);
+        ARIModel.loadAndTestNERModel();
     }
 }
