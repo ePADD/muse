@@ -44,6 +44,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.xml.transform.TransformerException;
 import java.io.*;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1589,7 +1591,11 @@ public class JSPHelper {
 	{
 		HttpSession session = request.getSession();
 		String filename = request.getParameter("file");
-		filename = convertRequestParamToUTF8(filename);
+		try {
+			filename = URLDecoder.decode(filename, "utf-8");
+		} catch (Exception e) {
+			throw new RuntimeException(e.getMessage(), e);
+		}
 		String baseDir = (String) getSessionAttribute(session, "cacheDir");
 
 		if (filename.indexOf(".." + File.separator) >= 0) // avoid file injection!
@@ -1663,7 +1669,7 @@ public class JSPHelper {
 		if (asAttachment)
 		{
 			response.setHeader("Content-Length", String.valueOf(file.length()));
-			response.setHeader("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
+			response.setHeader("Content-Disposition", "attachment; filename=\"" + URLEncoder.encode(file.getName(), "utf-8") + "\"");
 		}
 		// Prepare streams.
 		BufferedInputStream input = null;
