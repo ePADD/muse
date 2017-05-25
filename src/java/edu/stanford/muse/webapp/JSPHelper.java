@@ -1669,7 +1669,8 @@ public class JSPHelper {
 		if (asAttachment)
 		{
 			response.setHeader("Content-Length", String.valueOf(file.length()));
-			response.setHeader("Content-Disposition", "attachment; filename=\"" + URLEncoder.encode(file.getName(), "utf-8") + "\"");
+			String fileName = URLEncoder.encode(file.getName(), "utf-8").replace("+", "%20");
+			response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 		}
 		// Prepare streams.
 		BufferedInputStream input = null;
