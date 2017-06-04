@@ -17,6 +17,7 @@ package edu.stanford.muse.email;
 
 import com.sun.mail.imap.IMAPFolder;
 import edu.stanford.muse.datacache.Blob;
+import edu.stanford.muse.email.json.ArchiveSaver;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.JSONUtils;
@@ -1365,6 +1366,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
+            new ArchiveSaver().save(archive);
         } catch (Throwable t) {
             if (t instanceof OutOfMemoryError)
                 this.mayHaveRunOutOfMemory = true;
