@@ -87,7 +87,7 @@ public class ArchiveSaver {
                         append(stream, "[");
                         append(stream, getAddressString(internetAddress));
                         append(stream, "], ");
-                        append(stream, "\"" + internetAddress.getAddress() + "\"");
+                        append(stream, "\"" + internetAddress.getAddress().replaceAll("\"", "''") + "\"");
                         first = false;
                     }
                 }  else {
@@ -97,7 +97,7 @@ public class ArchiveSaver {
                     append(stream, "\"fromPlaceholder\"");
                 }
                 append(stream, "],");
-                append(stream, "\"subject\": \"" + String.valueOf(emailDocument.getSubject()).trim().replaceAll("\"", "''").replaceAll("\n", " ") + "\"");
+                append(stream, "\"subject\": \"" + String.valueOf(emailDocument.getSubject()).replaceAll("\"", "''") + "\"");
                 append(stream, "}");
             }
             append(stream, "]");
@@ -109,8 +109,11 @@ public class ArchiveSaver {
 
 
     private void append(Writer stream, String string) throws IOException {
-        string = string.replaceAll("\"", "''");
-        string = string.replaceAll("\n", " ");
+        string = string.replaceAll("\\\n", " ");
+        string = string.replaceAll("\\\r", " ");
+        string = string.replaceAll(" {2,}", " ");
+        string = string.replaceAll("\\\" ", "\"");
+        string = string.replaceAll(" \\\"", "\"");
         string = string.trim();
         stream.append(string);
     }
@@ -118,8 +121,8 @@ public class ArchiveSaver {
     private String getAddressString(InternetAddress internetAddress) {
         return "\""
                 + (internetAddress.getPersonal() == null
-                        ? internetAddress.getAddress()
+                        ? internetAddress.getAddress().replaceAll("\"", "''")
                         : internetAddress.getPersonal().replaceAll("\"", "''"))
-                + "\", \"" + internetAddress.getAddress() + "\"";
+                + "\", \"" + internetAddress.getAddress().replaceAll("\"", "''") + "\"";
     }
 }
