@@ -28,85 +28,79 @@ public class ArchiveSaver {
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
-        BufferedWriter stream;
-        try {
-             stream = new BufferedWriter(new FileWriter(file));
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
         List<Document> allDocs = archive.getAllDocs();
         int i = 1;
-        try {
-            stream.append("[");
+        try (BufferedWriter stream = new BufferedWriter(new FileWriter(file))) {
+            append(stream, "[");
             for (Document doc : allDocs) {
                 if (i > 1) {
-                    stream.append(",");
+                    append(stream, ",");
                 }
-                stream.append("{");
+                append(stream, "{");
                 EmailDocument emailDocument = (EmailDocument) doc;
-                stream.append("\"emailId\": " + i++ + ",");
-                stream.append("\"dateField\": \"" + emailDocument.getDate().getTime() + "\",");
-                stream.append("\"isSent\": " + true + ",");
-                stream.append("\"toField\": [");
+                append(stream, "\"emailId\": " + i++ + ",");
+                append(stream, "\"dateField\": \"" + emailDocument.getDate().getTime() + "\",");
+                append(stream, "\"isSent\": " + true + ",");
+                append(stream, "\"toField\": [");
                 if (emailDocument.to != null) {
                     boolean first = true;
                     for (Address address : emailDocument.to) {
                         if (!first) {
-                            stream.append(",");
+                            append(stream, ",");
                         }
                         InternetAddress internetAddress = (InternetAddress) address;
-                        stream.append("[");
-                        stream.append(getAddressString(internetAddress));
-                        stream.append("]");
+                        append(stream, "[");
+                        append(stream, getAddressString(internetAddress));
+                        append(stream, "]");
                         first = false;
                     }
                 }
-                stream.append("],");
-                stream.append("\"ccField\": [");
+                append(stream, "],");
+                append(stream, "\"ccField\": [");
                 if (emailDocument.cc != null && emailDocument.cc.length != 0) {
                     boolean first = true;
                     for (Address address : emailDocument.cc) {
                         if (!first) {
-                            stream.append(",");
+                            append(stream, ",");
                         }
                         InternetAddress internetAddress = (InternetAddress) address;
-                        stream.append("[");
-                        stream.append(getAddressString(internetAddress));
-                        stream.append("]");
+                        append(stream, "[");
+                        append(stream, getAddressString(internetAddress));
+                        append(stream, "]");
                         first = false;
                     }
                 } else {
-                    stream.append("[");
-                    stream.append("\"ccPlaceholder\",\"ccPlaceholder\"");
-                    stream.append("]");
+                    append(stream, "[");
+                    append(stream, "\"ccPlaceholder\",\"ccPlaceholder\"");
+                    append(stream, "]");
                 }
-                stream.append("],");
+                append(stream, "],");
 
-                stream.append("\"fromField\": [");
+                append(stream, "\"fromField\": [");
                 if (emailDocument.from != null && emailDocument.from.length > 0) {
                     boolean first = true;
                     for (Address address : emailDocument.from) {
                         if (!first) {
-                            stream.append(",");
+                            append(stream, ",");
                         }
                         InternetAddress internetAddress = (InternetAddress) address;
-                        stream.append("[");
-                        stream.append(getAddressString(internetAddress));
-                        stream.append("], ");
-                        stream.append("\"" + internetAddress.getAddress() + "\"");
+                        append(stream, "[");
+                        append(stream, getAddressString(internetAddress));
+                        append(stream, "], ");
+                        append(stream, "\"" + internetAddress.getAddress() + "\"");
                         first = false;
                     }
                 }  else {
-                    stream.append("[");
-                    stream.append("\"fromPlaceholder\",\"fromPlaceholder\"");
-                    stream.append("], ");
-                    stream.append("\"fromPlaceholder\"");
+                    append(stream, "[");
+                    append(stream, "\"fromPlaceholder\",\"fromPlaceholder\"");
+                    append(stream, "], ");
+                    append(stream, "\"fromPlaceholder\"");
                 }
-                stream.append("],");
-                stream.append("\"subject\": \"" + String.valueOf(emailDocument.getSubject()).trim().replaceAll("\"", "''").replaceAll("\n", " ") + "\"");
-                stream.append("}");
+                append(stream, "],");
+                append(stream, "\"subject\": \"" + String.valueOf(emailDocument.getSubject()).trim().replaceAll("\"", "''").replaceAll("\n", " ") + "\"");
+                append(stream, "}");
             }
-            stream.append("]");
+            append(stream, "]");
             stream.flush();
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
@@ -114,6 +108,12 @@ public class ArchiveSaver {
     }
 
 
+    private void append(Writer stream, String string) throws IOException {
+        string = string.replaceAll("\"", "''");
+        string = string.replaceAll("\n", " ");
+        string = string.trim();
+        stream.append(string);
+    }
 
     private String getAddressString(InternetAddress internetAddress) {
         return "\""
