@@ -76,7 +76,7 @@ public class ArchiveSaver {
                 }
                 append(stream, "],");
 
-                append(stream, "\"fromField\": [");
+                append(stream, "\"fromField\": ");
                 if (emailDocument.from != null && emailDocument.from.length > 0) {
                     boolean first = true;
                     for (Address address : emailDocument.from) {
@@ -86,17 +86,15 @@ public class ArchiveSaver {
                         InternetAddress internetAddress = (InternetAddress) address;
                         append(stream, "[");
                         append(stream, getAddressString(internetAddress));
-                        append(stream, "], ");
-                        append(stream, "\"" + internetAddress.getAddress().replaceAll("\"", "'") + "\"");
+                        append(stream, "] ");
                         first = false;
                     }
                 }  else {
                     append(stream, "[");
                     append(stream, "\"fromPlaceholder\",\"fromPlaceholder\"");
-                    append(stream, "], ");
-                    append(stream, "\"fromPlaceholder\"");
+                    append(stream, "] ");
                 }
-                append(stream, "],");
+                append(stream, ",");
                 append(stream, "\"subject\": \"" + String.valueOf(emailDocument.getSubject()).replaceAll("\"", "'").replace("Subject: ", "") + "\"");
                 append(stream, "}");
             }
