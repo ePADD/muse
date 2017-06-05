@@ -39,7 +39,7 @@ public class ArchiveSaver {
                 append(stream, "{");
                 EmailDocument emailDocument = (EmailDocument) doc;
                 append(stream, "\"emailId\": " + i++ + ",");
-                append(stream, "\"dateField\": \"" + emailDocument.getDate().getTime() + "\",");
+                append(stream, "\"dateField\": \"" + emailDocument.getDate().getTime() / 1000 + "\",");
                 append(stream, "\"isSent\": " + true + ",");
                 append(stream, "\"toField\": [");
                 if (emailDocument.to != null) {
@@ -87,7 +87,7 @@ public class ArchiveSaver {
                         append(stream, "[");
                         append(stream, getAddressString(internetAddress));
                         append(stream, "], ");
-                        append(stream, "\"" + internetAddress.getAddress().replaceAll("\"", "''") + "\"");
+                        append(stream, "\"" + internetAddress.getAddress().replaceAll("\"", "'") + "\"");
                         first = false;
                     }
                 }  else {
@@ -97,7 +97,7 @@ public class ArchiveSaver {
                     append(stream, "\"fromPlaceholder\"");
                 }
                 append(stream, "],");
-                append(stream, "\"subject\": \"" + String.valueOf(emailDocument.getSubject()).replaceAll("\"", "''") + "\"");
+                append(stream, "\"subject\": \"" + String.valueOf(emailDocument.getSubject()).replaceAll("\"", "'").replace("Subject: ", "") + "\"");
                 append(stream, "}");
             }
             append(stream, "]");
@@ -122,10 +122,10 @@ public class ArchiveSaver {
     }
 
     private String getAddressString(InternetAddress internetAddress) {
-        return "\""
-                + (internetAddress.getPersonal() == null
-                        ? internetAddress.getAddress().replaceAll("\"", "''")
-                        : internetAddress.getPersonal().replaceAll("\"", "''"))
-                + "\", \"" + internetAddress.getAddress().replaceAll("\"", "''") + "\"";
+        String personal = (internetAddress.getPersonal() == null
+                                ? internetAddress.getAddress()
+                                : internetAddress.getPersonal())
+                .replaceAll("\"", "'");
+        return "\"" + personal + "\", \"" + personal + "\"";
     }
 }
