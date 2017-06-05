@@ -110,7 +110,7 @@ public class ArchiveSaver {
 
     private void append(Writer stream, String string) throws IOException {
         string = string.replaceAll("\\\n", " ");
-        string = string.replaceAll("\\\\", "\\\\");
+        string = string.replaceAll("\\\\", "\\\\\\\\");
         string = string.replaceAll("\\\r", " ");
         string = string.replaceAll(" {2,}", " ");
         string = string.replaceAll("\\\" ", "\"");
