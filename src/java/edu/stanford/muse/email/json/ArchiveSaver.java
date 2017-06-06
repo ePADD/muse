@@ -114,7 +114,7 @@ public class ArchiveSaver {
         string = string.replaceAll(" {2,}", " ");
         string = string.replaceAll("\" ", "\"");
         string = string.replaceAll(" \"", "\"");
-        string = string.replaceAll("[^\\w\\d\\sёЁА-Яа-я.,:\\\\\\[\\]|'\";()*?!#$%{}]", "");
+        string = string.replaceAll("[^\\w\\d\\sёЁА-Яа-я.,:\\\\\\[\\]|'\";()*?!#$%{}@+\\-]", "");
         string = string.trim();
         stream.append(string);
     }
