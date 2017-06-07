@@ -80,14 +80,11 @@ public class ArchiveSaver {
                 if (emailDocument.from != null && emailDocument.from.length > 0) {
                     boolean first = true;
                     for (Address address : emailDocument.from) {
-                        if (!first) {
-                            append(stream, ",");
-                        }
                         InternetAddress internetAddress = (InternetAddress) address;
                         append(stream, "[");
                         append(stream, getAddressString(internetAddress));
                         append(stream, "] ");
-                        first = false;
+                        break;
                     }
                 }  else {
                     append(stream, "[");
