@@ -48,15 +48,22 @@ public class EmailNameAgregator {
     private void appendToEmailNameMap(Map<String, String> emailNameMap, InternetAddress internetAddress) {
         String email = internetAddress.getAddress();
         String personal = internetAddress.getPersonal();
+        if (personal == null) {
+            return;
+        }
         String name = emailNameMap.get(email);
         if (name != null) {
-            if (personal != null && name.length() < personal.length()) {
+            if (name.length() < personal.length()) {
                 if (personal.contains(" ") || (!name.contains(" "))) {
                     emailNameMap.put(email, personal);
-                } else {
-                    if (!name.contains(" ") && personal.contains(" ")) {
-                        emailNameMap.put(email, personal);
-                    }
+                }
+            } else if (!name.contains(" ") && personal.contains(" ")) {
+                emailNameMap.put(email, personal);
+            } else if (name.contains(" ") && personal.contains(" ")) {
+                int nameWordsCount = name.split(" ").length;
+                int personalWordsCount = personal.split(" ").length;
+                if (personalWordsCount < 4 && personalWordsCount < nameWordsCount) {
+                    emailNameMap.put(email, personal);
                 }
             }
         } else {
