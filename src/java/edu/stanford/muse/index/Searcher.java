@@ -12,30 +12,25 @@ import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.JSPHelper;
-import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import javax.mail.internet.InternetAddress;
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Advanced search functions
+ * VIP class. Performs various search functions.
  */
 public class Searcher {
     private static Log log = LogFactory.getLog(Searcher.class);
     private static final long KB = 1024;
+    private static final char OR_DELIMITER = ';'; // used to separate parts of fields that can have multipled OR'ed clauses
 
     /*
     private static String[] paramNames = new String[]{
@@ -57,50 +52,27 @@ public class Searcher {
             };
 */
 
-    public static Pair<Collection<Document>, Collection<Blob>> searchDocs (Archive archive, HttpServletRequest request, boolean or_not_and) throws IOException, FileUploadException {
+    /* Top level entry point for searches from places that have a HTTP Req (example use: called from browse.jsp).
+       Searches the given archive based on the params present in the given http req */
+    public static Pair<Collection<Document>, Collection<Blob>> searchDocs (Archive archive, HttpServletRequest request) throws IOException, FileUploadException {
 
+        // convert req. params to a multimap, so that the rest of the code doesn't have to deal with httprequest directly
         Multimap<String, String> params = LinkedHashMultimap.create();
-        if (true) { /* (request.getParameter ("adv-search") != null) { */
-            // regular file encoding
-            Enumeration<String> paramNames = request.getParameterNames();
+        {
+            if (true) {
+                // regular file encoding
+                Enumeration<String> paramNames = request.getParameterNames();
 
-            while (paramNames.hasMoreElements()) {
-                String param = paramNames.nextElement();
-                String[] vals = request.getParameterValues(param);
-                if (vals != null)
-                    for (String val : vals)
-                        params.put(param, JSPHelper.convertRequestParamToUTF8(val));
-            }
-        } else {
-            List<FileItem> items = new ServletFileUpload(new DiskFileItemFactory()).parseRequest(request);
-            for (FileItem item : items) {
-                if (item.isFormField()) {
-                    // Process regular form field (input type="text|radio|checkbox|etc", select, etc).
-                    String fieldName = item.getFieldName();
-                    String fieldValue = item.getString();
-                    params.put(fieldName, fieldValue);
-                    // ... (do your job here)
-                } else {
-                    // Process form file field (input type="file").
-                    String fieldName = item.getFieldName();
-                    if (!"emailAddressList".equals(item.getFieldName()))
-                        continue;
-                    List<String> emailAddresses = Util.getLinesFromInputStream(item.getInputStream(), true /* ignore comment lines */);
-                    if (emailAddresses != null)
-                        params.put("emailAddressList", String.join(";", emailAddresses));
+                while (paramNames.hasMoreElements()) {
+                    String param = paramNames.nextElement();
+                    String[] vals = request.getParameterValues(param);
+                    if (vals != null)
+                        for (String val : vals)
+                            params.put(param, JSPHelper.convertRequestParamToUTF8(val));
                 }
             }
         }
-        // if email address list is provided, OVERWRITE correspondent paramater with it.
-        try {
-            List<String> emailAddressesfromEmailAddressList = readEmailAddressList(request);
-            if (emailAddressesfromEmailAddressList != null) {
-                String emailAddressesAsString = String.join(";", emailAddressesfromEmailAddressList);
-                params.put("correspondent", emailAddressesAsString);
-            }
-        } catch (Exception e) {
-            Util.print_exception ("Error parsing email address list in searcher", e, log);
-        }
+
         return selectDocsAndBlobs(archive, params);
     }
 
@@ -121,11 +93,17 @@ public class Searcher {
         return values;
     }
 
+    /** returns docs and blobs matching the given term.
+     *
+     * @param archive archive to search
+     * @param params params contains controls for termSubject/termBody/termAttachments/termOriginalBody. the desired field to search should be set to "on".
+     * @param term term to search for
+     * @return
+     */
     public static Pair<Set<Document>, Set<Blob>> searchForTerm(Archive archive, Multimap<String, String> params, String term) {
         // go in the order subject, body, attachment
         Set<Document> docsForTerm = new LinkedHashSet<>();
         Set<Blob> blobsForTerm = new LinkedHashSet<>();
-
 
         if ("on".equals(getParam(params, "termSubject"))) {
             Indexer.QueryOptions options = new Indexer.QueryOptions();
@@ -153,9 +131,9 @@ public class Searcher {
         return new Pair<>(docsForTerm, blobsForTerm);
     }
 
-    /** splits by semicolons, lowercases, trims spaces; e.g. given "A; b" returns ["a", "b"] */
+    /** splits by semicolons, lowercases, trims spaces; e.g. given "A; b" returns ["a", "b"].
+     * This syntax is followed by fields that can contain an OR specification. */
     public static Set<String> splitFieldForOr(String s) {
-        char OR_DELIMITER = ';';
         Collection<String> tokens = Util.tokenize(s, Character.toString(OR_DELIMITER));
         Set<String> result = new LinkedHashSet<>();
         for (String token: tokens)
@@ -163,7 +141,12 @@ public class Searcher {
         return result;
     }
 
-    private static Set<EmailDocument> updateForFlags(Set<EmailDocument> docs, Multimap<String, String> params) {
+    /** returns only the docs from amongst the given ones that matches the query specification for flags.
+     * @param docs the set of docs to consider
+     * @param params specifies boolean flags reviewed/doNotTransfer/transferWithRestrictions/inCart (should be set to yes, no or either) and annotation (params[annotation] should be contained modulo case in a message's annotation to match. All these search criteria are anded.
+     * @return those among the set of input docs that match the params specification
+     */
+    private static Set<EmailDocument> filterForFlags (Set<EmailDocument> docs, Multimap<String, String> params) {
         String reviewedValue = getParam(params, "reviewed");
         if (!"either".equals(reviewedValue) && !Util.nullOrEmpty(reviewedValue)) {
             Set<EmailDocument> newDocs = new LinkedHashSet<>();
@@ -219,8 +202,7 @@ public class Searcher {
         return docs;
     }
 
-
-    private static Set<EmailDocument> updateForEmailDirection(AddressBook addressBook, Set<EmailDocument> docs, Multimap<String, String> params) {
+    private static Set<EmailDocument> filterForEmailDirection(AddressBook addressBook, Set<EmailDocument> docs, Multimap<String, String> params) {
 
         String val = getParam(params, "direction");
         if ("either".equals(val) || Util.nullOrEmpty(val))
@@ -246,8 +228,8 @@ public class Searcher {
         return result;
     }
 
-    /** used by facets, correspondents table, etc */
-    private static Set<EmailDocument> updateForContactId(Set<EmailDocument> docs, AddressBook ab, String cid) {
+    /** returns only the docs matching the given contact id. used by facets, correspondents table, etc */
+    private static Set<EmailDocument> filterForContactId(Set<EmailDocument> docs, AddressBook ab, String cid) {
         String correspondentName = null;
         int contactId = -1;
         try { contactId = Integer.parseInt(cid); } catch (NumberFormatException nfe) { }
@@ -256,32 +238,11 @@ public class Searcher {
             String name = c.pickBestName();
             correspondentName = name;
         }
-        return updateForCorrespondents (docs, ab, correspondentName, true, true, true, true); // for contact id, all the 4 fields - to/from/cc/bcc are enabled
+        return filterForCorrespondents(docs, ab, correspondentName, true, true, true, true); // for contact id, all the 4 fields - to/from/cc/bcc are enabled
     }
 
-    /** returns names read from email address list file, if provided. returns null if none provided */
-    private static List<String> readEmailAddressList(HttpServletRequest request) throws FileUploadException, IOException {
-
-        // Create a new file upload handler
-        ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory());
-        if (!upload.isMultipartContent(request))
-            return null;
-
-        List<FileItem> items = upload.parseRequest(request);
-        for (FileItem item : items)
-        {
-            if (!"emailAddressList".equals(item.getFieldName()))
-                continue;
-
-            List<String> emailAddresses = Util.getLinesFromInputStream(item.getInputStream(), true /* ignore comment lines */);
-            return emailAddresses;
-        }
-
-        return null;
-    }
-
-    /** version of updateForCorrespondents which reads from params. correspondent name can have the OR separator */
-    private static Set<EmailDocument> updateForCorrespondents(Set<EmailDocument> docs, AddressBook ab, Multimap<String, String> params) {
+    /** version of filterForCorrespondents which reads settings from params. correspondent name can have the OR separator */
+    private static Set<EmailDocument> filterForCorrespondents(Set<EmailDocument> docs, AddressBook ab, Multimap<String, String> params) {
 
         String correspondentsStr = getParam(params, "correspondent");
         boolean checkToField = "on".equals(getParam(params, "correspondentTo"));
@@ -292,23 +253,24 @@ public class Searcher {
         if (Util.nullOrEmpty(correspondentsStr))
             return docs;
 
-        return updateForCorrespondents(docs, ab, correspondentsStr, checkToField, checkFromField, checkCcField, checkBccField);
+        return filterForCorrespondents(docs, ab, correspondentsStr, checkToField, checkFromField, checkCcField, checkBccField);
     }
 
-    private static Set<EmailDocument> updateForCorrespondents(Set<EmailDocument> docs, AddressBook ab, String correspondentsStr, boolean checkToField, boolean checkFromField, boolean checkCcField, boolean checkBccField) {
+    /** returns only the docs where the name or email address in the given field matches correspondentsStr in the given field(s).
+     * correspondentsStr can be or-delimited and specify multiple strings. */
+    public static Set<EmailDocument> filterForCorrespondents(Collection<EmailDocument> docs, AddressBook ab, String correspondentsStr, boolean checkToField, boolean checkFromField, boolean checkCcField, boolean checkBccField) {
 
         Set<EmailDocument> result = new LinkedHashSet<>();
         Set<Contact> searchedContacts = new LinkedHashSet<>();
         Set<String> correspondents = splitFieldForOr(correspondentsStr);
 
         for (String s : correspondents) {
-            Contact c = ab.lookupByEmailOrName(s);
+            Contact c = ab.lookupByEmailOrName(s); // this lookup will normalize, be case-insensitive, etc.
             if (c != null)
                 searchedContacts.add(c);
         }
 
         for (EmailDocument ed : docs) {
-
             Set<InternetAddress> addressesInMessage = new LinkedHashSet<>(); // only lookup the fields (to/cc/bcc/from) that have been enabled
             if (checkToField && !Util.nullOrEmpty(ed.to))
                 addressesInMessage.addAll((List) Arrays.asList(ed.to));
@@ -332,7 +294,9 @@ public class Searcher {
         return result;
     }
 
-    private static Set<EmailDocument> updateForDocId (Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+    /* returns only the docs matching params["docId"] -- which could be or-delimiter separated to match multiple docs.
+    * used for attachment listing. Consider removing this method in favour of message Ids below. */
+    private static Set<EmailDocument> filterForDocId (Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
 
         Collection<String> docIds = params.get("docId");
         if (Util.nullOrEmpty(docIds))
@@ -349,7 +313,8 @@ public class Searcher {
         return resultDocs;
     }
 
-    private static Set<EmailDocument> updateForMessageId (Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+    /** returns only the docs matching params[uniqueId], which could have multiple uniqueIds separated by the OR separator */
+    private static Set<EmailDocument> filterForMessageId (Set<EmailDocument> docs, Multimap<String, String> params) {
         String val = getParam(params, "uniqueId");
         if (Util.nullOrEmpty(val))
             return docs;
@@ -359,7 +324,7 @@ public class Searcher {
         Set<EmailDocument> resultDocs = new LinkedHashSet<>();
         for (EmailDocument ed : docs)
         {
-            String messageSig = Util.hash (ed.getSignature());
+            String messageSig = Util.hash (ed.getSignature()); // should be made more efficient by storing the hash inside the ed
             if (!Util.nullOrEmpty (messageSig))
                 if (messageIds.contains(messageSig))
                     resultDocs.add(ed);
@@ -367,7 +332,10 @@ public class Searcher {
         return resultDocs;
     }
 
-    private static Set<EmailDocument> updateForMailingListState(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
+    /** returns only the docs matching per params[mailingListState].
+     * If this value is either, no filtering is done.
+     * if set to yes, only docs with at least one address matching a mailing list are returned. */
+    private static Set<EmailDocument> filterForMailingListState(AddressBook ab, Set<EmailDocument> docs, Multimap<String, String> params) {
         String mailingListState = getParam(params, "mailingListState");
         if ("either".equals(mailingListState) || Util.nullOrEmpty(mailingListState))
             return docs;
@@ -418,7 +386,8 @@ public class Searcher {
         return result;
     }
 
-    private static Set<EmailDocument> updateForEmailSource(Set<EmailDocument> docs, Multimap<String, String> params) {
+    /** returns only the docs matching params[emailSource] */
+    private static Set<EmailDocument> filterForEmailSource (Set<EmailDocument> docs, Multimap<String, String> params) {
         String val = getParam(params, "emailSource");
         if (Util.nullOrEmpty(val))
             return docs;
@@ -435,7 +404,8 @@ public class Searcher {
         return result;
     }
 
-    private static Set<EmailDocument> updateForFolder(Set<EmailDocument> docs, Multimap<String, String> params) {
+    /* returns only the docs matching params[folder] (can be or-delimiter separated) */
+    private static Set<EmailDocument> filterForFolder(Set<EmailDocument> docs, Multimap<String, String> params) {
         String val = getParam(params, "folder");
         if (Util.nullOrEmpty(val))
             return docs;
@@ -452,6 +422,7 @@ public class Searcher {
         return result;
     }
 
+    /** returns only the docs containing params[entity] (can be or-delimiter separated) */
     private static Set<EmailDocument> updateForEntities(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
         String val = getParam(params, "entity");
         if (Util.nullOrEmpty(val))
@@ -477,16 +448,17 @@ public class Searcher {
         return result;
     }
 
-    private static Set<EmailDocument> updateForAttachmentEntities(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+    /** returns only those docs with attachments matching params[attachmentEntity] (this field is or-delimiter separated)
+     * Todo: review usage of this and BlobStore.getKeywordsForBlob() */
+    private static Set<EmailDocument> filterForAttachmentEntities(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
         Set<EmailDocument> resultDocs = new LinkedHashSet<>();
-        Set<Blob> resultBlobs = new LinkedHashSet<>();;
+        Set<Blob> resultBlobs = new LinkedHashSet<>(); // currently not used
         String val = getParam(params, "attachmentEntity");
         if (Util.nullOrEmpty(val))
             return docs;
 
         val = val.toLowerCase();
         Set<String> entities = splitFieldForOr(val);
-        Set<EmailDocument> result = new LinkedHashSet<>();
         BlobStore blobStore = archive.blobStore;
 
         nextDoc:
@@ -507,7 +479,7 @@ public class Searcher {
         return resultDocs;
     }
 
-    private static Set<EmailDocument> updateForEntityTypes(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+    private static Set<EmailDocument> filterForEntityType(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
         String val = getParam(params, "entityType");
         if (Util.nullOrEmpty(val))
             return docs;
@@ -528,7 +500,7 @@ public class Searcher {
      * it matches a specific attachment, including its numeric blobstore prefix.
      * used when finding message(s) belonging to image wall
      */
-    private static Set<EmailDocument> updateForAttachmentNames(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
+    private static Set<EmailDocument> filterForAttachmentNames(Archive archive, Set<EmailDocument> docs, Multimap<String, String> params) {
         // this code was taken from old JSPHelper searcher
         try {
             Collection<String> attachmentTailsList = params.get("attachment");
@@ -543,7 +515,7 @@ public class Searcher {
         return docs;
     }
 
-    private static Set<DatedDocument> updateForDateRange(Set<DatedDocument> docs, Multimap<String, String> params) {
+    private static Set<DatedDocument> filterForDateRange(Set<DatedDocument> docs, Multimap<String, String> params) {
         String start = getParam(params, "startDate"), end = getParam(params, "endDate");
         if (Util.nullOrEmpty(start) && Util.nullOrEmpty(end))
             return docs;
@@ -687,7 +659,8 @@ public class Searcher {
         return new Pair<>(resultDocs, resultBlobs);
     }
 
-    /** returns true if the filesize satisfies the constraint. neededFileSize is as defined in the adv. search form */
+    /** returns true if the filesize satisfies the constraint. neededFileSize is as defined in the adv. search form.
+     * we probably need to avoid hardcoding these limits */
     private static boolean filesizeCheck (String neededFilesize, long size) {
         // these attachmentFilesizes parameters are hardcoded -- could make it more flexible if needed in the future
         // "1".."5" are the only valid filesizes. If none of these, this parameter not set and we can include the blob
@@ -790,7 +763,7 @@ public class Searcher {
         return allAttachments;
     }
 
-    private static Set<Document> updateForLexicons(Archive archive, Set<Document> docs, Multimap<String, String> params) {
+    private static Set<Document> filterForLexicons(Archive archive, Set<Document> docs, Multimap<String, String> params) {
         String lexiconName = getParam(params, "lexiconName");
 
         Lexicon lex = null;
@@ -808,7 +781,7 @@ public class Searcher {
         return result;
     }
 
-    private static Set<Document> updateForSensitiveMessages(Archive archive, Set<Document> docs, Multimap<String, String> params) {
+    private static Set<Document> filterForSensitiveMessages(Archive archive, Set<Document> docs, Multimap<String, String> params) {
         String isSensitive = getParam(params, "sensitive");
 
         if ("true".equals(isSensitive)) {
@@ -826,28 +799,22 @@ public class Searcher {
 
 
     /**
-     * Important method.
-     * handle query for term, sentiment, person, attachment, docNum, timeCluster
-     * etc
-     * note: date range selection is always ANDed
+     * VIP method. Top level API entry point to perform the search in the given archive according to params in the given multimap.
+     * params specifies (anded) queries based on term, sentiment (lexicon), person, attachment, docNum, etc.
+       returns a collection of docs and blobs matching the query.
+
      * note2: performance can be improved. e.g., if in AND mode, searches that
-     * iterate through documents such as
-     * selectDocByTag, getBlobsForAttachments, etc., can take the intermediate
-     * resultDocs rather than allDocs.
-     * set intersection/union can be done in place to the intermediate
-     * resultDocs rather than create a new collection.
-     * getDocsForAttachments can be called on the combined result of attachments
-     * and attachmentTypes search, rather than individually.
-     * note3: should we want options to allow user to choose whether to search
-     * only in emails, only in attachments, or both?
+     * iterate through documents such as selectDocByTag, getBlobsForAttachments, etc., can take the intermediate resultDocs rather than allDocs.
+     * set intersection/union can be done in place to the intermediate resultDocs rather than create a new collection.
+     * getDocsForAttachments can be called on the combined result of attachments and attachmentTypes search, rather than individually.
+
+     * note3: should we want options to allow user to choose whether to search only in emails, only in attachments, or both?
      * also, how should we allow variants in combining multiple conditions.
      * there will be work in UI too.
-     * note4: the returned resultBlobs may not be tight, i.e., it may include
-     * blobs from docs that are not in the returned resultDocs.
-     * but for docs that are in resultDocs, it should not include blobs that are
-     * not hitting.
-     * these extra blobs will not be seen since we only use this info for
-     * highlighting blobs in resultDocs.
+
+     * note4: the returned resultBlobs may not be tight, i.e., it may include blobs from docs that are not in the returned resultDocs.
+     * but for docs that are in resultDocs, it should not include blobs that are not hitting.
+     * these extra blobs will not be seen since we only use this info for highlighting blobs in resultDocs.
      */
     public static Pair<Collection<Document>, Collection<Blob>> selectDocsAndBlobs(Archive archive, Multimap<String, String> params) throws UnsupportedEncodingException
     {
@@ -866,8 +833,8 @@ public class Searcher {
         Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachments((Set) resultDocs, params);
 
         resultDocs = (Set) p.getFirst();
-        resultDocs = (Set) updateForAttachmentNames (archive, (Set) resultDocs, params); // for exact names -- when clicking on image in attachment wall or listing
-        resultDocs = (Set) updateForAttachmentEntities (archive, (Set) resultDocs, params); // for exact names -- when clicking on image in attachment wall or listing
+        resultDocs = (Set) filterForAttachmentNames(archive, (Set) resultDocs, params); // for exact names -- when clicking on image in attachment wall or listing
+        resultDocs = (Set) filterForAttachmentEntities(archive, (Set) resultDocs, params);
 
         // resultBlobs will be a *union* (not intersection) of blobs that hit above (in text search) and these blobs that satisfy other criteria
         // resultBlobs are really used for highlighting the attachment
@@ -879,30 +846,30 @@ public class Searcher {
         }
 
         // resultDocs = (Collection) updateForEntities((Collection) resultDocs, params);
-        resultDocs = (Set) updateForCorrespondents((Set) resultDocs, archive.addressBook, params);
+        resultDocs = (Set) filterForCorrespondents((Set) resultDocs, archive.addressBook, params);
 
         // contactIds are used for facets and from correspondents page etc.
         Collection<String> contactIds = params.get("contact");
         if (!Util.nullOrEmpty(contactIds)) {
             for (String cid : contactIds)
-                resultDocs = (Set) updateForContactId((Set) resultDocs, archive.addressBook, cid);
+                resultDocs = (Set) filterForContactId((Set) resultDocs, archive.addressBook, cid);
         }
 
-        resultDocs = (Set) updateForDocId(archive, (Set) resultDocs, params); // for clicking on message in attachment listing
-        resultDocs = (Set) updateForMessageId(archive, (Set) resultDocs, params); // for message id field in adv. search
+        resultDocs = (Set) filterForDocId(archive, (Set) resultDocs, params); // for clicking on message in attachment listing
+        resultDocs = (Set) filterForMessageId((Set) resultDocs, params); // for message id field in adv. search
 
-        resultDocs = (Set) updateForMailingListState(archive.addressBook, (Set) resultDocs, params);
-        resultDocs = (Set) updateForEmailDirection(archive.addressBook, (Set) resultDocs, params);
+        resultDocs = (Set) filterForMailingListState(archive.addressBook, (Set) resultDocs, params);
+        resultDocs = (Set) filterForEmailDirection(archive.addressBook, (Set) resultDocs, params);
 
-        resultDocs = (Set) updateForEmailSource((Set) resultDocs, params);
-        resultDocs = (Set) updateForFolder((Set) resultDocs, params);
-        resultDocs = (Set) updateForFlags((Set) resultDocs, params);
+        resultDocs = (Set) filterForEmailSource((Set) resultDocs, params);
+        resultDocs = (Set) filterForFolder((Set) resultDocs, params);
+        resultDocs = (Set) filterForFlags((Set) resultDocs, params);
 
-        resultDocs = (Set) updateForDateRange((Set) resultDocs, params);
-        resultDocs = (Set) updateForLexicons(archive, resultDocs, params);
-        resultDocs = (Set) updateForEntities(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
-        resultDocs = (Set) updateForEntityTypes(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
-        resultDocs = (Set) updateForSensitiveMessages(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it for the last
+        resultDocs = (Set) filterForDateRange((Set) resultDocs, params);
+        resultDocs = (Set) filterForLexicons(archive, resultDocs, params);
+        resultDocs = (Set) updateForEntities(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it near the end
+        resultDocs = (Set) filterForEntityType(archive, (Set) resultDocs, params);
+        resultDocs = (Set) filterForSensitiveMessages(archive, (Set) resultDocs, params);
 
         // now only keep blobs that belong to resultdocs
 

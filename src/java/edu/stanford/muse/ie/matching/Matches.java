@@ -10,22 +10,23 @@ import java.util.Set;
 
 public class Matches {
 
-public class Match {
-    private String originalString;
-    private String match;
-    private float score;
-    private StringMatchType matchType;
-    private String matchDescription;
-    private boolean isContact;
+    /* small class that encapsulates information of a given match */
+    public class Match {
+        private String originalString;
+        private String match;
+        private float score;
+        private StringMatchType matchType;
+        private String matchDescription;
+        private boolean isContact;
 
-    public Match(String matchString, float score, StringMatchType matchType, String matchDescription, boolean isContact) {
-        this.score = score;
-        this.match = matchString;
-        this.matchType = matchType;
-        this.matchDescription = matchDescription;
-        this.isContact = isContact;
+        public Match(String matchString, float score, StringMatchType matchType, String matchDescription, boolean isContact) {
+            this.score = score;
+            this.match = matchString;
+            this.matchType = matchType;
+            this.matchDescription = matchDescription;
+            this.isContact = isContact;
+        }
     }
-}
 
     private String matchString;
     private int maxMatches;
@@ -45,6 +46,7 @@ public class Match {
         return Util.canonicalizeSpaces(s.toLowerCase().trim());
     }
 
+    /** returns match type of s with candidate */
     public static StringMatchType match(String s, String candidate) {
         if(s != null && candidate != null) {
             String cs = canonicalize(s);
@@ -94,23 +96,6 @@ public class Match {
 
     public String toJson() {
         return (new Gson()).toJson(this);
-    }
-
-    public class Match {
-        private String originalString;
-        private String match;
-        private float score;
-        private StringMatchType matchType;
-        private String matchDescription;
-        private boolean isContact;
-
-        public Match(String matchString, float score, StringMatchType matchType, String matchDescription, boolean isContact) {
-            this.score = score;
-            this.match = matchString;
-            this.matchType = matchType;
-            this.matchDescription = matchDescription;
-            this.isContact = isContact;
-        }
     }
 }
 
