@@ -106,7 +106,7 @@ public class Email {
         if (toJson == null) {
             StringBuilder stream = new StringBuilder();
             stream.append("{");
-            stream.append("\"emailId\": ").append(id).append(",");
+            stream.append("\"emailId\": \"").append(id).append("\",");
             stream.append("\"dateField\": ").append(date.getTime() / 1000).append(",");
             stream.append("\"isSent\": ").append(isSent).append(",");
             stream.append("\"toField\": [");
@@ -127,7 +127,11 @@ public class Email {
             }
             stream.append(",");
             stream.append("\"subject\": \"");
-            append(stream, String.valueOf(subject).replaceAll("\"", "'").replace("Subject: ", "")).append("\"");
+            String formatedSubject = subject == null ? "Without subject" : String.valueOf(subject).replaceAll("\"", "'").replace("Subject: ", "").trim();
+            if ("null".equals(formatedSubject)) {
+                formatedSubject = "Without subject";
+            }
+            append(stream, formatedSubject).append("\"");
             stream.append("}");
             toJson = stream.toString();
         }

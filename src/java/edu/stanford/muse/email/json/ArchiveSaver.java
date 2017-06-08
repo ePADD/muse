@@ -3,6 +3,7 @@ package edu.stanford.muse.email.json;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.EmailDocument;
+import edu.stanford.muse.util.Util;
 
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
@@ -38,7 +39,8 @@ public class ArchiveSaver {
                 }
                 fail = false;
                 final EmailDocument emailDocument = (EmailDocument) doc;
-                Email email = new Email(i,
+                String messageID = Util.hash (emailDocument.getSignature());
+                Email email = new Email(messageID,
                         emailDocument.date,
                         true,
                         emailDocument.getSubject(),
