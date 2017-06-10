@@ -1,10 +1,14 @@
 package edu.stanford.muse.email.json;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.EmailDocument;
+import org.json.JSONObject;
 
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +20,21 @@ public class EmailNameAgregator {
     public EmailNameAgregator(List<Document> allDocs) {
         this.allDocs = allDocs;
         init();
+    }
+
+
+    public EmailNameAgregator(List<Document> allDocs, String fileName) {
+        this.allDocs = allDocs;
+        if (fileName == null) {
+            init();
+        } else {
+            File file = new File(fileName);
+            if (file.exists()) {
+                load(fileName);
+            } else {
+                init();
+            }
+        }
     }
 
     private void init() {
@@ -68,6 +87,36 @@ public class EmailNameAgregator {
             }
         } else {
             emailNameMap.put(email, personal);
+        }
+    }
+
+    public void save(String fileName) {
+        File file = new File(fileName);
+        if (file.exists()) {
+            file.delete();
+        }
+        JSONObject json = new JSONObject(emailNameMap);
+        try (Writer writer = new FileWriter(file)) {
+            json.write(writer);
+            writer.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    public void load(String fileName) {
+        File file = new File(fileName);
+        if (!file.exists()) {
+            file.delete();
+        }
+        try (FileReader fileReader = new FileReader(file)) {
+            Map<String, String> tempMap = new Gson().fromJson(fileReader, new TypeToken<Map<String, String>>() {}.getType());
+            if (tempMap != null) {
+                emailNameMap.putAll(tempMap);
+            }
+            fileReader.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 }

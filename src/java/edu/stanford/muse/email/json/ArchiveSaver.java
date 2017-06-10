@@ -8,6 +8,7 @@ import edu.stanford.muse.util.Util;
 import javax.mail.Address;
 import javax.mail.internet.InternetAddress;
 import java.io.*;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -16,8 +17,20 @@ import java.util.Map;
  */
 public class ArchiveSaver {
 
+    private final String archiveName;
+
+    public ArchiveSaver(String archiveName) {
+        this.archiveName = archiveName;
+    }
+
     public void save(Archive archive) {
-        String fileName = System.getProperty("user.home") + File.separator + "archive.json";
+        String folderName = new String(Base64.getEncoder().encode(archiveName.getBytes()));
+        String folderPath = System.getProperty("user.home") + File.separator + folderName;
+        File folder = new File(folderPath);
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
+        String fileName = folderPath + File.separator + "archive.json";
         File file = new File(fileName);
         if (file.exists()) {
             file.delete();
@@ -29,6 +42,7 @@ public class ArchiveSaver {
         }
         List<Document> allDocs = archive.getAllDocs();
         EmailNameAgregator emailNameAgregator = new EmailNameAgregator(allDocs);
+        emailNameAgregator.save(folderPath + File.separator + "email-names.json");
         int i = 1;
         try (BufferedWriter stream = new BufferedWriter(new FileWriter(file))) {
             append(stream, "[");
@@ -73,6 +87,7 @@ public class ArchiveSaver {
             }
             append(stream, "]");
             stream.flush();
+            stream.close();
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
