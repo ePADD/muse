@@ -1366,7 +1366,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
-            new ArchiveSaver().save(archive);
+            new ArchiveSaver(archive.archiveTitle).save(archive);
         } catch (Throwable t) {
             if (t instanceof OutOfMemoryError)
                 this.mayHaveRunOutOfMemory = true;
