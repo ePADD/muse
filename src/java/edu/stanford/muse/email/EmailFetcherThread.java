@@ -18,6 +18,7 @@ package edu.stanford.muse.email;
 import com.sun.mail.imap.IMAPFolder;
 import edu.stanford.muse.Config;
 import edu.stanford.muse.datacache.Blob;
+import edu.stanford.muse.email.json.ArchiveSaver;
 import edu.stanford.muse.index.*;
 import edu.stanford.muse.util.EmailUtils;
 import edu.stanford.muse.util.JSONUtils;
@@ -25,6 +26,7 @@ import edu.stanford.muse.util.Util;
 import edu.stanford.muse.webapp.HTMLUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.james.mime4j.codec.DecoderUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -473,12 +475,18 @@ public class EmailFetcherThread implements Runnable, Serializable {
             String content;
             String type = p.getContentType(); // new InputStreamReader(p.getInputStream(), "UTF-8");
             try {
-                // if forced encoding is set, we read the string with that encoding, otherwise we just use whatever p.getContent gives us
-                if (FORCED_ENCODING != null) {
+                if (type.contains("charset=")) {
                     byte b[] = Util.getBytesFromStream(p.getInputStream());
-                    content = new String(b, FORCED_ENCODING);
-                } else
-                    content = (String) p.getContent();
+                    content = new String(b, type.substring(type.indexOf("charset=") + "charset=".length()));
+                } else {
+                    // if forced encoding is set, we read the string with that encoding, otherwise we just use whatever p.getContent gives us
+                    if (FORCED_ENCODING != null) {
+                        byte b[] = Util.getBytesFromStream(p.getInputStream());
+                        content = new String(b, FORCED_ENCODING);
+                    } else {
+                        content = (String) p.getContent();
+                    }
+                }
             } catch (UnsupportedEncodingException uee) {
                 dataErrors.add("Unsupported encoding: " + folder_name() + " Message #" + messageNum + " type " + type + ", using brute force conversion");
                 // a particularly nasty issue:javamail can't handle utf-7 encoding which is common with hotmail and exchange servers.
@@ -583,6 +591,9 @@ public class EmailFetcherThread implements Runnable, Serializable {
         String filename = null;
         try {
             filename = p.getFileName();
+            if (filename != null) {
+                filename = DecoderUtil.decodeEncodedWords(filename, null);
+            }
         } catch (Exception e) {
             // seen this happen with:
             // Folders__gmail-sent Message #12185 Expected ';', got "Message"
@@ -1280,7 +1291,13 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 // this is a special for mbox'es because we run out of memory if we try to openFolderAndGetMessages()
                 // so we process in batches
                 //TODO: Ideally, should cap on buffer size rather than on number of messages.
-                final int BATCH = 10000;
+            	int nMessagesperbathc = 10000;
+            	long maxMemory = Runtime.getRuntime().maxMemory();
+            	 if (maxMemory <= 4294967296L ) {	nMessagesperbathc = 100;	} 
+            	 	else {
+            	 		if  (maxMemory<= 8294967296L)  {	nMessagesperbathc = 1000;	}  
+            	 		}
+				final int BATCH = nMessagesperbathc; //gradual decrease of batch size due to memory size
                 int nbatches = nMessages / BATCH;
                 nMessagesProcessedSuccess = 0;
                 long st = System.currentTimeMillis();
@@ -1357,6 +1374,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 }
                 log.info("Read #" + nMessages + " messages in  in " + (System.currentTimeMillis() - st) + "ms");
             }
+            new ArchiveSaver(archive.archiveTitle).save(archive);
         } catch (Throwable t) {
             if (t instanceof OutOfMemoryError)
                 this.mayHaveRunOutOfMemory = true;

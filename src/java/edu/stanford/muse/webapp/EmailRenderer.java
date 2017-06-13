@@ -1,11 +1,5 @@
 package edu.stanford.muse.webapp;
 
-import java.io.IOException;
-import java.util.*;
-
-import javax.mail.Address;
-import javax.mail.internet.InternetAddress;
-
 import edu.stanford.muse.datacache.Blob;
 import edu.stanford.muse.datacache.BlobStore;
 import edu.stanford.muse.email.AddressBook;
@@ -16,6 +10,11 @@ import edu.stanford.muse.ner.model.NEType;
 import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Span;
 import edu.stanford.muse.util.Util;
+
+import javax.mail.Address;
+import javax.mail.internet.InternetAddress;
+import java.io.IOException;
+import java.util.*;
 
 /** This class has util methods to display an email message in an html page */
 
@@ -168,7 +167,7 @@ public class EmailRenderer {
 				InternetAddress ia = (InternetAddress) a;
 				Pair<String, String> p = JSPHelper.getNameAndURL((InternetAddress) a, addressBook);
 				String url = p.getSecond();
-				String str = ia.toString();
+				String str = ia.getPersonal() == null ? ia.getAddress() : ia.getPersonal() + "<" + ia.getAddress() + ">";
                 String addr = ia.getAddress();
                 boolean match = false;
                 if(str!=null) {
@@ -337,7 +336,7 @@ public class EmailRenderer {
 							// d.hashCode() is just something to identify this
 							// page/message
 							page.append("<a rel=\"page" + d.hashCode() + "\" title=\"" + attachment.filename + "\" class=\"" + (highlight?"highlight":"") + "\" href=\"" + attachmentURL + "\">");
-							page.append(leader + "href=\"" + attachmentURL + "\" src=\"" + thumbnailURL + "\"></img>\n");
+							page.append(leader + "href=\"" + attachmentURL + "\" download src=\"" + thumbnailURL + "\"></img>\n");
 							page.append("<a>\n");
 						}
 						else
