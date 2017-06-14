@@ -504,6 +504,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
             // rfc822 mime type is for embedded mbox format or some such (appears for things like
             // forwarded messages). the content appears to be just a multipart.
             Object o = p.getContent();
+            System.setProperty("mail.mime.multipart.allowempty", "true");
             if (o instanceof Multipart) {
                 Multipart allParts = (Multipart) o;
                 if (p.isMimeType("multipart/alternative")) {

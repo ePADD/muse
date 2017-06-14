@@ -468,7 +468,7 @@ public class BlobStore implements Serializable {
                 tnFilename = tmp_filename.substring(0, tmp_filename.length() - ".pdf".length()); // strip the ".pdf"
                 tnFilename += "1.png";
                 String[] args = new String[]{"-imageType", "png", "-startPage", "1", "-endPage", "1", tmp_filename};
-                org.apache.pdfbox.PDFToImage.main(args);
+                org.apache.pdfbox.tools.PDFToImage.main(args);
                 log.info("Saving PDF thumbnail to " + tnFilename);
                 filename = filename + ".png"; // make sure the suffix for the thumbnail is named with a .png suffix in the cache
             } catch (Throwable e) {

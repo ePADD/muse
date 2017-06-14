@@ -19,12 +19,14 @@ import edu.stanford.muse.util.Pair;
 import edu.stanford.muse.util.Util;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.ContentHandler;
+import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -132,9 +134,15 @@ public Pair<String, String> getContent(BlobStore store)
 		try {
 			// skip mp3 files, tika has trouble with it and hangs
 			if (!Util.nullOrEmpty(this.filename) && !this.filename.toLowerCase().endsWith(".mp3"))
-				parser.parse(stream, handler, metadata, context);
-	
-		    String[] names = metadata.names();
+				try {
+					parser.parse(stream, handler, metadata, context);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+					log.error(filename);
+					throw new RuntimeException(e.getMessage(), e);
+			}
+
+			String[] names = metadata.names();
 		    //Arrays.sort(names);
 		    for (String name : names) {
 		    	// some metadata tags are problematic and result in large hex strings... ignore them. (caused memory problems with Henry's archive)
