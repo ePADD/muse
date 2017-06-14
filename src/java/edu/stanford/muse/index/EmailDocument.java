@@ -51,7 +51,7 @@ public class EmailDocument extends DatedDocument implements Serializable
 
 	public String folderName, emailSource;
 	public Set<String> folderNames = new LinkedHashSet<>(), emailSources = new LinkedHashSet<>(); // email can now belong to multiple folders, folderName field also maintained for backward compatibility
-	public Address[] to, from, cc, bcc;
+	public Address[] to, from, cc, bcc; // note: for some reason from[] is an array in JavaMail, because it was supposed to be possible for a message to have multiple senders.
 	
 	public String messageID;
 	public String sentToMailingLists[];

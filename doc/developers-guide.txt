@@ -3,7 +3,8 @@ Muse: the developer's guide
 Basic coding guidelines
 -----------------------
 
-We depend on Java 1.7 and above.
+We depend on Java 1.8 and above.
+We generally prefer IntelliJ Idea as the IDE.
 Download size is sometimes a concern, so we want to discourage wanton import of 3rd party libraries if the functionality being provided is tiny.
 We want to keep yellow warning marks in Eclipse or the equivalent in IntelliJ (i.e. compiler warnings) down to a minimum.
 Casts of collections to versions with generics (and associated compiler warnings) are ok.
@@ -12,7 +13,7 @@ Recommend using Eclipse Team -> sync with repository (or cvs diff) to review all
 Static util methods should go to the appropriate util class in package edu.stanford.muse.util
 Prefer code to be thread-safe, but not strictly required unless there is an explicit need.
 Don't put too much Java code in JSPs, call out to JSPHelper or other Java code instead instead.
-No dependency should exist on webapp package except from JSPs, since core Muse code should be usable with other (even non-web based) frontends (e.g. ePADD)
+No dependency should exist on webapp package except from JSPs, since core Muse code should be usable with other (even non-web based) frontends.
 Visibility: Classes and class members should have minimum visibility. (i.e. private preferred to protected to package to public)
 Static vs. instance: Methods should be declared static if they do not reference instance state.
 Prefer to support as much functionality as possible on all browsers including IE, but fully support at least Firefox 4.x, Safari, Chrome.
@@ -48,16 +49,16 @@ Profiling: Jiwon has a copy of the Yourkit Java profiler if needed.
 Documentation
 -------------
 Document tricky bits of code, as well as VIP interfaces that are used by many clients.
-Prefer code written in paragraphs with a line explaining the purpose of each paragraph at the top.
-Provide examples values of variables in the code
-include URLs or references to original material when borrowing or implementing something non-trivial you learnt from the web (e.g. stackoverflow)
-Recommend best effort to use Javadoc conventions for commenting methods and classes.
-method params and return values in javadoc format are cumbersome and not required, though may be nice to have for really important methods.
+Prefer code written in paragraphs with a line explaining the purpose of each paragraph at the top. If possible, enclose a paragraph in curly braces, to make it's local state hidden from the rest of the method.
+Provide example/expected values of variables in the code. e.g. it is useful to have an example value of string s when it is going through a series of manipulations.
+Include URLs or references to original material when borrowing or implementing something non-trivial you learnt from the web (e.g. stackoverflow)
+We should make a best effort to use Javadoc conventions for commenting methods and classes.
+Method params and return values in javadoc format are cumbersome and not required, though may be nice to have for really important methods.
 
 Build
 ------
 Build should always be from a git committed version.
-Build script should fail if any diffs exist w.r.t repo (for muse as well as epadd)
+Build script should fail if any diffs exist w.r.t repo (for muse as well as epadd).
 Repo path and last commit id of relevant repos (e.g. for epadd: muse epadd, epadd-standalone) should be recorded somewhere inside the binary the build.
 Proper version number should be assigned. either a release number or a date if an internal build.
 
@@ -96,8 +97,8 @@ This structure allows us to override the resource on the classpath (usually embe
 
 Building 
 --------
-mvn -f pom-jar.xml to build muse.jar for use in ePADD.
-mvn -f pom.xml to build muse.war
+mvn -f pom.xml to build muse.jar for use in ePADD.
+mvn -f pom-webapp.xml to build muse.war
 
 Ant targets
 -----------------
@@ -113,6 +114,7 @@ to ensure that the build string reflects the correct person who built the releas
 The build string is at the bottom of most Muse pages, along with a debug and feedback link.
 
 All HTML page rules:
+-------------------
 
 All pages should be UTF-8 encoded.
 All Code from a user/external world should be HTML-escaped.
@@ -122,7 +124,7 @@ Frontend JS rules:
 -----------------
 For JSON files, use <%@page language="java" contentType="application/json;charset=UTF-8"%> (not text/javascript)
 Document exceptions with printStackTrace() by including stacktrace.js
-All ajax requests must have error handling.
+All AJAX requests must have error handling.
 Analyze multiple requests, out-of-order requests.
 One one status operation allowed per page (if possible disable the button that launches a long-running op, so the second one cannot be issued till the first one completes).
 
