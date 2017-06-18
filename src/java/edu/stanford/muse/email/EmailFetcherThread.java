@@ -1297,7 +1297,9 @@ public class EmailFetcherThread implements Runnable, Serializable {
                 int b;
                 for (b = 0; b < nbatches + 1; b++) {
                     begin_msg_index = b * BATCH + 1;
-                    end_msg_index = Math.min((b + 1) * BATCH, nMessages) + 1;
+                    end_msg_index = Math.min((b + 1) * BATCH, nMessages);
+                    log.info("begin_msg_index: " + begin_msg_index);
+                    log.info("end_msg_index: " + end_msg_index);
                     log.info("Fetching messages in index [" + begin_msg_index + ", " + end_msg_index + "] batch: " + b + "/" + nbatches + "\nTotal Messages: " + nMessages);
                     Message[] messages = openFolderAndGetMessages();
                     currentStatus = JSONUtils.getStatusJSON("");
