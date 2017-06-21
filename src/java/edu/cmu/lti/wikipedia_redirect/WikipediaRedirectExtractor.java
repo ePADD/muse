@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
  * @author Hideki Shima
  *
  */
-public class WikipediaRedirectExtractor {
+class WikipediaRedirectExtractor {
 
   private static final String titlePattern    = "    <title>";
   private static final String redirectPattern = "    <redirect";
@@ -38,7 +38,7 @@ public class WikipediaRedirectExtractor {
   private static Pattern pRedirect = Pattern.compile(
           "#[ ]?[^ ]+[ ]?\\[\\[(.+?)\\]\\]", Pattern.CASE_INSENSITIVE);
   
-  public void run(String filepath) throws Exception {
+  private void run(String filepath) throws Exception {
     int invalidCount = 0;
     long t0 = System.nanoTime();
     File f = new File(filepath);

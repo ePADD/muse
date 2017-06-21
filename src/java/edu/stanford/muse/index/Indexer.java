@@ -51,21 +51,22 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 
 /*
- * this class is pretty closely tied with the summarizer (which generates cards).
+ * this class is pretty closely tied with the summarizer (which generates cards  - Muse only.).
  * the function of the indexer is to perform indexing, and provide a query
  * interface to the index.
  * 
  * This index has 2-levels: Docs and MultiDocs (that themselves contain entire
- * documents as subdocs) against each other,
- * The index can be looked up with specific terms, and returns subdocs that
- * contain the term.
+ * documents as subdocs) against each other. MultiDocs are docs for a particular month, a concept rarely used now.
+ * The index can be looked up with specific terms, and returns subdocs that contain the term.
  *
  * Ideally, no method/field should be set to visibility higher than protected in this class
  * Any method/field in this class should be strictly accessible only through Archive class, not even from the same package.
  *
  * there are two reasons for delegations of methods here
  * 1. Some classes in the index package are so tightly using Indexer (For example Cluer, Lexicon, Summarizer), that to make them all go through archive is a lot of code changes
- * 2. The method really belongs to this Class
+ * 2. The method really belongs to this Class.
+ *
+ * cluster numbers mentioned here are for MultiDocs -- (earlier used for months, now rarely used.)
  */
 public class Indexer implements StatusProvider, java.io.Serializable {
 
@@ -91,14 +92,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	private static final String	INDEX_NAME_EMAILS			= "emails";
 	private static final String	INDEX_NAME_ATTACHMENTS		= "attachments";
     //I dont see why the presetQueries cannot be static. As we read these from a file, there cannot be two set of preset queries for two (or more) archives in session
-	protected static String[]		presetQueries				= null;
+	static String[]		presetQueries				= null;
 
 	private Map<String, EmailDocument>				docIdToEmailDoc			= new LinkedHashMap<String, EmailDocument>();			// docId -> EmailDoc
 	private Map<String, Blob>						attachmentDocIdToBlob	= new LinkedHashMap<String, Blob>();					// attachment's docid -> Blob
     private HashMap<String, Map<Integer, String>>	dirNameToDocIdMap		= new LinkedHashMap<String, Map<Integer, String>>();	// just stores 2 maps, one for content and one for attachment Lucene doc ID -> docId
 
 	//changed the below line
-	protected Directory directory;
+	Directory directory;
 	transient private Directory						directory_blob;																// for attachments
 	transient private Analyzer analyzer;
 	transient private IndexSearcher isearcher;
@@ -106,7 +107,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	transient private QueryParser parser, parserOriginal, parserSubject, parserCorrespondents, parserRegex, parserMeta;		// parserOriginal searches the original content (non quoted parts) of a message
 	transient private IndexWriter iwriter;
 	transient private IndexWriter					iwriter_blob;
-	transient protected Map<Integer,String>			blobDocIds, contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
+	transient Map<Integer,String>			blobDocIds;
+	transient Map<Integer,String> contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
 
 	transient private String						baseDir					= null;												// where the file-based directories should be stored (under "indexes" dir)
 
@@ -114,7 +116,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	// most fields will use ft (stored and analyzed), and only the body fields will have a full_ft which is stored, analyzed (with stemming) and also keeps term vector offsets and positions for highlights
 	// some fields like name_offsets absolutely don't need to be indexed and can be kept as storeOnly_ft
 	transient private static FieldType storeOnly_ft;
-	static transient FieldType ft;
+	private static transient FieldType ft;
 	static transient FieldType full_ft, unanalyzed_full_ft;													// unanalyzed_full_ft for regex search
 	static {
 		storeOnly_ft = new FieldType();
@@ -142,7 +144,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 //		unanalyzed_full_ft.freeze();
 	}
 
-	public static final CharArraySet MUSE_STOP_WORDS_SET;
+	private static final CharArraySet MUSE_STOP_WORDS_SET;
 
 	static {
 		// Warning: changes in this list requires re-indexing of all existing archives.
@@ -164,7 +166,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 
 	IndexOptions				io;
 	private boolean				cancel							= false;
-	protected List<LinkInfo>	links							= new ArrayList<LinkInfo>();
+	List<LinkInfo>	links							= new ArrayList<LinkInfo>();
 
 	// Collection<String> dataErrors = new LinkedHashSet<String>();
 
@@ -187,9 +189,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		public int					nUniqueNames			= 0, nUniqueNamesOriginal = 0;
 	}
 
+	/** query options is a small class th	at holds a query, including its term and type.
+	 * cluster, start/end date are used only by Muse frontend. */
     public static class QueryOptions{
         int cluster = -1, threshold = -1;
-        QueryType qt = QueryType.FULL;
+        QueryType qt = QueryType.FULL; // defauly
         //filter options
         Date startDate, endDate;
         SortBy sortBy = SortBy.CHRONOLOGICAL_ORDER;
@@ -220,26 +224,26 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         public SortBy getSortBy(){return sortBy;}
     }
 
-	protected IndexStats			stats					= new IndexStats();
+	IndexStats			stats					= new IndexStats();
 
-	protected List<MultiDoc>	docClusters;
+	List<MultiDoc>	docClusters;
     // mapping of non-zero time cluster index to actual time cluster index
     Map<Integer, Integer>		nonEmptyTimeClusterMap	= new LinkedHashMap<Integer, Integer>();
 
 	List<Document>				docs					= new ArrayList<Document>();
 	 public Summarizer			summarizer				= new Summarizer(this);
 
-	protected Indexer(IndexOptions io) throws IOException
+	Indexer(IndexOptions io) throws IOException
 	{
 		clear();
 		this.io = io;
 	}
 
-	protected Indexer() throws IOException {
+	Indexer() throws IOException {
 		this(null, null);
 	}
 
-	protected Indexer(String baseDir, IndexOptions io) throws IOException {
+	Indexer(String baseDir, IndexOptions io) throws IOException {
 		this(io);
 		this.baseDir = baseDir;
 		//		analyzer = new StandardAnalyzer(MUSE_LUCENE_VERSION, MUSE_STOP_WORDS_SET);
@@ -251,7 +255,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		iwriter_blob = openIndexWriter(directory_blob);
 	}
 
-	protected interface FilterFunctor {
+	interface FilterFunctor {
 		boolean filter(org.apache.lucene.document.Document doc); // can modify doc and return whether the result should be included
 	}
 
@@ -378,7 +382,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return createDirectory(this.baseDir, name);
 	}
 
-	protected void clear()
+	void clear()
 	{
 		cancel = false;
 		links.clear();
@@ -414,7 +418,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * quick method for extracting links only, without doing all the parsing and
 	 * indexing - used by slant, etc.
 	 */
-	protected void extractLinks(Collection<edu.stanford.muse.index.Document> docs) throws IOException
+	void extractLinks(Collection<edu.stanford.muse.index.Document> docs) throws IOException
 	{
 		try {
 			for (edu.stanford.muse.index.Document d : docs)
@@ -442,7 +446,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	protected String computeStats()
+	String computeStats()
 	{
 		return computeStats(true);
 	}
@@ -473,7 +477,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-	long	currentJobStartTimeMillis	= 0L;
+	private long	currentJobStartTimeMillis	= 0L;
 	private int	currentJobDocsetSize, currentJobDocsProcessed, currentJobErrors;
 
 	public void cancel()
@@ -687,7 +691,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return new IndexWriter(dir, iwc); // , new IndexWriter.MaxFieldLength(250000));
 	}
 
-	protected void setBaseDir(String baseDir)
+	void setBaseDir(String baseDir)
 	{
 		if (this.baseDir != null && !this.baseDir.equals(baseDir)) {
 			close();
@@ -713,7 +717,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * sets up indexer just for reading... if needed for writing only, call
 	 * setupForWrite. if need both read & write, call both.
 	 */
-	protected synchronized void setupForRead()
+	synchronized void setupForRead()
 	{
 		log.info("setting up index for read only access");
 		long startTime = System.currentTimeMillis();
@@ -814,7 +818,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		log.info ("Setting up index for read took " + (System.currentTimeMillis() - startTime) + " ms");
 	}
 
-	protected int nDocsInIndex()
+	int nDocsInIndex()
 	{
 		return iwriter.maxDoc();
 	}
@@ -825,7 +829,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * but packIndex MUST be called to close the writer, otherwise lucene will
 	 * throw write lock errors
 	 */
-	protected void setupForWrite() throws IOException
+	void setupForWrite() throws IOException
 	{
 		log.info("setting up index for write access");
 		setupDirectory();
@@ -853,7 +857,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	 * also null out directories that may not be serializable
 	 * (e.g., RAMDirectory is, but FSDirectory isn't)
 	 */
-	protected void close()
+	void close()
 	{
 		log.info("Closing indexer handles");
 		//closeHandles();
@@ -1085,7 +1089,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return ns;
 	}
 
-	protected void updateDocument(org.apache.lucene.document.Document doc) {
+	void updateDocument(org.apache.lucene.document.Document doc) {
 		try {
 			iwriter.updateDocument(new Term("docId", doc.get("docId")), doc);
 		} catch (Exception e) {
@@ -1095,7 +1099,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
 	/* note sync. because we want only one writer to be going at it, at one time */
-	protected synchronized void indexSubdoc(String title, String documentText, edu.stanford.muse.index.Document d, BlobStore blobStore)
+	synchronized void indexSubdoc(String title, String documentText, edu.stanford.muse.index.Document d, BlobStore blobStore)
 	{
 		if (d == null)
 			return;
@@ -1147,13 +1151,13 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-	protected EmailDocument docForId(String id) {
+	EmailDocument docForId(String id) {
 		return docIdToEmailDoc.get(id);
 	}
 
     /**
      * @returns an empty set if the none of the docs are instance of EmailDocument*/
-    protected Collection<EmailDocument> convertToED(Collection<Document> docs) {
+	Collection<EmailDocument> convertToED(Collection<Document> docs) {
         if(docs == null)
             return null;
         Set<EmailDocument> eds = new LinkedHashSet<>();
@@ -1164,16 +1168,14 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return eds;
     }
 
-	protected Collection<edu.stanford.muse.index.Document> docsForQuery(String term, QueryOptions options)
+	Collection<edu.stanford.muse.index.Document> docsForQuery(String term, QueryOptions options)
     {
         log.info("Options for docs selection: "+term+", "+options.getEndDate()+","+options.getSortBy()+", "+options.getStartDate());
         QueryType qt = options.getQueryType();
         int cluster = options.getCluster();
         int threshold = options.getThreshold();
 		//doesn't need term for preset regex
-		if (qt != QueryType.PRESET_REGEX && Util.nullOrEmpty(term))
-			return new ArrayList<>(getDocsInCluster(cluster));
-
+		
 		Set<edu.stanford.muse.index.Document> docs_in_cluster = null;
 		if (cluster != -1)
 			docs_in_cluster = new LinkedHashSet<>((Collection) getDocsInCluster(cluster));
@@ -1217,7 +1219,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-	protected Set<Blob> blobsForQuery(String term)
+	Set<Blob> blobsForQuery(String term)
 	{
 		Set<Blob> result = new LinkedHashSet<Blob>();
 
@@ -1242,7 +1244,8 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return result;
 	}
 
-    protected int countHitsForQuery(String q, QueryType qt) {
+    int countHitsForQuery(String q, QueryType qt) {
+    	/*
 		if (Util.nullOrEmpty(q)) {
             if(qt!=QueryType.PRESET_REGEX)
                 return 0;
@@ -1252,7 +1255,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
             Collection<Document> docs = docsForQuery(q, options);
             return docs.size();
         }
-
+        */
 		try {
 			QueryParser parserToUse;
 			switch (qt) {
@@ -1279,7 +1282,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return 0;
 	}
 
-	protected List<String> getNamesForLuceneDoc(org.apache.lucene.document.Document doc, QueryType qt)
+	private List<String> getNamesForLuceneDoc(org.apache.lucene.document.Document doc, QueryType qt)
 	{
 		List<String> result = new ArrayList<String>();
 		if (doc == null)
@@ -1302,13 +1305,13 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return p.first;
     }
 
-    protected List<String> getNamesForDocId(String id, Indexer.QueryType qt) throws IOException{
+    List<String> getNamesForDocId(String id, Indexer.QueryType qt) throws IOException{
         // get this doc from the index first...
         org.apache.lucene.document.Document docForThisId = getLDoc(id);
         return getNamesForLuceneDoc(docForThisId, qt);
     }
 
-    protected Integer getTotalHits(String q, boolean isAttachments, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
+    Integer getNumHits(String q, boolean isAttachments, QueryType qt) throws IOException, ParseException, GeneralSecurityException, ClassNotFoundException{
         Pair<Collection<String>,Integer> p = null;
         if (!isAttachments)
             p = luceneLookupAsDocIdsWithTotalHits(q, 1, isearcher, qt, 1);
@@ -1349,7 +1352,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			Query query2 = new RegexpQuery(new Term("title", q), RegExp.ALL);
 			((BooleanQuery) query).add(query1, org.apache.lucene.search.BooleanClause.Occur.SHOULD);
 			((BooleanQuery) query).add(query2, org.apache.lucene.search.BooleanClause.Occur.SHOULD);
-		} else if (qt == QueryType.PRESET_REGEX) {
+		} else /* if (qt == QueryType.PRESET_REGEX) {
 			query = new BooleanQuery();
 			if(presetQueries != null) {
 				for (String pq : presetQueries) {
@@ -1362,7 +1365,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 			}else{
 				log.warn("Preset queries is not initialised");
 			}
-		} else if (qt == QueryType.META) {
+		} else */ if (qt == QueryType.META) {
             query = parserMeta.parse(q);
 		} else
 			query = parser.parse(q);
@@ -1518,7 +1521,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	}
 
     //@return pair of content of the attachment and status of retrieval
-	protected Pair<String,String> getContentsOfAttachment(String fileName){
+	Pair<String,String> getContentsOfAttachment(String fileName){
 		try {
             fileName = "\""+fileName+"\"";
 			Collection<String> docIds = luceneLookupAsDocIds(fileName, 1, isearcher_blob, QueryType.META);
@@ -1638,7 +1641,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		directory_blob = copyDirectoryExcludeFields(directory_blob, out_dir, INDEX_NAME_ATTACHMENTS, fields_to_be_removed);
 	}
 
-	protected synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor emailFilter, FilterFunctor attachmentFilter) throws IOException
+	synchronized void copyDirectoryWithDocFilter(String out_dir, FilterFunctor emailFilter, FilterFunctor attachmentFilter) throws IOException
 	{
 		directory = copyDirectoryWithDocFilter(directory, out_dir, INDEX_NAME_EMAILS, emailFilter);
         //the docIds of the attachment docs are not the same as email docs, hence the same filter won't work.
@@ -1699,7 +1702,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		}
 	}
 
-	protected org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
+	org.apache.lucene.document.Document getDoc(edu.stanford.muse.index.Document d) throws IOException {
 		return getLDoc(d.getUniqueId());
 	}
 
@@ -1749,7 +1752,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return getLDoc(docId, true, null);
 	}
 
-	protected org.apache.lucene.document.Document getLDoc(String docId) throws IOException{
+	org.apache.lucene.document.Document getLDoc(String docId) throws IOException{
 		return getLDoc(docId, false, null);
 	}
 
@@ -1757,11 +1760,11 @@ public class Indexer implements StatusProvider, java.io.Serializable {
         return getLDoc(docId, true, fieldsToLoad);
     }
 
-    protected org.apache.lucene.document.Document getLDoc(String docId, Set<String> fieldsToLoad) throws IOException{
+    org.apache.lucene.document.Document getLDoc(String docId, Set<String> fieldsToLoad) throws IOException{
         return getLDoc(docId, false, fieldsToLoad);
     }
 
-	protected String getContents(edu.stanford.muse.index.Document d, boolean originalContentOnly)
+	String getContents(edu.stanford.muse.index.Document d, boolean originalContentOnly)
 	{
 		org.apache.lucene.document.Document doc = null;
 		try {
@@ -1775,13 +1778,13 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		return getContents(doc, originalContentOnly);
 	}
 
-    protected String getTitle(org.apache.lucene.document.Document doc) {
+    String getTitle(org.apache.lucene.document.Document doc) {
         if(doc == null)
             return null;
         return doc.get("title");
     }
 
-	protected String getContents(org.apache.lucene.document.Document doc, boolean originalContentOnly) {
+	String getContents(org.apache.lucene.document.Document doc, boolean originalContentOnly) {
         String contents = null;
         try {
             if (originalContentOnly)
@@ -1957,7 +1960,7 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 		System.out.println("hits for: " + q + " = " + docs.size());
 
         q = "ssn";
-        int numHits = li.getTotalHits(q, false, QueryType.FULL);
+        int numHits = li.getNumHits(q, false, QueryType.FULL);
         System.err.println("Number of hits for: " + q + " is " + numHits);
 
         q = "[A-Za-z][0-9]{7}";

@@ -24,9 +24,9 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class ThunderbirdUtils {
-    static Log log = LogFactory.getLog(ThunderbirdUtils.class);
+    private static Log log = LogFactory.getLog(ThunderbirdUtils.class);
     
-    class ThunderbirdAccount {
+    private class ThunderbirdAccount {
     	String accountName, serverHostname, serverRealHostName, serverType, username, userRealName, userEmail, dir_rel, fcc_folder;
     	int serverPort;
     }
@@ -82,7 +82,7 @@ public class ThunderbirdUtils {
     }
     
     /** returns list of accounts; each account has a list of properties, the order is fragile! */
-	public static List<List<String>> getThunderbirdAccountsNew()
+	private static List<List<String>> getThunderbirdAccountsNew()
 	{
 		// read all user prefs as a map
 		try {
@@ -428,7 +428,7 @@ public class ThunderbirdUtils {
 	}
 
 	/* guess from the user agent what the thunderbird root dir is going to be */
-		public static String getThunderbirdProfileDir()
+		private static String getThunderbirdProfileDir()
 		{
 			String tbirdDir = System.getProperty("user.home");
 			boolean isMac = false;

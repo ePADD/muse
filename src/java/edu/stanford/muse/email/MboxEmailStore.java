@@ -34,7 +34,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 
 	private static final String CACHE_FILENAME = ".muse.dir";
 
-	public static final Properties mstorProps;
+	private static final Properties mstorProps;
 	private FolderCache folderCache;
 	private String rootPath;
 	private String accountKey;
@@ -57,7 +57,7 @@ public class MboxEmailStore extends EmailStore implements Serializable {
 	}
 
 	// constructor for de-serialization
-	public MboxEmailStore() { }
+	private MboxEmailStore() { }
 
 	public MboxEmailStore(String accountKey, String name, String path) throws IOException
 	{

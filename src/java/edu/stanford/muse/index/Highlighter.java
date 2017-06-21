@@ -40,10 +40,10 @@ import java.util.stream.Collectors;
  * 1. while highlighting preset query -- a regexp like: \d{3}-\d{2}-\d{4} highlights 022-29), 1114 as <B>022-29), 11</B>14.
  *      This is due to improper offsets in token stream or could be because lucene highlighter is considering endoffset like startoffset+token.length()
  */
-public class Highlighter {
-    static Log log = LogFactory.getLog(Highlighter.class);
+class Highlighter {
+    private static Log log = LogFactory.getLog(Highlighter.class);
 
-    static Random			randnum			= new Random();
+    private static Random			randnum			= new Random();
     static {
         randnum.setSeed(123456789);
     }
@@ -55,7 +55,7 @@ public class Highlighter {
      * The highlighted content would have [pre Tag] matching term [post tag]
      * When the term is "Robert Creeley", the output is "On Tue, Jun 24, 2014 at 11:56 AM, [preTag]Robert Creeley's[postTag] <creeley@acsu.buffalo.edu> wrote:"
      */
-    public static String highlight(String content, String term, String preTag, String postTag) throws IOException, ParseException, InvalidTokenOffsetsException{
+    private static String highlight(String content, String term, String preTag, String postTag) throws IOException, ParseException, InvalidTokenOffsetsException{
         //The Lucene Highlighter is used in a hacky way here, it is intended to be used to retrieve fragments from a matching Lucene document.
         //The Lucene Highlighter introduces tags around every token that matched the query, hence it is required to merge these fragmented annotations into one inorder to fit our needs.
         //To truly differentiate contiguous fragments that match a term supplied we add a unique id to the pretag, hence the randum instance
@@ -100,7 +100,7 @@ public class Highlighter {
         else return content;
     }
 
-    public static String highlightBatch(String content, String[] terms, String preTag, String posTag) {
+    private static String highlightBatch(String content, String[] terms, String preTag, String posTag) {
         for(String term: terms){
             try {
                 content = highlight(content, term, preTag, posTag);
@@ -120,7 +120,7 @@ public class Highlighter {
      * [preTag]Robert[postTag] [preTag]Creeley's[postTag] ==> [preTag]Robert Creeley's[postTag]
      * [preTag]Robert Creeley[posTag] [preTag]UB[postTag]
      * */
-    static String mergeContiguousFragments(String result, String term, String preTag, String postTag) {
+    private static String mergeContiguousFragments(String result, String term, String preTag, String postTag) {
         Pattern patt;
         //Note: it is assumed that postTag starts with '<', else this method is being misused and hence will fail
         patt = Pattern.compile(preTag+"([^<]*?)"+postTag+"(\\W+)"+preTag);
@@ -142,7 +142,7 @@ public class Highlighter {
         return result;
     }
 
-    static String annotateSensitive(String content, String preTag, String postTag) {
+    private static String annotateSensitive(String content, String preTag, String postTag) {
         if (Archive.getPresetQueries() == null)
             Archive.readPresetQueries();
         String[] qs = Archive.getPresetQueries();

@@ -531,7 +531,7 @@ public class IndexUtils {
 	 * the person's name, not just the given one.
 	 * runs through all docs times # given emailOrNames.
 	 */
-	public static Set<Document> selectDocsByPersons(AddressBook ab, Collection<EmailDocument> docs, String[] emailOrNames, int[] contactIds)
+	private static Set<Document> selectDocsByPersons(AddressBook ab, Collection<EmailDocument> docs, String[] emailOrNames, int[] contactIds)
 	{
 		if (ab == null)
 		{
@@ -812,7 +812,7 @@ public class IndexUtils {
 		return folderNameMap;
 	}
 
-	public static Map<SimilarGroup<String>, DetailedFacetItem> partitionDocsByGroup(Collection<? extends Document> docs, GroupAssigner groupAssigner)
+	private static Map<SimilarGroup<String>, DetailedFacetItem> partitionDocsByGroup(Collection<? extends Document> docs, GroupAssigner groupAssigner)
 	{
 		Map<SimilarGroup<String>, DetailedFacetItem> groupMap = new LinkedHashMap<SimilarGroup<String>, DetailedFacetItem>();
 		for (Document d : docs)
@@ -834,7 +834,7 @@ public class IndexUtils {
 		return groupMap;
 	}
 
-	public static Map<String, DetailedFacetItem> partitionDocsByDirection(Collection<? extends Document> docs, AddressBook ab)
+	private static Map<String, DetailedFacetItem> partitionDocsByDirection(Collection<? extends Document> docs, AddressBook ab)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
 		DetailedFacetItem f_in = new DetailedFacetItem("Received", "Incoming messages", "direction", "in");
@@ -862,7 +862,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	public static Map<String, DetailedFacetItem> partitionDocsByDoNotTransfer(Collection<? extends Document> docs)
+	private static Map<String, DetailedFacetItem> partitionDocsByDoNotTransfer(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
 		DetailedFacetItem t = new DetailedFacetItem("Transfer", "To be transferred", "doNotTransfer", "no");
@@ -887,7 +887,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	public static Map<String, DetailedFacetItem> partitionDocsByTransferWithRestrictions(Collection<? extends Document> docs)
+	private static Map<String, DetailedFacetItem> partitionDocsByTransferWithRestrictions(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
 		DetailedFacetItem t = new DetailedFacetItem("Restrictions", "Transfer with restrictions", "transferWithRestrictions", "yes");
@@ -913,7 +913,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	public static Map<String, DetailedFacetItem> partitionDocsByReviewed(Collection<? extends Document> docs)
+	private static Map<String, DetailedFacetItem> partitionDocsByReviewed(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
 		DetailedFacetItem t = new DetailedFacetItem("Reviewed", "Reviewed", "reviewed", "yes");
@@ -940,7 +940,7 @@ public class IndexUtils {
 	}
 
 	/** note: attachment types are lower-cased */
-	public static Map<String, DetailedFacetItem> partitionDocsByAttachmentType(Collection<? extends Document> docs)
+	private static Map<String, DetailedFacetItem> partitionDocsByAttachmentType(Collection<? extends Document> docs)
 	{
 		Map<String, DetailedFacetItem> result = new LinkedHashMap<String, DetailedFacetItem>();
 
@@ -1095,7 +1095,7 @@ public class IndexUtils {
 		return facetMap;
 	}
 
-	public static Pair<Date, Date> getDateRange(Collection<? extends DatedDocument> docs)
+	private static Pair<Date, Date> getDateRange(Collection<? extends DatedDocument> docs)
 	{
 		Date first = null, last = null;
 		for (DatedDocument dd : docs)
@@ -1375,7 +1375,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	public static void computeColorsForTag(Archive archive, int cloudNum, CardTerm tct, GroupAssigner groupAssigner) throws IOException
+	private static void computeColorsForTag(Archive archive, int cloudNum, CardTerm tct, GroupAssigner groupAssigner) throws IOException
 	{
 		if (tct.colorWeights != null)
 			return; // do nothing if we already computed colors for tags
@@ -1433,7 +1433,7 @@ public class IndexUtils {
 		return substrs;
 	}
 
-	public static List<String> computeAllSubstrings(Set<String> set, boolean sort) {
+	private static List<String> computeAllSubstrings(Set<String> set, boolean sort) {
 		Set<String> substrs = new HashSet<String>();
 		for (String s : set) {
 			substrs.addAll(computeAllPrefixes(computeAllSuffixes(s)));
@@ -1458,7 +1458,7 @@ public class IndexUtils {
 	}
 
 	/**@param sort in descending order of length*/
-	public static List<String> computeAllSubstrings(String s, boolean sort)
+	private static List<String> computeAllSubstrings(String s, boolean sort)
 	{
         s = s.replaceAll("^\\W+|\\W+$","");
         Set<String> set = new LinkedHashSet<String>();
@@ -1466,7 +1466,7 @@ public class IndexUtils {
 		return computeAllSubstrings(set, sort);
 	}
 
-	public static Set<String> computeAllPrefixes(Set<String> set)
+	private static Set<String> computeAllPrefixes(Set<String> set)
 	{
 		Set<String> result = new LinkedHashSet<String>();
 		for (String s : set)
@@ -1491,7 +1491,7 @@ public class IndexUtils {
 		return computeAllPrefixes(set);
 	}
 
-	static Set<String> computeAllSuffixes(Set<String> set)
+	private static Set<String> computeAllSuffixes(Set<String> set)
 	{
 		Set<String> result = new HashSet<String>();
 		for (String s : set) {
@@ -1507,7 +1507,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	static Set<String> computeAllSuffixes(String s)
+	private static Set<String> computeAllSuffixes(String s)
 	{
 		Set<String> set = new LinkedHashSet<String>();
 		set.add(s);
@@ -1622,7 +1622,7 @@ public class IndexUtils {
 		return result;
 	}
 
-	static Set<Document> selectDocsByContact(AddressBook ab, Collection<EmailDocument> docs, Set<String> contact_names, Set<String> contact_emails)
+	private static Set<Document> selectDocsByContact(AddressBook ab, Collection<EmailDocument> docs, Set<String> contact_names, Set<String> contact_emails)
 	{
 		Set<Document> result = new LinkedHashSet<Document>();
 
@@ -1660,7 +1660,7 @@ public class IndexUtils {
 		return selectDocsByContact(ab, docs, c.names, c.emails);
 	}
 
-	public static Set<Document> selectDocsByContact(AddressBook ab, Collection<EmailDocument> docs, Set<Contact> cset)
+	private static Set<Document> selectDocsByContact(AddressBook ab, Collection<EmailDocument> docs, Set<Contact> cset)
 	{
 		if (cset == null)
 			return new LinkedHashSet<Document>();

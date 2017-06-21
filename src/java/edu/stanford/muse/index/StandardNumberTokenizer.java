@@ -31,17 +31,17 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 
-public final class StandardNumberTokenizer extends Tokenizer {
-	public StandardTokenizerImpl	scanner;
+final class StandardNumberTokenizer extends Tokenizer {
+	private StandardTokenizerImpl	scanner;
 
-	public static final int			HOST			= 5;
-	public static final int			NUM				= 6;
+	private static final int			HOST			= 5;
+	private static final int			NUM				= 6;
 
-	public static final int			ACRONYM_DEP		= 8;
+	private static final int			ACRONYM_DEP		= 8;
 
 
 	/** String token types that correspond to token type int constants */
-	public static final String[]	TOKEN_TYPES		= new String[] {
+	private static final String[]	TOKEN_TYPES		= new String[] {
 													"<ALPHANUM>",
 													"<APOSTROPHE>",
 													"<ACRONYM>",

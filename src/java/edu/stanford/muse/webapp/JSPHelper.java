@@ -98,7 +98,7 @@ public class JSPHelper {
 	 * gets the LOCAL/CLIENT session attribute (to make explicit distinction
 	 * from shared/global/server session)
 	 */
-	public static Object getHttpSessionAttribute(HttpSession session, String attr_name)
+	private static Object getHttpSessionAttribute(HttpSession session, String attr_name)
 	{
 		return session.getAttribute(attr_name); // intentional use of session . getSessionAttribute()
 	}
@@ -111,7 +111,7 @@ public class JSPHelper {
 	}
 
 	/** gets the cache (base) dir for the current session */
-	public static String getBaseDir(MuseEmailFetcher m, HttpServletRequest request)
+	private static String getBaseDir(MuseEmailFetcher m, HttpServletRequest request)
 	{
 		HttpSession session = request.getSession();
 
@@ -229,7 +229,7 @@ public class JSPHelper {
 	 * if throwExceptionIfUnsupportedEncoding is true, throws an exception,
 	 * otherwise returns
 	 */
-	public static String[] convertRequestParamsToUTF8(String params[], boolean throwExceptionIfUnsupportedEncoding) throws UnsupportedEncodingException
+	private static String[] convertRequestParamsToUTF8(String params[], boolean throwExceptionIfUnsupportedEncoding) throws UnsupportedEncodingException
 	{
 		if (RUNNING_ON_JETTY)
 			return params;
@@ -455,7 +455,7 @@ public class JSPHelper {
 	 * creates a new blob store object from the given location (may already
 	 * exist) and returns it
 	 */
-	public static BlobStore preparedBlobStore(String baseDir)
+	private static BlobStore preparedBlobStore(String baseDir)
 	{
 		// always set up attachmentsStore even if we are not fetching attachments
 		// because the user may already have stuff in it -- if so, we should make it available.
@@ -555,7 +555,7 @@ public class JSPHelper {
 	}
 
 	/** also sets current thread name to the path of the request */
-	public static String getRequestDescription(HttpServletRequest request, boolean includingParams)
+	private static String getRequestDescription(HttpServletRequest request, boolean includingParams)
 	{
 		HttpSession session = request.getSession();
 		String page = request.getServletPath();
@@ -618,7 +618,7 @@ public class JSPHelper {
 		Thread.currentThread().setName("done-" + page);
 	}
 
-	public static Map<String, String> convertRequestToMap(HttpServletRequest request)
+	private static Map<String, String> convertRequestToMap(HttpServletRequest request)
 	{
 		Map<String, String> result = new LinkedHashMap<String, String>();
 		Map<String, String[]> map = (Map) request.getParameterMap();
@@ -862,7 +862,7 @@ public class JSPHelper {
 	}
 
 	/**
-	 * Important method.
+	 * This used to be a VIP methods for muse. Now superseded by Searcher.java for ePADD.
 	 * handle query for term, sentiment, person, attachment, docNum, timeCluster
 	 * etc
 	 * note: date range selection is always ANDed

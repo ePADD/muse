@@ -14,7 +14,7 @@ import java.util.Map;
  * assume not too many labels are present (as all written file descriptors are kept open simultaneously).
  * Unread folder is skipped.
  * Messages may get duplicated if they have multiple labels. */
-public class GmailMboxSplitter {
+class GmailMboxSplitter {
     private static String OUT_FILE = "GmailMboxSplitter.out.txt"; // writes into current directory
     private static StringBuilder currentMessageContents = new StringBuilder(); // this will contain the current message
     private static List<String> currentMessageLabels = new ArrayList<>();

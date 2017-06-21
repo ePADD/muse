@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class WordCount {
+class WordCount {
     // the command line parameter is the directory where the archive is stored.
     // The default place where the appraisal archive is stored is <HOME>/epadd-appraisal/user
 
@@ -117,7 +117,7 @@ public class WordCount {
         return truncList;
     }
 
-    static List<Map.Entry<String, Integer>> sortMap(Map<String, Integer> map){
+    private static List<Map.Entry<String, Integer>> sortMap(Map<String, Integer> map){
         Set<Map.Entry<String,Integer>> sortedSet = map.entrySet();
         List<Map.Entry<String,Integer>> sortedList = new ArrayList<>();
         sortedList.addAll(sortedSet);
@@ -131,7 +131,7 @@ public class WordCount {
         return sortedList;
     }
 
-    static List<Pair<String,Float>> sortPairList(List<Pair<String,Float>> list){
+    private static List<Pair<String,Float>> sortPairList(List<Pair<String, Float>> list){
         Collections.sort(list, new Comparator<Pair<String, Float>>() {
             @Override
             public int compare(Pair<String, Float> pair1, Pair<String, Float> pair2) {

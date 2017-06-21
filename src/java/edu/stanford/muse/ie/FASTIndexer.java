@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * This class takes a .fast nt file and converts it to a lucene index that can be searched for.
  * It's a standalone program, i.e. doesn't need to be included in epadd.war
  */
-public class FASTIndexer {
+class FASTIndexer {
     private static Log log = LogFactory.getLog(FASTIndexer.class);
     public static final String FIELD_NAME_LABELS = "labels";
     public static final String FIELD_NAME_FAST_ID = "fastId";
@@ -140,10 +140,10 @@ public class FASTIndexer {
         }
     }
 
-    static final Pattern prefNameAndExtentMatcher = Pattern.compile ("(.*), *([0-9\\-]*)"); // to match pref names like: Cooper, Dr. (Thomas), 1759-1839
-    static final Pattern prefNameAndExtentMatcher2 = Pattern.compile ("(.*), (active.*)"); // to match Theoktistos, the Stoudite, active 14th century
+    private static final Pattern prefNameAndExtentMatcher = Pattern.compile ("(.*), *([0-9\\-]*)"); // to match pref names like: Cooper, Dr. (Thomas), 1759-1839
+    private static final Pattern prefNameAndExtentMatcher2 = Pattern.compile ("(.*), (active.*)"); // to match Theoktistos, the Stoudite, active 14th century
 
-    public static Pair<String, String> breakIntoNameAndExtent (String nameLabel) {
+    private static Pair<String, String> breakIntoNameAndExtent(String nameLabel) {
 
         String name = nameLabel, extent = null; // by default assume no extent
 
@@ -164,7 +164,7 @@ public class FASTIndexer {
     }
 
     /** assembles a fast entity, given all the pred->objs for subject with the given fastid */
-    public static void processFastEntity(long fastId, Multimap<String, String> predToObject) throws IOException {
+    private static void processFastEntity(long fastId, Multimap<String, String> predToObject) throws IOException {
 
         String wikipediaId = "?", viafId = "?", lcshId = "?", lcnafId = "?";
         String type = "?";
@@ -332,7 +332,7 @@ public class FASTIndexer {
         }
     }
 
-    public static void queryFast (String dir, String name, int nExpectedHits) throws IOException, ParseException {
+    private static void queryFast(String dir, String name, int nExpectedHits) throws IOException, ParseException {
         IndexReader indexReader = DirectoryReader.open(FSDirectory.open (new File(dir)));
         StandardAnalyzer analyzer = new StandardAnalyzer(Version.LUCENE_47, new CharArraySet(Version.LUCENE_47, new ArrayList<String>(), true /* ignore case */)); // empty chararrayset, so effectively no stop words
         IndexSearcher indexSearcher = new IndexSearcher(indexReader);
@@ -365,7 +365,7 @@ public class FASTIndexer {
         indexReader.close();
     }
 
-    public static void test (String dir) throws IOException, ParseException {
+    private static void test(String dir) throws IOException, ParseException {
         queryFast (dir, "Barack Obama", 1);
         queryFast (dir, "Barak Obama", 1);
         queryFast (dir, "barack", 3);

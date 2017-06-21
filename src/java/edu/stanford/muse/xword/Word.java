@@ -4,15 +4,16 @@ import java.io.Serializable;
 import java.util.List;
 
 /** captures a placed word's text, coordinates */
-public class Word implements Comparable<Word>, Serializable {
+class Word implements Comparable<Word>, Serializable {
 	public final static long serialVersionUID = 1604516333421018737L;
-	public String word, originalTerm;
+	public String word;
+	private String originalTerm;
 	public int x, y; // starting x, y
 	public boolean acrossNotDown;
-	int clueNum = -1; // just indicates its uninitialized
+	private int clueNum = -1; // just indicates its uninitialized
 	public Clue clue;
-	List<Integer> wordLens; // word lengths for multi-word answers, word is 7 letters, but broken up as (5,2)
-	boolean intersects /* other words */;
+	private List<Integer> wordLens; // word lengths for multi-word answers, word is 7 letters, but broken up as (5,2)
+	private boolean intersects /* other words */;
 	public List<Integer> getWordLens() { return wordLens; }
 	public void setWordLens(List<Integer> wordLens) { this.wordLens = wordLens; }
 	public Word () { } // need a no-arg constr for gson deserialization

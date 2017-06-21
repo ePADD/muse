@@ -57,14 +57,14 @@ public class EmailDocument extends DatedDocument implements Serializable
 	public String sentToMailingLists[];
 	public List<Blob> attachments;
 	public boolean attachmentsYetToBeDownloaded;
-	public String errorString; // error string set only if there was an error in reading this message from the original source
+	private String errorString; // error string set only if there was an error in reading this message from the original source
 	public long threadID;  // note: valid thread ids must be > 1, 0 means uninitialized
 	public boolean doNotTransfer, transferWithRestrictions, reviewed, addedToCart; // this is for libraries etc who may want export after redaction
 	
 	// default constructor for serialization
 	public EmailDocument() { /* */ }
 	public EmailDocument(String id) { this.id = id; } /* prob. useful only for errors */
-    public static Log log						= LogFactory.getLog(EmailDocument.class);
+    private static Log log						= LogFactory.getLog(EmailDocument.class);
 
 	public EmailDocument(String id, String emailSource, String folderName, Address[] to, Address[] cc, Address[] bcc, Address[] from, String subject, String messageID, Date date)
 	{

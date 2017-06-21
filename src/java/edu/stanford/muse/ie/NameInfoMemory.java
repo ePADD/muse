@@ -11,7 +11,7 @@ public class NameInfoMemory implements Comparable<NameInfoMemory>, Serializable 
 	private final static long serialVersionUID = 1L;
 
 	public String title /* with _ in place of space */, snippet, type = "notype";
-	public float score;
+	private float score;
 	public String word /* no spaces */, originalTerm /* with spaces, capitalization etc */;
 	public int times;
 	public Date firstDate, lastDate = null;

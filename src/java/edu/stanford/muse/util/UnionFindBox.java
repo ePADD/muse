@@ -16,9 +16,9 @@
 package edu.stanford.muse.util;
 import java.util.*;
 
-public class UnionFindBox<T> extends UnionFindObject {
+class UnionFindBox<T> extends UnionFindObject {
 
-	public T payload;
+	private T payload;
 	public int classNum;
 	
 	public UnionFindBox(T t)

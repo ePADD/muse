@@ -22,13 +22,13 @@ import edu.stanford.muse.util.Pair;
 /** little container class that can enumerate the tokens identified by NER */
 public class NERTokenizer extends MyTokenizer
 {
-	public List<Pair<String,String>> nerTokens;
+	private List<Pair<String,String>> nerTokens;
 	public NERTokenizer(List<Pair<String,String>> tokens)
 	{
 		nerTokens = new ArrayList<Pair<String,String>>(tokens);
 	}
 
-	int tok = 0;
+	private int tok = 0;
 	public boolean hasMoreTokens()
 	{
 		return tok < nerTokens.size();

@@ -23,7 +23,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class SimpleSessions {
-	public static Log	log	= LogFactory.getLog(SimpleSessions.class);
+	private static Log	log	= LogFactory.getLog(SimpleSessions.class);
 
 	/**
 	 * loads session from the given filename, and returns the map of loaded
@@ -238,8 +238,8 @@ public class SimpleSessions {
 
 	// an archive in a given dir should be loaded only once into memory.
 	// this map stores the directory -> archive mapping.
-	static LinkedHashMap<String, WeakReference<Archive>> globaldirToArchiveMap = new LinkedHashMap<String, WeakReference<Archive>>();
-	static LinkedHashMap<String, Integer> globaldirToLoadCountMap = new LinkedHashMap<String, Integer>();
+	private static LinkedHashMap<String, WeakReference<Archive>> globaldirToArchiveMap = new LinkedHashMap<String, WeakReference<Archive>>();
+	private static LinkedHashMap<String, Integer> globaldirToLoadCountMap = new LinkedHashMap<String, Integer>();
 
 	/** VIP method. Should be the single place to load an archive from disk.
      * loads an archive from the given directory. always re-uses archive objects loaded from the same directory.

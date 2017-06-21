@@ -15,7 +15,7 @@ import java.util.zip.GZIPInputStream;
 /** Util program to generate tokens that are candidates to be variants of each other from Wikipedia surface text.
  * prints token pairs that occur at least THRESHOLD times.
  * Needs stop words file and SurfaceForms_LRD-WAT.nofilter.tsv in ~/data and writes out to variants.txt in the same dir */
-public class GenerateVariants {
+class GenerateVariants {
     private static final Log log = LogFactory.getLog(GenerateVariants.class);
     private static final String BASE_DIR = System.getProperty("user.home") + File.separator + "data";
     private static final int THRESHOLD = 10; // min. #times a token pair should appear in order to be output
@@ -80,7 +80,7 @@ public class GenerateVariants {
         return false;
     }
 
-    public static Map<String, String> readDbpedia(String file) throws IOException {
+    private static Map<String, String> readDbpedia(String file) throws IOException {
         Map<String, String> result = new LinkedHashMap<>();
         LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(file), true), "UTF-8"));
         System.out.println ("Reading Dbpedia");
@@ -101,7 +101,7 @@ public class GenerateVariants {
         return result;
     }
 
-    public static Map<String, Integer> computeWordToFreq() throws IOException {
+    private static Map<String, Integer> computeWordToFreq() throws IOException {
 
         LineNumberReader lnr = new LineNumberReader(new InputStreamReader(new GZIPInputStream((new FileInputStream(BASE_DIR + File.separator + TSV_FILE)))));
         int count = 0;
@@ -173,7 +173,7 @@ public class GenerateVariants {
         return wordToFreq;
     }
 
-    public static void generateVariantWeights() throws IOException, ClassNotFoundException {
+    private static void generateVariantWeights() throws IOException, ClassNotFoundException {
 
         if (!new File("wordToFreq.ser").exists())
             computeWordToFreq();
@@ -283,7 +283,7 @@ public class GenerateVariants {
         pw.close();
     }
 
-    public static void computeVariants() throws IOException, ClassNotFoundException {
+    private static void computeVariants() throws IOException, ClassNotFoundException {
         if (!new File("variantToTitleToWeight.ser").exists())
             generateVariantWeights();
 

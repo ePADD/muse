@@ -13,7 +13,7 @@
 <%@ page contentType="text/html; charset=UTF-8"%>
 <%!
 
-public String scriptForFacetsGraph(List<DetailedFacetItem> dfis, List<Date> intervals, Collection<EmailDocument> docs, int[] allMessagesHistogram, int w, int h)
+private String scriptForFacetsGraph(List<DetailedFacetItem> dfis, List<Date> intervals, Collection<EmailDocument> docs, int[] allMessagesHistogram, int w, int h)
 {
 	Collections.sort(dfis);
 	JSONArray j = new JSONArray();
@@ -49,7 +49,7 @@ public String scriptForFacetsGraph(List<DetailedFacetItem> dfis, List<Date> inte
 	+ "</script>\n";
 }
 
-public String scriptForGroupsGraph(List<Date> intervals, GroupAssigner groupAssigner, Map<String, Set<EmailDocument>> map, int[] allMessagesHistogram, int w, int h)
+private String scriptForGroupsGraph(List<Date> intervals, GroupAssigner groupAssigner, Map<String, Set<EmailDocument>> map, int[] allMessagesHistogram, int w, int h)
 {
 	String totalMessageVolume = JSONUtils.arrayToJson(allMessagesHistogram);
 	StringBuilder json = new StringBuilder("[");
@@ -74,7 +74,7 @@ public String scriptForGroupsGraph(List<Date> intervals, GroupAssigner groupAssi
 }
 %>
 <%!
-public String scriptForSentimentsGraph(Map<String, Collection<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
+private String scriptForSentimentsGraph(Map<String, Collection<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
 {
 	String totalMessageVolume = JSONUtils.arrayToJson(allMessagesHistogram);
 
@@ -101,7 +101,8 @@ public String scriptForSentimentsGraph(Map<String, Collection<Document>> map, Li
 	+ "</script>\n";
 }
 %>
-<%!public String emitScriptForSentimentsByGroupGraph(HttpServletRequest request, Archive archive, Collection<DatedDocument> docsToPlot, int w, int h, HttpSession session)
+<%!
+	private String emitScriptForSentimentsByGroupGraph(HttpServletRequest request, Archive archive, Collection<DatedDocument> docsToPlot, int w, int h, HttpSession session)
 {
 	// normalizer is the max # of documents in a single intervals
 	GroupAssigner groupAssigner = archive.groupAssigner;

@@ -42,11 +42,11 @@ public class DatedDocument extends Document {
     public Date date;
     public boolean hackyDate; // indicates that we're not certain about the date
     
-	public DatedDocument() { /* dummy for serialization */ }
+	DatedDocument() { /* dummy for serialization */ }
 
 	public Date getDate() { return date; }
 
-	public DatedDocument(String id, String s, Date d)
+	DatedDocument(String id, String s, Date d)
 	{
 		super (id, s);
 		this.date = d;
@@ -118,7 +118,7 @@ public class DatedDocument extends Document {
 	}
 
 	/** invoke only from getHTMLForHeader, needs specific context of date etc. */
-	protected StringBuilder getHTMLForDate()
+	private StringBuilder getHTMLForDate()
 	{
 		StringBuilder result = new StringBuilder();
 
@@ -131,7 +131,7 @@ public class DatedDocument extends Document {
 		return result;
 	}
 
-	protected StringBuilder getHTMLForSubject()
+	private StringBuilder getHTMLForSubject()
 	{
 		StringBuilder result = new StringBuilder();
 		String x = this.description;

@@ -23,15 +23,16 @@ import java.util.List;
 import edu.stanford.muse.email.Filter;
 import edu.stanford.muse.util.Util;
 
-public class IndexOptions implements Serializable {
+class IndexOptions implements Serializable {
 	private final static long serialVersionUID = 1L;
 
-	public List<String> inputPrefixes = new ArrayList<String>();
+	private List<String> inputPrefixes = new ArrayList<String>();
 //	String outputPrefix;
 	boolean monthsNotYears = true, noRecipients = false;
-	boolean do_NER = false;
-	boolean do_allText = true;
-	boolean locationsOnly = false, orgsOnly = false;
+	private boolean do_NER = false;
+	private boolean do_allText = true;
+	private boolean locationsOnly = false;
+	private boolean orgsOnly = false;
 	Filter filter;
 	boolean includeQuotedMessages = false;
 	boolean ignoreDocumentBody = false;

@@ -44,7 +44,7 @@ public class UnionFindSet<T> {
 		boxA.unify(boxB);	
 	}
 
-	public List<List<T>> getClasses()
+	private List<List<T>> getClasses()
 	{
 		// assign cluster #s
 		int numClasses = UnionFindBox.assignClassNumbers(map.values());

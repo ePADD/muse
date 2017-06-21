@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import edu.stanford.muse.webapp.JSPHelper;
 
-public class LoggingFilter implements Filter {
+class LoggingFilter implements Filter {
 
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)

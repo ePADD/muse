@@ -158,7 +158,7 @@ public class MyTokenizer {
 			Util.ASSERT(!delimSet.contains(stringChars[ptr]));
 	}
 
-	public MyTokenizer () { }
+	MyTokenizer() { }
 
 	public MyTokenizer (String s)
 	{

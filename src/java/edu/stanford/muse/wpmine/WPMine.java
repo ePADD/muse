@@ -18,15 +18,16 @@ import java.util.StringTokenizer;
 
 import com.google.gson.Gson;
 
-public class WPMine {
+class WPMine {
 
-	static PrintStream out = System.out, err = System.err;
+	private static PrintStream out = System.out;
+    private static PrintStream err = System.err;
 	
-	static Map<String, Info> hitTitles = new LinkedHashMap<String, Info>();
-	static String typesFile = "instance_types_en.nt1";
-	static String abstractsFile = "short_abstracts_en.nt";
-	static String pageLengthsFile = "page-lengths";
-	static String title = "NONE";
+	private static Map<String, Info> hitTitles = new LinkedHashMap<String, Info>();
+	private static String typesFile = "instance_types_en.nt1";
+	private static String abstractsFile = "short_abstracts_en.nt";
+	private static String pageLengthsFile = "page-lengths";
+	private static String title = "NONE";
 	
 	static class Info implements Comparable<Info>, Serializable { 
 		String title, snippet, type = "notype", url; int score;
@@ -47,7 +48,7 @@ public class WPMine {
 		}
 	}
 	
-	public static void readTypes() throws IOException
+	private static void readTypes() throws IOException
 	{
 		int count = 0;
 		try {

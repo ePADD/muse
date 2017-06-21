@@ -48,15 +48,15 @@ public class Variants {
         }
     }
 
-    public Variants() throws IOException {
+    private Variants() throws IOException {
         this(Config.getResourceAsStream("name-variants.txt"));
     }
 
-    public Variants(String filename) throws IOException {
+    private Variants(String filename) throws IOException {
         this(Config.getResourceAsStream(filename));
     }
 
-    public Variants(InputStream is) throws IOException {
+    private Variants(InputStream is) throws IOException {
         List<String> lines = Util.getLinesFromInputStream(is, true);
         // each line is of the form: robert = bob = bobby (robert is canonical)
         for (String line : lines) {
@@ -108,7 +108,7 @@ public class Variants {
         return result;
     }
 
-    public Set<String> getVariants(String s) {
+    private Set<String> getVariants(String s) {
         Set<String> result = new LinkedHashSet<>();
         Set<String> seen = new LinkedHashSet<>(); // will track all strings we have seen
 

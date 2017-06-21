@@ -28,25 +28,26 @@ import java.util.regex.Pattern;
  * TODO: canonicalize and tokenize words such that stop words irrespective of their capitalised form are recognized, for example: "In American Culture", "IN SPANISH", "A NEW FEDERAL POLICY", "THE PROVOST"
  */
 public class CICTokenizer implements Tokenizer, Serializable {
-    static Log log						= LogFactory.getLog(CICTokenizer.class);
+    private static Log log						= LogFactory.getLog(CICTokenizer.class);
 
-    static Pattern	entityPattern, multipleStopWordPattern;
+    private static Pattern	entityPattern;
+    private static Pattern multipleStopWordPattern;
     //NOTE: All the string lists below namely commonStartWords, commonEndWords, badSubstrings are case-insensitive
     //strips these words from the emitted token if they are seen in the start
     //Checks and strips if a phrase contains {[common start word]+" "}
-    static String[] commonStartWords = new String[]{
+    private static String[] commonStartWords = new String[]{
             "hey","the","a","an","hello","dear","hi","met","from","quote","from:","and","my","our","regarding","quoting","on behalf of","behalf of","sorry","but",
             //include all stop words
             "and","for","a","the","to","at", "in", "of",
             "on","with","ok","your","I","to:","thanks", "let","does", "sure", "thank","you","about","&","yes","if","by","why","said","even","am","respected","although","as"
     };
     //Checks and strips if a phrase contains {" "+[common end word]}
-    static String[] commonEndWords = new String[]{
+    private static String[] commonEndWords = new String[]{
             "I", "and","for","a","the","to","at", "in", "of"
     };
     //Emitted tokens containing these sub-strings will be dropped
     //checked for {contains " "+[bad substring]+" "} or starts with {[bad substring]+" "} or ends with {" "+[bad substring]}
-    static String[] badSubstrings = new String[]{
+    private static String[] badSubstrings = new String[]{
             "Not ", "I'm", "I'll","I am","n't","I've"," Have ","I'd", "You've", "We've", "They've",
             //stuff specifically related to emails
             "Email","To","From","Date","Subject", "begin pgp"
@@ -56,7 +57,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
     //https://en.wikipedia.org/wiki/Portuguese_name#The_particle_.27de.27
     //how useful is "on" in the stop words list
     //Consecutive capital words are allowed to be separated by these words, so this list is more restrictive than general stop words list
-    static List<String> stopWords =  Arrays.asList(
+    private static List<String> stopWords =  Arrays.asList(
             "and","for","a","the","at", "in", "of",
             //based on occurrence frequency of more than 100 in English DBpedia personal names list of 2014
             "de", "van","von","da","ibn","mac","bin","del","dos","di","la","du","ben","no","ap","le","bint","do", "den"/*John den Braber*/
@@ -67,7 +68,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
         initPattern();
     }
 
-    static void initPattern() {
+    private static void initPattern() {
         //This def. of a word that can appear in person or non-person names
         String nameP = "[A-Z][A-Za-z0-9'\\-\\.]*";
         //these are the chars that are allowed to appear between words in the chunk
@@ -215,7 +216,7 @@ public class CICTokenizer implements Tokenizer, Serializable {
      * @param phrase is the string that is to be cleaned
      * @return the tokenized, cleaned and filtered sub-chunks in the phrase passed.
      * */
-    static String[] clean(String phrase){
+    private static String[] clean(String phrase){
         List<String> tokenL = new ArrayList<>();
         Matcher m = multipleStopWordPattern.matcher(phrase);
         int end = 0;

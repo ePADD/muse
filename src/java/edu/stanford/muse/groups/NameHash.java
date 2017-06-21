@@ -22,7 +22,7 @@ import java.io.OutputStreamWriter;
 import java.security.MessageDigest;
 import java.util.HashMap;
 
-public class NameHash
+class NameHash
 	{
 	private static String convertToHex(byte[] data)
             {

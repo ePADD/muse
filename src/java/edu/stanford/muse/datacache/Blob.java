@@ -34,7 +34,7 @@ import java.util.Date;
 
 public class Blob implements Serializable {
 
-public static Log log = LogFactory.getLog(Blob.class);
+private static Log log = LogFactory.getLog(Blob.class);
 
 private final static long serialVersionUID = 1L;
 

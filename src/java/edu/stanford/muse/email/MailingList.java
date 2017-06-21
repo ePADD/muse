@@ -30,16 +30,16 @@ public class MailingList implements java.io.Serializable {
 	// SUPER_DEFINITE is when we have an explicit List-Post header
 	public final static int USER_ASSIGNED = 16, SUPER_DEFINITE = 8, DEFINITE = 1, MAYBE = 2, DEFINITE_NOT = 4, DUNNO = 0;
 	
-	public Contact ci;
+	private Contact ci;
 	public Set<Contact> members = new LinkedHashSet<Contact>();
 //	public int state;
 	
-	public MailingList(Contact ci)
+	private MailingList(Contact ci)
 	{
 		this.ci = ci;	
 	}
 
-	public void addMember(Contact c)
+	private void addMember(Contact c)
 	{
 		if (c == null) // ignore null contacts
 			return;

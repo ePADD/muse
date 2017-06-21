@@ -26,7 +26,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class Log4JUtils {
-    public static Log log = LogFactory.getLog(Log4JUtils.class);
+    private static Log log = LogFactory.getLog(Log4JUtils.class);
     private static boolean initialized = false;
 
 	public static String LOG_FILE; // = System.getProperty("user.home") + File.separatorChar + ".muse" + File.separatorChar + "muse.log";
@@ -97,7 +97,7 @@ public class Log4JUtils {
 	}
 
 	/** adds a new file appender to the root logger. expects root logger to have at least a console appender from which it borrows the layout */
- 	public static void addLogFileAppender(String filename)
+ 	private static void addLogFileAppender(String filename)
  	{
  	    try
  	    {

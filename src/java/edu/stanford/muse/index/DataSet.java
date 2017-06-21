@@ -31,16 +31,16 @@ import java.util.*;
  * computed lazily and cached.
  */
 public class DataSet {
-    List<String> pages = new ArrayList<>();
-    List<Document> docs = new ArrayList<>();
-    String datasetTitle;
-    Archive archive;
-    BlobStore attachmentsStore;
-    Set<Integer> highlightContactIds;
-    Set<String> highlightTerms;
-    Set<Blob> highlightAttachments;
+    private List<String> pages = new ArrayList<>();
+    private List<Document> docs = new ArrayList<>();
+    private String datasetTitle;
+    private Archive archive;
+    private BlobStore attachmentsStore;
+    private Set<Integer> highlightContactIds;
+    private Set<String> highlightTerms;
+    private Set<Blob> highlightAttachments;
     //String -> <dbId -> dbType>
-    Map<String, Map<String, Short>> authorisedEntities;
+    private Map<String, Map<String, Short>> authorisedEntities;
 
     public Boolean sensitive;
 

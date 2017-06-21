@@ -32,10 +32,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ImapPrefetcher implements IMAPFolder.ProtocolCommand {
+class ImapPrefetcher implements IMAPFolder.ProtocolCommand {
 
-protected List<Integer> messageNums;
-protected Session session;
+List<Integer> messageNums;
+private Session session;
 
 /* start and end are inclusive */
 public ImapPrefetcher(Session session, List<Integer> messageNums) {
@@ -45,7 +45,7 @@ public ImapPrefetcher(Session session, List<Integer> messageNums) {
 /** converts messageNums to a compact message set string. e.g. [1, 2, 3, 5, 6, 9, 11, 12] is converted to 1:3,5:6,9,11-12
  * see grammar for a set in http://james.apache.org/server/rfclist/imap4/rfc2060.txt
  */
-protected static String compactMessageSetString(List<Integer> nums)
+static String compactMessageSetString(List<Integer> nums)
 {
 	// sort the nums first, modifies messageNums, but doesn't matter.
 	// messageNums should always be +ve

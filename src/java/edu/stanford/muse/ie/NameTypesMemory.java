@@ -14,12 +14,12 @@ import java.io.LineNumberReader;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
-public class NameTypesMemory {
+class NameTypesMemory {
     private static Log log = LogFactory.getLog(NameTypes.class);
 	private final static long serialVersionUID = 1L;
-	static String typesFile = "instance_types_en.nt1.gz";
+	private static String typesFile = "instance_types_en.nt1.gz";
 	
-	public static void readTypes(Map<String, NameInfoMemory> hitTitles) throws IOException
+	private static void readTypes(Map<String, NameInfoMemory> hitTitles) throws IOException
 	{
 		// types.gz is of the form First_Last Subtype|Type
 		try {

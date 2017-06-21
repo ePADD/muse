@@ -31,7 +31,7 @@ public class SloppyDates {
     private static Log log = LogFactory.getLog(SloppyDates.class);
 
 	private static String[] monthNames = {"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"};
-	public static Triple<Integer, Integer, Integer> parseDate(String s)
+	private static Triple<Integer, Integer, Integer> parseDate(String s)
 	{
 		// separate into month and date
 		// "jan10", "10jan", "jan 10" "10 jan" should all work

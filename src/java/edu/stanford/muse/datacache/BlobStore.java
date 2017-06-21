@@ -35,13 +35,13 @@ public class BlobStore implements Serializable {
     public Set<Blob> uniqueBlobs = new LinkedHashSet<Blob>();
 
     // mapping of each data item to a data id
-    protected Map<Blob, Integer> id_map = new LinkedHashMap<Blob, Integer>();
-    protected Map<Blob, URL> urlMap = new LinkedHashMap<Blob, URL>(); // -- seems this is not really used
+    private Map<Blob, Integer> id_map = new LinkedHashMap<Blob, Integer>();
+    private Map<Blob, URL> urlMap = new LinkedHashMap<Blob, URL>(); // -- seems this is not really used
     // data id's are just assigned sequentially starting from 0
-    protected int next_data_id = 0;
+    private int next_data_id = 0;
 
     // mapping of each data to its views
-    protected Map<Blob, Map<String,Object>> views = new LinkedHashMap<Blob, Map<String,Object>>();
+    private Map<Blob, Map<String,Object>> views = new LinkedHashMap<Blob, Map<String,Object>>();
 
     public Multimap<Blob, String> getBlobToKeywords() {
         return blobToKeywords;
@@ -55,7 +55,7 @@ public class BlobStore implements Serializable {
         return blobToKeywords.get(b);
     }
 
-    Multimap<Blob, String> blobToKeywords;
+    private Multimap<Blob, String> blobToKeywords;
 
     private static Log log = LogFactory.getLog(BlobStore.class);
     private final static long serialVersionUID = 1L;
@@ -67,7 +67,7 @@ public class BlobStore implements Serializable {
 
     //remove final later if we want this to be user configurable
 //pdfbox sometimes crashes the VM mysteriously on Macs
-    final static boolean NO_CONVERT_PDFS = System.getProperty("pdf.thumbnails") == null;
+    private final static boolean NO_CONVERT_PDFS = System.getProperty("pdf.thumbnails") == null;
 
     /**
      * @param dir directory where this store keeps its data
@@ -167,14 +167,14 @@ public class BlobStore implements Serializable {
     /**
      * full filename for data
      */
-    public String full_filename(Blob b) {
+    private String full_filename(Blob b) {
         return full_filename(b, b.filename);
     }
 
     /**
      * full filename for an arbitrary file associated with d
      */
-    public String full_filename(Blob b, String fname) {
+    private String full_filename(Blob b, String fname) {
         int idx = index(b);
 
         if (idx < 0)
@@ -274,7 +274,7 @@ public class BlobStore implements Serializable {
         }
     }
 
-    protected synchronized void pack_to_stream (ObjectOutputStream oos) throws IOException
+    private synchronized void pack_to_stream(ObjectOutputStream oos) throws IOException
     {
         oos.writeObject(uniqueBlobs);
         oos.writeObject(id_map);
@@ -283,7 +283,7 @@ public class BlobStore implements Serializable {
         oos.flush();
     }
 
-    protected synchronized void unpack_from_stream (ObjectInputStream ois) throws IOException, ClassNotFoundException
+    private synchronized void unpack_from_stream(ObjectInputStream ois) throws IOException, ClassNotFoundException
     {
         uniqueBlobs = (Set<Blob>) ois.readObject();
         id_map = (Map<Blob, Integer>) ois.readObject();
@@ -302,7 +302,7 @@ public class BlobStore implements Serializable {
     }
 
     /** returns the index of the given data item in this store */
-    protected int index(Blob b)
+    int index(Blob b)
     {
         Integer i = id_map.get(b);
         if (i == null)
@@ -316,7 +316,7 @@ public class BlobStore implements Serializable {
     }
 
     /** return the view for data d with the given key */
-    public synchronized boolean hasView (Blob b, String view)
+    private synchronized boolean hasView(Blob b, String view)
     {
         Map<String,Object> map = views.get(b);
         if (map == null)
@@ -324,7 +324,7 @@ public class BlobStore implements Serializable {
         return map.get(view) != null;
     }
 
-    public synchronized void add (Blob b)
+    private synchronized void add(Blob b)
     {
        //  Util.ASSERT (!this.contains(b));
 
@@ -337,7 +337,7 @@ public class BlobStore implements Serializable {
     }
 
     /** remove a piece of data, has to be the last one added. */
-    protected synchronized void remove (Blob b)
+    private synchronized void remove(Blob b)
     {
         Util.ASSERT (this.contains(b));
         uniqueBlobs.remove(b);
@@ -347,14 +347,14 @@ public class BlobStore implements Serializable {
     }
 
     /** add o with the supplied key to the map of views for object d */
-    public synchronized void addView (Blob b, String key, Object o)
+    private synchronized void addView(Blob b, String key, Object o)
     {
         Util.ASSERT (this.contains(b));
         views.get(b).put(key, o);
     }
 
     /** return the view for data d with the given key */
-    public synchronized Object getView (Blob b, String view)
+    private synchronized Object getView(Blob b, String view)
     {
         Map<String,Object> map = views.get(b);
         if (map == null)
@@ -364,7 +364,7 @@ public class BlobStore implements Serializable {
     /**
      * add a view to the primary data with the given key. the data is stored with the given filename in the store
      */
-    public synchronized void addView(Blob primary_data, String filename, String view, InputStream is) throws IOException {
+    private synchronized void addView(Blob primary_data, String filename, String view, InputStream is) throws IOException {
         // for file data store, the object stored for the View is the file name
         addView(primary_data, view, filename);
         Util.copy_stream_to_file(is, dir + File.separatorChar + full_filename(primary_data, filename));

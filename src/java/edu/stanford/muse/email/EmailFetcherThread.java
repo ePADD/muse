@@ -72,9 +72,9 @@ class EmailFetcherStats implements Cloneable, Serializable {
 public class EmailFetcherThread implements Runnable, Serializable {
     private final static long serialVersionUID = 1L;
 
-    public static final int IMAP_PREFETCH_BUFSIZE = 20 * 1024 * 1024;
+    private static final int IMAP_PREFETCH_BUFSIZE = 20 * 1024 * 1024;
     /* used for buffering imap prefetch data -- necessary for good imap performance*/
-    public static final String FORCED_ENCODING = "UTF-8";
+    private static final String FORCED_ENCODING = "UTF-8";
 
     public static Log log = LogFactory.getLog(EmailFetcherThread.class);
 
@@ -96,26 +96,28 @@ public class EmailFetcherThread implements Runnable, Serializable {
     private FetchConfig fetchConfig;
     private boolean mayHaveRunOutOfMemory = false;
     private FolderInfo fetchedFolderInfo;
-    transient Folder folder;
-    boolean use_uid_if_available;
+    private transient Folder folder;
+    private boolean use_uid_if_available;
 
-    protected int threadID;
-    protected EmailStore emailStore;
+    private int threadID;
+    private EmailStore emailStore;
 
-    protected boolean isCancelled;
+    private boolean isCancelled;
 
     public static boolean verbose = false;
     public static boolean debug = false;
 
     // notes: begin_msg_index is always correct. end_msg_index = -1  means nMessages in folder.
     // note: msg # begin_msg_index will be processed. msg # end_msg_index will not be processed.
-    protected int begin_msg_index = 0, end_msg_index = -1;
+    private int begin_msg_index = 0;
+    private int end_msg_index = -1;
 
     EmailFetcherStats stats = new EmailFetcherStats();
     String currentStatus;
 
 
-    int totalMessagesInFetch, messagesCompletedInFetch;                        // this fetcher may be part of a bigger fetch operation. we need to track the progress of the bigger fetch in order to track progress accurately.
+    private int totalMessagesInFetch;
+    private int messagesCompletedInFetch;                        // this fetcher may be part of a bigger fetch operation. we need to track the progress of the bigger fetch in order to track progress accurately.
 
     public int getTotalMessagesInFetch() {
         return totalMessagesInFetch;
@@ -134,8 +136,10 @@ public class EmailFetcherThread implements Runnable, Serializable {
     }
 
     // stats
-    int nMessagesProcessedSuccess, nUncachedMessagesProcessed, nMessagesCached; // running count of # of messages processed successfully
-    int nErrors = 0;
+    private int nMessagesProcessedSuccess;
+    private int nUncachedMessagesProcessed;
+    int nMessagesCached; // running count of # of messages processed successfully
+    private int nErrors = 0;
 
     public void cancel() {
         isCancelled = true;
@@ -161,11 +165,11 @@ public class EmailFetcherThread implements Runnable, Serializable {
         return nUncachedMessagesProcessed;
     }
 
-    protected String folder_name() {
+    private String folder_name() {
         return fetchedFolderInfo.longName;
     }
 
-    protected String email_source() {
+    private String email_source() {
         return fetchedFolderInfo.accountKey;
     }
 
@@ -174,12 +178,12 @@ public class EmailFetcherThread implements Runnable, Serializable {
     }
 
     //	private String folderPrefix; // prefix for folder files
-    transient Store store;                                        // we don't really need this serialized across sessions
+    private transient Store store;                                        // we don't really need this serialized across sessions
 
-    transient Archive archive;
+    private transient Archive archive;
     Collection<String> dataErrors = new LinkedHashSet<String>();    // log of input data errors
 
-    Date prevDate = null;
+    private Date prevDate = null;
 
 	/*
      * // comment out unused constructors, so it's cleaner/easier to trace the
@@ -749,7 +753,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
         return null;
     }
 
-    public void verify() {
+    private void verify() {
     }
 
     public void finish() {
@@ -946,7 +950,7 @@ public class EmailFetcherThread implements Runnable, Serializable {
     }
 
     //keep track of the total time elapsed in fetching messages across batches
-    static long fetchStartTime = System.currentTimeMillis();
+    private static long fetchStartTime = System.currentTimeMillis();
 
     /**
      * fetch given message idx's in given folder -- @performance critical

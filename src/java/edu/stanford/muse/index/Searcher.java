@@ -93,6 +93,21 @@ public class Searcher {
         return values;
     }
 
+    /** returns docs matching the given regex term (currently full body only, no attachments)
+     * @return
+     */
+    public static Set<Document> searchForRegexTerm(Archive archive, Set<Document> docs, String term) {
+        // go in the order subject, body, attachment
+        Set<Document> docsForTerm = new LinkedHashSet<>();
+        Indexer.QueryOptions options = new Indexer.QueryOptions();
+        options.setQueryType(Indexer.QueryType.REGEX);
+
+        docsForTerm.addAll(archive.docsForQuery(term, options));
+        docsForTerm.retainAll (docs); // keep only those docs that are passed in
+
+        return docsForTerm;
+    }
+
     /** returns docs and blobs matching the given term.
      *
      * @param archive archive to search
@@ -786,7 +801,7 @@ public class Searcher {
 
         if ("true".equals(isSensitive)) {
             Indexer.QueryType qt = null;
-            qt = Indexer.QueryType.PRESET_REGEX;
+            qt = Indexer.QueryType.REGEX;
             Collection<Document> sensitiveDocs = archive.docsForQuery(-1 /* cluster num -- not used */, qt);
             docs.retainAll(sensitiveDocs);
 
@@ -828,6 +843,11 @@ public class Searcher {
             Pair<Set<Document>, Set<Blob>> p = searchForTerm(archive, params, term);
             resultDocs = p.getFirst();
             resultBlobs = p.getSecond();
+        }
+
+        String regexTerm = getParam(params, "regexTerm");
+        if (!Util.nullOrEmpty(regexTerm)) {
+            resultDocs = searchForRegexTerm(archive, resultDocs, regexTerm);
         }
 
         Pair<Set<EmailDocument>, Set<Blob>> p = updateForAttachments((Set) resultDocs, params);

@@ -66,8 +66,8 @@ public class Archive implements Serializable {
     public static final String BLOBS_SUBDIR = "blobs";
     public static final String INDEXES_SUBDIR = "indexes";
     public static final String SESSIONS_SUBDIR = "sessions"; // original idea was that there would be different sessions on the same archive (index). but in practice we only have one session
-    public static final String LEXICONS_SUBDIR = "lexicons";
-    public static final String FEATURES_SUBDIR = "mixtures";
+    private static final String LEXICONS_SUBDIR = "lexicons";
+    private static final String FEATURES_SUBDIR = "mixtures";
     public static final String IMAGES_SUBDIR = "images";
 
     public static String[] LEXICONS =  new String[]{"default.english.lex.txt"}; // this is the default, for Muse. EpaddIntializer will set it differently. don't make it final
@@ -93,7 +93,7 @@ public class Archive implements Serializable {
     transient private LinkedHashMap<String, FolderInfo> fetchedFolderInfosMap = null;
     public Set<String> ownerNames = new LinkedHashSet<String>(), ownerEmailAddrs = new LinkedHashSet<String>();private EntityMapper entityMapper;
     public AuthorityMapper authorityMapper; /* transient because this is saved and loaded separately */
-    Map<String, NameInfo> nameMap;
+    private Map<String, NameInfo> nameMap;
 
     public ProcessingMetadata processingMetadata = new ProcessingMetadata();
     public List<String> allAccessions = new ArrayList<String>();
@@ -130,9 +130,9 @@ public class Archive implements Serializable {
 
     // clusters are somewhat ephemeral and not necessarily a core part of the
     // Archive struct. consider moving it elsewhere.
-    List<MultiDoc> docClusters;
+    private List<MultiDoc> docClusters;
 
-    protected static void readPresetQueries() {
+    static void readPresetQueries() {
         List<String> q = new ArrayList<>();
         String PRESET_QUERIES_FILE = "presetqueries.txt";
         String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + PRESET_QUERIES_FILE;
@@ -236,6 +236,7 @@ public class Archive implements Serializable {
         return indexer.docsForQuery(term, options);
     }
 
+    /** VIP method: main way to search for documents with the term (embedded in options) in the archive*/
     public Collection<Document> docsForQuery(String term, Indexer.QueryOptions options){
         return indexer.docsForQuery(term, options);
     }
@@ -339,7 +340,7 @@ public class Archive implements Serializable {
     }
 
 
-    protected void setBlobStore(BlobStore blobStore) {
+    private void setBlobStore(BlobStore blobStore) {
         this.blobStore = blobStore;
     }
 
@@ -365,7 +366,7 @@ public class Archive implements Serializable {
 
     public static Archive createArchive() { return createArchive (""); }
 
-    public static Archive createArchive(String title) {
+    private static Archive createArchive(String title) {
         Archive archive = new Archive();
         archive.archiveTitle = title;
         return archive;
@@ -735,7 +736,7 @@ public class Archive implements Serializable {
     /**
      * set up doc clusters by group or by time
      */
-    public void prepareDocClusters(List<SimilarGroup<String>> groups) {
+    private void prepareDocClusters(List<SimilarGroup<String>> groups) {
         /** by default, we only use month based clusters right now */
         if (indexOptions.categoryBased) {
             docClusters = IndexUtils.partitionDocsByCategory(allDocs);
@@ -796,7 +797,7 @@ public class Archive implements Serializable {
         }
     }
 
-    public FolderInfo getFetchedFolderInfo(String accountID, String fullFolderName) {
+    private FolderInfo getFetchedFolderInfo(String accountID, String fullFolderName) {
         setupFolderInfosMap();
         return fetchedFolderInfosMap.get(getFolderInfosMapKey(accountID, fullFolderName));
     }
@@ -826,7 +827,7 @@ public class Archive implements Serializable {
      * @throws Exception
      */
     //does not make sense to have it public.
-    public synchronized List<LinkInfo> postProcess(Collection<Document> docs, List<SimilarGroup<String>> groups) {
+    private synchronized List<LinkInfo> postProcess(Collection<Document> docs, List<SimilarGroup<String>> groups) {
         // should we sort the messages by time here?
 
         log.info(indexer.computeStats());
@@ -1048,8 +1049,8 @@ public class Archive implements Serializable {
      * entitiesWithId - authorisedauthorities, for annotation
      * showDebugInfo - enabler to show debug info
      */
-    public String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
-                           Map<String, EmailRenderer.Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
+    private String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
+                            Map<String, EmailRenderer.Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
         getAllDocs();
         try {
             Summarizer summarizer = new Summarizer(indexer);
@@ -1440,7 +1441,7 @@ public class Archive implements Serializable {
     }
 
     /**@return list of all names in the lucene doc without filtering dictionary words*/
-    public static Span[] getNamesOfATypeInLuceneDoc(org.apache.lucene.document.Document ldoc, boolean body, short type) {
+    private static Span[] getNamesOfATypeInLuceneDoc(org.apache.lucene.document.Document ldoc, boolean body, short type) {
         Span[] allNames = NER.getNames(ldoc, body);
         List<Span> req = Arrays.asList(allNames).stream().filter(s->type==s.type).collect(Collectors.toList());
         return req.toArray(new Span[req.size()]);

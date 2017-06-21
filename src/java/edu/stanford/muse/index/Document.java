@@ -29,16 +29,16 @@ import java.util.Set;
 
 public class Document implements Serializable, Comparable<Document> {
 	private static final long serialVersionUID = 5713436068523824254L;
-	static Log log = LogFactory.getLog(Document.class);
-	public String id; // just some handle - do not assume anything about values. not unique across folders.
+	private static Log log = LogFactory.getLog(Document.class);
+	String id; // just some handle - do not assume anything about values. not unique across folders.
 	public String description;
-	public Document() { /* */ }
+	Document() { /* */ }
 	public List<LinkInfo> links; // outgoing links from this doc
 	public String comment;
-	public boolean liked;
+	private boolean liked;
 	public Set<String> languages; // languages are currently available after indexing
 	
-	public Document (String id, String s)
+	Document(String id, String s)
 	{
 		this.id = id;
 		this.description = s;

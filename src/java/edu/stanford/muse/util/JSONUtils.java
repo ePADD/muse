@@ -189,7 +189,7 @@ public class JSONUtils {
 		return result.toString(4);
 	}
 
-	public static JSONObject jsonForGroup(AddressBook ab, SimilarGroup<String> group) throws JSONException
+	private static JSONObject jsonForGroup(AddressBook ab, SimilarGroup<String> group) throws JSONException
 	{
 		JSONObject jgroup = new JSONObject();
 		JSONArray groupMembers = new JSONArray();
@@ -256,7 +256,7 @@ public class JSONUtils {
 		return result;
 	}
 
-	public static JSONObject jsonForAddressBook (AddressBook ab) throws JSONException
+	private static JSONObject jsonForAddressBook(AddressBook ab) throws JSONException
 	{
 		JSONObject result = new JSONObject();
 		JSONArray entries = new JSONArray();
@@ -367,7 +367,7 @@ public class JSONUtils {
 		return result;
 	}
 	
-	static class Message implements Serializable {
+	private static class Message implements Serializable {
 		List<String> to, cc, bcc;
 		String from;
 	}
@@ -447,7 +447,7 @@ public class JSONUtils {
 		return null;
 	}
 
-	public static Pair<JSONArray, Map<String, String>> hashJsonArray (JSONArray arr,  Map<String, String> reverseMap) throws JSONException
+	private static Pair<JSONArray, Map<String, String>> hashJsonArray(JSONArray arr, Map<String, String> reverseMap) throws JSONException
 	{
 		JSONArray newArr = new JSONArray();
 		for	(int k = 0; k < arr.length(); k++)
@@ -465,7 +465,7 @@ public class JSONUtils {
 		return new Pair<JSONArray, Map<String, String>> (newArr, reverseMap);
 	}
 	
-	public static Pair<JSONObject, Map<String, String>> hashJsonObject(JSONObject obj, Map<String, String> reverseMap) throws JSONException
+	private static Pair<JSONObject, Map<String, String>> hashJsonObject(JSONObject obj, Map<String, String> reverseMap) throws JSONException
 	{
 		JSONObject result = new JSONObject();
 		
@@ -500,7 +500,7 @@ public class JSONUtils {
 		return new Pair<JSONObject, Map<String, String>> (result, reverseMap);
 	}
 	
-	public static List<Pair<String, String>> convertToTuples(String prefix, Object value) throws JSONException 
+	private static List<Pair<String, String>> convertToTuples(String prefix, Object value) throws JSONException
 	{
 		List<Pair<String, String>> result = new ArrayList<Pair<String, String>>();
 
@@ -517,7 +517,7 @@ public class JSONUtils {
 		return result;
 	}
 	
-	public static List<Pair<String, String>> convertToTuples(String prefix, JSONArray arr) throws JSONException 
+	private static List<Pair<String, String>> convertToTuples(String prefix, JSONArray arr) throws JSONException
 	{
 		List<Pair<String, String>> result = new ArrayList<Pair<String, String>>();
 
@@ -529,7 +529,7 @@ public class JSONUtils {
 		return result;
 	}
 	
-	public static List<Pair<String, String>> convertToTuples(String prefix, JSONObject obj) throws JSONException 
+	private static List<Pair<String, String>> convertToTuples(String prefix, JSONObject obj) throws JSONException
 	{
 		List<Pair<String, String>> result = new ArrayList<Pair<String, String>>();
 		

@@ -21,7 +21,7 @@ import edu.stanford.muse.util.Util;
 
 public class EmailRenderer {
 
-	static final int	TEXT_WRAP_WIDTH	= 80;	// used to be 80, but that wraps
+	private static final int	TEXT_WRAP_WIDTH	= 80;	// used to be 80, but that wraps
 												// around too soon. 120 is too
 												// much with courier font.
 
@@ -154,7 +154,7 @@ public class EmailRenderer {
 	 * 
 	 * @param addressBook
 	 */
-	public static String formatAddressesAsHTML(Address addrs[], AddressBook addressBook, int lineWrap, Set<String> highlightUnstemmed, Set<String> highlightNames, Set<String> highlightAddresses)
+	private static String formatAddressesAsHTML(Address addrs[], AddressBook addressBook, int lineWrap, Set<String> highlightUnstemmed, Set<String> highlightNames, Set<String> highlightAddresses)
 	{
 		StringBuilder sb = new StringBuilder();
 		int outputLineLength = 0;
@@ -396,8 +396,8 @@ public class EmailRenderer {
 	 *            on preset regexs
 	 * @throws IOException
 	 */
-	public static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms,
-			boolean IA_links, boolean debug) throws IOException
+	private static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms,
+												  boolean IA_links, boolean debug) throws IOException
 	{
 		AddressBook addressBook = archive.addressBook;
 		GroupAssigner groupAssigner = archive.groupAssigner;

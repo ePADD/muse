@@ -15,9 +15,9 @@ import java.io.PrintStream;
  * reads wikipedia xml and generates a page length file with the length of each article
  */
 
-public class WPReader {
-    static PrintStream pageLenStream;
-    static PrintStream equivsStream;
+class WPReader {
+    private static PrintStream pageLenStream;
+    private static PrintStream equivsStream;
 
 
     static {

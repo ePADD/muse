@@ -47,7 +47,7 @@ import java.util.*;
  * then call fetchAndIndexEmails() */
 
 public class MuseEmailFetcher {
-    public static Log log = LogFactory.getLog(MuseEmailFetcher.class);
+    private static Log log = LogFactory.getLog(MuseEmailFetcher.class);
 
     private transient List<MTEmailFetcher> fetchers;
 	public transient List<EmailStore> emailStores = new ArrayList<>();
@@ -282,7 +282,7 @@ public class MuseEmailFetcher {
 	}
 	
 	/** utility method for converting an exception encountered in this fetcher to something that can be shown to the user */
-	public static String getUserDisplayableMessageForException(EmailStore store, Exception e)
+	private static String getUserDisplayableMessageForException(EmailStore store, Exception e)
 	{
 		String failMessage;
 

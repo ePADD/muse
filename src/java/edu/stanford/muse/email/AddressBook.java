@@ -86,7 +86,7 @@ public class AddressBook implements Serializable {
         setup(selfAddrs, selfNames);
     }
 
-    public AddressBook(Set<String> selfAddrsSet, Set<String> selfNamesSet) {
+    private AddressBook(Set<String> selfAddrsSet, Set<String> selfNamesSet) {
         String[] selfAddrs = new String[selfAddrsSet.size()];
         int i = 0;
         StringBuilder about = new StringBuilder();
@@ -1010,7 +1010,7 @@ public class AddressBook implements Serializable {
         dataErrors.addAll(other.dataErrors);
     }
 
-    public void reassignContactIds() {
+    private void reassignContactIds() {
         Set<Contact> allContacts = new LinkedHashSet<Contact>();
         allContacts.addAll(emailToContact.values());
         allContacts.addAll(nameToContact.values());
@@ -1108,7 +1108,7 @@ public class AddressBook implements Serializable {
         return emailMaskingMap.get(address);
     }
 
-    public String getStatsAsString() {
+    private String getStatsAsString() {
         return getStatsAsString(true);
     } // blur by default
 

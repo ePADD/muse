@@ -63,7 +63,8 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 
 	List<FolderInfo> folderInfos; // these are the selected folderInfos (of messages to be fetched) as opposed to the store's folderInfos which are all folderinfo's (of messages already fetched) in the account
 	String defaultFolderName = null;
-	int N_THREADS, nTotalMessagesInAllFolders;
+	private int N_THREADS;
+    private int nTotalMessagesInAllFolders;
 	private long startTimeMillis; // start time of current execution
 	public EmailFetcherStats stats;
 
@@ -73,10 +74,10 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 
 	//private EmailFetcherThread readFoldersThread = null; // a thread kept around just to establish the connection and get list of folders with their message count
 	private EmailFetcherThread aggregateThread = null; // a thread that aggregates results from all threads at the end. (possibly, just points to thread[0])
-	EmailFetcherThread[] threads; // actual fetcher threads
+	private EmailFetcherThread[] threads; // actual fetcher threads
 	private Archive archive;
 
-	public MTEmailFetcher(int nThreads, EmailStore store)
+	private MTEmailFetcher(int nThreads, EmailStore store)
 	{
 		this (nThreads, store, -1);
 	}
@@ -280,7 +281,7 @@ public class MTEmailFetcher implements StatusProvider, Serializable {
 		return false;
 	}
 
-	public BlobStore getAttachmentsStore()
+	private BlobStore getAttachmentsStore()
 	{
 		return aggregateThread.getArchive().getBlobStore();
 	}
@@ -315,7 +316,7 @@ returns full path of the resulting .html file
 		return top_level_page;
 	}
 
-	public String getFolderDescriptions()
+	private String getFolderDescriptions()
 	{
 		if (folderInfos == null || folderInfos.size() == 0)
 			return ""; // some bug, seen once, could be caused by session timeouts etc. better to return null than crash
@@ -333,7 +334,7 @@ returns full path of the resulting .html file
 	}
 
 	/** terminate the run method of this object */
-	public void terminate()
+	private void terminate()
 	{
 		if (executorService != null)
 			executorService.shutdownNow();

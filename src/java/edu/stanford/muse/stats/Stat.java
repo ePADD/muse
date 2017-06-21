@@ -15,6 +15,6 @@
 */
 package edu.stanford.muse.stats;
 
-public class Stat {
+class Stat {
 
 }

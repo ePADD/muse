@@ -71,7 +71,7 @@ if (graph_is_empty && Util.nullOrEmpty(empty_graph_message))
 %>
 
 <%!
-public String scriptForSentimentsGraph(Map<String, Collection<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
+private String scriptForSentimentsGraph(Map<String, Collection<Document>> map, List<Date> intervals, int[] allMessagesHistogram, int w, int h, int normalizer, HttpSession session)
 {
 	String totalMessageVolume = JSONUtils.arrayToJson(allMessagesHistogram);
 

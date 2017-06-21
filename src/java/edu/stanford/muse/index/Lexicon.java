@@ -22,16 +22,31 @@ import org.apache.commons.logging.LogFactory;
 import java.io.*;
 import java.util.*;
 
-/** a lexicon is a list of words, for several languages */
+/** A lexicon is a set of categories. Each category has a name and a set of words (essentially a query string, OR-separated with |). See <archive>/lexicons/*.lex.txt
+ * in theory a lexicon can have different words for the same category in different languages. e.g. a lexicon may have the category
+ * happy: joyful|elated|happy in the english lexicon and
+ * happy: joyeux|gay in the french lexicon.
+ *
+ * Note on terminology: here, happy is called the caption, and the rest of the line (separated by :) is called the query
+ *
+ * of course, one could also write:
+ * happy: joyful|elated|happy|joyeux|gay in a single file, but the original idea of separate files for each language was that the lexicon words could be developed by different people or teams)
+ * However, in practice, we use a single language (English) and don't split the lexicon categories across multiple files.
+ * Therefore this Lexicon1Lang, etc is over-complicated and may be simplified some day.
+ */
+
 public class Lexicon implements Serializable {
 	
-	static Log log = LogFactory.getLog(Lexicon.class);
+	private static Log log = LogFactory.getLog(Lexicon.class);
 	public static final String LEXICON_SUFFIX = ".lex.txt";
+	public static final String REGEX_LEXICON_NAME = "regex"; // this is a special lexicon name, to which regex search is applied
+	public static final String SENSITIVE_LEXICON_NAME = "sensitive"; // this is a special lexicon name, to which regex search is applied
+
 	private static final long serialVersionUID = 1377456163104266479L;//1L;
 
 	public static Map<String, Lexicon> lexiconMap = new LinkedHashMap<String, Lexicon>(); // directory of lexicons // not used but still need when deserialized old archives
 	public String name;
-	Map<String, Lexicon1Lang> languageToLexicon = new LinkedHashMap<String, Lexicon1Lang>();
+	private Map<String, Lexicon1Lang> languageToLexicon = new LinkedHashMap<String, Lexicon1Lang>();
 	
 	/** inner class that stores lexicon for 1 language */
 
@@ -142,8 +157,8 @@ public class Lexicon implements Serializable {
 			log.info(captionToRawQuery.size() + " sentiment categories saved in " + filename);
 		}
 
-        public Map<String,Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly) {
-            Map<String, Integer> map = new LinkedHashMap<String, Integer>();
+        public Map<String,Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly, boolean regexSearch) {
+            Map<String, Integer> map = new LinkedHashMap<>();
             String[] captions = captionToExpandedQuery.keySet().toArray(new String[captionToExpandedQuery.size()]);
             for (String caption : captions) {
                 String query = captionToExpandedQuery.get(caption);
@@ -153,10 +168,12 @@ public class Lexicon implements Serializable {
                 }
                 Integer cnt = 0;
                 try {
-                    if (originalContentOnly)
-                        cnt = indexer.getTotalHits(query, false, Indexer.QueryType.ORIGINAL);
-                    else
-                        cnt = indexer.getTotalHits(query, false, Indexer.QueryType.FULL);
+                    if (originalContentOnly) {
+                        cnt = indexer.getNumHits(query, false, Indexer.QueryType.ORIGINAL);
+                    } else if (regexSearch) {
+						cnt = indexer.getNumHits(query, false, Indexer.QueryType.REGEX);
+					} else
+						cnt = indexer.getNumHits(query, false, Indexer.QueryType.FULL);
                 } catch(Exception e){
                     Util.print_exception("Exception while collecting lexicon counts", e, log);
                 }
@@ -192,7 +209,13 @@ public class Lexicon implements Serializable {
 				int threshold = 1;
                 Indexer.QueryOptions options = new Indexer.QueryOptions();
                 options.setThreshold(threshold);
-                options.setQueryType(Indexer.QueryType.ORIGINAL);
+                Indexer.QueryType qt = Indexer.QueryType.FULL;
+                if (originalContentOnly)
+                    qt = Indexer.QueryType.ORIGINAL;
+                if (Lexicon.REGEX_LEXICON_NAME.equals (Lexicon.this.name))
+                    qt = Indexer.QueryType.REGEX;
+
+                options.setQueryType(qt);
 				Collection<Document> docsForCaption = indexer.docsForQuery(query, options);
 				/*
 				log.info (docsForCaption.size() + " before");
@@ -279,7 +302,7 @@ public class Lexicon implements Serializable {
 	}
 
 	// avoid file traversal vuln's, don't allow / or \ in lexicon names;
-	static String sanitizeLexiconName(String lex)
+	private static String sanitizeLexiconName(String lex)
 	{
 		return lex.replaceAll("/", "__").replaceAll("\\\\", "__"); // the pattern itself needs 2 backslashes since \ is a regex escape char
 	}
@@ -325,7 +348,7 @@ public class Lexicon implements Serializable {
 
     //accumulates counts returned by lexicons in each language
     //TODO: It is possible to write a generic accumulator that accumulates sum over all the languages
-    public Map<String, Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly){
+    public Map<String, Integer> getLexiconCounts (Indexer indexer, boolean originalContentOnly, boolean regexSearch){
         List<Document> docs = indexer.docs;
         Collection<Lexicon1Lang> lexicons  = getRelevantLexicon1Langs(docs);
         Map<String, Integer> result = new LinkedHashMap<String, Integer>();
@@ -333,7 +356,7 @@ public class Lexicon implements Serializable {
         // aggregate results for each lang into result
         for (Lexicon1Lang lex: lexicons)
         {
-            Map<String, Integer> resultsForThisLang = lex.getLexiconCounts(indexer, originalContentOnly);
+            Map<String, Integer> resultsForThisLang = lex.getLexiconCounts(indexer, originalContentOnly, regexSearch);
             if (resultsForThisLang == null)
                 continue;
 
@@ -433,7 +456,7 @@ public class Lexicon implements Serializable {
 	}
 	
 	/** gets map for all languages */
-	public Map<String, String> getCaptionToQueryMap (Collection<Document> docs)
+    private Map<String, String> getCaptionToQueryMap(Collection<Document> docs)
 	{
 		// identify all the langs in the docs, and the corresponding lexicons
 		Set<String> languages = IndexUtils.allLanguagesInDocs(docs);

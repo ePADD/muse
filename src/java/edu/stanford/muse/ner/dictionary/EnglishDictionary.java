@@ -16,8 +16,8 @@ import java.util.*;
 /**
  * A language related util class, created so as to be able to easily expand to other languages by just creating and using a similar dictionary for the language*/
 public class EnglishDictionary {
-    static String adverbsFile = "dictionaries/en-pure-adv.txt";
-    static String adjFile = "dictionaries/en-pure-adj.txt";
+    private static String adverbsFile = "dictionaries/en-pure-adv.txt";
+    private static String adjFile = "dictionaries/en-pure-adj.txt";
     static String verbsFile = "dictionaries/en-pure-verbs.txt";
     static String prepFile = "dictionaries/en-prepositions.txt";
     static String pronounFile = "dictionaries/en-pronouns.txt";

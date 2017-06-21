@@ -17,7 +17,7 @@ package edu.stanford.muse.email;
 
 import java.io.Serializable;
 
-public class ImapPopConnectionOptions implements Serializable {
+class ImapPopConnectionOptions implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	public String protocol, server, userName;

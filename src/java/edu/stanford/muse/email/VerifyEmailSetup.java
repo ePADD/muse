@@ -33,7 +33,7 @@ import edu.stanford.muse.util.Util;
 import edu.stanford.muse.xword.Crossword;
 
 public class VerifyEmailSetup {
-    public static Log log = LogFactory.getLog(Crossword.class);
+    private static Log log = LogFactory.getLog(Crossword.class);
 
 	public static Pair<Boolean, String> run ()
 	{

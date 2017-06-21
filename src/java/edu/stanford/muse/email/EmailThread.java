@@ -30,10 +30,10 @@ import java.util.List;
  */
 public class EmailThread
 {
-	String normalizedSubject;
+	private String normalizedSubject;
 	// Set<String> recipients;
 	public List<EmailDocument> emails = new ArrayList<EmailDocument>();
-	Date lastDate = null;
+	private Date lastDate = null;
 
 	public EmailThread(EmailDocument email, String normalizedSubject)
 	{

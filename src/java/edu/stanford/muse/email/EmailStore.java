@@ -36,18 +36,18 @@ public abstract class EmailStore implements Serializable {
     private static Log log = LogFactory.getLog(EmailStore.class);
 	private final static long serialVersionUID = 1L;
 
-	protected String displayName;
+	String displayName;
 	public String emailAddress;
-	protected boolean DEBUG = false;
-	protected String cacheDir;
+	boolean DEBUG = false;
+	private String cacheDir;
 
 	List<FolderInfo> folderInfos; // folder lists and counts, could be accessed while it is still being computed
-	List<String> defaultFolderNames; // specific default folder name for analysis, e.g. [Gmail]/Sent Mail for gmail
+	private List<String> defaultFolderNames; // specific default folder name for analysis, e.g. [Gmail]/Sent Mail for gmail
 
 	// the following used for reporting intermediate status
-	protected boolean doneReadingFolderCounts; // will be set when all folders have been identified and counts read
-	protected String folderBeingScanned; // the folder currently being scanned
-	protected String folderBeingScannedShortName; // the folder currently being scanned
+	boolean doneReadingFolderCounts; // will be set when all folders have been identified and counts read
+	String folderBeingScanned; // the folder currently being scanned
+	String folderBeingScannedShortName; // the folder currently being scanned
 
 	public boolean isFolderCountReadingComplete() { return doneReadingFolderCounts; }
 	public String folderBeingScanned() { return folderBeingScanned; }
@@ -99,9 +99,9 @@ public abstract class EmailStore implements Serializable {
 	}
 
 	// constructor for de-serialization
-	public EmailStore() { }
+	EmailStore() { }
 
-	public EmailStore(String name, String emailAddress)
+	EmailStore(String name, String emailAddress)
 	{
 		this.displayName = name;
 		// display name is often used in html pages for attributes and javascript, so its probably very bad to have " or '
@@ -121,9 +121,9 @@ public abstract class EmailStore implements Serializable {
 	public String getDisplayName() { return displayName; }
 
 	/** returns folder and # of messages in it. -1 if folder cannot be opened. */
-	abstract public Pair<Folder, Integer> openFolder(Store store, String fname) throws MessagingException;
+	protected abstract Pair<Folder, Integer> openFolder(Store store, String fname) throws MessagingException;
 
-	abstract public Folder openFolderWithoutCount(Store store, String fname) throws MessagingException;
+	protected abstract Folder openFolderWithoutCount(Store store, String fname) throws MessagingException;
 
 	/** establishes a new connection using this email store */
 	abstract public Store connect() throws MessagingException;

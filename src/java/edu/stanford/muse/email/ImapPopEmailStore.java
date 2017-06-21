@@ -35,11 +35,11 @@ import java.util.Properties;
 
 public class ImapPopEmailStore extends EmailStore {
 	private final static long serialVersionUID = 1L;
-    public static Log log = LogFactory.getLog(ImapPopEmailStore.class);
+    private static Log log = LogFactory.getLog(ImapPopEmailStore.class);
 
-	ImapPopConnectionOptions connectOptions;
+	private ImapPopConnectionOptions connectOptions;
 	private static final Properties mstoreProps;
-	transient Store store = null;
+	private transient Store store = null;
 	transient public Session session = null;
 	
 	static {
@@ -189,7 +189,7 @@ public class ImapPopEmailStore extends EmailStore {
 	}
 
 	/** recursively collect all folder names under f into list */
-	protected void collect_folder_names(Store store, List<FolderInfo> list, Folder f) throws MessagingException
+	private void collect_folder_names(Store store, List<FolderInfo> list, Folder f) throws MessagingException
 	{
 		// ignore hidden files
 		if (f.getFullName().startsWith("."))

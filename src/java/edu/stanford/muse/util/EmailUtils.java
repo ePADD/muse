@@ -43,12 +43,12 @@ import java.util.stream.Collectors;
 
 public class EmailUtils {
 	public static Log					log				= LogFactory.getLog(EmailUtils.class);
-	public static org.apache.commons.collections4.map.CaseInsensitiveMap<String, String> dbpedia			= null;
+	private static org.apache.commons.collections4.map.CaseInsensitiveMap<String, String> dbpedia			= null;
 	public static long					MILLIS_PER_DAY	= 1000L * 3600 * 24;
 
 	/** Returns the part before @ in an email address, e.g. hangal@gmail.com => hangal.
 	 * Returns the full string if the input does not have @, or null if the input is null. */
-	public static String getAccountNameFromEmailAddress(String email) {
+	private static String getAccountNameFromEmailAddress(String email) {
 		if (email == null)
 			return null;
 		int idx = email.indexOf("@");
@@ -93,7 +93,7 @@ public class EmailUtils {
 		return result;
 	}
 
-	static class DBpediaTypes {
+	private static class DBpediaTypes {
         //these are types identified from DBpedia that may contain some predictable tokens and omitting types with any possible tokens like TVShows and Bands
         //also omitting types that are not very different from other types like, Company and AutomobileEngine|Device
     }
@@ -187,7 +187,7 @@ public class EmailUtils {
 	}
 
 	// strips the Re: of subjects
-	public static String normalizedSubject(String subject)
+	private static String normalizedSubject(String subject)
 	{
 		String originalSubject = subject.toLowerCase();
 		String result = originalSubject;
@@ -299,10 +299,10 @@ public class EmailUtils {
 	}
 
 	//	From - Tue Sep 29 11:38:30 2009
-	static SimpleDateFormat	sdf1	= new SimpleDateFormat("EEE MMM dd hh:mm:ss yyyy");
+	private static SimpleDateFormat	sdf1	= new SimpleDateFormat("EEE MMM dd hh:mm:ss yyyy");
 	// Date: Wed, 2 Apr 2003 11:53:17 -0800 (PST)
-	static SimpleDateFormat	sdf2	= new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
-	static Base64			base64encoder;
+	private static SimpleDateFormat	sdf2	= new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
+	private static Base64			base64encoder;
 	public static Random	rng		= new Random(0);
 
 	static {
@@ -311,7 +311,7 @@ public class EmailUtils {
 		base64encoder = new Base64(76, b);
 	}
 
-	public static void printHeaderToMbox(EmailDocument ed, PrintWriter mbox) throws IOException, GeneralSecurityException
+	private static void printHeaderToMbox(EmailDocument ed, PrintWriter mbox) throws IOException, GeneralSecurityException
 	{
 		/* http://www.ietf.org/rfc/rfc1521.txt is the official ref. */
 		Date d = ed.date != null ? ed.date : new Date();
@@ -395,7 +395,7 @@ public class EmailUtils {
 		}
 	}
 
-	public static void printBodyAndAttachmentsToMbox(String contents, EmailDocument ed, PrintWriter mbox, BlobStore blobStore) throws IOException, GeneralSecurityException
+	private static void printBodyAndAttachmentsToMbox(String contents, EmailDocument ed, PrintWriter mbox, BlobStore blobStore) throws IOException, GeneralSecurityException
 	{
 		String frontier = "----=_Part_";
 		List<Blob> attachments = null;
@@ -993,7 +993,7 @@ public class EmailUtils {
 		return result.toString();
 	}
 
-	public static void testGetOriginalContent() throws IOException
+	private static void testGetOriginalContent() throws IOException
 	{
 		String x = "abc\r\nrxyz\rde\n";
 		System.out.println("s = " + x + "\n" + x.length());
@@ -1124,7 +1124,7 @@ public class EmailUtils {
 		return result;
 	}
 
-    static void testLookupNormalizer(){
+    private static void testLookupNormalizer(){
         Pair<String,String>[] tests = new Pair[]{
                 new Pair<>("bernstein","bernstein"),
                 new Pair<>("charles, bernstein", "bernstein charles"),
@@ -1433,7 +1433,7 @@ public class EmailUtils {
 		return content;
 	}
 
-	public static Map<String,String> sample(Map<String,String> full, double p){
+	private static Map<String,String> sample(Map<String, String> full, double p){
 		Random rand = new Random();
 		Map<String,String> sample = new LinkedHashMap<>();
 		for(String e: full.keySet()){
@@ -1443,7 +1443,7 @@ public class EmailUtils {
 		return sample;
 	}
 
-    static String cleanDBPediaRoad(String title){
+    private static String cleanDBPediaRoad(String title){
         String[] words = title.split(" ");
         String lw = words[words.length-1];
         String ct = "";
@@ -1465,7 +1465,7 @@ public class EmailUtils {
         return ct;
     }
 
-	public static Map<String, String> readDBpedia(double p, String typesFile) {
+	private static Map<String, String> readDBpedia(double p, String typesFile) {
         if (dbpedia != null) {
             if(p==1)
                 return dbpedia;
