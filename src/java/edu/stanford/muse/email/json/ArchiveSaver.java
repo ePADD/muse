@@ -25,8 +25,13 @@ public class ArchiveSaver {
 
     public void save(Archive archive) {
         String folderName = new String(Base64.getEncoder().encode(archiveName.getBytes()));
-        String folderPath = System.getProperty("user.home") + File.separator + folderName;
+        String folderPath = System.getProperty("user.home") + File.separator + "epadd-data";
         File folder = new File(folderPath);
+        if (!folder.exists()) {
+            folder.mkdir();
+        }
+        folderPath += File.separator + folderName;
+        folder = new File(folderPath);
         if (!folder.exists()) {
             folder.mkdir();
         }
