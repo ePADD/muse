@@ -70,6 +70,7 @@ public class EmailNameAgregator {
         if (personal == null) {
             return;
         }
+        personal = removeWildChars(personal);
         String name = emailNameMap.get(email);
         if (name != null) {
             if (name.length() < personal.length()) {
@@ -88,6 +89,18 @@ public class EmailNameAgregator {
         } else {
             emailNameMap.put(email, personal);
         }
+    }
+
+    private String removeWildChars(String string) {
+        string = string.replaceAll("\\s", " ");
+        string = string.replaceAll("\\n", " ");
+        string = string.replaceAll("\\\\", "\\\\\\\\");
+        string = string.replaceAll("\\r", " ");
+        string = string.replaceAll(" {2,}", " ");
+        string = string.replaceAll("\" ", "\"");
+        string = string.replaceAll(" \"", "\"");
+        string = string.replaceAll("[^\\w\\d\\sёЁА-Яа-я.,:\\\\\\[\\]|'\";()*?!#$%{}@+\\-]", "");
+        return string.trim();
     }
 
     public void save(String fileName) {
