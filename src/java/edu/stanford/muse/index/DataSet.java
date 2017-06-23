@@ -27,8 +27,10 @@ import edu.stanford.muse.webapp.EmailRenderer;
 import java.util.*;
 
 /**
- * a collection of documents. each doc has an html representation, that is
- * computed lazily and cached.
+ * a collection of documents, typically the result of a search.
+ * each doc has an html representation that is computed lazily and cached.
+ * This object will be given an id like "docset-NNNNN" and stored in the session.
+ * Need to release memory when the dataset is not being used, which is done by ajax/releaseDataset.jsp
  */
 public class DataSet {
     private List<String> pages = new ArrayList<>();
@@ -42,10 +44,9 @@ public class DataSet {
     //String -> <dbId -> dbType>
     private Map<String, Map<String, Short>> authorisedEntities;
 
-    public Boolean sensitive;
+    public String regexToHighlight;
 
-    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTerms,
-                   Collection<Blob> highlightAttachments) {
+    public DataSet(Collection<Document> docs, Archive archive, String datasetTitle, Set<Integer> highlightContactIds, Set<String> highlightTerms, Collection<Blob> highlightAttachments) {
         if(docs!=null) {
             //calling assigning new ArrayList<>(docs) is calling sort on docs by default
             this.docs = new ArrayList<>();
@@ -102,7 +103,7 @@ public class DataSet {
             {
                 // we are assuming one one page per doc for now. (true for
                 // emails)
-                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, sensitive, highlightContactIds,
+                Pair<String, Boolean> htmlResut = EmailRenderer.htmlForDocument(docs.get(i), archive, datasetTitle, attachmentsStore, regexToHighlight, highlightContactIds,
                         highlightTerms, highlightAttachments, authorisedEntities, IA_links, inFull, debug);
                 boolean overflow = htmlResut.second;
                 Util.ASSERT(!(inFull && overflow));

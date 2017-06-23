@@ -11,6 +11,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -55,6 +57,27 @@ class Highlighter {
      * The highlighted content would have [pre Tag] matching term [post tag]
      * When the term is "Robert Creeley", the output is "On Tue, Jun 24, 2014 at 11:56 AM, [preTag]Robert Creeley's[postTag] <creeley@acsu.buffalo.edu> wrote:"
      */
+
+    /** debug method only */
+    private static String dumpTokenStream(Analyzer analyzer, TokenStream tokenStream) throws IOException {
+        // taken from https://stackoverflow.com/questions/2638200/how-to-get-a-token-from-a-lucene-tokenstream
+        OffsetAttribute offsetAttribute = tokenStream.getAttribute(OffsetAttribute.class);
+        CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append ("Tokens:\n");
+        tokenStream.reset();
+        while (tokenStream.incrementToken()) {
+            int startOffset = offsetAttribute.startOffset();
+            int endOffset = offsetAttribute.endOffset();
+            String term = charTermAttribute.toString();
+            sb.append (term + "(offsets: " + startOffset + ", " + endOffset + ")\n");
+        }
+
+        tokenStream.reset();
+        return sb.toString();
+    }
+
     private static String highlight(String content, String term, String preTag, String postTag) throws IOException, ParseException, InvalidTokenOffsetsException{
         //The Lucene Highlighter is used in a hacky way here, it is intended to be used to retrieve fragments from a matching Lucene document.
         //The Lucene Highlighter introduces tags around every token that matched the query, hence it is required to merge these fragmented annotations into one inorder to fit our needs.
@@ -142,20 +165,15 @@ class Highlighter {
         return result;
     }
 
-    private static String annotateSensitive(String content, String preTag, String postTag) {
-        if (Archive.getPresetQueries() == null)
-            Archive.readPresetQueries();
-        String[] qs = Archive.getPresetQueries();
-        if (qs == null || qs.length == 0) {
-            //log.warn("Preset queries are not set, not annotating sensitive stuff");
+    private static String annotateRegex(String content, String regexToHighlight, String preTag, String postTag) {
+        if (Util.nullOrEmpty(regexToHighlight))
             return content;
-        }
+
         //We expand the query to match any numbers to the left and right of queried regular exp as the chunker is aggressive and chunks any numbers occurring together into one even if they are in different lines
         //qs = new String[] { "[0-9]{3}[- ][0-9]{2}[- ][0-9]{4}", "3[0-9]{3}[-. ][0-9]{6}[-. ][0-9]{5}" };
-        String[] queries = new String[qs.length];
-        for (int i = 0; i < qs.length; i++) {
-            queries[i] = "/"+qs[i]+"/";
-        }
+        String[] queries = new String[1];
+        queries[0] = "/" + regexToHighlight + "/";
+
         String result = null;
         try {
             result = highlightBatch(content, queries, preTag, postTag);
@@ -173,14 +191,14 @@ class Highlighter {
      * @param contents is the content to be annotated, typically the text in email body
      * A convenience method to do the bulk job of annotating all the terms in termsToHighlight, termsToHyperlink and entitiesWithId
      * Also hyperlinks any URLs found in the content
-     * @param sensitive - when set will highlight all the expressions matching Indexer.presetQueries
+     * @param regexToHighlight - the output will highlight all the strings matching regexToHighlight
      * @param showDebugInfo - when set will append to the output some debug info. related to the entities present in the content and passed through entitiesWithId
      *
      * Note: DO not modify any of the objects passed in the parameter
      *       if need to be modified then clone and modify a local copy
      * */
     //TODO: can also get rid of termsToHyperlink
-    public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, Boolean sensitive,
+    public static String getHTMLAnnotatedDocumentContents(String contents, Date d, String docId, String regexToHighlight,
                                                           Set<String> termsToHighlight, Map<String, EmailRenderer.Entity> entitiesWithId,
                                                           Set<String> termsToHyperlink, boolean showDebugInfo) {
         Set<String> highlightTerms = new LinkedHashSet<>(), hyperlinkTerms = new LinkedHashSet<>();
@@ -219,8 +237,8 @@ class Highlighter {
         m.appendTail(sb);
         contents = sb.toString();
 
-        if (sensitive!=null && sensitive) {
-            contents = annotateSensitive(contents, preHighlightTag, postHighlightTag);
+        if (!Util.nullOrEmpty (regexToHighlight)) {
+            contents = annotateRegex(contents, regexToHighlight, preHighlightTag, postHighlightTag);
         }
 
         List<String> catchTerms = Arrays.asList("class","span","data","ignore");
@@ -541,7 +559,7 @@ class Highlighter {
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.EPER).forEach(e->ewid.put(e,new Archive.Entity(e,null,Arrays.asList("cp").stream().collect(Collectors.toSet()))));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.ELOC).forEach(e->ewid.put(e,new Archive.Entity(e,null,Arrays.asList("cl").stream().collect(Collectors.toSet()))));
 //                archive.getEntitiesInDoc(ed, edu.stanford.muse.ner.NER.EORG).forEach(e->ewid.put(e,new Archive.Entity(e, null, Arrays.asList("co").stream().collect(Collectors.toSet()))));
-                String htmlcontent = getHTMLAnnotatedDocumentContents("<body>"+content+"</body>",ed.date,ed.getUniqueId(),false,termsToHighlight,ewid,null,true);
+                String htmlcontent = getHTMLAnnotatedDocumentContents("<body>"+content+"</body>",ed.date,ed.getUniqueId(),null /* regex to highlight */,termsToHighlight,ewid,null,true);
                 System.out.println("Done highlighting.");
                 htmlcontent += "<br>------<br>"+content.replaceAll("\n","<br>\n");
                 htmlcontent = "<link href=\"epadd.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"+htmlcontent;

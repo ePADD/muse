@@ -241,7 +241,7 @@ public class EmailRenderer {
     //TODO: inFull, debug params can be removed
     //TODO: Consider a HighlighterOptions class
 	public static Pair<String, Boolean> htmlForDocument(Document d, Archive archive, String datasetTitle, BlobStore attachmentsStore,
-			Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
+			String regexToHighlight, Set<Integer> highlightContactIds, Set<String> highlightTerms, Set<Blob> highlightAttachments, Map<String, Map<String, Short>> authorisedEntities,
 			boolean IA_links, boolean inFull, boolean debug) throws Exception
 	{
 		JSPHelper.log.debug("Generating HTML for document: " + d);
@@ -256,7 +256,7 @@ public class EmailRenderer {
 			page.append("<div class=\"muse-doc\">\n");
 
 			page.append("<div class=\"muse-doc-header\">\n");
-			page.append(EmailRenderer.getHTMLForHeader(archive, ed, sensitive, highlightContactIds, highlightTerms, IA_links, debug));
+			page.append(EmailRenderer.getHTMLForHeader(archive, ed, regexToHighlight, highlightContactIds, highlightTerms, IA_links, debug));
 			page.append("</div>"); // muse-doc-header
 
 			/*
@@ -268,7 +268,7 @@ public class EmailRenderer {
 			 * page.append("<br/>\n"); }
 			 */
 			page.append("\n<div class=\"muse-doc-body\">\n");
-			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), sensitive, highlightTerms,
+			Pair<StringBuilder, Boolean> contentsHtml = archive.getHTMLForContents(d, ((EmailDocument) d).getDate(), d.getUniqueId(), regexToHighlight, highlightTerms,
 					authorisedEntities, IA_links, inFull, true);
 
 			StringBuilder htmlMessageBody = contentsHtml.first;
@@ -391,12 +391,9 @@ public class EmailRenderer {
 	/**
 	 * returns a HTML table string for the doc header
 	 * 
-	 * @param sensitive
-	 *            - when set will highlight any sensitive info in subject based
-	 *            on preset regexs
 	 * @throws IOException
 	 */
-	private static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, Boolean sensitive, Set<Integer> highlightContactIds, Set<String> highlightTerms,
+	private static StringBuilder getHTMLForHeader(Archive archive, EmailDocument ed, String regexToHighlight, Set<Integer> highlightContactIds, Set<String> highlightTerms,
 												  boolean IA_links, boolean debug) throws IOException
 	{
 		AddressBook addressBook = archive.addressBook;
@@ -501,7 +498,7 @@ public class EmailRenderer {
                     entitiesWithId.put(n.text, new Entity(n.text, null, types));
                 });
 
-        x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), sensitive, highlightTerms, entitiesWithId, IA_links, false);
+        x = archive.annotate(x, ed.getDate(), ed.getUniqueId(), regexToHighlight, highlightTerms, entitiesWithId, IA_links, false);
 
 		result.append(x);
 		result.append("</b>\n");

@@ -889,7 +889,10 @@ public class Searcher {
         resultDocs = (Set) filterForLexicons(archive, resultDocs, params);
         resultDocs = (Set) updateForEntities(archive, (Set) resultDocs, params); // searching by entity is probably the most expensive, so keep it near the end
         resultDocs = (Set) filterForEntityType(archive, (Set) resultDocs, params);
-        resultDocs = (Set) filterForSensitiveMessages(archive, (Set) resultDocs, params);
+
+        //  we don't have sensitive messages now (based on PRESET_REGEX)
+        // sensitive messages are just a special lexicon
+        // resultDocs = (Set) filterForSensitiveMessages(archive, (Set) resultDocs, params);
 
         // now only keep blobs that belong to resultdocs
 

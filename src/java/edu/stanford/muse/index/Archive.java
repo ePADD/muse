@@ -1049,15 +1049,13 @@ public class Archive implements Serializable {
      * entitiesWithId - authorisedauthorities, for annotation
      * showDebugInfo - enabler to show debug info
      */
-    private String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
+    private String annotate(org.apache.lucene.document.Document ldoc, String s, Date date, String docId, String regexToHighlight, Set<String> highlightTerms,
                             Map<String, EmailRenderer.Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
         getAllDocs();
         try {
             Summarizer summarizer = new Summarizer(indexer);
 
-            s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, sensitive, highlightTerms,
-                    entitiesWithId, summarizer.importantTermsCanonical,
-                    false);
+            s = Highlighter.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, regexToHighlight, highlightTerms, entitiesWithId, summarizer.importantTermsCanonical, false);
 
             //indexer
             //	.getHTMLAnnotatedDocumentContents(s, (IA_links ? date : null), docId, searchTerms, isRegexSearch, highlightTermsStemmed, highlightTermsUnstemmed, entitiesWithId);
@@ -1069,13 +1067,13 @@ public class Archive implements Serializable {
         return s;
     }
 
-    public String annotate(String s, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
+    public String annotate(String s, Date date, String docId, String regexToHighlight, Set<String> highlightTerms,
                            Map<String, EmailRenderer.Entity> entitiesWithId, boolean IA_links, boolean showDebugInfo) {
-        return annotate(null, s, date, docId, sensitive, highlightTerms,
+        return annotate(null, s, date, docId, regexToHighlight, highlightTerms,
                 entitiesWithId, IA_links, showDebugInfo);
     }
 
-    public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, Boolean sensitive, Set<String> highlightTerms,
+    public Pair<StringBuilder, Boolean> getHTMLForContents(Document d, Date date, String docId, String regexToHighlight, Set<String> highlightTerms,
                                                             Map<String, Map<String, Short>> authorisedEntities, boolean IA_links, boolean inFull, boolean showDebugInfo) throws Exception {
         org.apache.lucene.document.Document ldoc = indexer.getDoc(d);
         Span[] names = getAllNamesInLuceneDoc(ldoc,true);
@@ -1113,7 +1111,7 @@ public class Archive implements Serializable {
         if (contents.length() > Config.MAX_TEXT_SIZE_TO_ANNOTATE) // don't try to annotate extraordinarily long messages, probably bad data, as discovered on RF archive
             htmlContents = Util.escapeHTML(contents);
         else
-            htmlContents = annotate(ldoc, contents, date, docId, sensitive, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
+            htmlContents = annotate(ldoc, contents, date, docId, regexToHighlight, highlightTerms, entitiesWithId, IA_links, showDebugInfo);
 
         if (ModeConfig.isPublicMode())
             htmlContents = Util.maskEmailDomain(htmlContents);
