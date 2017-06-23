@@ -503,7 +503,9 @@ public class EmailRenderer {
 		result.append(x);
 		result.append("</b>\n");
 		result.append("\n</td></tr>\n");
-		result.append ("\n" + style + "ID: " + "</td><td>" + Util.hash (ed.getSignature()) + "</td></tr>");
+		String messageId = Util.hash (ed.getSignature());
+		String messageLink = "(<a href=\"browse?adv-search=1&uniqueId=" + messageId + "\">Link</a>)";
+		result.append ("\n" + style + "ID: " + "</td><td>" + messageId + " " + messageLink + "</td></tr>");
 		result.append("</table>\n"); // end docheader table
 
 		if (ModeConfig.isPublicMode())
