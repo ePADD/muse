@@ -156,15 +156,16 @@ public class Config {
         else if (mode != null)
             log.warn("Invalid value for epadd.mode: " + mode);
 
-        attachmentTypeToExtensions.put("graphics", "jpg;png;gif;bmp");
-        attachmentTypeToExtensions.put("document", "doc;docx;pages");
-        attachmentTypeToExtensions.put("presentation", "ppt;pptx;key");
-        attachmentTypeToExtensions.put("spreadsheet", "xls;xlsx;numbers");
-        attachmentTypeToExtensions.put("internet", "htm;html;css;js");
-        attachmentTypeToExtensions.put("compressed", "zip;7z;tar;tgz");
-        attachmentTypeToExtensions.put("video", "mp3;ogg");
-        attachmentTypeToExtensions.put("audio", "avi;mp4");
-        attachmentTypeToExtensions.put("database", "fmp;db;mdb;accdb");
+        attachmentTypeToExtensions.put("Graphics", "jpg;png;gif;bmp");
+        attachmentTypeToExtensions.put("Document", "doc;docx;pages");
+        attachmentTypeToExtensions.put("Presentation", "ppt;pptx;key");
+        attachmentTypeToExtensions.put("Spreadsheet", "xls;xlsx;numbers");
+        attachmentTypeToExtensions.put("Internet file", "htm;html;css;js");
+        attachmentTypeToExtensions.put("Compressed", "zip;7z;tar;tgz");
+        attachmentTypeToExtensions.put("Video", "mp3;ogg");
+        attachmentTypeToExtensions.put("Audio", "avi;mp4");
+        attachmentTypeToExtensions.put("Database", "fmp;db;mdb;accdb");
+        attachmentTypeToExtensions.put("Others", "others");
 
         // if null or invalid, we'll leave epadd.mode in APPRAISAL which is the default
         log.info("-------------Begin Configuration block -----------------");

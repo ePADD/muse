@@ -622,6 +622,12 @@ public class Searcher {
                 }
 
                 // 2. extension matches?
+                //a variable to select if the extensions needed contain others.
+                boolean isOtherSelected = neededExtensions.contains("others");
+                //get the options that were displayed for attachment types. This will be used to select attachment extensions if the option 'other'
+                //was selected by the user in the drop down box of export.jsp.
+                List<String> attachmentTypeOptions = Config.attachmentTypeToExtensions.values().stream().map(x->Util.tokenize(x,";")).flatMap(col->col.stream()).collect(Collectors.toList());
+
                 if (neededExtensions != null) {
                     if (b.filename == null)
                         continue; // just over-defensive, if no name, effectively doesn't match
@@ -629,7 +635,12 @@ public class Searcher {
                     if (extension == null)
                         continue;
                     extension = extension.toLowerCase();
-                    if (!neededExtensions.contains(extension))
+                    //Proceed to add this attachment only if either
+                    //1. other is selected and this extension is not present in the list attachmentOptionType, or
+                    //2. this extension is present in the variable neededExtensions [Q. What if there is a file with extension .others?]
+                    boolean firstcondition = isOtherSelected && !attachmentTypeOptions.contains(extension);
+                    boolean secondcondition = neededExtensions.contains(extension);
+                    if (!firstcondition && !secondcondition)
                         continue;
                 }
 
