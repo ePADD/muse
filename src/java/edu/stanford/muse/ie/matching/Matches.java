@@ -52,7 +52,7 @@ public class Matches {
     /** returns match type of s with candidate */
     public static StringMatchType match(String s, String candidate) {
 
-        if (s == null || candidate != null)
+        if (s == null || candidate == null)
             return null;
 
         String cs = canonicalize(s);

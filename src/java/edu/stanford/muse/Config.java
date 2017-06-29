@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.Properties;
 
 /*
-VIP class. This class has constants/settings that generally do not change during an ePADD execution, and are read only at startup.
+VIP class. This class has constants/settings that generally do not change during an ePADD execution, and are set only at startup.
 The settings can be public static fields of the Config class and can be read (but should not be written) directly by the rest of the code.
-The settings are ready by the properties in <user home dir>/epadd.properties (or the file specified by -Depadd.properties=<file>)
+The settings are read by the properties in <user home dir>/epadd.properties (or the file specified by -Depadd.properties=<file>)
 Some settings have a default.
 
 Similarly, resource files should be read only through this class. Resource files are not expected to change during one execution of epadd.
@@ -50,7 +50,7 @@ public class Config {
 
     public static Boolean 	OPENNLP_NER = false;
     public static String DEFAULT_SETTINGS_DIR = System.getProperty("user.home") + File.separator + "epadd-settings";
-    public static String DEFAULT_BASE_DIR = System.getProperty("user.home");
+    private static String DEFAULT_BASE_DIR = System.getProperty("user.home");
     public static String DEFAULT_LEXICON = "general";
     public static final Map<String, String> attachmentTypeToExtensions = new LinkedHashMap<>();
 
@@ -142,15 +142,16 @@ public class Config {
         }
 
         {
-            attachmentTypeToExtensions.put("graphics", "jpg;png;gif;bmp");
-            attachmentTypeToExtensions.put("document", "doc;docx;pages");
-            attachmentTypeToExtensions.put("presentation", "ppt;pptx;key");
-            attachmentTypeToExtensions.put("spreadsheet", "xls;xlsx;numbers");
-            attachmentTypeToExtensions.put("internet", "htm;html;css;js");
-            attachmentTypeToExtensions.put("compressed", "zip;7z;tar;tgz");
-            attachmentTypeToExtensions.put("video", "mp3;ogg");
-            attachmentTypeToExtensions.put("audio", "avi;mp4");
-            attachmentTypeToExtensions.put("database", "fmp;db;mdb;accdb");
+            attachmentTypeToExtensions.put("Graphics", "jpg;png;gif;bmp");
+            attachmentTypeToExtensions.put("Document", "doc;docx;pages");
+            attachmentTypeToExtensions.put("Presentation", "ppt;pptx;key");
+            attachmentTypeToExtensions.put("Spreadsheet", "xls;xlsx;numbers");
+            attachmentTypeToExtensions.put("Internet file", "htm;html;css;js");
+            attachmentTypeToExtensions.put("Compressed", "zip;7z;tar;tgz");
+            attachmentTypeToExtensions.put("Video", "mp3;ogg");
+            attachmentTypeToExtensions.put("Audio", "avi;mp4");
+            attachmentTypeToExtensions.put("Database", "fmp;db;mdb;accdb");
+            attachmentTypeToExtensions.put("Others", "others");
         }
 
         {

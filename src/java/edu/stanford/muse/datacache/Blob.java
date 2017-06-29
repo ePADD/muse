@@ -42,6 +42,8 @@ public long size = -1;
 public String filename;
 public String contentType;
 
+public boolean processedSuccessfully = false;
+
 	public void setContentHash(byte[] contentHash) {
 		this.contentHash = contentHash;
 	}
@@ -164,10 +166,16 @@ public Pair<String, String> getContent(BlobStore store)
 		failed = true;
 	}
 
-	if (failed)
+	if (failed){
+		processedSuccessfully = false;
 		return null;
-	else
+	}
+	else{
+		processedSuccessfully = true;
 		return new Pair<String,String>(metadataBuffer.toString(), handler.toString());
+	}
+
+
 }
 
     public static class BlobStats {

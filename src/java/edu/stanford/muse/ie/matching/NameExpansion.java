@@ -35,7 +35,8 @@ public class NameExpansion {
 
             name = (String) it.next();
             matchType = Matches.match(matchResults.getMatchString(), name);
-        } while (matchType == null || !matchResults.addMatch(name, score, matchType, (messageType != null ? messageType + " " : "") + " (message ID: " + Util.hash(ed.getSignature()) + ")", false));
+        }
+        while (matchType == null || !matchResults.addMatch(name, score, matchType, (messageType != null ? messageType + " " : "") + " (message ID: " + Util.hash(ed.getSignature()) + ")", false));
 
         return true;
     }
@@ -48,100 +49,69 @@ public class NameExpansion {
         List<Contact> contacts = new ArrayList(contactsExceptSelf);
         contacts.add(ab.getContactForSelf());
 
-        Iterator contactIt = contacts.iterator();
-
-        String name;
-        StringMatchType matchType;
-        float score;
+        // check if s matches any contacts on this message
         outer:
-        do {
-            while (true) {
-                Contact c;
-                do {
-                    if (!contactIt.hasNext()) {
-                        if (matchAgainstEmailContent(archive, ed, matches, "Mentioned elsewhere in this message", 1.0F)) {
-                            return matches;
-                        }
-
-                        synchronized (archive) {
-                            if (ed.threadID == 0L) {
-                                archive.assignThreadIds();
-                            }
-                        }
-
-                        List<EmailDocument> messagesInThread = (List) archive.docsWithThreadId(ed.threadID);
-                        contactIt = messagesInThread.iterator();
-
-                        while (contactIt.hasNext()) {
-                            EmailDocument messageInThread = (EmailDocument) contactIt.next();
-                            if (matchAgainstEmailContent(archive, messageInThread, matches, "Mentioned in this thread", 0.9F)) {
-                                return matches;
-                            }
-                        }
-
-                        String correspondentsSearchStr = "";
-                        contactIt = contactsExceptSelf.iterator();
-
-                        Set docsWithTerm;
-                        while (contactIt.hasNext()) {
-                            c = (Contact) contactIt.next();
-                            docsWithTerm = c.emails;
-                            if (docsWithTerm.size() > 0) {
-                                //language=JSON
-                                correspondentsSearchStr = correspondentsSearchStr + (String) c.emails.iterator().next() + ";";
-                            }
-                        }
-
-                        Set<EmailDocument> messagesWithSameCorrespondents = (Set) Searcher.filterForCorrespondents((Collection) archive.getAllDocs(), ab, correspondentsSearchStr, true, true, true, true);
-                        Iterator var22 = messagesWithSameCorrespondents.iterator();
-
-                        while (var22.hasNext()) {
-                            EmailDocument messageWithSameCorrespondents = (EmailDocument) var22.next();
-                            if (matchAgainstEmailContent(archive, messageWithSameCorrespondents, matches, "Mentioned in other messages with these correspondents", 0.8F)) {
-                                return matches;
-                            }
-                        }
-
-                        Multimap<String, String> params = LinkedHashMultimap.create();
-                        params.put("termSubject", "on");
-                        params.put("termBody", "on");
-                        String term = s;
-                        if (s.contains(" ") && (!s.startsWith("\"") || !s.endsWith("\""))) {
-                            term = "\"" + s + "\"";
-                        }
-
-                        Pair<Set<Document>, Set<Blob>> p = Searcher.searchForTerm(archive, params, term);
-                        docsWithTerm = (Set) p.getFirst();
-                        Iterator var26 = docsWithTerm.iterator();
-
-                        EmailDocument docWithTerm;
-                        do {
-                            if (!var26.hasNext()) {
-                                return matches;
-                            }
-
-                            docWithTerm = (EmailDocument) var26.next();
-                        }
-                        while (!matchAgainstEmailContent(archive, docWithTerm, matches, "Mentioned elsewhere in this archive", 0.7F));
-
+        for (Contact c: contacts) {
+            if (c.names == null)
+                continue;
+            for (String name : c.names) {
+                StringMatchType matchType = Matches.match(s, name);
+                if (matchType != null) {
+                    float score = 1.0F;
+                    if (matches.addMatch(name, score, matchType, "Name of a contact on this message", true))
                         return matches;
-                    }
+                    continue outer;
+                }
+            }
+        }
 
-                    c = (Contact) contactIt.next();
-                } while (c.names == null);
+        // check if s matches anywhere else in this message
+        if (matchAgainstEmailContent(archive, ed, matches, "Mentioned elsewhere in this message", 1.0F)) {
+            return matches;
+        }
 
-                Iterator var10 = c.names.iterator();
+        synchronized (archive) {
+            if (ed.threadID == 0L) {
+                archive.assignThreadIds();
+            }
+        }
 
-                while (var10.hasNext()) {
-                    name = (String) var10.next();
-                    matchType = Matches.match(s, name);
-                    if (matchType != null) {
-                        score = 1.0F;
-                        continue outer;
+        // check if s matches anywhere else in this thread
+        List<EmailDocument> messagesInThread = (List) archive.docsWithThreadId(ed.threadID);
+        for (EmailDocument messageInThread: messagesInThread) {
+            if (matchAgainstEmailContent(archive, messageInThread, matches, "Mentioned in this thread", 0.9F)) {
+                return matches;
+            }
+        }
+
+        // check if s matches any other email with any of these correspondents
+        for (Contact c: contactsExceptSelf) {
+            if (c.emails != null) {
+                String correspondentsSearchStr = String.join(";", c.emails);
+                Set<EmailDocument> messagesWithSameCorrespondents = (Set) Searcher.filterForCorrespondents((Collection) archive.getAllDocs(), ab, correspondentsSearchStr, true, true, true, true);
+                for (EmailDocument messageWithSameCorrespondents: messagesWithSameCorrespondents) {
+                    if (matchAgainstEmailContent(archive, messageWithSameCorrespondents, matches, "Mentioned in other messages with these correspondents", 0.8F)) {
+                        return matches;
                     }
                 }
             }
-        } while (!matches.addMatch(name, score, matchType, "Name of a contact on this message", true));
+        }
+
+        // search for s anywhere in the archive
+        Multimap<String, String> params = LinkedHashMultimap.create();
+        params.put("termSubject", "on");
+        params.put("termBody", "on");
+        String term = s;
+        if (s.contains(" ") && (!s.startsWith("\"") || !s.endsWith("\""))) {
+            term = "\"" + s + "\"";
+        }
+
+        Pair<Set<Document>, Set<Blob>> p = Searcher.searchForTerm(archive, params, term);
+        Set<EmailDocument> docsWithTerm = (Set) p.getFirst();
+        for (EmailDocument docWithTerm: docsWithTerm) {
+             if (matchAgainstEmailContent(archive, docWithTerm, matches, "Mentioned elsewhere in this archive", 0.7F))
+                return matches;
+        }
 
         return matches;
     }
