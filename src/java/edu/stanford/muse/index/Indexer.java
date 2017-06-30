@@ -98,19 +98,18 @@ public class Indexer implements StatusProvider, java.io.Serializable {
 	private Map<String, Blob>						attachmentDocIdToBlob	= new LinkedHashMap<String, Blob>();					// attachment's docid -> Blob
     private HashMap<String, Map<Integer, String>>	dirNameToDocIdMap		= new LinkedHashMap<String, Map<Integer, String>>();	// just stores 2 maps, one for content and one for attachment Lucene doc ID -> docId
 
-	//changed the below line
-	Directory directory;
-	transient private Directory						directory_blob;																// for attachments
+	transient private Directory directory;
+	transient private Directory	directory_blob;																// for attachments
 	transient private Analyzer analyzer;
 	transient private IndexSearcher isearcher;
-	transient private IndexSearcher					isearcher_blob;
+	transient private IndexSearcher	isearcher_blob;
 	transient private QueryParser parser, parserOriginal, parserSubject, parserCorrespondents, parserRegex, parserMeta;		// parserOriginal searches the original content (non quoted parts) of a message
 	transient private IndexWriter iwriter;
-	transient private IndexWriter					iwriter_blob;
-	transient Map<Integer,String>			blobDocIds;
+	transient private IndexWriter iwriter_blob;
+	transient Map<Integer,String> blobDocIds;
 	transient Map<Integer,String> contentDocIds;														// these are fieldCaches of ldoc -> docId for the docIds (for performance)
 
-	transient private String						baseDir					= null;												// where the file-based directories should be stored (under "indexes" dir)
+	transient private String baseDir = null;												// where the file-based directories should be stored (under "indexes" dir)
 
 	// these are field type configs for all the fields to be stored in the email and attachment index.
 	// most fields will use ft (stored and analyzed), and only the body fields will have a full_ft which is stored, analyzed (with stemming) and also keeps term vector offsets and positions for highlights

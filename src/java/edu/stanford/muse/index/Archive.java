@@ -132,62 +132,6 @@ public class Archive implements Serializable {
     // Archive struct. consider moving it elsewhere.
     private List<MultiDoc> docClusters;
 
-    static void readPresetQueries() {
-        List<String> q = new ArrayList<>();
-        String PRESET_QUERIES_FILE = "presetqueries.txt";
-        String path = edu.stanford.muse.Config.SETTINGS_DIR + File.separator + PRESET_QUERIES_FILE;
-        try {
-            log.info("Reading preset queries from: " + path);
-            File presetQueriesFile = new File(path);
-            if (!presetQueriesFile.exists()) {
-                log.warn("Preset queries file does not exist: " + path);
-
-                File settingsDir = new File(edu.stanford.muse.Config.SETTINGS_DIR);
-                if (!settingsDir.exists()) {
-                    log.warn("Settings directory does not exist, creating: " + edu.stanford.muse.Config.SETTINGS_DIR);
-                    boolean created = settingsDir.mkdirs();
-                    if(!created)
-                        log.warn("Cannot create settings dir: "+settingsDir);
-                }
-
-                try {
-                    InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("/" + PRESET_QUERIES_FILE);
-                    if (is == null)
-                        log.warn("Huh? Someone forgot to embed the preset queries file in this webapp!");
-                    else {
-                        long bytes = Util.copy_stream_to_file(is, path);
-                        is.close();
-                        log.warn("Preset queries file copied successfully to: " + path + " (" + bytes + " bytes)");
-                    }
-                } catch (Exception e) {
-                    Util.print_exception("Exception trying to copy embedded preset queries file: " + PRESET_QUERIES_FILE, e, Indexer.log);
-                    return;
-                }
-            }
-
-            if (!presetQueriesFile.canRead()) {
-                log.warn("Preset queries file exists, but is not readable: " + path);
-                return;
-            }
-
-            BufferedReader br = new BufferedReader(new FileReader(presetQueriesFile));
-            String line;
-            while ((line = br.readLine()) != null)
-                q.add(line);
-            Indexer.presetQueries = q.toArray(new String[q.size()]);
-            log.info("Initiated " + q.size() + " preset queries");
-            br.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            Util.print_exception("Exception while reading pre-set queries file: " + path, e, Indexer.log);
-        }
-    }
-
-    /**@return the preset queries read from presetqueries.txt*/
-    public static String[] getPresetQueries(){
-        return Indexer.presetQueries;
-    }
-
     /**
      * @return all the links extracted from the archive content*/
     //This is a better location for this than Indexer, I (@vihari) think
@@ -218,7 +162,6 @@ public class Archive implements Serializable {
         return indexer.docsForQuery(term, options);
     }
 
-    //query term can be omitted if the querytype is PRESET_REGEX
     public Collection<Document> docsForQuery(int cluster, Indexer.QueryType qt) {
         Indexer.QueryOptions options = new Indexer.QueryOptions();
         options.setCluster(cluster);
@@ -252,10 +195,6 @@ public class Archive implements Serializable {
 
     public int countHitsForQuery(String q) {
         return indexer.countHitsForQuery(q, Indexer.QueryType.FULL);
-    }
-
-    public String getLoadedDirectoryInfo(){
-        return indexer.directory.toString();
     }
 
     public Pair<String,String> getContentsOfAttachment(String fileName){
@@ -1040,8 +979,6 @@ public class Archive implements Serializable {
      * s - content of the doc
      * Date
      * docId - Uniquedocid of the emaildocument
-     * sensitive - if set, will highlight any sensitive info in the mails
-     * that matches one of the regexs specified in presetregexps
      * highlighttermsUnstemmed - terms to highlight in the content (for ex
      * lexicons)
      * highlighttermsstemmed - entities to highlight, generally are names
@@ -1342,7 +1279,7 @@ public class Archive implements Serializable {
         }
 
         // recompute... sometimes the processing metadata may be stale, because some messages have been redacted at export.
-        processingMetadata.numPotentiallySensitiveMessages = numMatchesPresetQueries();
+      //  processingMetadata.numPotentiallySensitiveMessages = numMatchesPresetQueries();
     }
 
     public void merge(Archive other) {
@@ -1414,19 +1351,6 @@ public class Archive implements Serializable {
 
     public void setupForWrite() throws IOException{
         indexer.setupForWrite();
-    }
-
-    /**
-     * @return number of hits to the queries read from presetqueries.txt*/
-    public int numMatchesPresetQueries() {
-        readPresetQueries();
-        try {
-            return indexer.countHitsForQuery(null, Indexer.QueryType.PRESET_REGEX);
-        } catch (Exception e) {
-            Util.print_exception("Minor: error while computing number of sensitive messages, the number will be set to 0", e, log);
-            e.printStackTrace();
-            return 0;
-        }
     }
 
     public Span[] getOriginalNamesOfATypeInDoc(edu.stanford.muse.index.Document doc, short type) throws IOException{

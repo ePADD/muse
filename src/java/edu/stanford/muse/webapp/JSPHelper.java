@@ -424,7 +424,7 @@ public class JSPHelper {
                 archive.processingMetadata.entityCounts = ner.stats.counts;
                 log.info(ner.stats);
             }
-            archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
+           // archive.processingMetadata.numPotentiallySensitiveMessages = archive.numMatchesPresetQueries();
             log.info("Number of potentially sensitive messages " + archive.processingMetadata.numPotentiallySensitiveMessages);
 
             //Is there a reliable and more proper way of checking the mode it is running in?
