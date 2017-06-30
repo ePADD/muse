@@ -151,6 +151,7 @@ public class NER implements StatusProvider {
         }
     }
 
+    /* body = true => in message body, false => in subject */
     public static Span[] getNames(org.apache.lucene.document.Document doc, boolean body) {
         if (doc == null)
             return new Span[0];
@@ -174,6 +175,7 @@ public class NER implements StatusProvider {
         return spans.toArray(new Span[spans.size()]);
     }
 
+    /* body = true => in message body, false => in subject */
     public static Span[] getNames(Document doc, boolean body, Archive archive) throws IOException{
         org.apache.lucene.document.Document ldoc = archive.getLuceneDoc(doc.getUniqueId());
         return getNames(ldoc, body);

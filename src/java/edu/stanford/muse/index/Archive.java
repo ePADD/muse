@@ -1201,6 +1201,7 @@ public class Archive implements Serializable {
         }
     }
 
+    /* body = true => in message body, false => in subject */
     public Span[] getEntitiesInDoc(Document d, boolean body){
         try {
             return edu.stanford.muse.ner.NER.getNames(d, body, this);
@@ -1208,6 +1209,14 @@ public class Archive implements Serializable {
             Util.print_exception(e, log);
             return new Span[]{};
         }
+    }
+
+    /** returns all entities in the given doc, both in body and subject */
+    public synchronized Set<String> getEntitiesInDoc(Document d) {
+        Set<String> entities = new LinkedHashSet<>();
+        Stream.of(getEntitiesInDoc (d, false)).map(Span::getText).forEach(entities::add);
+        Stream.of(getEntitiesInDoc (d, true)).map(Span::getText).forEach(entities::add);
+        return entities;
     }
 
     public synchronized Set<String> getAllEntities() {
