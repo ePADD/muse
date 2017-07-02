@@ -100,6 +100,9 @@ public class EmailNameAgregator {
         string = string.replaceAll("\" ", "\"");
         string = string.replaceAll(" \"", "\"");
         string = string.replaceAll("[^\\w\\d\\sёЁА-Яа-я.,:\\\\\\[\\]|'\";()*?!#$%{}@+\\-]", "");
+        if (string.endsWith("'")) {
+            string = string.substring(0, string.length() - 1);
+        }
         return string.trim();
     }
 
