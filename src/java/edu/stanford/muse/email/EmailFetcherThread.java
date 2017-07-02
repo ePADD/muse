@@ -1101,7 +1101,17 @@ public class EmailFetcherThread implements Runnable, Serializable {
                     }
 
                     if (contents == null)
-                        contents = processMessagePart(messageNum, originalMessage, mm, attachmentsList);
+                        try {
+                            contents = processMessagePart(messageNum, originalMessage, mm, attachmentsList);
+                        } catch (Exception e) {
+                            log.error(e.getMessage(), e);
+                            try {
+                                log.error("MessageId: " + originalMessage.getMessageID());
+                            } catch (MessagingException e1) {
+                                log.error(e.getMessage(), e);
+                            }
+                            throw e;
+                        }
 
                     // if mm is not prefetched, it is the same as original_mm
                     // will also work, but will be slow as javamail accesses and fetches each mm separately, instead of using the bulk prefetched version
