@@ -752,7 +752,11 @@ public class Searcher {
             for (String t: types) {
                 String exts = Config.attachmentTypeToExtensions.get(t);
                 if (exts == null)
-                    continue;
+                    exts=t;
+                    //continue;
+                //Front end should uniformly pass attachment types as extensions like mp3;mov;ogg etc. Earlier it was passing vide, audio, doc etc.
+                //In order to accommodate both cases we first check if there is ampping from the extension type to actual extensions using .get(t)
+                //if no such mapping is present then we assume that the input extension types are of the form mp3;mov;ogg and work on that.
                 String[] components = exts.split (";");
                 for (String c: components) {
                     extensionsToMatch.add (c);
@@ -760,7 +764,13 @@ public class Searcher {
             }
         }
 
-        List<Pair<Blob, EmailDocument>> allAttachments = new ArrayList<>();
+       //a variable to select if the extensions needed contain others.
+       boolean isOtherSelected = extensionsToMatch.contains("others");
+       //get the options that were displayed for attachment types. This will be used to select attachment extensions if the option 'other'
+       //was selected by the user in the drop down box of export.jsp.
+       List<String> attachmentTypeOptions = Config.attachmentTypeToExtensions.values().stream().map(x->Util.tokenize(x,";")).flatMap(col->col.stream()).collect(Collectors.toList());
+
+       List<Pair<Blob, EmailDocument>> allAttachments = new ArrayList<>();
 
         Collection<EmailDocument> eDocs = (Collection) filterDocsByDate (request, new HashSet<>((Collection) docs));
         for (EmailDocument doc : eDocs) {
@@ -776,7 +786,12 @@ public class Searcher {
                         if (ext == null)
                             continue;
                         ext = ext.toLowerCase();
-                        if (!extensionsToMatch.contains (ext))
+                        //Proceed to add this attachment only if either
+                        //1. other is selected and this extension is not present in the list attachmentOptionType, or
+                        //2. this extension is present in the variable neededExtensions [Q. What if there is a file with extension .others?]
+                        boolean firstcondition = isOtherSelected && !attachmentTypeOptions.contains(ext);
+                        boolean secondcondition = extensionsToMatch.contains(ext);
+                        if (!firstcondition && !secondcondition)
                             continue;
                     }
 
