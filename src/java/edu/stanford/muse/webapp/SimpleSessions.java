@@ -346,7 +346,10 @@ public class SimpleSessions {
 			Util.ASSERT(!Util.nullOrEmpty(userKey)); // disaster if we got here without a valid user key
 		}
 
-		String archiveDir = Sessions.CACHE_BASE_DIR + File.separator + userKey;
+		int i = new Random().nextInt();
+		String randomPrefix = String.format("%08x", i);
+		String archiveDir = ModeConfig.isProcessingMode()?Config.REPO_DIR_PROCESSING + File.separator + randomPrefix : Sessions.CACHE_BASE_DIR+ File.separator+userKey;
+		//String archiveDir = Sessions.CACHE_BASE_DIR + File.separator + userKey;
 		Archive archive = SimpleSessions.readArchiveIfPresent(archiveDir);
 
 		if (archive != null) {
