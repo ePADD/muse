@@ -3,7 +3,8 @@ package edu.stanford.muse.xcoll;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import edu.stanford.muse.Config;
-import edu.stanford.muse.ie.AuthorityMapper;
+import edu.stanford.muse.email.AddressBook;
+import edu.stanford.muse.email.Contact;
 import edu.stanford.muse.index.Archive;
 import edu.stanford.muse.index.Document;
 import edu.stanford.muse.index.EmailDocument;
@@ -16,19 +17,27 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Created by hangal on 6/29/17.
- * This is a class that keeps track of all entities in multiple archives and provides an interface to search through them at a token level.
- */
+/** This is a class that keeps track of all entities in multiple archives and provides an interface to search through them at a token level. */
+
 public class CrossCollectionSearch {
     public static Log log = LogFactory.getLog(CrossCollectionSearch.class);
 
     public static List<Archive.ProcessingMetadata> archiveMetadatas = new ArrayList<>(); // metadata's for the archives. the position number in this list is what is used in the EntityInfo
+    public static List<String> archiveDirs = new ArrayList<>(); // metadata's for the archives. the position number in this list is what is used in the EntityInfo
 
-    private static Multimap<String, EntityInfo> cTokenToInfos;
+    private static Multimap<String, EntityInfo> cTokenToInfos; // this token -> infos mapping is intended to make the lookup more efficient. Otherwise, we'd have to go through all the infos for looking up a string.
+    private static Set<String> allCEntities = new LinkedHashSet<>(); // this token -> infos mapping is intended to make the lookup more efficient. Otherwise, we'd have to go through all the infos for looking up a string.
 
-    // this has to be thought through fully -- which version of canonicalize to use?
+    // this has to be fleshed out some more -- which version of canonicalize to use?
+    // right now, we only lowercase the input string and return it.
+    // "Barack Obama" returns "barack obama"
+    // ideally, we could do other transformations that make the lookup more robust, e.g.
+    // normalize whitespaces "abc  def" => "abc def"
+    // or canonicalize variants, like "Bob X" -> "Robert X"
+    // or remove accents (o with an umlaut -> o, etc.)
+    // note: efficiency is also a concern, since this is called for every entity in all collections.
     private static String canonicalize (String s) {
         if (s == null)
             return null;
@@ -36,6 +45,7 @@ public class CrossCollectionSearch {
             return s.toLowerCase();
     }
 
+    /* should be synchronized so there's no chance of doing it multiple times at the same time. */
     synchronized public static void initialize() {
         if (cTokenToInfos != null)
             return;
@@ -48,6 +58,7 @@ public class CrossCollectionSearch {
 
     /** initializes lookup structures (entity infos and ctokenToInfos) for cross collection search
      * reads all archives available in the base dir.
+     * should be synchronized so there's no chance of doing it multiple times at the same time.
      **/
     synchronized private static void initialize(String baseDir) {
 
@@ -82,16 +93,49 @@ public class CrossCollectionSearch {
 
                 Archive.ProcessingMetadata pm = SimpleSessions.readProcessingMetadata(f.getAbsolutePath() + File.separator + Archive.SESSIONS_SUBDIR, "default");
                 archiveMetadatas.add (pm);
+                archiveDirs.add (f.getName());
+
                 log.info ("Loaded archive metadata from " + f.getAbsolutePath());
 
                 // process all docs in this archive to set up centityToInfo map
                 Map<String, EntityInfo> centityToInfo = new LinkedHashMap<>();
                 {
+                    AddressBook ab = archive.addressBook;
                     for (Document d : archive.getAllDocs()) {
                         EmailDocument ed = (EmailDocument) d;
 
-                        for (String entity : archive.getEntitiesInDoc(ed)) {
-                            String centity = canonicalize(entity);
+                        // compute centities, the set of all canonicalized entities in this doc.
+                        // see spec in prodpad #140
+                        // first come correspondents, then subject entities, then body.
+                        // for correspondents we incl. all forms of their email addr or contact name)
+                        // it should be a set because we want to count every string only once per message
+                        Set<String> entities, correspondentEntities;
+                        {
+                            entities = new LinkedHashSet<>();
+                            Set<Contact> contacts = ed.getParticipatingContacts(ab);
+                            for (Contact c : contacts) {
+                                if (c.names != null)
+                                    entities.addAll(c.names);
+                                if (c.emails != null)
+                                    entities.addAll(c.emails);
+                            }
+
+                            correspondentEntities = new LinkedHashSet<>(entities); // keep track of the correspondent centities also, separately because we need the isCorrespondent flag
+
+                            Set<String> set = archive.getEntitiesInDoc(ed);
+                            if (!Util.nullOrEmpty(set))
+                                entities.addAll (set);
+
+                            // filter out any null or empty strings (just in case)
+                            // don't canonicalize right away because we need to keep the original form of the name
+                            entities = entities.stream().filter(s -> !Util.nullOrEmpty(s)).collect(Collectors.toSet());
+                        }
+
+                        // convert the correspondent entities to c entities
+                        Set<String> correspondentCEntities = correspondentEntities.stream().map(CrossCollectionSearch::canonicalize).collect (Collectors.toSet());
+
+                        for (String entity : entities) {
+                           String centity = canonicalize(entity);
                             EntityInfo ei = centityToInfo.get(centity);
                             if (ei == null) {
                                 ei = new EntityInfo();
@@ -100,6 +144,13 @@ public class CrossCollectionSearch {
                                 centityToInfo.put(centity, ei);
                             }
 
+                            // isCorrespondent is set to true if ANY of the messages has centity as a correspondent
+                            // it is 1-way, i.e. once it is set, it will not be unset.
+                            if (correspondentCEntities.contains (centity)) {
+                                ei.isCorrespondent = true;
+                            }
+
+                            // update the first/last dates if needed
                             if (ei.firstDate == null || ei.firstDate.after(ed.date)) {
                                 ei.firstDate = ed.date;
                             }
@@ -109,13 +160,6 @@ public class CrossCollectionSearch {
                             ei.count++;
                         }
                     }
-                    // now process authorities
-                    {
-                        AuthorityMapper authorityMapper = archive.getAuthorityMapper();
-                        // ...
-
-
-                    }
                 }
 
                 log.info ("Archive # " + archiveNum + " read " + centityToInfo.size() + " entities");
@@ -124,6 +168,7 @@ public class CrossCollectionSearch {
                 for (EntityInfo ei: centityToInfo.values()) {
                     String entity = ei.displayName;
                     String centity = canonicalize(entity);
+                    allCEntities.add (centity);
                     Set<String> ctokens = new LinkedHashSet<>(Util.tokenize(centity)); // consider a set of tokens because we don't want repeats
                     for (String ctoken: ctokens)
                         cTokenToInfos.put (ctoken, ei);
@@ -135,23 +180,28 @@ public class CrossCollectionSearch {
         }
     }
 
-
-    private static Collection<EntityInfo> getInfosFor (String entity) {
+    /** returns EntityInfo's that match entity (word wise) */
+    private static Collection<EntityInfo> getInfosFor (String lookupString) {
+        // ensure we're initialized
         initialize();
-        Set<EntityInfo> result = new LinkedHashSet<>();
+
+        Set<EntityInfo> result = new LinkedHashSet<>(); // set to ensure that a result appears only once
 
         // tokenize entity and look up all infos that contain any of its tokens
         // todo: make this handle variants
 
-        String centity = canonicalize(entity);
-        List<String> ctokens = Util.tokenize(centity);
+        // get all the tokens in the lookup
+        String cLookupString = canonicalize(lookupString);
+        List<String> cLookupTokens = Util.tokenize(cLookupString);
 
-        for (String ctoken: ctokens) {
-            Collection<EntityInfo> infos = cTokenToInfos.get(ctoken);
+        // check all EntityInfo's that contain any of the tokens
+        // if the display name contains the lookupString, the EntityInfo is added to the result
+        for (String cLookupToken: cLookupTokens) {
+            Collection<EntityInfo> infos = cTokenToInfos.get(cLookupToken);
             if (infos != null)
                 for (EntityInfo info: infos) {
                     String cDisplayName = canonicalize(info.displayName);
-                    if (cDisplayName != null && cDisplayName.contains (centity)) // only if centity is contained in entirety in cDisplayName do we add this info to result
+                    if (cDisplayName != null && cDisplayName.contains (cLookupString)) // only if cLookupString is contained in entirety in cDisplayName do we add this info to result
                         result.add (info);
                 }
         }
@@ -178,5 +228,20 @@ public class CrossCollectionSearch {
             archiveNumToInfos.put (info.archiveNum, info);
 
         return archiveNumToInfos;
+    }
+
+    /** this is more robust (doesn't depend on full word matching. but is highly inefficient right now! need to optimize*/
+    public static List<String> searchForAutocomplete (String entity, int max) {
+        initialize();
+        List<String> result = new ArrayList<>();
+        String centity = canonicalize(entity);
+        for (String e: allCEntities) {
+            if (e.contains (centity)) {
+                result.add(e);
+            }
+            if (result.size() >= max)
+                return result;
+        }
+        return result;
     }
 }

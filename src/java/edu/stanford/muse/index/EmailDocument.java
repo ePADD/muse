@@ -352,6 +352,26 @@ public class EmailDocument extends DatedDocument implements Serializable
 		return result;
 	}
 
+	/* get all participating addrs in this email message,
+ * including to, cc, bcc, etc.
+ * exclude oneself. the sole exception is the special case
+ * when own addrs contains both the sender and all receivers.
+ * ownaddrs can be null or empty.
+ */
+	public Set<Contact> getParticipatingContacts(AddressBook addressBook)
+	{
+		Set<Contact> result = new LinkedHashSet<>();
+		Contact self = addressBook.getContactForSelf();
+		List<String> rawEmailAddrs = getAllAddrs(); // getParticipatingAddrsExcept(addressBook.getOwnAddrs());
+		for (String s: rawEmailAddrs)
+		{
+			Contact c = addressBook.lookupByEmail(s);
+			if (c != null)
+				result.add(c);
+		}
+		return result;
+	}
+
 	public String getSubject()
 	{
 		StringBuilder sb = new StringBuilder();
